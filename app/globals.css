@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Smooth color transition when toggling dark mode */
+html {
+  @apply transition-colors duration-300;
+}
+
+body {
+  @apply bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-white;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Default heading styles */
+h1, h2, h3, h4, h5, h6 {
+  @apply font-bold text-gray-800 dark:text-white;
+}
+
+/* Sidebar brand override */
+.sidebar-heading {
+  @apply text-white;
+}
+
+/* Optional: Smooth link color transitions */
+a {
+  @apply transition-colors duration-200;
+}
