@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ——————————————————————————
+   1) Base styles (resets, html/body, headings)
+—————————————————————————— */
+@layer base {
+  html {
+    @apply transition-colors duration-300 ease-in-out scroll-smooth;
+  }
+
+  body {
+    @apply bg-gray-100 text-gray-900
+           dark:bg-gray-900 dark:text-white
+           antialiased transition-colors duration-300 ease-in-out;
+    font-family: 'Inter', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold text-gray-800 dark:text-white leading-tight;
+  }
+}
+
+/* ——————————————————————————
+   2) Component-level overrides
+—————————————————————————— */
+@layer components {
+  .sidebar-heading {
+    @apply text-white tracking-wide uppercase text-xs font-semibold;
+  }
+
+  .btn-primary {
+    @apply bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition;
+  }
+
+  .input {
+    @apply w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white;
+  }
+}
+
+/* ——————————————————————————
+   3) Tiny utility tweaks
+—————————————————————————— */
+@layer utilities {
+  a {
+    @apply transition-colors duration-200 ease-in-out
+           hover:text-blue-600 dark:hover:text-blue-400;
+  }
+
+  /* Custom scrollbar — experimental */
+  ::-webkit-scrollbar {
+    @apply w-2 h-2;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-400 dark:bg-gray-600 rounded;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-gray-200 dark:bg-gray-800;
+  }
+}

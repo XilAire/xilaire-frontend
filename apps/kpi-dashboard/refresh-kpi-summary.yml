@@ -1,0 +1,20 @@
+# File: .github/workflows/refresh-kpi.yml
+name: Refresh KPI Summary
+
+on:
+  schedule:
+    - cron: '0 0 * * *'    # every day at midnight UTC
+  workflow_dispatch:
+
+jobs:
+  call_function:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_PROJECT_REF: ykjbvimhgebeemoneduy
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - name: Trigger KPI refresh
+        run: |
+          curl -X POST "https://${SUPABASE_PROJECT_REF}.functions.supabase.co/refresh_kpi_summary" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}"
