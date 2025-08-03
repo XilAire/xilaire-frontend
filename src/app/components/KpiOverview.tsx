@@ -1,9 +1,7 @@
-// File: xilaire-frontend/src/app/components/KpiOverview.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
-// from src/app/components → go up two levels into src/lib
-import { fetchKpiMetrics } from '../../lib/fetchKpiMetrics';
+import { fetchKpiMetrics } from '@/lib/fetchKpiMetrics';
 
 type Metric = {
   id: number;
@@ -16,23 +14,17 @@ type Metric = {
 export default function KpiOverview() {
   const [metrics, setMetrics] = useState<Metric[]>([]);
 
-  // default to last 7 days
-  const today      = new Date().toISOString().slice(0, 10);
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .slice(0, 10);
-
   useEffect(() => {
     const load = async () => {
-      // pass startDate and endDate
-      const data = await fetchKpiMetrics(sevenDaysAgo, today);
+      const data = await fetchKpiMetrics();
       setMetrics(data);
     };
     load();
-  }, [sevenDaysAgo, today]);
+  }, []);
 
   const grouped = metrics.reduce((acc, curr) => {
-    const key = `${curr.bot}_${curr.metric}`;
+    const bot = curr.bot;
+    const key = `${bot}_${curr.metric}`;
     acc[key] = (acc[key] || 0) + curr.value;
     return acc;
   }, {} as Record<string, number>);

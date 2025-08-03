@@ -1,6 +1,7 @@
+// File: src/app/page.tsx
 'use client';
 
-import KpiGrid from '../components/KpiGrid';
+import KpiGrid from './components/KpiGrid';
 
 export default function HomePage() {
   return (

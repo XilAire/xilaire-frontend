@@ -1,7 +1,10 @@
+// src/app/layout.tsx
 import './globals.css';
 import { ReactNode } from 'react';
 import { Inter } from 'next/font/google';
-import ClientLayout from './ClientLayout';
+
+// ← absolute import via baseUrl: "src"
+import ClientLayout from '../app/ClientLayout';
 
 const inter = Inter({ subsets: ['latin'] });
 

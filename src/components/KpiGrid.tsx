@@ -1,5 +1,7 @@
+// File: apps/kpi-dashboard/src/components/KpiGrid.tsx
 'use client';
 
+import { useEffect, useState } from 'react';
 import {
   LineChart,
   Line,
@@ -9,8 +11,8 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabaseClient';
+// relative import from src/components → src/lib
+import { supabase } from '../lib/supabaseClient';
 
 type KpiEntry = {
   bot: string;
@@ -36,7 +38,7 @@ export default function KpiGrid() {
         .select('*')
         .order('timestamp', { ascending: true });
 
-      if (!data || error) {
+      if (error || !data) {
         console.error('Supabase error:', error);
         return;
       }
@@ -51,7 +53,6 @@ export default function KpiGrid() {
             data: [],
           };
         }
-
         groupedData[key].data.push({
           name: new Date(entry.timestamp).toLocaleDateString(),
           value: entry.value,
@@ -75,7 +76,7 @@ export default function KpiGrid() {
               <YAxis />
               <Tooltip />
               <CartesianGrid stroke="#e0e0e0" strokeDasharray="3 3" />
-              <Line type="monotone" dataKey="value" stroke="#4f46e5" strokeWidth={2} />
+              <Line type="monotone" dataKey="value" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
         </div>

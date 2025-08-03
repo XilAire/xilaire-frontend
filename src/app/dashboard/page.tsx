@@ -1,9 +1,12 @@
+// File: apps/kpi-dashboard/src/app/dashboard/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
-import SummaryCard from '../../components/SummaryCard';
-import KpiChart from '../../components/KpiChart';
-import { fetchKpiMetrics } from '@/lib/fetchKpiMetrics';
+// ← two levels up from src/app/dashboard → into src/components
+import SummaryCard       from '../../components/SummaryCard';
+import KpiChart          from '../../components/KpiChart';
+// ← two levels up into src/lib
+import { fetchKpiMetrics } from '../../lib/fetchKpiMetrics';
 
 export default function DashboardPage() {
   const [summary, setSummary] = useState({
@@ -13,10 +16,10 @@ export default function DashboardPage() {
   });
 
   // KPI Chart dropdown states
-  const [bot, setBot] = useState('Nova');
-  const [metric, setMetric] = useState('runs');
+  const [bot, setBot]             = useState('Nova');
+  const [metric, setMetric]       = useState('runs');
   const [startDate, setStartDate] = useState('2025-07-01');
-  const [endDate, setEndDate] = useState('2025-07-10');
+  const [endDate, setEndDate]     = useState('2025-07-10');
 
   // Fetch summary KPIs (runs, errors, tickets)
   useEffect(() => {
@@ -29,7 +32,7 @@ export default function DashboardPage() {
           return acc;
         }, {});
         setSummary({
-          runs: totals.runs || 0,
+          runs:   totals.runs   || 0,
           errors: totals.errors || 0,
           tickets: totals.tickets || 0,
         });
@@ -47,7 +50,7 @@ export default function DashboardPage() {
         const res = await fetch('/api/tickets');
         if (!res.ok) throw new Error('Failed to fetch tickets');
         const data = await res.json();
-        setSummary((prev) => ({ ...prev, tickets: data.count || 0 }));
+        setSummary(prev => ({ ...prev, tickets: data.count || 0 }));
       } catch (err) {
         console.error('Failed to fetch ticket count:', err);
       }
@@ -63,7 +66,7 @@ export default function DashboardPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <SummaryCard title="Runs Today" value={summary.runs} />
+        <SummaryCard title="Runs Today"   value={summary.runs} />
         <SummaryCard title="Errors Today" value={summary.errors} />
         <SummaryCard title="Tickets Today" value={summary.tickets} />
       </div>
