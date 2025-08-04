@@ -1,19 +1,41 @@
-name: Refresh KPI Summary
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-on:
-  workflow_dispatch: {}
-  schedule:
-    - cron: '0 0 * * *'
+// Load Supabase environment variables
+const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const supabase = createClient(supabaseUrl, supabaseKey);
 
-jobs:
-  call_function:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Trigger KPI refresh
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: |
-          curl -X POST "$SUPABASE_URL/refresh_kpi_summary" \
-            -H "Content-Type: application/json" \
-            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY"
+serve(async (req) => {
+  const authHeader = req.headers.get("Authorization") || "";
+  if (!authHeader.startsWith("Bearer ")) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+  const { error } = await supabase.from("social_kpi_daily_summary").upsert([
+    {
+      platform: "Instagram",
+      metric_type: "engagement_rate",
+      day: today,
+      avg_value: 5.2,
+      data_points: 1,
+    },
+    {
+      platform: "X",
+      metric_type: "reach_growth",
+      day: today,
+      avg_value: 320,
+      data_points: 1,
+    },
+  ]);
+
+  if (error) {
+    return new Response(`Error updating KPI summary: ${error.message}`, {
+      status: 500,
+    });
+  }
+
+  return new Response("✅ Social KPIs refreshed!", { status: 200 });
+});
