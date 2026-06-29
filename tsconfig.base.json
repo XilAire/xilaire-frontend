@@ -1,10 +1,11 @@
 {
   "compilerOptions": {
-    "target": "ES2022",
-    "lib": ["dom", "dom.iterable", "es2022"],
+    "target": "es2020",
+    "lib": ["dom", "dom.iterable", "es2020"],
     "allowJs": false,
     "skipLibCheck": true,
     "strict": false,
+    "forceConsistentCasingInFileNames": true,
     "noEmit": true,
     "esModuleInterop": true,
     "module": "esnext",
@@ -12,7 +13,13 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
-    "incremental": true,
-    "baseUrl": "."
-  }
+    "baseUrl": ".",
+    "paths": {
+      "@xilaire/ui": ["packages/ui/src"],
+      "@xilaire/ui/*": ["packages/ui/src/*"],
+      "@xilaire/utils": ["packages/utils/src"],
+      "@xilaire/utils/*": ["packages/utils/src/*"]
+    }
+  },
+  "include": []
 }

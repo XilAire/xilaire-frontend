@@ -2,13 +2,55 @@
   "name": "xilaire-frontend",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev:kpi": "npm --prefix apps/kpi-dashboard run dev",
-    "dev": "npm run dev:kpi"
+    "prepare": "husky",
+    "dev:kpi": "npm --prefix ./apps/kpi-dashboard run dev",
+    "dev:legal": "npm --prefix ./apps/legal-portal run dev",
+    "dev:gourmet": "npm --prefix ./apps/gourmet-jerk-app run dev",
+    "dev:security": "npm --prefix ./apps/xilaire-security run dev",
+    "dev:platform": "npm --prefix ./apps/xilaire-platform run dev",
+    "dev:case-trades": "npm --prefix ./apps/case-trades run dev",
+    "build:security": "npm --prefix ./apps/xilaire-security run build",
+    "start:security": "npm --prefix ./apps/xilaire-security run start",
+    "lint:security": "npm --prefix ./apps/xilaire-security run lint",
+    "build:platform": "npm --prefix ./apps/xilaire-platform run build",
+    "start:platform": "npm --prefix ./apps/xilaire-platform run start",
+    "lint:platform": "npm --prefix ./apps/xilaire-platform run lint",
+    "build:case-trades": "npm --prefix ./apps/case-trades run build",
+    "start:case-trades": "npm --prefix ./apps/case-trades run start",
+    "lint:case-trades": "npm --prefix ./apps/case-trades run lint",
+    "dev:all": "concurrently -n KPI,LEGAL,GOURMET,SECURITY,PLATFORM,CASETRADES -c blue,magenta,green,cyan,yellow,white \"npm run dev:kpi\" \"npm run dev:legal\" \"npm run dev:gourmet\" \"npm run dev:security\" \"npm run dev:platform\" \"npm run dev:case-trades\"",
+    "dev": "npm run dev:platform"
   },
   "dependencies": {
+    "@azure/identity": "^4.13.0",
+    "@microsoft/microsoft-graph-client": "^3.0.7",
     "@supabase/auth-helpers-nextjs": "^0.10.0",
+    "date-fns-tz": "^3.2.0",
+    "isomorphic-fetch": "^3.0.0",
+    "jsonwebtoken": "^9.0.3",
+    "jspdf": "^3.0.3",
+    "jszip": "^3.10.1",
+    "lucide-react": "^0.555.0",
+    "luxon": "^3.7.2",
+    "nodemailer": "^7.0.10",
+    "react-datepicker": "^9.0.0",
     "react-hot-toast": "^2.5.2",
-    "recharts": "^3.1.0"
+    "react-icons": "^5.5.0",
+    "recharts": "^3.1.0",
+    "swr": "^2.3.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.17",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/nodemailer": "^7.0.4",
+    "autoprefixer": "^10.4.22",
+    "concurrently": "^9.0.1",
+    "husky": "^9.1.6",
+    "postcss": "^8.5.6"
   }
 }

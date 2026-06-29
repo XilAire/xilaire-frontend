@@ -1,6 +1,11 @@
+"use client";
+
 import { ReactNode } from "react";
+
 import CaseSidebar from "./CaseSidebar";
+import CaseSidebarShell from "./CaseSidebarShell";
 import CaseTopBar from "./CaseTopBar";
+
 import type { Profile } from "@/lib/getProfile";
 
 interface CaseAppShellProps {
@@ -8,19 +13,22 @@ interface CaseAppShellProps {
   profile: Profile;
 }
 
-export default function CaseAppShell({ children, profile }: CaseAppShellProps) {
+export default function CaseAppShell({
+  children,
+  profile,
+}: CaseAppShellProps) {
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-950 text-slate-100">
-      {/* Sidebar */}
-      <CaseSidebar profile={profile} />
+    <div className="flex min-h-screen w-full overflow-hidden bg-slate-950 text-slate-100">
+      <CaseSidebarShell>
+        <CaseSidebar profile={profile} />
+      </CaseSidebarShell>
 
-      {/* Main column */}
-      <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Top bar */}
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
         <CaseTopBar profile={profile} />
 
-        {/* Main scroll container */}
-        <main className="flex-1 overflow-y-auto px-6 py-6">{children}</main>
+        <main className="min-w-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+          {children}
+        </main>
       </div>
     </div>
   );

@@ -1,5 +1,38 @@
 {
+  // --- Deno settings (keep enabled for your needs) ---
   "deno.enable": true,
   "deno.lint": true,
-  "deno.unstable": true
+  "deno.unstable": true,
+
+  // Ignore Tailwind @... rules that Deno doesn't understand
+  "css.lint.unknownAtRules": "ignore",
+  "scss.lint.unknownAtRules": "ignore",
+  "less.lint.unknownAtRules": "ignore",
+
+  // --- Fix: Allow Next.js-style imports like `import "./globals.css";` ---
+  // Tell Deno NOT to manage the project automatically
+  // This prevents false errors on CSS, JSON modules, TS config, etc.
+  "deno.enablePaths": [],
+  "deno.disablePaths": [
+    "./"    
+  ],
+
+  // --- Tailwind IntelliSense enhancements ---
+  "editor.quickSuggestions": {
+    "strings": true
+  },
+
+  "tailwindCSS.includeLanguages": {
+    "typescript": "html",
+    "typescriptreact": "html",
+    "javascript": "html",
+    "javascriptreact": "html"
+  },
+
+  // Enable Tailwind everywhere inside your monorepo
+  "tailwindCSS.experimental.classRegex": [
+    ["className\\s*=\\s*\"([^\"]*)\"", 1],
+    ["className\\s*=\\s*'([^']*)'", 1],
+    ["className\\s*=\\s*`([^`]*)`", 1]
+  ]
 }

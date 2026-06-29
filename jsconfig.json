@@ -1,4 +1,3 @@
-// jsconfig.json (at project root)
 {
   "compilerOptions": {
     "target": "ES2017",
@@ -14,14 +13,18 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
-    "plugins": [{ "name": "next" }]
-    // — no baseUrl or paths aliases —
+    "plugins": [{ "name": "next" }],
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["apps/xilaire-security/*"]
+    }
   },
   "include": [
-    "apps/kpi-dashboard/src",
-    "next-env.d.ts"
+    "apps/xilaire-security/app",
+    "apps/xilaire-security/components",
+    "apps/xilaire-security/lib",
+    "apps/xilaire-security/next-env.d.ts"
   ],
-  "exclude": [
-    "node_modules"
-  ]
+  "exclude": ["node_modules"]
 }
