@@ -7,8 +7,7 @@
     "packages/*"
   ],
   "scripts": {
-    "prepare": "husky || true"
-    "dev:kpi": "npm --prefix ./apps/kpi-dashboard run dev",
+    "prepare": "husky || true",
     "dev:legal": "npm --prefix ./apps/legal-portal run dev",
     "dev:gourmet": "npm --prefix ./apps/gourmet-jerk-app run dev",
     "dev:security": "npm --prefix ./apps/xilaire-security run dev",
@@ -23,7 +22,7 @@
     "build:case-trades": "npm --prefix ./apps/case-trades run build",
     "start:case-trades": "npm --prefix ./apps/case-trades run start",
     "lint:case-trades": "npm --prefix ./apps/case-trades run lint",
-    "dev:all": "concurrently -n KPI,LEGAL,GOURMET,SECURITY,PLATFORM,CASETRADES -c blue,magenta,green,cyan,yellow,white \"npm run dev:kpi\" \"npm run dev:legal\" \"npm run dev:gourmet\" \"npm run dev:security\" \"npm run dev:platform\" \"npm run dev:case-trades\"",
+    "dev:all": "concurrently -n LEGAL,GOURMET,SECURITY,PLATFORM,CASETRADES -c magenta,green,cyan,yellow,white \"npm run dev:legal\" \"npm run dev:gourmet\" \"npm run dev:security\" \"npm run dev:platform\" \"npm run dev:case-trades\"",
     "dev": "npm run dev:platform"
   },
   "dependencies": {
