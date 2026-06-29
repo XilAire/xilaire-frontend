@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: Request) {
   // Response must be mutable so Supabase can write cookies
   const res = NextResponse.json({ ok: true });
