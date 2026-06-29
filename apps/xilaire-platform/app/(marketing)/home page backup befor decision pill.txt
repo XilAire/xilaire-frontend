@@ -1,0 +1,71 @@
+// apps/xilaire-platform/app/(marketing)/page.tsx
+
+import Link from "next/link";
+import Card from "@/components/ui/Card";
+import Button from "@/components/ui/Button";
+
+export const metadata = {
+  title: "XilAire Technologies | Cloud, Managed IT, Cybersecurity & Automation",
+  description:
+    "XilAire Technologies delivers managed IT, cloud services, cybersecurity, VoIP, and AI automation through a unified platform built for modern businesses.",
+};
+
+
+export default function MarketingHomePage() {
+  return (
+    <section className="bg-slate-50">
+      <div className="mx-auto max-w-6xl px-4 py-16 text-slate-900">
+        <div className="grid gap-10 md:grid-cols-[2fr,1.5fr] md:items-center">
+          {/* Left column */}
+          <div>
+            <span className="rounded-full border border-sky-500/40 bg-sky-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-sky-600">
+              Cloud • Managed IT • AI Automation
+            </span>
+
+            <h1 className="mt-4 text-4xl font-bold leading-tight md:text-5xl">
+              Turn your IT into a{" "}
+              <span className="text-sky-600">managed SaaS experience.</span>
+            </h1>
+
+            <p className="mt-4 max-w-xl text-slate-600">
+              XilAire Technologies delivers cloud, cybersecurity, VoIP, and AI
+              automation through a unified platform — giving your team predictable
+              IT and powerful automation without the overhead.
+            </p>
+
+            <div className="mt-8 flex flex-wrap gap-4">
+              <Link href="/auth/signup">
+                <Button>Start the onboarding</Button>
+              </Link>
+
+              <Link href="/services">
+                <Button variant="outline">Explore services</Button>
+              </Link>
+            </div>
+
+            <p className="mt-4 text-xs text-slate-500">
+              The live dashboard will later pull data from your bots and automations.
+            </p>
+          </div>
+
+          {/* Right column – card */}
+          <Card className="border border-slate-200 bg-white shadow-sm">
+            <h2 className="mb-2 text-sm font-semibold text-sky-700">
+              Sample client snapshot
+            </h2>
+            <ul className="space-y-2 text-sm text-slate-700">
+              <li>• 126 managed devices</li>
+              <li>• 99.96% uptime this month</li>
+              <li>• 43 automations run in the last 24 hours</li>
+              <li>• 12 open tickets • 3 in progress • 0 overdue</li>
+            </ul>
+            <p className="mt-4 text-xs text-slate-500">
+              This is static for now. Later, Nova &amp; Pulse will power this in real
+              time.
+            </p>
+          </Card>
+        </div>
+      </div>
+    </section>
+  );
+}
