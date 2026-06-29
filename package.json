@@ -7,7 +7,7 @@
     "packages/*"
   ],
   "scripts": {
-    "prepare": "husky",
+    "prepare": "husky || true"
     "dev:kpi": "npm --prefix ./apps/kpi-dashboard run dev",
     "dev:legal": "npm --prefix ./apps/legal-portal run dev",
     "dev:gourmet": "npm --prefix ./apps/gourmet-jerk-app run dev",
