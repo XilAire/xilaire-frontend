@@ -565,7 +565,7 @@ export default async function SignalsPage({
     organization: selectedOrganization,
   });
 
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   let query = supabase
     .from("signals")
