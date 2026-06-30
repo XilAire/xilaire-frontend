@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { supabaseCaseTrades } from "@/lib/supabase/client";
 
 export default function ForgotPasswordPage() {
@@ -12,24 +14,33 @@ export default function ForgotPasswordPage() {
 
   async function handleReset(e: React.FormEvent) {
     e.preventDefault();
+
+    if (loading) return;
+
     setMessage(null);
     setLoading(true);
 
-    const { error } = await supabaseCaseTrades.auth.resetPasswordForEmail(
-      email,
-      {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
+    try {
+      const { error } = await supabaseCaseTrades.auth.resetPasswordForEmail(
+        email,
+        {
+          redirectTo: `${window.location.origin}/auth/reset-password`,
+        }
+      );
+
+      if (error) {
+        setMessage(error.message);
+        setLoading(false);
+        return;
       }
-    );
 
-    setLoading(false);
-
-    if (error) {
-      setMessage(error.message);
-      return;
+      setMessage("Password reset email sent. Check your inbox.");
+      setLoading(false);
+    } catch (err) {
+      console.error(err);
+      setMessage("Unable to send reset email.");
+      setLoading(false);
     }
-
-    setMessage("Password reset email sent. Check your inbox.");
   }
 
   return (
@@ -56,7 +67,8 @@ export default function ForgotPasswordPage() {
             placeholder="Email"
             required
             autoComplete="email"
-            className="w-full rounded-lg bg-slate-800 px-3 py-2 text-slate-100 outline-none focus:ring-2 focus:ring-sky-500"
+            disabled={loading}
+            className="w-full rounded-lg bg-slate-800 px-3 py-2 text-slate-100 outline-none transition focus:ring-2 focus:ring-sky-500 disabled:cursor-not-allowed disabled:opacity-60"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
@@ -64,19 +76,32 @@ export default function ForgotPasswordPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-sky-600 py-2 font-medium text-white transition hover:bg-sky-700 disabled:opacity-50"
+            aria-busy={loading}
+            className="w-full rounded-lg bg-sky-600 py-2 font-medium text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-70"
           >
-            {loading ? "Sending..." : "Send Reset Link"}
+            {loading ? (
+              <LoadingSpinner
+                size="sm"
+                label="Sending reset email..."
+              />
+            ) : (
+              "Send Reset Link"
+            )}
           </button>
         </form>
 
         {message && (
-          <p className="mt-4 text-center text-sm text-slate-300">{message}</p>
+          <p className="mt-4 text-center text-sm text-slate-300">
+            {message}
+          </p>
         )}
 
         <p className="mt-6 text-center text-sm text-slate-400">
           Remember your password?{" "}
-          <Link href="/auth/signin" className="text-sky-400 hover:underline">
+          <Link
+            href="/auth/signin"
+            className="text-sky-400 hover:underline"
+          >
             Back to Sign In
           </Link>
         </p>

@@ -11,6 +11,8 @@ import {
   Zap,
 } from "lucide-react";
 
+import CheckoutButton from "@/components/billing/CheckoutButton";
+
 export const dynamic = "force-dynamic";
 
 const signalPlans = [
@@ -18,7 +20,8 @@ const signalPlans = [
     name: "CASE Signals Weekly",
     price: "$29.99",
     period: "/week",
-    href: "/auth/signup?plan=signals_weekly",
+    plan: "signals_weekly",
+    priceId: process.env.NEXT_PUBLIC_STRIPE_SIGNALS_WEEKLY_PRICE_ID ?? "",
     cta: "Start Weekly Signals",
     highlighted: false,
     features: [
@@ -33,7 +36,8 @@ const signalPlans = [
     name: "CASE Signals Monthly",
     price: "$99.99",
     period: "/month",
-    href: "/auth/signup?plan=signals_monthly",
+    plan: "signals_monthly",
+    priceId: process.env.NEXT_PUBLIC_STRIPE_SIGNALS_MONTHLY_PRICE_ID ?? "",
     cta: "Start Monthly Signals",
     highlighted: true,
     features: [
@@ -203,18 +207,22 @@ export default function SignalsProductPage() {
                 <span className="pb-1 text-slate-400">{plan.period}</span>
               </div>
 
-              <Link
-                href={plan.href}
+              <CheckoutButton
+                plan={plan.plan}
+                productFamily="signals"
+                priceId={plan.priceId}
                 className={
-                  "mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-semibold transition " +
+                  "mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 " +
                   (plan.highlighted
                     ? "bg-emerald-600 text-white hover:bg-emerald-500"
                     : "border border-white/10 bg-slate-900 text-slate-200 hover:bg-slate-800")
                 }
               >
-                {plan.cta}
-                <ArrowRight className="h-4 w-4" />
-              </Link>
+                <>
+                  {plan.cta}
+                  <ArrowRight className="h-4 w-4" />
+                </>
+              </CheckoutButton>
 
               <div className="mt-6 space-y-3">
                 {plan.features.map((feature) => (

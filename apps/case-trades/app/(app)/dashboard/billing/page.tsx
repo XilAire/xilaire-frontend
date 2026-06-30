@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 import type { ReactNode } from "react";
@@ -18,6 +17,8 @@ import {
   type CaseEntitlements,
 } from "@/lib/auth/getUserEntitlements";
 import { getProfile } from "@/lib/getProfile";
+import LoadingActionLink from "@/components/ui/LoadingActionLink";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
 
 export const dynamic = "force-dynamic";
 
@@ -279,7 +280,7 @@ function createDefaultEntitlements(): CaseEntitlements {
 }
 
 export default async function BillingPage({ searchParams }: BillingPageProps) {
-  const authSupabase = createSupabaseServerClient();
+  const authSupabase = await createSupabaseServerClient();
   const serviceSupabase = createServiceSupabaseClient();
 
   const {
@@ -293,31 +294,31 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
   const { data: profile, error: profileError } = await serviceSupabase
     .from("profiles")
     .select(
-  `
-  id,
-  email,
-  role_id,
-  roles:roles!profiles_role_id_fkey (
-    name,
-    rank
-  )
-  `
-)
+      `
+      id,
+      email,
+      role_id,
+      roles:roles!profiles_role_id_fkey (
+        name,
+        rank
+      )
+      `,
+    )
     .eq("id", user.id)
     .single();
 
   if (profileError || !profile) {
-  console.error("Billing profile lookup failed", {
-    profileError,
-    userId: user.id,
-  });
+    console.error("Billing profile lookup failed", {
+      profileError,
+      userId: user.id,
+    });
 
-  throw new Error(
-    `Billing profile lookup failed: ${
-      profileError?.message ?? "Profile not found"
-    }`
-  );
-}
+    throw new Error(
+      `Billing profile lookup failed: ${
+        profileError?.message ?? "Profile not found"
+      }`,
+    );
+  }
 
   let sidebarProfile: any = {
     current_organization: null,
@@ -349,14 +350,14 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
   const sidebarHasSignalsAccess =
     sidebarHasActiveSubscription && sidebarHasDiscordAccess;
 
- const billingRole = Array.isArray((profile as any)?.roles)
-  ? (profile as any).roles[0]
-  : (profile as any)?.roles;
+  const billingRole = Array.isArray((profile as any)?.roles)
+    ? (profile as any).roles[0]
+    : (profile as any)?.roles;
 
-const isAdminUser =
-  ["master_admin", "admin", "owner", "super_admin", "staff"].includes(
-    String(billingRole?.name ?? "").toLowerCase()
-  ) || Number(billingRole?.rank ?? 0) >= 4;
+  const isAdminUser =
+    ["master_admin", "admin", "owner", "super_admin", "staff"].includes(
+      String(billingRole?.name ?? "").toLowerCase(),
+    ) || Number(billingRole?.rank ?? 0) >= 4;
 
   const selectedOrganizationSlug = searchParams?.org ?? null;
 
@@ -713,9 +714,7 @@ const isAdminUser =
     discordConnected &&
     (hasActiveSubscription || hasEntitlementAccess || sidebarHasDiscordAccess);
 
-  const checkoutSuffix = `&email=${encodeURIComponent(
-    profile.email ?? "",
-  )}`;
+  const checkoutSuffix = `&email=${encodeURIComponent(profile.email ?? "")}`;
 
   const portalReturnTo = encodeURIComponent("/dashboard/billing");
 
@@ -727,6 +726,27 @@ const isAdminUser =
   const hasDynamicJournalProducts = dynamicJournalProducts.length > 0;
   const hasDynamicOtherProducts = dynamicOtherProducts.length > 0;
   const hasDynamicProducts = dynamicProducts.length > 0;
+
+  const shouldAutoContinueCheckout =
+    reason === "complete_subscription" &&
+    Boolean(selectedPlanKey) &&
+    Boolean(selectedPlanName) &&
+    !selectedPlanAlreadyActive;
+
+  const autoCheckoutHref =
+    shouldAutoContinueCheckout && selectedDynamicPlan
+      ? `/api/stripe/checkout?organization_product_id=${
+          selectedDynamicPlan.id
+        }&plan=${encodeURIComponent(
+          selectedDynamicPlan.product_key,
+        )}&product=${encodeURIComponent(
+          String(selectedProduct ?? selectedDynamicPlan.feature_key ?? "other"),
+        )}${checkoutSuffix}`
+      : shouldAutoContinueCheckout && selectedProduct
+        ? `/api/stripe/checkout?plan=${encodeURIComponent(
+            selectedPlanKey,
+          )}&product=${encodeURIComponent(selectedProduct)}${checkoutSuffix}`
+        : null;
 
   return (
     <div className="space-y-8">
@@ -771,7 +791,18 @@ const isAdminUser =
 
       {reason === "complete_subscription" &&
         selectedPlanName &&
-        !selectedPlanAlreadyActive && (
+        !selectedPlanAlreadyActive &&
+        autoCheckoutHref && (
+          <AutoContinueCheckoutNotice
+            checkoutHref={autoCheckoutHref}
+            planName={selectedPlanName}
+          />
+        )}
+
+      {reason === "complete_subscription" &&
+        selectedPlanName &&
+        !selectedPlanAlreadyActive &&
+        !autoCheckoutHref && (
           <Notice
             icon={<CreditCard />}
             title="Complete Your Subscription"
@@ -957,15 +988,16 @@ const isAdminUser =
                   Discord Connected
                 </div>
               ) : discordInviteUrl ? (
-                <Link
+                <LoadingActionLink
                   href={discordInviteUrl}
                   target="_blank"
                   rel="noreferrer"
+                  loadingLabel="Opening Discord..."
                   className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-sky-500/30 px-4 py-2 text-center text-sm font-medium text-sky-300 hover:bg-sky-500/10"
                 >
                   Join Discord Server
                   <ExternalLink className="h-4 w-4" />
-                </Link>
+                </LoadingActionLink>
               ) : (
                 <div className="mt-4 rounded-lg border border-white/10 bg-slate-900 px-4 py-2 text-center text-sm text-slate-500">
                   Invite unavailable
@@ -1004,12 +1036,13 @@ const isAdminUser =
               </p>
 
               {!discordConnected ? (
-                <Link
+                <LoadingActionLink
                   href="/api/auth/discord/connect"
+                  loadingLabel="Connecting Discord..."
                   className="mt-4 inline-flex w-full items-center justify-center rounded-lg border border-indigo-500/30 px-4 py-2 text-center text-sm font-medium text-indigo-300 hover:bg-indigo-500/10"
                 >
                   Connect Discord
-                </Link>
+                </LoadingActionLink>
               ) : (
                 <div className="mt-4 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 text-center text-sm font-medium text-emerald-300">
                   Discord Connected
@@ -1046,12 +1079,13 @@ const isAdminUser =
               </p>
 
               {canSyncRoles ? (
-                <Link
+                <LoadingActionLink
                   href={`/api/discord/sync-roles?user_id=${profile.id}`}
+                  loadingLabel="Syncing roles..."
                   className="mt-4 inline-flex w-full items-center justify-center rounded-lg border border-emerald-500/30 px-4 py-2 text-center text-sm font-medium text-emerald-300 hover:bg-emerald-500/10"
                 >
                   Sync Roles
-                </Link>
+                </LoadingActionLink>
               ) : (
                 <div className="mt-4 rounded-lg border border-white/10 bg-slate-900 px-4 py-2 text-center text-sm text-slate-500">
                   Sync unavailable
@@ -1081,12 +1115,13 @@ const isAdminUser =
               </div>
             </div>
 
-            <Link
+            <LoadingActionLink
               href={`/api/stripe/customer-portal${portalSuffix}`}
+              loadingLabel="Opening billing portal..."
               className="rounded-lg border border-red-500/30 px-4 py-2 text-center text-sm font-medium text-red-300 hover:bg-red-500/10"
             >
               Manage Subscription
-            </Link>
+            </LoadingActionLink>
           </div>
         </section>
       )}
@@ -1326,6 +1361,57 @@ const isAdminUser =
   );
 }
 
+function AutoContinueCheckoutNotice({
+  checkoutHref,
+  planName,
+}: {
+  checkoutHref: string;
+  planName: string;
+}) {
+  return (
+    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-5 text-emerald-300">
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `window.setTimeout(function(){ window.location.assign(${JSON.stringify(
+            checkoutHref,
+          )}); }, 900);`,
+        }}
+      />
+
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 rounded-xl bg-emerald-500/10 p-2 text-emerald-300">
+            <CreditCard className="h-5 w-5" />
+          </div>
+
+          <div>
+            <h2 className="font-semibold">Preparing Secure Checkout</h2>
+            <p className="mt-1 text-sm text-slate-300">
+              We are opening Stripe Checkout for {planName}. Please wait a
+              moment.
+            </p>
+
+            <div className="mt-3 text-sm text-emerald-200">
+              <LoadingSpinner
+                size="sm"
+                label="Redirecting to secure checkout..."
+              />
+            </div>
+          </div>
+        </div>
+
+        <LoadingActionLink
+          href={checkoutHref}
+          loadingLabel="Opening checkout..."
+          className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500"
+        >
+          Continue to Checkout
+        </LoadingActionLink>
+      </div>
+    </div>
+  );
+}
+
 function Notice({
   icon,
   title,
@@ -1515,8 +1601,13 @@ function DynamicProductCard({
             Current Plan
           </div>
         ) : (
-          <Link
+          <LoadingActionLink
             href={checkoutHref}
+            loadingLabel={
+              selected
+                ? "Opening checkout..."
+                : "Starting subscription..."
+            }
             className={
               "mt-6 block rounded-lg px-4 py-2 text-center text-sm font-medium text-white " +
               (selected
@@ -1525,7 +1616,7 @@ function DynamicProductCard({
             }
           >
             {selected ? "Complete Subscription" : "Subscribe"}
-          </Link>
+          </LoadingActionLink>
         )
       ) : (
         <div className="mt-6 block rounded-lg border border-orange-500/30 bg-orange-500/10 px-4 py-2 text-center text-sm font-medium text-orange-300">
@@ -1729,8 +1820,13 @@ function PlanCard({
           Current Plan
         </div>
       ) : (
-        <Link
+        <LoadingActionLink
           href={`/api/stripe/checkout?plan=${plan.key}&product=${product}${checkoutSuffix}`}
+          loadingLabel={
+            selected
+              ? "Opening checkout..."
+              : "Starting subscription..."
+          }
           className={
             "mt-6 block rounded-lg px-4 py-2 text-center text-sm font-medium text-white " +
             (selected
@@ -1739,7 +1835,7 @@ function PlanCard({
           }
         >
           {selected ? "Complete Subscription" : "Subscribe"}
-        </Link>
+        </LoadingActionLink>
       )}
     </div>
   );

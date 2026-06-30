@@ -7,10 +7,13 @@ export async function GET(req: NextRequest) {
   const next = url.searchParams.get("next") || "/dashboard";
 
   if (!code) {
-    return NextResponse.redirect(new URL("/auth/signin", url.origin));
+    return NextResponse.redirect(
+      new URL("/auth/signin?error=missing_callback_code", url.origin)
+    );
   }
 
-  const res = NextResponse.redirect(new URL(next, url.origin));
+  const redirectUrl = new URL(next, url.origin);
+  const res = NextResponse.redirect(redirectUrl);
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL_CASE_TRADES!,
@@ -34,7 +37,15 @@ export async function GET(req: NextRequest) {
 
   if (error) {
     console.error("Auth callback failed:", error.message);
-    return NextResponse.redirect(new URL("/auth/signin", url.origin));
+
+    return NextResponse.redirect(
+      new URL(
+        `/auth/signin?error=callback_failed&error_description=${encodeURIComponent(
+          error.message
+        )}`,
+        url.origin
+      )
+    );
   }
 
   return res;

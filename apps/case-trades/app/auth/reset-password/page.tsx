@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { supabaseCaseTrades } from "@/lib/supabase/client";
 
 export default function ResetPasswordPage() {
@@ -52,20 +54,29 @@ export default function ResetPasswordPage() {
 
   async function handleUpdate(e: React.FormEvent) {
     e.preventDefault();
+
+    if (loading) return;
+
     setMessage(null);
     setLoading(true);
 
-    const { error } = await supabaseCaseTrades.auth.updateUser({ password });
+    try {
+      const { error } = await supabaseCaseTrades.auth.updateUser({ password });
 
-    setLoading(false);
+      if (error) {
+        setMessage(error.message);
+        setLoading(false);
+        return;
+      }
 
-    if (error) {
-      setMessage(error.message);
-      return;
+      await supabaseCaseTrades.auth.signOut();
+      setMessage("Password updated. You can now sign in.");
+      setLoading(false);
+    } catch (err) {
+      console.error(err);
+      setMessage("Unable to update password.");
+      setLoading(false);
     }
-
-    await supabaseCaseTrades.auth.signOut();
-    setMessage("Password updated. You can now sign in.");
   }
 
   return (
@@ -94,7 +105,8 @@ export default function ResetPasswordPage() {
               required
               minLength={8}
               autoComplete="new-password"
-              className="w-full rounded-lg bg-slate-800 px-3 py-2 text-slate-100 outline-none focus:ring-2 focus:ring-sky-500"
+              disabled={loading}
+              className="w-full rounded-lg bg-slate-800 px-3 py-2 text-slate-100 outline-none transition focus:ring-2 focus:ring-sky-500 disabled:cursor-not-allowed disabled:opacity-60"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
@@ -102,9 +114,14 @@ export default function ResetPasswordPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-lg bg-sky-600 py-2 font-medium text-white transition hover:bg-sky-700 disabled:opacity-50"
+              aria-busy={loading}
+              className="w-full rounded-lg bg-sky-600 py-2 font-medium text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-70"
             >
-              {loading ? "Updating..." : "Update Password"}
+              {loading ? (
+                <LoadingSpinner size="sm" label="Updating password..." />
+              ) : (
+                "Update Password"
+              )}
             </button>
           </form>
         )}

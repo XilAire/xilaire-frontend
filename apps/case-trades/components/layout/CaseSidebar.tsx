@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, LogOut } from "lucide-react";
 
 import type { Profile } from "@/lib/getProfile";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import OrganizationSwitcher from "@/components/layout/OrganizationSwitcher";
 import {
   buildCaseNavigation,
@@ -16,7 +17,9 @@ export default function CaseSidebar({ profile }: { profile?: Profile }) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [loading, setLoading] = useState(false);
+
+  const [logoutLoading, setLogoutLoading] = useState(false);
+  const [navigatingHref, setNavigatingHref] = useState<string | null>(null);
 
   const selectedOrgSlug = searchParams.get("org");
 
@@ -51,6 +54,10 @@ export default function CaseSidebar({ profile }: { profile?: Profile }) {
     });
   }, [navGroups]);
 
+  useEffect(() => {
+    setNavigatingHref(null);
+  }, [pathname, searchParams]);
+
   function toggleGroup(label: string) {
     setOpenGroups((previousOpenGroups) => ({
       ...previousOpenGroups,
@@ -58,8 +65,16 @@ export default function CaseSidebar({ profile }: { profile?: Profile }) {
     }));
   }
 
+  function handleNavigationClick(href: string) {
+    if (href === pathname) return;
+
+    setNavigatingHref(href);
+  }
+
   async function handleLogout() {
-    setLoading(true);
+    if (logoutLoading) return;
+
+    setLogoutLoading(true);
 
     await fetch("/api/auth/logout", {
       method: "POST",
@@ -111,19 +126,28 @@ export default function CaseSidebar({ profile }: { profile?: Profile }) {
                   {group.items.map((item) => {
                     const active = isActiveCasePath(pathname, item);
                     const Icon = item.icon;
+                    const itemLoading = navigatingHref === item.href;
 
                     return (
                       <Link
                         key={item.href}
                         href={item.href}
+                        onClick={() => handleNavigationClick(item.href)}
+                        aria-busy={itemLoading}
                         className={
-                          "flex items-center gap-3 rounded-lg px-3 py-2 transition " +
+                          "flex items-center gap-3 rounded-lg px-3 py-2 transition-all duration-200 " +
                           (active
                             ? "bg-emerald-600/20 text-emerald-300"
-                            : "text-slate-300 hover:bg-slate-900")
+                            : "text-slate-300 hover:bg-slate-900") +
+                          (itemLoading ? " opacity-80" : "")
                         }
                       >
-                        <Icon className="h-4 w-4 shrink-0" />
+                        {itemLoading ? (
+                          <LoadingSpinner size="sm" label="" />
+                        ) : (
+                          <Icon className="h-4 w-4 shrink-0" />
+                        )}
+
                         <span className="truncate">{item.label}</span>
                       </Link>
                     );
@@ -142,11 +166,18 @@ export default function CaseSidebar({ profile }: { profile?: Profile }) {
         <button
           type="button"
           onClick={handleLogout}
-          disabled={loading}
-          className="mt-3 flex w-full items-center gap-3 rounded-lg bg-slate-800 px-3 py-2 text-left text-slate-300 transition hover:bg-slate-700 disabled:opacity-50"
+          disabled={logoutLoading}
+          aria-busy={logoutLoading}
+          className="mt-3 flex w-full items-center gap-3 rounded-lg bg-slate-800 px-3 py-2 text-left text-slate-300 transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-70"
         >
-          <LogOut className="h-4 w-4 shrink-0" />
-          {loading ? "Signing out…" : "Sign out"}
+          {logoutLoading ? (
+            <LoadingSpinner size="sm" label="Signing out..." />
+          ) : (
+            <>
+              <LogOut className="h-4 w-4 shrink-0" />
+              Sign out
+            </>
+          )}
         </button>
       </div>
     </aside>

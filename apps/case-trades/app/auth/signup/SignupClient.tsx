@@ -5,6 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
+
 const PLAN_LABELS: Record<string, string> = {
   signals_weekly: "CASE Signals Weekly",
   signals_monthly: "CASE Signals Monthly",
@@ -41,49 +43,62 @@ export default function SignupClient() {
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
+
+    if (loading) return;
+
     setMessage(null);
 
     if (!firstName || !lastName || !email || !password || !confirm) {
-      return setMessage("All fields are required.");
+      setMessage("All fields are required.");
+      return;
     }
 
     if (password !== confirm) {
-      return setMessage("Passwords do not match.");
+      setMessage("Passwords do not match.");
+      return;
     }
 
     setLoading(true);
 
-    const fullName = `${firstName.trim()} ${lastName.trim()}`;
+    try {
+      const fullName = `${firstName.trim()} ${lastName.trim()}`;
 
-    const res = await fetch("/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email,
-        password,
-        fullName,
-        pendingPlan: selectedPlan || null,
-        redirectTo: selectedPlan
-          ? `/dashboard/billing?plan=${encodeURIComponent(
-              selectedPlan
-            )}&reason=complete_subscription`
-          : "/dashboard/billing?reason=complete_subscription",
-      }),
-    });
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          password,
+          fullName,
+          pendingPlan: selectedPlan || null,
+          redirectTo: selectedPlan
+            ? `/dashboard/billing?plan=${encodeURIComponent(
+                selectedPlan
+              )}&reason=complete_subscription`
+            : "/dashboard/billing?reason=complete_subscription",
+        }),
+      });
 
-    const data = await res.json();
-    setLoading(false);
+      const data = await res.json().catch(() => null);
 
-    if (!res.ok) {
-      setMessage(data.error || "Failed to create account.");
-      return;
+      if (!res.ok) {
+        setMessage(data?.error || "Failed to create account.");
+        setLoading(false);
+        return;
+      }
+
+      setMessage(
+        selectedPlanLabel
+          ? `✓ Check your email to confirm your account. After confirmation, complete your ${selectedPlanLabel} subscription from Billing.`
+          : "✓ Check your email to confirm your account."
+      );
+
+      setLoading(false);
+    } catch (err) {
+      console.error(err);
+      setMessage("An unexpected error occurred while creating your account.");
+      setLoading(false);
     }
-
-    setMessage(
-      selectedPlanLabel
-        ? `✓ Check your email to confirm your account. After confirmation, complete your ${selectedPlanLabel} subscription from Billing.`
-        : "✓ Check your email to confirm your account."
-    );
   }
 
   return (
@@ -115,7 +130,8 @@ export default function SignupClient() {
           <input
             type="text"
             placeholder="First Name"
-            className="w-full rounded-lg bg-slate-800 px-3 py-2 text-slate-100 outline-none focus:ring-2 focus:ring-emerald-500"
+            disabled={loading}
+            className="w-full rounded-lg bg-slate-800 px-3 py-2 text-slate-100 outline-none transition focus:ring-2 focus:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
           />
@@ -123,7 +139,8 @@ export default function SignupClient() {
           <input
             type="text"
             placeholder="Last Name"
-            className="w-full rounded-lg bg-slate-800 px-3 py-2 text-slate-100 outline-none focus:ring-2 focus:ring-emerald-500"
+            disabled={loading}
+            className="w-full rounded-lg bg-slate-800 px-3 py-2 text-slate-100 outline-none transition focus:ring-2 focus:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
             value={lastName}
             onChange={(e) => setLastName(e.target.value)}
           />
@@ -131,7 +148,8 @@ export default function SignupClient() {
           <input
             type="email"
             placeholder="Email"
-            className="w-full rounded-lg bg-slate-800 px-3 py-2 text-slate-100 outline-none focus:ring-2 focus:ring-emerald-500"
+            disabled={loading}
+            className="w-full rounded-lg bg-slate-800 px-3 py-2 text-slate-100 outline-none transition focus:ring-2 focus:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
@@ -139,7 +157,8 @@ export default function SignupClient() {
           <input
             type="password"
             placeholder="Password"
-            className="w-full rounded-lg bg-slate-800 px-3 py-2 text-slate-100 outline-none focus:ring-2 focus:ring-emerald-500"
+            disabled={loading}
+            className="w-full rounded-lg bg-slate-800 px-3 py-2 text-slate-100 outline-none transition focus:ring-2 focus:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
@@ -147,7 +166,8 @@ export default function SignupClient() {
           <input
             type="password"
             placeholder="Confirm Password"
-            className="w-full rounded-lg bg-slate-800 px-3 py-2 text-slate-100 outline-none focus:ring-2 focus:ring-emerald-500"
+            disabled={loading}
+            className="w-full rounded-lg bg-slate-800 px-3 py-2 text-slate-100 outline-none transition focus:ring-2 focus:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
           />
@@ -155,9 +175,14 @@ export default function SignupClient() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-emerald-600 py-2 font-medium text-white transition hover:bg-emerald-500 disabled:opacity-40"
+            aria-busy={loading}
+            className="w-full rounded-lg bg-emerald-600 py-2 font-medium text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-70"
           >
-            {loading ? "Creating…" : "Sign Up"}
+            {loading ? (
+              <LoadingSpinner size="sm" label="Creating account..." />
+            ) : (
+              "Sign Up"
+            )}
           </button>
 
           {message && (

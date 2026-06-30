@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
 
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+
 export const dynamic = "force-dynamic";
 
 type PlanRow = {
@@ -41,6 +43,12 @@ type CheckoutProduct = {
   stripe_product_id?: string | null;
 };
 
+type ProfileRow = {
+  id: string;
+  email: string;
+  stripe_customer_id: string | null;
+};
+
 type ExistingSubscriptionRow = {
   id: string;
   status: string | null;
@@ -74,6 +82,17 @@ type OrganizationConnectRow = {
   platform_fee_percent: number | null;
 };
 
+type CheckoutRequest = {
+  plan?: string | null;
+  planKey?: string | null;
+  productFamily?: string | null;
+  product?: string | null;
+  organizationProductId?: string | null;
+  organization_product_id?: string | null;
+  email?: string | null;
+  test?: boolean | string | null;
+};
+
 function getStripe(testMode = false) {
   const secretKey = testMode
     ? process.env.STRIPE_SECRET_KEY_TEST
@@ -105,6 +124,59 @@ function normalizeSingle<T>(value: T | T[] | null | undefined): T | null {
   if (!value) return null;
   if (Array.isArray(value)) return value[0] ?? null;
   return value;
+}
+
+function normalizeTestMode(value: boolean | string | null | undefined) {
+  return value === true || value === "true";
+}
+
+async function resolveAuthenticatedProfile(): Promise<ProfileRow | null> {
+  const authSupabase = await createSupabaseServerClient();
+
+  const {
+    data: { user },
+    error: userError,
+  } = await authSupabase.auth.getUser();
+
+  if (userError || !user?.email) {
+    return null;
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("id, email, stripe_customer_id")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (!profileError && profile) {
+    return profile as ProfileRow;
+  }
+
+  const { data: profileByEmail, error: profileByEmailError } = await supabase
+    .from("profiles")
+    .select("id, email, stripe_customer_id")
+    .ilike("email", user.email)
+    .maybeSingle();
+
+  if (profileByEmailError || !profileByEmail) {
+    return null;
+  }
+
+  return profileByEmail as ProfileRow;
+}
+
+async function resolveProfileFromEmail(email: string): Promise<ProfileRow | null> {
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("id, email, stripe_customer_id")
+    .ilike("email", email)
+    .maybeSingle();
+
+  if (profileError || !profile) {
+    return null;
+  }
+
+  return profile as ProfileRow;
 }
 
 async function findMatchingPlanForOrganizationProduct(
@@ -263,6 +335,248 @@ function subscriptionMatchesCheckoutProduct({
   );
 }
 
+async function createCheckoutSession({
+  planKey,
+  organizationProductId,
+  product,
+  testMode,
+  profile,
+  origin,
+  jsonResponse,
+}: {
+  planKey: string | null;
+  organizationProductId: string | null;
+  product: string | null;
+  testMode: boolean;
+  profile: ProfileRow | null;
+  origin: string;
+  jsonResponse: boolean;
+}) {
+  if (!planKey && !organizationProductId) {
+    return NextResponse.json(
+      {
+        error:
+          "Missing plan key or organization product ID. Use plan=signals_weekly or organization_product_id=PRODUCT_ID.",
+      },
+      { status: 400 }
+    );
+  }
+
+  if (!profile) {
+    return NextResponse.json(
+      {
+        error: "You must be signed in before starting checkout.",
+      },
+      { status: 401 }
+    );
+  }
+
+  const stripe = getStripe(testMode);
+
+  const checkoutProduct = await getCheckoutProduct({
+    planKey,
+    organizationProductId,
+  });
+
+  if (!checkoutProduct) {
+    return NextResponse.json(
+      {
+        error:
+          "Plan or organization product not found, inactive, or missing Stripe Price ID.",
+      },
+      { status: 404 }
+    );
+  }
+
+  const { data: existingSubscriptions, error: existingSubscriptionsError } =
+    await supabase
+      .from("subscriptions")
+      .select(
+        `
+        id,
+        status,
+        cancel_at_period_end,
+        stripe_subscription_id,
+        plan_id,
+        organization_id,
+        plan:plans (
+          id,
+          key,
+          name,
+          stripe_price_id,
+          stripe_product_id
+        )
+      `
+      )
+      .eq("user_id", profile.id)
+      .in("status", ["active", "trialing", "past_due"])
+      .order("updated_at", { ascending: false });
+
+  if (existingSubscriptionsError) {
+    console.error("Existing subscription lookup failed", {
+      user_id: profile.id,
+      email: profile.email,
+      existingSubscriptionsError,
+    });
+  }
+
+  const matchingExistingSubscription = (
+    (existingSubscriptions ?? []) as ExistingSubscriptionRow[]
+  ).find((subscription) =>
+    subscriptionMatchesCheckoutProduct({
+      subscription,
+      checkoutProduct,
+    })
+  );
+
+  if (matchingExistingSubscription) {
+    const portalUrl = `${origin}/api/stripe/customer-portal?test=${testMode}&email=${encodeURIComponent(
+      profile.email
+    )}`;
+
+    if (jsonResponse) {
+      return NextResponse.json({
+        url: portalUrl,
+        checkoutUrl: portalUrl,
+        existingSubscription: true,
+      });
+    }
+
+    return NextResponse.redirect(portalUrl);
+  }
+
+  let customerId = profile.stripe_customer_id;
+
+  if (customerId) {
+    try {
+      const customer = await stripe.customers.retrieve(customerId);
+
+      if ("deleted" in customer && customer.deleted) {
+        customerId = null;
+      }
+    } catch {
+      customerId = null;
+    }
+  }
+
+  if (!customerId) {
+    const customer = await stripe.customers.create({
+      email: profile.email,
+      metadata: {
+        user_id: profile.id,
+      },
+    });
+
+    customerId = customer.id;
+
+    const { error: updateProfileError } = await supabase
+      .from("profiles")
+      .update({
+        stripe_customer_id: customerId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", profile.id);
+
+    if (updateProfileError) {
+      throw updateProfileError;
+    }
+  }
+
+  const metadata = {
+    user_id: profile.id,
+    source: checkoutProduct.source,
+    product: product ?? "",
+    plan_id: checkoutProduct.plan_id ?? "",
+    plan_key: checkoutProduct.key,
+    organization_product_id:
+      checkoutProduct.source === "organization_products" ? checkoutProduct.id : "",
+    organization_id: checkoutProduct.organization_id ?? "",
+    feature_key: checkoutProduct.feature_key ?? "",
+    discord_role_id: checkoutProduct.discord_role_id ?? "",
+    stripe_product_id: checkoutProduct.stripe_product_id ?? "",
+    stripe_price_id: checkoutProduct.stripe_price_id,
+    stripe_mode: testMode ? "test" : "live",
+  };
+
+  let subscriptionData: Stripe.Checkout.SessionCreateParams.SubscriptionData = {
+    metadata,
+  };
+
+  if (checkoutProduct.organization_id) {
+    const { data: organization, error: organizationError } = await supabase
+      .from("organizations")
+      .select(
+        `
+        stripe_connect_account_id,
+        stripe_connect_onboarding_complete,
+        stripe_connect_charges_enabled,
+        stripe_connect_payouts_enabled,
+        platform_fee_percent
+        `
+      )
+      .eq("id", checkoutProduct.organization_id)
+      .maybeSingle();
+
+    if (organizationError) {
+      throw organizationError;
+    }
+
+    const connectOrganization = organization as OrganizationConnectRow | null;
+
+    if (
+      connectOrganization?.stripe_connect_account_id &&
+      connectOrganization.stripe_connect_onboarding_complete &&
+      connectOrganization.stripe_connect_charges_enabled &&
+      connectOrganization.stripe_connect_payouts_enabled
+    ) {
+      const applicationFeePercent = Number(
+        connectOrganization.platform_fee_percent ?? 20
+      );
+
+      subscriptionData = {
+        metadata,
+        application_fee_percent: applicationFeePercent,
+        transfer_data: {
+          destination: connectOrganization.stripe_connect_account_id,
+        },
+      };
+    }
+  }
+
+  const session = await stripe.checkout.sessions.create({
+    mode: "subscription",
+    customer: customerId,
+    line_items: [
+      {
+        price: checkoutProduct.stripe_price_id,
+        quantity: 1,
+      },
+    ],
+    success_url: `${origin}/api/stripe/confirm-checkout?session_id={CHECKOUT_SESSION_ID}&mode=${
+      testMode ? "test" : "live"
+    }`,
+    cancel_url: `${origin}/dashboard/billing?checkout=cancelled&plan=${encodeURIComponent(
+      checkoutProduct.key
+    )}`,
+    metadata,
+    subscription_data: subscriptionData,
+  });
+
+  if (!session.url) {
+    throw new Error("Stripe Checkout session did not return a URL.");
+  }
+
+  if (jsonResponse) {
+    return NextResponse.json({
+      url: session.url,
+      checkoutUrl: session.url,
+      sessionId: session.id,
+    });
+  }
+
+  return NextResponse.redirect(session.url);
+}
+
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
@@ -275,316 +589,64 @@ export async function GET(req: Request) {
     const testMode = url.searchParams.get("test") === "true";
     const email = url.searchParams.get("email");
 
-    if (!planKey && !organizationProductId) {
-      return NextResponse.json(
-        {
-          error:
-            "Missing plan key or organization product ID. Use /api/stripe/checkout?plan=signals_weekly or /api/stripe/checkout?organization_product_id=PRODUCT_ID.",
-        },
-        { status: 400 }
-      );
-    }
+    const profileFromAuth = await resolveAuthenticatedProfile();
+    const profileFromEmail =
+      !profileFromAuth && email ? await resolveProfileFromEmail(email) : null;
 
-    if (!email) {
-      return NextResponse.json(
-        {
-          error:
-            "Missing email. Use /api/stripe/checkout?plan=signals_weekly&email=you@example.com",
-        },
-        { status: 400 }
-      );
-    }
-
-    const stripe = getStripe(testMode);
-    const origin = url.origin;
-
-    const checkoutProduct = await getCheckoutProduct({
+    return await createCheckoutSession({
       planKey,
       organizationProductId,
-    });
-
-    if (!checkoutProduct) {
-      return NextResponse.json(
-        {
-          error:
-            "Plan or organization product not found, inactive, or missing Stripe Price ID.",
-        },
-        { status: 404 }
-      );
-    }
-
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("id, email, stripe_customer_id")
-      .ilike("email", email)
-      .maybeSingle();
-
-    if (profileError || !profile) {
-      return NextResponse.json(
-        {
-          error: `Profile not found for email. ${
-            profileError?.message ?? ""
-          }`.trim(),
-        },
-        { status: 404 }
-      );
-    }
-
-    const { data: existingSubscriptions, error: existingSubscriptionsError } =
-      await supabase
-        .from("subscriptions")
-        .select(
-          `
-          id,
-          status,
-          cancel_at_period_end,
-          stripe_subscription_id,
-          plan_id,
-          organization_id,
-          plan:plans (
-            id,
-            key,
-            name,
-            stripe_price_id,
-            stripe_product_id
-          )
-        `
-        )
-        .eq("user_id", profile.id)
-        .in("status", ["active", "trialing", "past_due"])
-        .order("updated_at", { ascending: false });
-
-    if (existingSubscriptionsError) {
-      console.error("Existing subscription lookup failed", {
-        user_id: profile.id,
-        email: profile.email,
-        existingSubscriptionsError,
-      });
-    }
-
-    const matchingExistingSubscription = (
-      (existingSubscriptions ?? []) as ExistingSubscriptionRow[]
-    ).find((subscription) =>
-      subscriptionMatchesCheckoutProduct({
-        subscription,
-        checkoutProduct,
-      })
-    );
-
-    if (matchingExistingSubscription) {
-      console.log(
-        "Existing active matching subscription found. Redirecting to portal.",
-        {
-          user_id: profile.id,
-          email: profile.email,
-          subscription_id:
-            matchingExistingSubscription.stripe_subscription_id,
-          status: matchingExistingSubscription.status,
-          cancel_at_period_end:
-            matchingExistingSubscription.cancel_at_period_end,
-          checkout_product_key: checkoutProduct.key,
-          checkout_product_id: checkoutProduct.id,
-        }
-      );
-
-      return NextResponse.redirect(
-        `${origin}/api/stripe/customer-portal?test=${testMode}&email=${encodeURIComponent(
-          profile.email
-        )}`
-      );
-    }
-
-    let customerId = profile.stripe_customer_id as string | null;
-
-    if (customerId) {
-      try {
-        const customer = await stripe.customers.retrieve(customerId);
-
-        if ("deleted" in customer && customer.deleted) {
-          customerId = null;
-        }
-      } catch {
-        customerId = null;
-      }
-    }
-
-    if (!customerId) {
-      const customer = await stripe.customers.create({
-        email: profile.email,
-        metadata: {
-          user_id: profile.id,
-        },
-      });
-
-      customerId = customer.id;
-
-      const { error: updateProfileError } = await supabase
-        .from("profiles")
-        .update({
-          stripe_customer_id: customerId,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", profile.id);
-
-      if (updateProfileError) {
-        throw updateProfileError;
-      }
-    }
-
-    const metadata = {
-      user_id: profile.id,
-      source: checkoutProduct.source,
-      product: product ?? "",
-      plan_id: checkoutProduct.plan_id ?? "",
-      plan_key: checkoutProduct.key,
-      organization_product_id:
-        checkoutProduct.source === "organization_products"
-          ? checkoutProduct.id
-          : "",
-      organization_id: checkoutProduct.organization_id ?? "",
-      feature_key: checkoutProduct.feature_key ?? "",
-      discord_role_id: checkoutProduct.discord_role_id ?? "",
-      stripe_product_id: checkoutProduct.stripe_product_id ?? "",
-      stripe_price_id: checkoutProduct.stripe_price_id,
-      stripe_mode: testMode ? "test" : "live",
-    };
-
-    let subscriptionData: Stripe.Checkout.SessionCreateParams.SubscriptionData =
-      {
-        metadata,
-      };
-
-    if (checkoutProduct.organization_id) {
-      const { data: organization, error: organizationError } = await supabase
-        .from("organizations")
-        .select(
-          `
-          stripe_connect_account_id,
-          stripe_connect_onboarding_complete,
-          stripe_connect_charges_enabled,
-          stripe_connect_payouts_enabled,
-          platform_fee_percent
-          `
-        )
-        .eq("id", checkoutProduct.organization_id)
-        .maybeSingle();
-
-      if (organizationError) {
-        throw organizationError;
-      }
-
-      const connectOrganization = organization as OrganizationConnectRow | null;
-
-      if (
-        connectOrganization?.stripe_connect_account_id &&
-        connectOrganization.stripe_connect_onboarding_complete &&
-        connectOrganization.stripe_connect_charges_enabled &&
-        connectOrganization.stripe_connect_payouts_enabled
-      ) {
-        const applicationFeePercent = Number(
-          connectOrganization.platform_fee_percent ?? 20
-        );
-
-        subscriptionData = {
-          metadata,
-          application_fee_percent: applicationFeePercent,
-          transfer_data: {
-            destination: connectOrganization.stripe_connect_account_id,
-          },
-        };
-
-        console.log("Stripe Connect destination charge enabled", {
-          organization_id: checkoutProduct.organization_id,
-          destination: connectOrganization.stripe_connect_account_id,
-          application_fee_percent: applicationFeePercent,
-        });
-      } else {
-        console.log("Stripe Connect destination charge skipped", {
-          organization_id: checkoutProduct.organization_id,
-          reason:
-            "Organization has not completed Stripe Connect onboarding or charges/payouts are not enabled.",
-          has_connect_account: Boolean(
-            connectOrganization?.stripe_connect_account_id
-          ),
-          onboarding_complete: Boolean(
-            connectOrganization?.stripe_connect_onboarding_complete
-          ),
-          charges_enabled: Boolean(
-            connectOrganization?.stripe_connect_charges_enabled
-          ),
-          payouts_enabled: Boolean(
-            connectOrganization?.stripe_connect_payouts_enabled
-          ),
-        });
-      }
-    }
-
-    console.log("CREATING CHECKOUT SESSION", {
-      user_id: profile.id,
-      email: profile.email,
-      customer_id: customerId,
-      source: checkoutProduct.source,
       product,
-      plan_key: checkoutProduct.key,
-      checkout_product_id: checkoutProduct.id,
-      organization_product_id:
-        checkoutProduct.source === "organization_products"
-          ? checkoutProduct.id
-          : null,
-      plan_id: checkoutProduct.plan_id,
-      price_id: checkoutProduct.stripe_price_id,
-      organization_id: checkoutProduct.organization_id,
-      feature_key: checkoutProduct.feature_key ?? null,
-      discord_role_id: checkoutProduct.discord_role_id ?? null,
-      stripe_mode: testMode ? "test" : "live",
+      testMode,
+      profile: profileFromAuth ?? profileFromEmail,
+      origin: url.origin,
+      jsonResponse: false,
     });
-
-    const session = await stripe.checkout.sessions.create({
-      mode: "subscription",
-      customer: customerId,
-      line_items: [
-        {
-          price: checkoutProduct.stripe_price_id,
-          quantity: 1,
-        },
-      ],
-      success_url: `${origin}/api/stripe/confirm-checkout?session_id={CHECKOUT_SESSION_ID}&mode=${
-        testMode ? "test" : "live"
-      }`,
-      cancel_url: `${origin}/dashboard/billing?checkout=cancelled&plan=${encodeURIComponent(
-        checkoutProduct.key
-      )}`,
-      metadata,
-      subscription_data: subscriptionData,
-    });
-
-    console.log("CHECKOUT SESSION CREATED", {
-      session_id: session.id,
-      customer: session.customer,
-      metadata: session.metadata,
-    });
-
-    if (!session.url) {
-      throw new Error("Stripe Checkout session did not return a URL.");
-    }
-
-    return NextResponse.redirect(session.url);
   } catch (error: any) {
-    console.error("❌ STRIPE CHECKOUT FAILED", {
-      message: error?.message,
-      type: error?.type,
-      code: error?.code,
-      raw: error?.raw,
-      stack: error?.stack,
-    });
+    console.error("❌ STRIPE CHECKOUT GET FAILED", error);
 
     return NextResponse.json(
       {
         error: error?.message ?? "Unknown checkout error",
       },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    const url = new URL(req.url);
+    const body = (await req.json().catch(() => ({}))) as CheckoutRequest;
+
+    const planKey = body.planKey ?? body.plan ?? null;
+    const organizationProductId =
+      body.organizationProductId ?? body.organization_product_id ?? null;
+    const product = body.product ?? body.productFamily ?? null;
+    const testMode = normalizeTestMode(body.test);
+    const profileFromAuth = await resolveAuthenticatedProfile();
+    const profileFromEmail =
+      !profileFromAuth && body.email
+        ? await resolveProfileFromEmail(body.email)
+        : null;
+
+    return await createCheckoutSession({
+      planKey,
+      organizationProductId,
+      product,
+      testMode,
+      profile: profileFromAuth ?? profileFromEmail,
+      origin: url.origin,
+      jsonResponse: true,
+    });
+  } catch (error: any) {
+    console.error("❌ STRIPE CHECKOUT POST FAILED", error);
+
+    return NextResponse.json(
       {
-        status: 500,
-      }
+        error: error?.message ?? "Unknown checkout error",
+      },
+      { status: 500 }
     );
   }
 }
