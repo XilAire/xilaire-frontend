@@ -1465,6 +1465,307 @@ function getDrawdownStats(equityCurve: EquityCurvePoint[]) {
   } satisfies DrawdownStats;
 }
 
+
+function formatReportMoney(value: number | null | undefined) {
+  if (value === null || value === undefined || !Number.isFinite(Number(value))) {
+    return "—";
+  }
+
+  const amount = Number(value);
+  const prefix = amount > 0 ? "+" : amount < 0 ? "-" : "";
+
+  return `${prefix}$${Math.abs(amount).toFixed(2)}`;
+}
+
+function formatReportPlainMoney(value: number | null | undefined) {
+  if (value === null || value === undefined || !Number.isFinite(Number(value))) {
+    return "—";
+  }
+
+  return `$${Number(value).toFixed(2)}`;
+}
+
+function formatReportPercent(value: number | null | undefined) {
+  if (value === null || value === undefined || !Number.isFinite(Number(value))) {
+    return "—";
+  }
+
+  const amount = Number(value);
+  const prefix = amount > 0 ? "+" : amount < 0 ? "" : "";
+
+  return `${prefix}${amount.toFixed(2)}%`;
+}
+
+function formatReportDate(value: string | null | undefined) {
+  if (!value) {
+    return "—";
+  }
+
+  const date = new Date(value);
+
+  if (!Number.isFinite(date.getTime())) {
+    return "—";
+  }
+
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatReportDuration(minutes: number | null | undefined) {
+  if (minutes === null || minutes === undefined || !Number.isFinite(Number(minutes))) {
+    return "—";
+  }
+
+  const totalMinutes = Math.max(Math.floor(Number(minutes)), 0);
+
+  if (totalMinutes < 60) {
+    return `${totalMinutes}m`;
+  }
+
+  const hours = Math.floor(totalMinutes / 60);
+  const remainingMinutes = totalMinutes % 60;
+
+  if (hours < 24) {
+    return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+  }
+
+  const days = Math.floor(hours / 24);
+  const remainingHours = hours % 24;
+
+  return remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days}d`;
+}
+
+function getReportPnlClass(value: number | null | undefined) {
+  const amount = Number(value ?? 0);
+
+  if (amount > 0) {
+    return "text-emerald-400";
+  }
+
+  if (amount < 0) {
+    return "text-red-400";
+  }
+
+  return "text-slate-300";
+}
+
+function getOutcomeBadgeClass(outcome: ReportTrade["outcome"]) {
+  if (outcome === "WIN") {
+    return "border-emerald-500/20 bg-emerald-500/10 text-emerald-300";
+  }
+
+  if (outcome === "LOSS") {
+    return "border-red-500/20 bg-red-500/10 text-red-300";
+  }
+
+  if (outcome === "BREAKEVEN") {
+    return "border-amber-500/20 bg-amber-500/10 text-amber-300";
+  }
+
+  return "border-slate-700 bg-slate-900 text-slate-400";
+}
+
+function MobileReportSnapshot({
+  trades,
+  closedTrades,
+  openTrades,
+  winners,
+  losers,
+  breakevens,
+  netPnl,
+}: {
+  trades: ReportTrade[];
+  closedTrades: ReportTrade[];
+  openTrades: ReportTrade[];
+  winners: ReportTrade[];
+  losers: ReportTrade[];
+  breakevens: ReportTrade[];
+  netPnl: number;
+}) {
+  return (
+    <section className="grid gap-3 sm:grid-cols-2 lg:hidden">
+      <MobileSnapshotCard label="Filtered Trades" value={String(trades.length)} />
+      <MobileSnapshotCard label="Closed" value={String(closedTrades.length)} />
+      <MobileSnapshotCard label="Open" value={String(openTrades.length)} />
+      <MobileSnapshotCard label="Winners" value={String(winners.length)} tone="positive" />
+      <MobileSnapshotCard label="Losers" value={String(losers.length)} tone="negative" />
+      <MobileSnapshotCard label="Breakeven" value={String(breakevens.length)} />
+      <MobileSnapshotCard
+        label="Net P/L"
+        value={formatReportMoney(netPnl)}
+        tone={netPnl > 0 ? "positive" : netPnl < 0 ? "negative" : "neutral"}
+      />
+    </section>
+  );
+}
+
+function MobileSnapshotCard({
+  label,
+  value,
+  tone = "neutral",
+}: {
+  label: string;
+  value: string;
+  tone?: "positive" | "negative" | "neutral";
+}) {
+  const valueClass =
+    tone === "positive"
+      ? "text-emerald-400"
+      : tone === "negative"
+        ? "text-red-400"
+        : "text-slate-100";
+
+  return (
+    <div className="rounded-xl border border-white/10 bg-slate-900/80 p-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        {label}
+      </p>
+      <p className={`mt-2 text-2xl font-bold ${valueClass}`}>{value}</p>
+    </div>
+  );
+}
+
+function MobileSymbolPerformanceList({ symbols }: { symbols: SymbolPerformance[] }) {
+  if (symbols.length === 0) {
+    return (
+      <div className="rounded-xl border border-white/10 bg-slate-900/80 p-5 text-sm text-slate-400 md:hidden">
+        No symbol performance available for the selected filters.
+      </div>
+    );
+  }
+
+  return (
+    <section className="space-y-3 md:hidden">
+      <div>
+        <h2 className="text-lg font-semibold text-slate-100">
+          Symbol Performance
+        </h2>
+        <p className="text-sm text-slate-400">
+          Mobile summary by ticker.
+        </p>
+      </div>
+
+      {symbols.map((symbol) => (
+        <div
+          key={symbol.symbol}
+          className="rounded-xl border border-white/10 bg-slate-900/80 p-4"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-base font-semibold text-slate-100">
+                {symbol.symbol}
+              </p>
+              <p className="text-xs text-slate-500">
+                {symbol.trades} trades • {symbol.winners}W / {symbol.losers}L
+              </p>
+            </div>
+
+            <div className="text-right">
+              <p className={`text-sm font-semibold ${getReportPnlClass(symbol.netPnl)}`}>
+                {formatReportMoney(symbol.netPnl)}
+              </p>
+              <p className="text-xs text-slate-500">
+                {symbol.winRate.toFixed(1)}% win rate
+              </p>
+            </div>
+          </div>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+function MobileClosedTradesList({ trades }: { trades: ReportTrade[] }) {
+  if (trades.length === 0) {
+    return (
+      <div className="rounded-xl border border-white/10 bg-slate-900/80 p-5 text-sm text-slate-400 md:hidden">
+        No closed trades match the current filters.
+      </div>
+    );
+  }
+
+  return (
+    <section className="space-y-3 md:hidden">
+      <div>
+        <h2 className="text-lg font-semibold text-slate-100">
+          Closed Trades
+        </h2>
+        <p className="text-sm text-slate-400">
+          Mobile trade cards for the selected report filters.
+        </p>
+      </div>
+
+      {trades.map((trade) => (
+        <MobileClosedTradeCard key={trade.id} trade={trade} />
+      ))}
+    </section>
+  );
+}
+
+function MobileClosedTradeCard({ trade }: { trade: ReportTrade }) {
+  return (
+    <article className="rounded-xl border border-white/10 bg-slate-900/80 p-4 shadow-sm">
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="truncate text-base font-semibold text-slate-100">
+              {trade.symbol}
+            </h3>
+
+            <span
+              className={`rounded-full border px-2 py-1 text-[11px] font-semibold ${getOutcomeBadgeClass(
+                trade.outcome,
+              )}`}
+            >
+              {trade.outcome ?? "UNRATED"}
+            </span>
+          </div>
+
+          <p className="mt-1 text-xs text-slate-500">
+            {trade.instrument_type} • {trade.trade_style} • {trade.side}
+          </p>
+        </div>
+
+        <div className="text-right">
+          <p className={`text-sm font-semibold ${getReportPnlClass(trade.profit_loss)}`}>
+            {formatReportMoney(trade.profit_loss)}
+          </p>
+          <p className={`text-xs font-medium ${getReportPnlClass(trade.profit_loss_pct)}`}>
+            {formatReportPercent(trade.profit_loss_pct)}
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 text-sm">
+        <MobileReportField label="Qty" value={String(trade.quantity)} />
+        <MobileReportField label="Confidence" value={trade.confidence === null ? "—" : `${trade.confidence}%`} />
+        <MobileReportField label="Entry" value={formatReportPlainMoney(trade.entry_price)} />
+        <MobileReportField label="Exit" value={formatReportPlainMoney(trade.exit_price)} />
+        <MobileReportField label="Opened" value={formatReportDate(trade.opened_at)} />
+        <MobileReportField label="Closed" value={formatReportDate(trade.closed_at)} />
+        <MobileReportField label="Duration" value={formatReportDuration(trade.duration_minutes)} />
+        <MobileReportField label="Status" value={trade.status} />
+      </div>
+    </article>
+  );
+}
+
+function MobileReportField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-white/10 bg-slate-950 p-3">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+        {label}
+      </p>
+      <p className="mt-1 break-words text-sm font-medium text-slate-200">
+        {value}
+      </p>
+    </div>
+  );
+}
+
 export default async function JournalReportsPage({
   searchParams,
 }: JournalReportsPageProps) {
@@ -1644,7 +1945,7 @@ export default async function JournalReportsPage({
   const drawdownStats = getDrawdownStats(equityCurve);
   return (
     <div className="space-y-8">
-      <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-start">
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
         <div>
           <h1 className="text-2xl font-semibold text-slate-100">
             Journal Reports
@@ -1655,7 +1956,7 @@ export default async function JournalReportsPage({
           </p>
         </div>
 
-        <div className="rounded-full border border-white/10 bg-slate-900/80 px-4 py-2 text-sm text-slate-400">
+        <div className="w-fit rounded-full border border-white/10 bg-slate-900/80 px-4 py-2 text-sm text-slate-400">
           Showing{" "}
           <span className="font-semibold text-slate-100">{trades.length}</span>{" "}
           of{" "}
@@ -1671,6 +1972,16 @@ export default async function JournalReportsPage({
         status={statusFilter}
         instrument={instrumentFilter}
         symbol={symbolFilter}
+      />
+
+      <MobileReportSnapshot
+        trades={trades}
+        closedTrades={closedTrades}
+        openTrades={openTrades}
+        winners={winners}
+        losers={losers}
+        breakevens={breakevens}
+        netPnl={netPnl}
       />
 
       <ReportKpiGrid
@@ -1718,19 +2029,30 @@ export default async function JournalReportsPage({
         />
       </div>
 
-      <SymbolPerformanceTable symbols={symbolPerformance} />
+      <div className="hidden md:block">
+        <SymbolPerformanceTable symbols={symbolPerformance} />
+      </div>
 
-       <PerformanceAnalyticsSwitcher
-  strategies={strategyPerformance}
-  days={dayOfWeekPerformance}
-  hours={hourOfDayPerformance}
-  instruments={instrumentPerformance}
-  confidenceBuckets={confidencePerformance}
-  optionTypes={optionTypePerformance}
-  dteBuckets={dtePerformance}
-/>
+      <MobileSymbolPerformanceList symbols={symbolPerformance} />
 
-      <ClosedTradesTable trades={closedTrades} />
+      <div className="overflow-hidden rounded-xl border border-white/10 bg-slate-900/80">
+        <PerformanceAnalyticsSwitcher
+          strategies={strategyPerformance}
+          days={dayOfWeekPerformance}
+          hours={hourOfDayPerformance}
+          instruments={instrumentPerformance}
+          confidenceBuckets={confidencePerformance}
+          optionTypes={optionTypePerformance}
+          dteBuckets={dtePerformance}
+          expirationBuckets={expirationPerformance}
+        />
+      </div>
+
+      <div className="hidden md:block">
+        <ClosedTradesTable trades={closedTrades} />
+      </div>
+
+      <MobileClosedTradesList trades={closedTrades} />
 
       <div className="rounded-xl border border-white/10 bg-slate-900/80 p-6">
         <h2 className="text-lg font-semibold text-slate-100">
