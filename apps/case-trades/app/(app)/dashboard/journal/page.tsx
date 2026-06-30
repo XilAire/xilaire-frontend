@@ -95,7 +95,9 @@ type JournalTrade = {
   confidence: number | null;
 };
 
-function isMasterAdmin(role: Awaited<ReturnType<typeof resolveCurrentUserRole>>) {
+function isMasterAdmin(
+  role: Awaited<ReturnType<typeof resolveCurrentUserRole>>,
+) {
   return (
     role?.role_name === "master_admin" ||
     role?.role_rank === 4 ||
@@ -179,7 +181,7 @@ function formatDuration(start: string | null, end: string | null) {
 function averageWeightedPrice(fills: SignalFillRow[]) {
   const totalQuantity = fills.reduce(
     (sum, fill) => sum + Number(fill.contracts ?? 0),
-    0
+    0,
   );
 
   if (totalQuantity <= 0) {
@@ -212,9 +214,15 @@ function getMultiplier(signal: SignalRow) {
 }
 
 function normalizeOutcome(value: string | null) {
-  const normalized = String(value ?? "").trim().toUpperCase();
+  const normalized = String(value ?? "")
+    .trim()
+    .toUpperCase();
 
-  if (normalized === "WIN" || normalized === "LOSS" || normalized === "BREAKEVEN") {
+  if (
+    normalized === "WIN" ||
+    normalized === "LOSS" ||
+    normalized === "BREAKEVEN"
+  ) {
     return normalized;
   }
 
@@ -249,12 +257,17 @@ function buildJournalTrades(signals: SignalRow[]) {
           contractLabel: getContractLabel(signal),
           side: signal.open_action ?? signal.action ?? "—",
           strategy: signal.trade_style?.toUpperCase() ?? "—",
-          quantity: Number(signal.quantity ?? signal.contracts ?? signal.shares ?? 0),
+          quantity: Number(
+            signal.quantity ?? signal.contracts ?? signal.shares ?? 0,
+          ),
           entryPrice: signal.entry_price ?? signal.price ?? null,
           exitPrice: signal.exit_price ?? null,
           entryDate: signal.opened_at ?? signal.created_at,
           exitDate: signal.closed_at,
-          duration: formatDuration(signal.opened_at ?? signal.created_at, signal.closed_at),
+          duration: formatDuration(
+            signal.opened_at ?? signal.created_at,
+            signal.closed_at,
+          ),
           pnl: null,
           pnlPct: signal.return_pct ?? null,
           status: displayStatus,
@@ -267,25 +280,31 @@ function buildJournalTrades(signals: SignalRow[]) {
     return executions.map((execution) => {
       const fills = execution.execution_fills ?? [];
       const openFills = fills.filter(
-        (fill) => String(fill.side ?? "").toUpperCase() === "OPEN"
+        (fill) => String(fill.side ?? "").toUpperCase() === "OPEN",
       );
       const closeFills = fills.filter(
-        (fill) => String(fill.side ?? "").toUpperCase() === "CLOSE"
+        (fill) => String(fill.side ?? "").toUpperCase() === "CLOSE",
       );
 
       const openedQuantity = openFills.reduce(
         (sum, fill) => sum + Number(fill.contracts ?? 0),
-        0
+        0,
       );
 
       const closedQuantity = closeFills.reduce(
         (sum, fill) => sum + Number(fill.contracts ?? 0),
-        0
+        0,
       );
 
       const quantity =
         openedQuantity ||
-        Number(execution.contracts ?? signal.quantity ?? signal.contracts ?? signal.shares ?? 0);
+        Number(
+          execution.contracts ??
+            signal.quantity ??
+            signal.contracts ??
+            signal.shares ??
+            0,
+        );
 
       const averageEntry =
         averageWeightedPrice(openFills) ??
@@ -305,13 +324,19 @@ function buildJournalTrades(signals: SignalRow[]) {
       const calculatedPnl =
         averageEntry !== null && averageExit !== null && closedQuantity > 0
           ? Number(
-              ((averageExit - averageEntry) * closedQuantity * multiplier).toFixed(2)
+              (
+                (averageExit - averageEntry) *
+                closedQuantity *
+                multiplier
+              ).toFixed(2),
             )
           : null;
 
       const calculatedPnlPct =
         averageEntry !== null && averageExit !== null && averageEntry !== 0
-          ? Number((((averageExit - averageEntry) / averageEntry) * 100).toFixed(2))
+          ? Number(
+              (((averageExit - averageEntry) / averageEntry) * 100).toFixed(2),
+            )
           : null;
 
       const displayStatus = getSignalDisplayStatus({
@@ -343,7 +368,7 @@ function buildJournalTrades(signals: SignalRow[]) {
         exitDate: execution.closed_at ?? signal.closed_at,
         duration: formatDuration(
           execution.opened_at ?? signal.opened_at ?? signal.created_at,
-          execution.closed_at ?? signal.closed_at
+          execution.closed_at ?? signal.closed_at,
         ),
         pnl: execution.pnl ?? calculatedPnl,
         pnlPct: execution.pnl_pct ?? signal.return_pct ?? calculatedPnlPct,
@@ -399,11 +424,13 @@ export default async function JournalPage() {
 
   const journalTier = masterAdmin
     ? "master_admin"
-    : entitlements.journal.tier ?? "journal_starter";
+    : (entitlements.journal.tier ?? "journal_starter");
 
   const canJournalOptions = masterAdmin || entitlements.journal.options;
   const canUseAiReview = masterAdmin || entitlements.journal.ai_review;
-  const analyticsLevel = masterAdmin ? "master" : entitlements.journal.analytics;
+  const analyticsLevel = masterAdmin
+    ? "master"
+    : entitlements.journal.analytics;
 
   let query = supabase
     .from("signals")
@@ -452,7 +479,7 @@ export default async function JournalPage() {
           created_at
         )
       )
-    `
+    `,
     )
     .order("created_at", { ascending: false });
 
@@ -486,8 +513,9 @@ export default async function JournalPage() {
   const winRate =
     winningTrades.length + losingTrades.length > 0
       ? Math.round(
-          (winningTrades.length / (winningTrades.length + losingTrades.length)) *
-            100
+          (winningTrades.length /
+            (winningTrades.length + losingTrades.length)) *
+            100,
         )
       : null;
 
@@ -561,12 +589,18 @@ export default async function JournalPage() {
           title="Net P/L"
           value={formatCurrency(totalPnl)}
           icon={<TrendingUp />}
-          tone={totalPnl > 0 ? "positive" : totalPnl < 0 ? "negative" : "neutral"}
+          tone={
+            totalPnl > 0 ? "positive" : totalPnl < 0 ? "negative" : "neutral"
+          }
         />
 
         <JournalStat
           title="Best Trade"
-          value={bestTrade?.pnl !== null && bestTrade ? formatCurrency(bestTrade.pnl) : "—"}
+          value={
+            bestTrade?.pnl !== null && bestTrade
+              ? formatCurrency(bestTrade.pnl)
+              : "—"
+          }
           icon={<Target />}
           tone={
             bestTrade?.pnl && bestTrade.pnl > 0
@@ -579,7 +613,7 @@ export default async function JournalPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-4">
-        <div className="rounded-xl border border-white/10 bg-slate-900/80 p-6 lg:col-span-3">
+        <div className="rounded-xl border border-white/10 bg-slate-900/80 p-4 md:p-6 lg:col-span-3">
           <div className="mb-5 flex flex-col justify-between gap-3 md:flex-row md:items-center">
             <div>
               <h2 className="text-lg font-semibold text-slate-100">
@@ -600,90 +634,105 @@ export default async function JournalPage() {
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-lg border border-white/10">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[1100px] text-left text-sm">
-                <thead className="bg-slate-950 text-xs uppercase tracking-wide text-slate-500">
-                  <tr>
-                    <th className="px-4 py-3">Symbol</th>
-                    <th className="px-4 py-3">Contract</th>
-                    <th className="px-4 py-3">Side</th>
-                    <th className="px-4 py-3">Qty</th>
-                    <th className="px-4 py-3">Entry</th>
-                    <th className="px-4 py-3">Exit</th>
-                    <th className="px-4 py-3">Opened</th>
-                    <th className="px-4 py-3">Closed</th>
-                    <th className="px-4 py-3">Duration</th>
-                    <th className="px-4 py-3">P/L</th>
-                    <th className="px-4 py-3">P/L %</th>
-                    <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">View</th>
-                  </tr>
-                </thead>
-
-                <tbody className="divide-y divide-white/10">
-                  {trades.length === 0 && (
-                    <tr>
-                      <td
-                        colSpan={13}
-                        className="px-4 py-10 text-center text-sm text-slate-500"
-                      >
-                        No real execution trades found yet. Create a signal and
-                        open an execution to populate the journal.
-                      </td>
-                    </tr>
-                  )}
-
-                  {trades.map((trade) => (
-                    <tr key={trade.id} className="text-slate-300">
-                      <td className="px-4 py-3">
-                        <div className="font-semibold text-slate-100">
-                          {trade.symbol}
-                        </div>
-                        <div className="text-xs text-slate-500">
-                          {trade.instrument} • {trade.strategy}
-                        </div>
-                      </td>
-
-                      <td className="px-4 py-3">{trade.contractLabel}</td>
-                      <td className="px-4 py-3">{trade.side}</td>
-                      <td className="px-4 py-3">{trade.quantity}</td>
-                      <td className="px-4 py-3">{formatCurrency(trade.entryPrice)}</td>
-                      <td className="px-4 py-3">{formatCurrency(trade.exitPrice)}</td>
-                      <td className="px-4 py-3">{formatDateTime(trade.entryDate)}</td>
-                      <td className="px-4 py-3">{formatDateTime(trade.exitDate)}</td>
-                      <td className="px-4 py-3">{trade.duration}</td>
-
-                      <td className={`px-4 py-3 font-medium ${getPnlClass(trade.pnl)}`}>
-                        {formatCurrency(trade.pnl)}
-                      </td>
-
-                      <td
-                        className={`px-4 py-3 font-medium ${getPnlClass(
-                          trade.pnlPct
-                        )}`}
-                      >
-                        {formatPercent(trade.pnlPct)}
-                      </td>
-
-                      <td className="px-4 py-3">
-                        <StatusBadge status={trade.status} />
-                      </td>
-
-                      <td className="px-4 py-3">
-                        <Link
-                          href={`/dashboard/journal/${trade.id}`}
-                          className="text-xs font-medium text-emerald-400 hover:text-emerald-300"
-                        >
-                          Details
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {trades.length === 0 ? (
+            <div className="rounded-lg border border-white/10 bg-slate-950 px-4 py-10 text-center text-sm text-slate-500">
+              No real execution trades found yet. Create a signal and open an
+              execution to populate the journal.
             </div>
-          </div>
+          ) : (
+            <>
+              <div className="hidden overflow-hidden rounded-lg border border-white/10 md:block">
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[1100px] text-left text-sm">
+                    <thead className="bg-slate-950 text-xs uppercase tracking-wide text-slate-500">
+                      <tr>
+                        <th className="px-4 py-3">Symbol</th>
+                        <th className="px-4 py-3">Contract</th>
+                        <th className="px-4 py-3">Side</th>
+                        <th className="px-4 py-3">Qty</th>
+                        <th className="px-4 py-3">Entry</th>
+                        <th className="px-4 py-3">Exit</th>
+                        <th className="px-4 py-3">Opened</th>
+                        <th className="px-4 py-3">Closed</th>
+                        <th className="px-4 py-3">Duration</th>
+                        <th className="px-4 py-3">P/L</th>
+                        <th className="px-4 py-3">P/L %</th>
+                        <th className="px-4 py-3">Status</th>
+                        <th className="px-4 py-3">View</th>
+                      </tr>
+                    </thead>
+
+                    <tbody className="divide-y divide-white/10">
+                      {trades.map((trade) => (
+                        <tr key={trade.id} className="text-slate-300">
+                          <td className="px-4 py-3">
+                            <div className="font-semibold text-slate-100">
+                              {trade.symbol}
+                            </div>
+                            <div className="text-xs text-slate-500">
+                              {trade.instrument} • {trade.strategy}
+                            </div>
+                          </td>
+
+                          <td className="px-4 py-3">{trade.contractLabel}</td>
+                          <td className="px-4 py-3">{trade.side}</td>
+                          <td className="px-4 py-3">{trade.quantity}</td>
+                          <td className="px-4 py-3">
+                            {formatCurrency(trade.entryPrice)}
+                          </td>
+                          <td className="px-4 py-3">
+                            {formatCurrency(trade.exitPrice)}
+                          </td>
+                          <td className="px-4 py-3">
+                            {formatDateTime(trade.entryDate)}
+                          </td>
+                          <td className="px-4 py-3">
+                            {formatDateTime(trade.exitDate)}
+                          </td>
+                          <td className="px-4 py-3">{trade.duration}</td>
+
+                          <td
+                            className={`px-4 py-3 font-medium ${getPnlClass(
+                              trade.pnl,
+                            )}`}
+                          >
+                            {formatCurrency(trade.pnl)}
+                          </td>
+
+                          <td
+                            className={`px-4 py-3 font-medium ${getPnlClass(
+                              trade.pnlPct,
+                            )}`}
+                          >
+                            {formatPercent(trade.pnlPct)}
+                          </td>
+
+                          <td className="px-4 py-3">
+                            <StatusBadge status={trade.status} />
+                          </td>
+
+                          <td className="px-4 py-3">
+                            <Link
+                              href={`/dashboard/journal/${trade.id}`}
+                              className="text-xs font-medium text-emerald-400 hover:text-emerald-300"
+                            >
+                              Details
+                            </Link>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="space-y-3 md:hidden">
+                {trades.map((trade) => (
+                  <MobileJournalTradeCard key={trade.id} trade={trade} />
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         <div className="space-y-6">
@@ -723,6 +772,89 @@ export default async function JournalPage() {
           />
         </div>
       </div>
+    </div>
+  );
+}
+
+function MobileJournalTradeCard({ trade }: { trade: JournalTrade }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-slate-950 p-4 shadow-sm">
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="truncate text-base font-semibold text-slate-100">
+              {trade.symbol}
+            </h3>
+
+            <StatusBadge status={trade.status} />
+          </div>
+
+          <p className="mt-1 text-xs text-slate-500">
+            {trade.instrument} • {trade.strategy}
+          </p>
+        </div>
+
+        <div className="shrink-0 text-right">
+          <p className={`text-sm font-semibold ${getPnlClass(trade.pnl)}`}>
+            {formatCurrency(trade.pnl)}
+          </p>
+          <p className={`text-xs font-medium ${getPnlClass(trade.pnlPct)}`}>
+            {formatPercent(trade.pnlPct)}
+          </p>
+        </div>
+      </div>
+
+      <div className="mb-4 rounded-lg border border-white/10 bg-slate-900/70 p-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Contract
+        </p>
+        <p className="mt-1 break-words text-sm text-slate-200">
+          {trade.contractLabel}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 text-sm">
+        <MobileTradeField label="Side" value={trade.side} />
+        <MobileTradeField label="Qty" value={String(trade.quantity)} />
+        <MobileTradeField
+          label="Entry"
+          value={formatCurrency(trade.entryPrice)}
+        />
+        <MobileTradeField
+          label="Exit"
+          value={formatCurrency(trade.exitPrice)}
+        />
+        <MobileTradeField
+          label="Opened"
+          value={formatDateTime(trade.entryDate)}
+        />
+        <MobileTradeField
+          label="Closed"
+          value={formatDateTime(trade.exitDate)}
+        />
+        <MobileTradeField label="Duration" value={trade.duration} />
+        <MobileTradeField label="Outcome" value={trade.outcome} />
+      </div>
+
+      <Link
+        href={`/dashboard/journal/${trade.id}`}
+        className="mt-4 inline-flex w-full items-center justify-center rounded-lg border border-emerald-500/30 px-4 py-2 text-sm font-medium text-emerald-300 transition hover:bg-emerald-500/10"
+      >
+        View Trade Details
+      </Link>
+    </div>
+  );
+}
+
+function MobileTradeField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-white/10 bg-slate-900/60 p-3">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+        {label}
+      </p>
+      <p className="mt-1 break-words text-sm font-medium text-slate-200">
+        {value}
+      </p>
     </div>
   );
 }
@@ -837,7 +969,13 @@ function FeaturePill({ enabled, label }: { enabled: boolean; label: string }) {
   );
 }
 
-function FilterPill({ label, active = false }: { label: string; active?: boolean }) {
+function FilterPill({
+  label,
+  active = false,
+}: {
+  label: string;
+  active?: boolean;
+}) {
   return (
     <span
       className={
@@ -900,9 +1038,7 @@ function JournalStat({
 
   return (
     <div className="rounded-xl border border-white/10 bg-slate-900/80 p-5">
-      <div className={`mb-3 [&>svg]:h-5 [&>svg]:w-5 ${iconClass}`}>
-        {icon}
-      </div>
+      <div className={`mb-3 [&>svg]:h-5 [&>svg]:w-5 ${iconClass}`}>{icon}</div>
 
       <p className="text-sm text-slate-400">{title}</p>
       <p className={`mt-1 text-2xl font-semibold ${valueClass}`}>{value}</p>

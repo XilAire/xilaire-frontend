@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { resolveCurrentUserRole } from "@/lib/auth/resolveCurrentUserRole";
 import { getUserOrganizations } from "@/lib/orgs/getUserOrganizations";
+import { sendClosedSignalAlert } from "@/lib/discord/sendClosedSignalAlert";
 
 export type SignalStatus = "Active" | "Triggered" | "Closed" | "Expired";
 export type SignalOutcome = "WIN" | "LOSS" | "BREAKEVEN" | null;
@@ -305,16 +306,63 @@ export async function updateSignalStatus(
     .single();
 
   if (error || !updatedSignal) {
-    throw new Error(
-      `Failed to update signal status: ${
-        error?.message ?? "No updated signal returned"
-      }`
+  throw new Error(
+    `Failed to update signal status: ${
+      error?.message ?? "No updated signal returned"
+    }`
+  );
+}
+
+/*
+|--------------------------------------------------------------------------
+| Signal Lifecycle Events
+|--------------------------------------------------------------------------
+|
+| Fire notifications only after the database transaction succeeds.
+| This keeps updateSignalState() as the single source of truth while
+| allowing Discord, email, push notifications, etc. to subscribe to
+| lifecycle events.
+|
+*/
+if (
+  (status === "Closed" || status === "Expired") &&
+  currentSignal.status !== status
+) {
+  try {
+    await fetch(
+      `${process.env.NEXT_PUBLIC_CASE_TRADES_APP_URL}/api/discord/send-close-alert`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          signalId: updatedSignal.id,
+        }),
+      }
+    );
+  } catch (discordError) {
+    console.error(
+      "Failed to send Discord close notification:",
+      discordError
     );
   }
+}
 
-  revalidateSignalPaths(signalId);
+if (
+  (status === "Closed" || status === "Expired") &&
+  currentSignal.status !== status
+) {
+  try {
+    await sendClosedSignalAlert(updatedSignal.id);
+  } catch (discordError) {
+    console.error("Failed to send Discord close alert:", discordError);
+  }
+}
 
-  return updatedSignal;
+revalidateSignalPaths(signalId);
+
+return updatedSignal;
 }
 
 /* ----------------------------------------------
