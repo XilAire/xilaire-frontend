@@ -36,7 +36,7 @@ const DISCORD_CHANNELS = [
 ];
 
 export default async function ControlCenterDiscordPage({ params }: PageProps) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   const {
     data: { user },

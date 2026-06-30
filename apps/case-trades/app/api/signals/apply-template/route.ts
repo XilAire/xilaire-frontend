@@ -80,7 +80,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const supabase = createSupabaseServerClient();
+    const supabase = await createSupabaseServerClient();
 
     /* -------------------------------------------------
        1️⃣ UPDATE SIGNAL TRADE STYLE
@@ -147,3 +147,4 @@ export async function POST(req: Request) {
     );
   }
 }
+

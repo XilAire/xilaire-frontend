@@ -468,7 +468,7 @@ export default async function SignalsPage({
   const requestedOrgSlug = searchParams?.org ?? DEFAULT_ORG_SLUG;
   const rangeStart = getRangeStart(range);
 
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   const { data: allOrganizations, error: organizationsError } = await supabase
     .from("organizations")

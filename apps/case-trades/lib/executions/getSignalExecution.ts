@@ -3,7 +3,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export async function getSignalExecution(signalId: string) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   const { data, error } = await supabase
     .from("signal_executions")
@@ -18,3 +18,4 @@ export async function getSignalExecution(signalId: string) {
 
   return data;
 }
+

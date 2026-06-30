@@ -33,7 +33,7 @@ function toIsoDateTime(value: string) {
 }
 
 export async function createJournalTrade(formData: FormData) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   const {
     data: { user },

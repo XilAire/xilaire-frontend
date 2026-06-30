@@ -41,7 +41,7 @@ type PlanRow = {
 };
 
 export default async function ControlCenterProductsPage({ params }: PageProps) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   const {
     data: { user },

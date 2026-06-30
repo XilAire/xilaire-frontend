@@ -35,7 +35,7 @@ export async function applyExecutionTemplate(
     throw new Error("Unauthorized: master_admin required");
   }
 
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   /* -------------------------------------------------
      1️⃣ RESOLVE TRADE STYLE (AUTHORITATIVE)
@@ -96,7 +96,7 @@ export async function closeSignal(
     throw new Error("Unauthorized: master_admin required");
   }
 
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   /* -------------------------------------------------
      CLOSE SIGNAL (SAFE + GUARDED)

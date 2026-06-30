@@ -318,7 +318,7 @@ function hasJournalNotes(notes: JournalNotesRow | null) {
 export default async function JournalTradeDetailPage({
   params,
 }: TradeDetailPageProps) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   const {
     data: { user },

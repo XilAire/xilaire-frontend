@@ -82,7 +82,7 @@ export default async function EditSignalPage({
   const organizationSlug = currentOrganization.organization_slug;
   const organizationId = currentOrganization.organization_id;
 
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   /* -------------------------------------------------
      📥 LOAD SIGNAL — ORGANIZATION SCOPED
@@ -109,7 +109,7 @@ export default async function EditSignalPage({
   async function updateSignal(formData: FormData) {
     "use server";
 
-    const supabase = createSupabaseServerClient();
+    const supabase = await createSupabaseServerClient();
     const role = await resolveCurrentUserRole();
 
     if (!role || role.role_rank !== 4) {

@@ -37,7 +37,7 @@ export async function applyExecutionTemplate(
     throw new Error("No execution rules provided");
   }
 
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   /* -------------------------------------------------
      🔒 AUTHORIZATION — CANONICAL
@@ -95,3 +95,4 @@ export async function applyExecutionTemplate(
   revalidatePath("/dashboard/signals");
   revalidatePath(`/dashboard/signals/${signalId}`);
 }
+

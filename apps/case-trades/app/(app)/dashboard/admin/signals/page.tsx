@@ -497,7 +497,7 @@ export default async function SignalsPage({
     redirect("/dashboard");
   }
 
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   const { data: allOrganizations, error: organizationsError } = await supabase
     .from("organizations")

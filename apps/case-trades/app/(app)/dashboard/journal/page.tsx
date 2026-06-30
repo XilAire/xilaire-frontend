@@ -377,7 +377,7 @@ function getPnlClass(value: number | null) {
 }
 
 export default async function JournalPage() {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   const {
     data: { user },

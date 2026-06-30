@@ -45,7 +45,7 @@ export default async function applyExecutionRuleTemplate(
     throw new Error("Unauthorized: master_admin required");
   }
 
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   /* -------------------------------------------------
      🔍 AUTH CONTEXT VERIFICATION (SAFE)
@@ -112,3 +112,4 @@ export default async function applyExecutionRuleTemplate(
 
   return { success: true };
 }
+

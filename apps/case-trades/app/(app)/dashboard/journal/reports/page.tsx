@@ -1468,7 +1468,7 @@ function getDrawdownStats(equityCurve: EquityCurvePoint[]) {
 export default async function JournalReportsPage({
   searchParams,
 }: JournalReportsPageProps) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   const range = normalizeRange(searchParams?.range);
   const statusFilter = normalizeStatus(searchParams?.status);
@@ -1747,3 +1747,4 @@ export default async function JournalReportsPage({
     </div>
   );
 }
+

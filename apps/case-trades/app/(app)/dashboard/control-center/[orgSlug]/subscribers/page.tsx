@@ -57,7 +57,7 @@ type SubscriptionRow = {
 export default async function ControlCenterSubscribersPage({
   params,
 }: PageProps) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   const {
     data: { user },

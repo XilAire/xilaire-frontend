@@ -13,7 +13,7 @@ export async function openExecution({
   contracts,
   entryPrice,
 }: OpenExecutionInput) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   /* -------------------------------------------------
      🔒 AUTH CONTEXT

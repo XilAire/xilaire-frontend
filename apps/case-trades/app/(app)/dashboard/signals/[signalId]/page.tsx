@@ -167,7 +167,7 @@ export default async function SignalDetailPage({
     org?: string;
   };
 }) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   const profile = await getProfile({
     organizationSlug: searchParams?.org,

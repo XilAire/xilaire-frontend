@@ -69,7 +69,7 @@ function normalizeSingle<T>(value: T | T[] | null | undefined): T | null {
 export default async function OrganizationBillingPage({
   searchParams,
 }: PageProps) {
-  const authSupabase = createSupabaseServerClient();
+  const authSupabase = await createSupabaseServerClient();
   const serviceSupabase = createServiceSupabaseClient();
 
   const {

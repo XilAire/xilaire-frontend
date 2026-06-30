@@ -34,7 +34,7 @@ export default async function MasterAdminSettingsPage() {
     redirect("/dashboard");
   }
 
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   const { count: organizationCount } = await supabase
     .from("organizations")

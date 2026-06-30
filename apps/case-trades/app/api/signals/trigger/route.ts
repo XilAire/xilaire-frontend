@@ -33,7 +33,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const supabase = createSupabaseServerClient();
+    const supabase = await createSupabaseServerClient();
 
     /* -------------------------------------------------
        LOAD SIGNAL
@@ -87,3 +87,4 @@ export async function POST(req: Request) {
     );
   }
 }
+

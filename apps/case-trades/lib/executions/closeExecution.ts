@@ -14,7 +14,7 @@ export async function closeExecution({
   contracts,
   price,
 }: CloseExecutionInput) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   /* -------------------------------------------------
      🔒 AUTH CONTEXT

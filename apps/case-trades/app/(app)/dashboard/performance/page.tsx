@@ -217,7 +217,7 @@ function isSignalInsideRange(signal: NormalizedSignal, since: string | null) {
 export default async function PerformancePage({
   searchParams,
 }: PerformancePageProps) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   const {
     data: { user },

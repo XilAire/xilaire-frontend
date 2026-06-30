@@ -107,7 +107,7 @@ async function assertSignalAccess({
   userId: string;
   isAdmin: boolean;
 }): Promise<CurrentSignalAccess> {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   const { data: signal, error } = await supabase
     .from("signals")
@@ -221,7 +221,7 @@ export async function updateSignalStatus(
     allow_ungraded_close?: boolean;
   }
 ) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   const { role, currentSignal } = await getAuthorizedSignal(signalId);
 
@@ -359,7 +359,7 @@ export async function closeSignalWithoutOutcome(signalId: string) {
    - Saves outcome, return_pct, exit_price, closed_at
 ---------------------------------------------- */
 export async function autoCloseSignalFromExecution(signalId: string) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   const { currentSignal } = await getAuthorizedSignal(signalId);
 
@@ -504,7 +504,7 @@ export async function autoCloseSignalFromExecution(signalId: string) {
    TOGGLE WATCH STATE
 ---------------------------------------------- */
 export async function toggleSignalWatch(signalId: string) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   const { role, currentSignal } = await getAuthorizedSignal(signalId);
 

@@ -32,7 +32,7 @@ type SignalRow = {
 export default async function ControlCenterAnalyticsPage({
   params,
 }: PageProps) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   const {
     data: { user },

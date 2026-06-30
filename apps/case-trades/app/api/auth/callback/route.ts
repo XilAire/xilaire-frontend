@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     );
   }
 
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   const { error } = await supabase.auth.exchangeCodeForSession(code);
 

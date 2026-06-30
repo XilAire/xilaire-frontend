@@ -28,7 +28,7 @@ type ControlCenterOrgPageProps = {
 export default async function ControlCenterOrgPage({
   params,
 }: ControlCenterOrgPageProps) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   const {
     data: { user },
