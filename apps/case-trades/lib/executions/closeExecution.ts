@@ -73,21 +73,21 @@ export async function closeExecution({
     .filter((fill) => fill.side === "OPEN")
     .reduce((sum, fill) => sum + Number(fill.contracts ?? 0), 0);
 
-  const closed = fills
+  const alreadyClosed = fills
     .filter((fill) => fill.side === "CLOSE")
     .reduce((sum, fill) => sum + Number(fill.contracts ?? 0), 0);
 
-  const remaining = opened - closed;
+  const remainingBeforeClose = opened - alreadyClosed;
 
-  if (remaining <= 0) {
+  if (remainingBeforeClose <= 0) {
     throw new Error("Execution has no remaining contracts to close");
   }
 
-  if (contracts > remaining) {
+  if (contracts > remainingBeforeClose) {
     throw new Error("Close quantity exceeds remaining contracts");
   }
 
-  const isFinalClose = contracts === remaining;
+  const isFinalClose = contracts === remainingBeforeClose;
 
   /* -------------------------------------------------
      🧾 RECORD CLOSE FILL
@@ -104,6 +104,15 @@ export async function closeExecution({
     console.error("closeExecution: fill insert failed", fillError);
     throw new Error("Failed to record close fill");
   }
+
+  /* -------------------------------------------------
+     🔔 SYNC SIGNAL LIFECYCLE AFTER EVERY CLOSE FILL
+     - Partial close: sends Discord partial-close reply
+     - Final close: closes signal and sends final close reply
+  ------------------------------------------------- */
+  const lifecycleResult = await autoCloseSignalFromExecution(
+    execution.signal_id
+  );
 
   /* -------------------------------------------------
      🔒 AUTO-CLOSE EXECUTION IF FINAL
@@ -123,8 +132,6 @@ export async function closeExecution({
       console.error("closeExecution: final close failed", closeError);
       throw new Error("Failed to finalize execution");
     }
-
-    await autoCloseSignalFromExecution(execution.signal_id);
   }
 
   return {
@@ -133,5 +140,6 @@ export async function closeExecution({
     closed_contracts: contracts,
     close_price: price,
     final_close: isFinalClose,
+    lifecycle: lifecycleResult,
   };
 }

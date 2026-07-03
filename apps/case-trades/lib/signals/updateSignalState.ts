@@ -314,17 +314,6 @@ export async function updateSignalStatus(
     );
   }
 
-  /*
-  |--------------------------------------------------------------------------
-  | Signal Lifecycle Events
-  |--------------------------------------------------------------------------
-  |
-  | Fire notifications only after the database update succeeds.
-  | This keeps updateSignalStatus() as the single source of truth while
-  | allowing Discord, email, push notifications, etc. to subscribe to
-  | lifecycle events.
-  |
-  */
   if (
     (status === "Closed" || status === "Expired") &&
     currentSignal.status !== status
@@ -364,7 +353,6 @@ export async function closeSignalWithOutcome({
 
 /* ----------------------------------------------
    CLOSE SIGNAL WITHOUT GRADING
-   Use only when intentionally saving an unresolved close.
 ---------------------------------------------- */
 export async function closeSignalWithoutOutcome(signalId: string) {
   return updateSignalStatus(signalId, "Closed", {
@@ -373,14 +361,7 @@ export async function closeSignalWithoutOutcome(signalId: string) {
 }
 
 /* ----------------------------------------------
-   AUTO-CLOSE SIGNAL FROM EXECUTION FILLS
-
-   This is the missing sync layer:
-   - Reads signal_executions
-   - Reads execution_fills
-   - Calculates remaining contracts
-   - If remaining contracts = 0, closes the signal
-   - Saves outcome, return_pct, exit_price, closed_at
+   AUTO-CLOSE / PARTIAL-CLOSE SIGNAL FROM FILLS
 ---------------------------------------------- */
 export async function autoCloseSignalFromExecution(signalId: string) {
   const supabase = await createSupabaseServerClient();
@@ -482,6 +463,19 @@ export async function autoCloseSignalFromExecution(signalId: string) {
     entryPrice,
     exitPrice: averageExitPrice,
   });
+
+  if (closedContracts <= 0) {
+    revalidateSignalPaths(signalId);
+
+    return {
+      closed: false,
+      reason: "no_close_fills",
+      signal_id: signalId,
+      total_contracts: totalContracts,
+      closed_contracts: closedContracts,
+      remaining_contracts: remainingContracts,
+    };
+  }
 
   if (remainingContracts > 0) {
     try {

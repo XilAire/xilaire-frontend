@@ -3,6 +3,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { resolveCurrentUserRole } from "@/lib/auth/resolveCurrentUserRole";
 import { EXECUTION_RULE_TEMPLATES } from "@/lib/executionRuleTemplates";
+import { closeSignalWithOutcome } from "@/lib/signals/updateSignalState";
 
 /* -------------------------------------------------
    DOMAIN TYPES (AUTHORITATIVE)
@@ -56,15 +57,12 @@ export async function applyExecutionTemplate(
      - Updates signal trade_style
      - Enforced by DB, not app code
   ------------------------------------------------- */
-  const { error } = await supabase.rpc(
-    "apply_execution_template",
-    {
-      p_signal_id: signalId,
-      p_rules: rules,
-      p_user_id: role.user_id,
-      p_trade_style: style,
-    }
-  );
+  const { error } = await supabase.rpc("apply_execution_template", {
+    p_signal_id: signalId,
+    p_rules: rules,
+    p_user_id: role.user_id,
+    p_trade_style: style,
+  });
 
   if (error) {
     console.error("apply_execution_template RPC failed", error);
@@ -89,34 +87,13 @@ export async function closeSignal(
     throw new Error("Missing outcome");
   }
 
-  /* 🔒 AUTH */
-  const role = await resolveCurrentUserRole();
+  const updatedSignal = await closeSignalWithOutcome({
+    signalId,
+    outcome,
+  });
 
-  if (!role || role.role_rank !== 4) {
-    throw new Error("Unauthorized: master_admin required");
-  }
-
-  const supabase = await createSupabaseServerClient();
-
-  /* -------------------------------------------------
-     CLOSE SIGNAL (SAFE + GUARDED)
-  ------------------------------------------------- */
-  const { error } = await supabase
-    .from("signals")
-    .update({
-      status: "Closed",
-      outcome,
-      closed_at: new Date().toISOString(),
-      updated_by: role.user_id,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", signalId)
-    .eq("status", "Active");
-
-  if (error) {
-    console.error("Close signal failed", error);
-    throw new Error("Failed to close signal");
-  }
-
-  return { success: true };
+  return {
+    success: true,
+    signal: updatedSignal,
+  };
 }
