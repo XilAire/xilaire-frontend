@@ -20,6 +20,9 @@ type SignalCloseAlertRow = {
   outcome: "WIN" | "LOSS" | "BREAKEVEN" | null;
   return_pct: number | null;
   closed_at: string | null;
+  discord_channel_id: string | null;
+  discord_message_id: string | null;
+  discord_close_sent_at: string | null;
 };
 
 type DiscordOrganization = {
@@ -163,11 +166,29 @@ function getCloseAlertChannels(discordChannels: DiscordChannelRow[]) {
   return [...new Set(channelIds.filter(Boolean))];
 }
 
-async function postDiscordMessage(
-  channelId: string,
-  token: string,
-  body: unknown
-) {
+async function postDiscordReply({
+  channelId,
+  originalMessageId,
+  token,
+  body,
+}: {
+  channelId: string;
+  originalMessageId: string | null;
+  token: string;
+  body: unknown;
+}) {
+  const replyBody =
+    originalMessageId && originalMessageId.trim().length > 0
+      ? {
+          ...(body as Record<string, unknown>),
+          message_reference: {
+            message_id: originalMessageId,
+            channel_id: channelId,
+            fail_if_not_exists: false,
+          },
+        }
+      : body;
+
   const response = await fetch(
     `https://discord.com/api/v10/channels/${channelId}/messages`,
     {
@@ -176,7 +197,7 @@ async function postDiscordMessage(
         Authorization: `Bot ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(replyBody),
     }
   );
 
@@ -188,6 +209,28 @@ async function postDiscordMessage(
       response.status,
       text
     );
+
+    return false;
+  }
+
+  return true;
+}
+
+async function markCloseAlertSent(signalId: string) {
+  const supabase = createSupabaseAdmin();
+
+  const { error } = await supabase
+    .from("signals")
+    .update({
+      discord_close_sent_at: new Date().toISOString(),
+    })
+    .eq("id", signalId);
+
+  if (error) {
+    console.error("Unable to mark Discord close alert as sent", {
+      signalId,
+      error,
+    });
   }
 }
 
@@ -202,7 +245,7 @@ export async function sendClosedSignalAlert(signalId: string) {
   const supabase = createSupabaseAdmin();
 
   const { data: signal, error } = await supabase
-    .from("trade_signals")
+    .from("signals")
     .select(
       `
       id,
@@ -223,7 +266,10 @@ export async function sendClosedSignalAlert(signalId: string) {
       trade_style,
       outcome,
       return_pct,
-      closed_at
+      closed_at,
+      discord_channel_id,
+      discord_message_id,
+      discord_close_sent_at
       `
     )
     .eq("id", signalId)
@@ -239,11 +285,23 @@ export async function sendClosedSignalAlert(signalId: string) {
   }
 
   const closeSignal = signal as SignalCloseAlertRow;
-  const organization = await getDiscordOrganization(closeSignal.organization_id);
-  const discordChannels = await getOrganizationDiscordChannels(organization.id);
-  const channelIds = getCloseAlertChannels(discordChannels);
 
-  if (channelIds.length === 0) {
+  if (closeSignal.discord_close_sent_at) {
+    console.warn("Discord close alert already sent. Skipping duplicate.", {
+      signalId,
+      discord_close_sent_at: closeSignal.discord_close_sent_at,
+    });
+
+    return;
+  }
+
+  const organization = await getDiscordOrganization(closeSignal.organization_id);
+
+  const fallbackChannels = closeSignal.discord_channel_id
+    ? [closeSignal.discord_channel_id]
+    : getCloseAlertChannels(await getOrganizationDiscordChannels(organization.id));
+
+  if (fallbackChannels.length === 0) {
     console.warn("No Discord channels configured for close alert.", {
       organization_id: organization.id,
       signalId,
@@ -257,11 +315,13 @@ export async function sendClosedSignalAlert(signalId: string) {
   const outcomeEmoji = getOutcomeEmoji(outcome);
 
   const content = [
-    `${outcomeEmoji} **${organization.name} Signal Closed**`,
+    `${outcomeEmoji} **SIGNAL CLOSED**`,
     "",
     `📣 **${title}**`,
     `📊 **Outcome:** ${outcome}`,
     `📈 **Return:** ${formatPercent(closeSignal.return_pct)}`,
+    `💵 **Entry:** ${formatMoney(closeSignal.entry_price)}`,
+    `🏁 **Exit:** ${formatMoney(closeSignal.exit_price)}`,
     "",
     `#${organization.name.replace(/\s+/g, "")} #SignalClosed`,
   ].join("\n");
@@ -330,12 +390,24 @@ export async function sendClosedSignalAlert(signalId: string) {
     timestamp: new Date().toISOString(),
   };
 
-  await Promise.all(
-    channelIds.map((channelId) =>
-      postDiscordMessage(channelId, token, {
-        content,
-        embeds: [embed],
+  const results = await Promise.all(
+    fallbackChannels.map((channelId) =>
+      postDiscordReply({
+        channelId,
+        originalMessageId: closeSignal.discord_message_id,
+        token,
+        body: {
+          content,
+          embeds: [embed],
+          allowed_mentions: {
+            parse: [],
+          },
+        },
       })
     )
   );
+
+  if (results.some(Boolean)) {
+    await markCloseAlertSent(closeSignal.id);
+  }
 }

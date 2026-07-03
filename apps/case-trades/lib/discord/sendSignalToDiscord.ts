@@ -38,11 +38,7 @@ type DiscordOrganization = {
   name: string;
 };
 
-type DiscordChannelType =
-  | "signals"
-  | "options"
-  | "stocks"
-  | "small_caps";
+type DiscordChannelType = "signals" | "options" | "stocks" | "small_caps";
 
 type DiscordChannelRow = {
   id: string;
@@ -51,6 +47,11 @@ type DiscordChannelRow = {
   channel_id: string;
   name: string | null;
   active: boolean;
+};
+
+type DiscordPostedMessage = {
+  id: string;
+  channel_id: string;
 };
 
 const CASE_TRADES_ORG_ID = "491f385c-04e5-4446-97d1-457e5ce15d9d";
@@ -244,10 +245,7 @@ function getDiscordChannels({
         ...getFallbackAutomaticDiscordChannels(input),
       ];
 
-  return uniqueChannels([
-    ...autoChannels,
-    ...(input.manual_channel_ids ?? []),
-  ]);
+  return uniqueChannels([...autoChannels, ...(input.manual_channel_ids ?? [])]);
 }
 
 function buildSignalTitle(input: DiscordSignalInput) {
@@ -376,11 +374,71 @@ function buildEmbedFields(input: DiscordSignalInput): DiscordField[] {
   return fields;
 }
 
-async function postDiscordMessage(
-  channelId: string,
-  token: string,
-  body: unknown
-) {
+async function saveDiscordMessageReference({
+  signalId,
+  message,
+}: {
+  signalId: string;
+  message: DiscordPostedMessage;
+}) {
+  const supabase = createSupabaseAdmin();
+
+  const { data, error } = await supabase
+    .from("signals")
+    .update({
+      discord_channel_id: message.channel_id,
+      discord_message_id: message.id,
+      discord_alert_sent_at: new Date().toISOString(),
+    })
+    .eq("id", signalId)
+    .select(
+      `
+      id,
+      discord_channel_id,
+      discord_message_id,
+      discord_alert_sent_at
+    `
+    );
+
+  if (error) {
+    console.error("Unable to save Discord message reference.", {
+      signal_id: signalId,
+      discord_channel_id: message.channel_id,
+      discord_message_id: message.id,
+      error,
+    });
+
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    console.error("Discord message reference update matched zero rows.", {
+      signal_id: signalId,
+      discord_channel_id: message.channel_id,
+      discord_message_id: message.id,
+    });
+
+    return;
+  }
+
+  console.log("Discord message reference saved.", {
+    signal_id: signalId,
+    discord_channel_id: message.channel_id,
+    discord_message_id: message.id,
+  });
+}
+
+async function postDiscordMessage({
+  channelId,
+  token,
+  signalId,
+  body,
+}: {
+  channelId: string;
+  token: string;
+  signalId: string;
+  body: unknown;
+}): Promise<DiscordPostedMessage | null> {
   const response = await fetch(
     `https://discord.com/api/v10/channels/${channelId}/messages`,
     {
@@ -396,12 +454,33 @@ async function postDiscordMessage(
   if (!response.ok) {
     const text = await response.text();
 
-    console.error(
-      `Discord post failed for channel ${channelId}:`,
-      response.status,
-      text
-    );
+    console.error(`Discord post failed for channel ${channelId}:`, {
+      status: response.status,
+      response: text,
+      signal_id: signalId,
+    });
+
+    return null;
   }
+
+  const message = (await response.json()) as DiscordPostedMessage;
+
+  if (!message?.id || !message.channel_id) {
+    console.error("Discord post succeeded but response was missing IDs.", {
+      signal_id: signalId,
+      channel_id: channelId,
+      message,
+    });
+
+    return null;
+  }
+
+  await saveDiscordMessageReference({
+    signalId,
+    message,
+  });
+
+  return message;
 }
 
 export async function sendSignalToDiscord(input: DiscordSignalInput) {
@@ -424,6 +503,7 @@ export async function sendSignalToDiscord(input: DiscordSignalInput) {
       instrument_type: input.instrument_type,
       ticker: getSignalTicker(input),
       underlying: getUnderlyingTicker(input),
+      signal_id: input.signal_id,
     });
 
     return;
@@ -451,9 +531,14 @@ export async function sendSignalToDiscord(input: DiscordSignalInput) {
 
   await Promise.all(
     channelIds.map((channelId) =>
-      postDiscordMessage(channelId, token, {
-        content,
-        embeds: [embed],
+      postDiscordMessage({
+        channelId,
+        token,
+        signalId: input.signal_id,
+        body: {
+          content,
+          embeds: [embed],
+        },
       })
     )
   );
