@@ -8,16 +8,16 @@ type SignalPartialCloseAlertRow = {
   instrument_type: string | null;
   asset: string | null;
   underlying: string | null;
-  entry_price: number | null;
-  exit_price: number | null;
-  underlying_entry_price: number | null;
-  underlying_exit_price: number | null;
+  entry_price: number | string | null;
+  exit_price: number | string | null;
+  underlying_entry_price: number | string | null;
+  underlying_exit_price: number | string | null;
   option_type: string | null;
-  strike_price: number | null;
+  strike_price: number | string | null;
   expiration_date: string | null;
-  confidence: number | null;
+  confidence: number | string | null;
   trade_style: string | null;
-  return_pct: number | null;
+  return_pct: number | string | null;
   discord_channel_id: string | null;
   discord_message_id: string | null;
 };
@@ -53,20 +53,34 @@ function createSupabaseAdmin() {
   );
 }
 
-function formatMoney(value?: number | null) {
-  if (value === undefined || value === null || Number.isNaN(value)) {
-    return "—";
+function normalizeNumber(value?: number | string | null) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+
+  if (typeof value === "string") {
+    const parsed = Number(value.replace("%", "").trim());
+    return Number.isFinite(parsed) ? parsed : null;
   }
 
-  return `$${Number(value).toFixed(2)}`;
+  return null;
 }
 
-function formatPercent(value?: number | null) {
-  if (value === undefined || value === null || Number.isNaN(value)) {
+function formatMoney(value?: number | string | null) {
+  const amount = normalizeNumber(value);
+
+  if (amount === null) {
     return "—";
   }
 
-  const amount = Number(value);
+  return `$${amount.toFixed(2)}`;
+}
+
+function formatPercent(value?: number | string | null) {
+  const amount = normalizeNumber(value);
+
+  if (amount === null) {
+    return "—";
+  }
+
   const prefix = amount > 0 ? "+" : "";
 
   return `${prefix}${amount.toFixed(2)}%`;
@@ -155,12 +169,12 @@ async function postDiscordReply({
   channelId: string;
   originalMessageId: string | null;
   token: string;
-  body: unknown;
+  body: Record<string, unknown>;
 }) {
   const replyBody =
     originalMessageId && originalMessageId.trim().length > 0
       ? {
-          ...(body as Record<string, unknown>),
+          ...body,
           message_reference: {
             message_id: originalMessageId,
             channel_id: channelId,
@@ -168,6 +182,12 @@ async function postDiscordReply({
           },
         }
       : body;
+
+  console.log("Sending Discord partial close reply", {
+    channel_id: channelId,
+    original_message_id: originalMessageId,
+    has_reference: Boolean(originalMessageId),
+  });
 
   const response = await fetch(
     `https://discord.com/api/v10/channels/${channelId}/messages`,
@@ -181,17 +201,24 @@ async function postDiscordReply({
     }
   );
 
-  if (!response.ok) {
-    const text = await response.text();
+  const text = await response.text();
 
-    console.error(
-      `Discord partial close alert failed for channel ${channelId}:`,
-      response.status,
-      text
-    );
+  if (!response.ok) {
+    console.error("Discord partial close alert failed", {
+      channel_id: channelId,
+      original_message_id: originalMessageId,
+      status: response.status,
+      response: text,
+    });
 
     return false;
   }
+
+  console.log("Discord partial close alert sent successfully", {
+    channel_id: channelId,
+    original_message_id: originalMessageId,
+    response: text,
+  });
 
   return true;
 }
@@ -208,7 +235,7 @@ export async function sendPartialCloseSignalAlert({
 
   if (!token) {
     console.warn("Discord bot token missing. Skipping partial close alert.");
-    return;
+    return false;
   }
 
   const supabase = createSupabaseAdmin();
@@ -243,21 +270,33 @@ export async function sendPartialCloseSignalAlert({
 
   if (error || !signal) {
     console.error("Unable to load signal for Discord partial close alert", {
-      signalId,
+      signal_id: signalId,
       error,
     });
 
-    return;
+    return false;
   }
 
   const partialSignal = signal as SignalPartialCloseAlertRow;
 
+  console.log("Loaded signal for Discord partial close alert", {
+    signal_id: partialSignal.id,
+    status: partialSignal.status,
+    discord_channel_id: partialSignal.discord_channel_id,
+    discord_message_id: partialSignal.discord_message_id,
+    closed_contracts: closedContracts,
+    total_contracts: totalContracts,
+    remaining_contracts: remainingContracts,
+    exit_price: exitPrice,
+    realized_return_pct: realizedReturnPct,
+  });
+
   if (!partialSignal.discord_channel_id) {
     console.warn("Missing Discord channel ID. Skipping partial close alert.", {
-      signalId,
+      signal_id: signalId,
     });
 
-    return;
+    return false;
   }
 
   const organization = await getDiscordOrganization(
@@ -295,7 +334,7 @@ export async function sendPartialCloseSignalAlert({
     fields: [
       {
         name: "Ticker",
-        value: getTicker(partialSignal),
+        value: getTicker(partialSignal) || "—",
         inline: true,
       },
       {
@@ -349,7 +388,7 @@ export async function sendPartialCloseSignalAlert({
     timestamp: new Date().toISOString(),
   };
 
-  await postDiscordReply({
+  return postDiscordReply({
     channelId: partialSignal.discord_channel_id,
     originalMessageId: partialSignal.discord_message_id,
     token,
