@@ -27,6 +27,7 @@ type JournalReportsPageProps = {
     status?: string;
     instrument?: string;
     symbol?: string;
+    org?: string;
   };
 };
 
@@ -1568,6 +1569,129 @@ function getOutcomeBadgeClass(outcome: ReportTrade["outcome"]) {
   return "border-slate-700 bg-slate-900 text-slate-400";
 }
 
+
+function MobileReportFilters({
+  range,
+  status,
+  instrument,
+  symbol,
+  org,
+}: {
+  range: ReportRange;
+  status: ReportStatus;
+  instrument: ReportInstrument;
+  symbol: string;
+  org?: string;
+}) {
+  return (
+    <section className="block w-full min-w-0 max-w-full rounded-xl border border-white/10 bg-slate-900/80 p-4 xl:hidden">
+      <div className="mb-4 min-w-0">
+        <h2 className="text-base font-semibold text-slate-100">Filters</h2>
+        <p className="mt-1 text-sm leading-6 text-slate-400">
+          Refine reports by range, status, type, and symbol.
+        </p>
+      </div>
+
+      <form action="/dashboard/journal/reports" className="w-full min-w-0 space-y-4">
+        {org && <input type="hidden" name="org" value={org} />}
+        <div className="w-full min-w-0 space-y-2">
+          <label
+            htmlFor="mobile-report-range"
+            className="block text-xs font-semibold uppercase tracking-wide text-slate-500"
+          >
+            Range
+          </label>
+          <select
+            id="mobile-report-range"
+            name="range"
+            defaultValue={range}
+            className="block w-full min-w-0 max-w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm font-medium text-slate-100 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+          >
+            <option value="7d">7D</option>
+            <option value="30d">30D</option>
+            <option value="3m">3M</option>
+            <option value="6m">6M</option>
+            <option value="1y">1Y</option>
+            <option value="all">All</option>
+          </select>
+        </div>
+
+        <div className="w-full min-w-0 space-y-2">
+          <label
+            htmlFor="mobile-report-status"
+            className="block text-xs font-semibold uppercase tracking-wide text-slate-500"
+          >
+            Status
+          </label>
+          <select
+            id="mobile-report-status"
+            name="status"
+            defaultValue={status}
+            className="block w-full min-w-0 max-w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm font-medium text-slate-100 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+          >
+            <option value="all">All</option>
+            <option value="open">Open</option>
+            <option value="closed">Closed</option>
+            <option value="winners">Winners</option>
+            <option value="losers">Losers</option>
+            <option value="breakeven">Breakeven</option>
+          </select>
+        </div>
+
+        <div className="w-full min-w-0 space-y-2">
+          <label
+            htmlFor="mobile-report-instrument"
+            className="block text-xs font-semibold uppercase tracking-wide text-slate-500"
+          >
+            Instrument
+          </label>
+          <select
+            id="mobile-report-instrument"
+            name="instrument"
+            defaultValue={instrument}
+            className="block w-full min-w-0 max-w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm font-medium text-slate-100 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+          >
+            <option value="all">All</option>
+            <option value="options">Options</option>
+            <option value="stocks">Stocks</option>
+          </select>
+        </div>
+
+        <div className="w-full min-w-0 space-y-2">
+          <label
+            htmlFor="mobile-report-symbol"
+            className="block text-xs font-semibold uppercase tracking-wide text-slate-500"
+          >
+            Symbol
+          </label>
+          <input
+            id="mobile-report-symbol"
+            name="symbol"
+            defaultValue={symbol}
+            placeholder="Search ticker"
+            className="block w-full min-w-0 max-w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm font-medium uppercase text-slate-100 outline-none placeholder:text-slate-600 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+          />
+        </div>
+
+        <div className="grid w-full min-w-0 grid-cols-2 gap-3">
+          <a
+            href="/dashboard/journal/reports"
+            className="inline-flex min-w-0 items-center justify-center rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-300 transition hover:bg-slate-800"
+          >
+            Reset
+          </a>
+          <button
+            type="submit"
+            className="inline-flex min-w-0 items-center justify-center rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500"
+          >
+            Apply
+          </button>
+        </div>
+      </form>
+    </section>
+  );
+}
+
 function MobileReportSnapshot({
   trades,
   closedTrades,
@@ -1586,7 +1710,7 @@ function MobileReportSnapshot({
   netPnl: number;
 }) {
   return (
-    <section className="grid gap-3 sm:grid-cols-2 lg:hidden">
+    <section className="grid w-full min-w-0 max-w-full gap-3 sm:grid-cols-2 xl:hidden">
       <MobileSnapshotCard label="Filtered Trades" value={String(trades.length)} />
       <MobileSnapshotCard label="Closed" value={String(closedTrades.length)} />
       <MobileSnapshotCard label="Open" value={String(openTrades.length)} />
@@ -1619,7 +1743,7 @@ function MobileSnapshotCard({
         : "text-slate-100";
 
   return (
-    <div className="rounded-xl border border-white/10 bg-slate-900/80 p-4">
+    <div className="w-full min-w-0 max-w-full rounded-xl border border-white/10 bg-slate-900/80 p-4">
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
         {label}
       </p>
@@ -1631,14 +1755,14 @@ function MobileSnapshotCard({
 function MobileSymbolPerformanceList({ symbols }: { symbols: SymbolPerformance[] }) {
   if (symbols.length === 0) {
     return (
-      <div className="rounded-xl border border-white/10 bg-slate-900/80 p-5 text-sm text-slate-400 md:hidden">
+      <div className="w-full min-w-0 max-w-full rounded-xl border border-white/10 bg-slate-900/80 p-5 text-sm text-slate-400 xl:hidden">
         No symbol performance available for the selected filters.
       </div>
     );
   }
 
   return (
-    <section className="space-y-3 md:hidden">
+    <section className="w-full min-w-0 max-w-full space-y-3 xl:hidden">
       <div>
         <h2 className="text-lg font-semibold text-slate-100">
           Symbol Performance
@@ -1678,17 +1802,215 @@ function MobileSymbolPerformanceList({ symbols }: { symbols: SymbolPerformance[]
   );
 }
 
+
+type MobileAnalyticsSectionProps = {
+  strategies: Array<Record<string, any>>;
+  days: Array<Record<string, any>>;
+  hours: Array<Record<string, any>>;
+  instruments: Array<Record<string, any>>;
+  confidenceBuckets: Array<Record<string, any>>;
+  optionTypes: Array<Record<string, any>>;
+  dteBuckets: Array<Record<string, any>>;
+  expirationBuckets: Array<Record<string, any>>;
+};
+
+function MobilePerformanceAnalyticsSection({
+  strategies,
+  days,
+  hours,
+  instruments,
+  confidenceBuckets,
+  optionTypes,
+  dteBuckets,
+  expirationBuckets,
+}: MobileAnalyticsSectionProps) {
+  return (
+    <section className="w-full min-w-0 max-w-full space-y-4 xl:hidden">
+      <div>
+        <h2 className="text-lg font-semibold text-slate-100">
+          Performance Analytics
+        </h2>
+        <p className="text-sm text-slate-400">
+          Mobile summaries for strategy, timing, confidence, and option performance.
+        </p>
+      </div>
+
+      <div className="w-full min-w-0 max-w-full space-y-4">
+        <MobileAnalyticsGroup
+          title="Strategy"
+          emptyLabel="No strategy performance for the selected filters."
+          items={strategies}
+          label={(item) => String(item.strategy ?? item.label ?? "Unknown")}
+        />
+
+        <MobileAnalyticsGroup
+          title="Day of Week"
+          emptyLabel="No day-of-week performance for the selected filters."
+          items={days}
+          label={(item) => String(item.day ?? item.label ?? "Unknown")}
+        />
+
+        <MobileAnalyticsGroup
+          title="Hour of Day"
+          emptyLabel="No hourly performance for the selected filters."
+          items={hours}
+          label={(item) => String(item.hourLabel ?? item.hour ?? item.label ?? "Unknown")}
+        />
+
+        <MobileAnalyticsGroup
+          title="Instrument"
+          emptyLabel="No instrument performance for the selected filters."
+          items={instruments}
+          label={(item) => String(item.instrument ?? item.label ?? "Unknown")}
+        />
+
+        <MobileAnalyticsGroup
+          title="Confidence"
+          emptyLabel="No confidence performance for the selected filters."
+          items={confidenceBuckets}
+          label={(item) => String(item.bucket ?? item.label ?? "Unknown")}
+        />
+
+        <MobileAnalyticsGroup
+          title="Option Type"
+          emptyLabel="No option type performance for the selected filters."
+          items={optionTypes}
+          label={(item) => String(item.optionType ?? item.option_type ?? item.label ?? "Unknown")}
+        />
+
+        <MobileAnalyticsGroup
+          title="Days to Expiration"
+          emptyLabel="No DTE performance for the selected filters."
+          items={dteBuckets}
+          label={(item) => String(item.bucket ?? item.label ?? "Unknown")}
+        />
+
+        <MobileAnalyticsGroup
+          title="Expiration Window"
+          emptyLabel="No expiration performance for the selected filters."
+          items={expirationBuckets}
+          label={(item) => String(item.bucket ?? item.label ?? "Unknown")}
+        />
+      </div>
+    </section>
+  );
+}
+
+function MobileAnalyticsGroup({
+  title,
+  items,
+  label,
+  emptyLabel,
+}: {
+  title: string;
+  items: Array<Record<string, any>>;
+  label: (item: Record<string, any>) => string;
+  emptyLabel: string;
+}) {
+  const visibleItems = items
+    .filter((item) => Number(item.trades ?? 0) > 0)
+    .slice(0, 5);
+
+  return (
+    <div className="w-full min-w-0 max-w-full rounded-xl border border-white/10 bg-slate-900/80 p-4">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h3 className="text-sm font-semibold text-slate-100">{title}</h3>
+        <span className="text-xs text-slate-500">
+          {visibleItems.length > 0 ? `${visibleItems.length} shown` : "No data"}
+        </span>
+      </div>
+
+      {visibleItems.length === 0 ? (
+        <p className="text-sm text-slate-500">{emptyLabel}</p>
+      ) : (
+        <div className="space-y-3">
+          {visibleItems.map((item, index) => {
+            const trades = Number(item.trades ?? 0);
+            const winners = Number(item.winners ?? 0);
+            const losers = Number(item.losers ?? 0);
+            const breakevens = Number(item.breakevens ?? 0);
+            const winRate = Number(item.winRate ?? 0);
+            const netPnl = Number(item.netPnl ?? 0);
+            const profitFactor = Number(item.profitFactor ?? 0);
+
+            return (
+              <div
+                key={`${title}-${label(item)}-${index}`}
+                className="rounded-lg border border-white/10 bg-slate-950 p-3"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-slate-100">
+                      {label(item)}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {trades} trades • {winners}W / {losers}L / {breakevens}BE
+                    </p>
+                  </div>
+
+                  <div className="shrink-0 text-right">
+                    <p className={`text-sm font-semibold ${getReportPnlClass(netPnl)}`}>
+                      {formatReportMoney(netPnl)}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {winRate.toFixed(1)}% WR
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                  <MobileReportMiniMetric
+                    label="Profit Factor"
+                    value={
+                      Number.isFinite(profitFactor) && profitFactor > 0
+                        ? profitFactor.toFixed(2)
+                        : "—"
+                    }
+                  />
+                  <MobileReportMiniMetric
+                    label="Avg / Trade"
+                    value={formatReportMoney(
+                      trades > 0 ? netPnl / trades : null,
+                    )}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MobileReportMiniMetric({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-lg border border-white/10 bg-slate-900/70 p-2">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+        {label}
+      </p>
+      <p className="mt-1 text-xs font-medium text-slate-200">{value}</p>
+    </div>
+  );
+}
+
 function MobileClosedTradesList({ trades }: { trades: ReportTrade[] }) {
   if (trades.length === 0) {
     return (
-      <div className="rounded-xl border border-white/10 bg-slate-900/80 p-5 text-sm text-slate-400 md:hidden">
+      <div className="w-full min-w-0 max-w-full rounded-xl border border-white/10 bg-slate-900/80 p-5 text-sm text-slate-400 xl:hidden">
         No closed trades match the current filters.
       </div>
     );
   }
 
   return (
-    <section className="space-y-3 md:hidden">
+    <section className="w-full min-w-0 max-w-full space-y-3 xl:hidden">
       <div>
         <h2 className="text-lg font-semibold text-slate-100">
           Closed Trades
@@ -1707,7 +2029,7 @@ function MobileClosedTradesList({ trades }: { trades: ReportTrade[] }) {
 
 function MobileClosedTradeCard({ trade }: { trade: ReportTrade }) {
   return (
-    <article className="rounded-xl border border-white/10 bg-slate-900/80 p-4 shadow-sm">
+    <article className="w-full min-w-0 max-w-full rounded-xl border border-white/10 bg-slate-900/80 p-4 shadow-sm">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -1739,7 +2061,7 @@ function MobileClosedTradeCard({ trade }: { trade: ReportTrade }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 text-sm">
+      <div className="grid w-full min-w-0 grid-cols-2 gap-3 text-sm">
         <MobileReportField label="Qty" value={String(trade.quantity)} />
         <MobileReportField label="Confidence" value={trade.confidence === null ? "—" : `${trade.confidence}%`} />
         <MobileReportField label="Entry" value={formatReportPlainMoney(trade.entry_price)} />
@@ -1755,7 +2077,7 @@ function MobileClosedTradeCard({ trade }: { trade: ReportTrade }) {
 
 function MobileReportField({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-white/10 bg-slate-950 p-3">
+    <div className="min-w-0 rounded-lg border border-white/10 bg-slate-950 p-3">
       <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
         {label}
       </p>
@@ -1944,10 +2266,10 @@ export default async function JournalReportsPage({
   const streakStats = getStreakStats(closedTrades);
   const drawdownStats = getDrawdownStats(equityCurve);
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-100">
+    <div className="w-full min-w-0 max-w-full space-y-8">
+      <div className="flex w-full min-w-0 max-w-full flex-col justify-between gap-4 sm:flex-row sm:items-start">
+        <div className="min-w-0">
+          <h1 className="break-words text-2xl font-semibold text-slate-100">
             Journal Reports
           </h1>
 
@@ -1956,7 +2278,7 @@ export default async function JournalReportsPage({
           </p>
         </div>
 
-        <div className="w-fit rounded-full border border-white/10 bg-slate-900/80 px-4 py-2 text-sm text-slate-400">
+        <div className="w-full rounded-full border border-white/10 bg-slate-900/80 px-4 py-2 text-center text-sm text-slate-400 sm:w-fit">
           Showing{" "}
           <span className="font-semibold text-slate-100">{trades.length}</span>{" "}
           of{" "}
@@ -1967,11 +2289,21 @@ export default async function JournalReportsPage({
         </div>
       </div>
 
-      <ReportFilters
+      <div className="hidden w-full min-w-0 max-w-full xl:block">
+        <ReportFilters
+          range={range}
+          status={statusFilter}
+          instrument={instrumentFilter}
+          symbol={symbolFilter}
+        />
+      </div>
+
+      <MobileReportFilters
         range={range}
         status={statusFilter}
         instrument={instrumentFilter}
         symbol={symbolFilter}
+        org={searchParams?.org}
       />
 
       <MobileReportSnapshot
@@ -1984,8 +2316,9 @@ export default async function JournalReportsPage({
         netPnl={netPnl}
       />
 
-      <ReportKpiGrid
-        winRate={winRate}
+      <div className="w-full min-w-0 max-w-full">
+        <ReportKpiGrid
+          winRate={winRate}
         profitFactor={profitFactor}
         averageWinner={averageWinner}
         averageLoser={averageLoser}
@@ -2001,21 +2334,26 @@ export default async function JournalReportsPage({
         maxDrawdown={drawdownStats.maxDrawdown}
         maxDrawdownPct={drawdownStats.maxDrawdownPct}
         longestWinStreak={streakStats.longestWinStreak}
-        longestLossStreak={streakStats.longestLossStreak}
-      />
+          longestLossStreak={streakStats.longestLossStreak}
+        />
+      </div>
 
-      <EquityMonthlySection
-        equityCurve={equityCurve}
-        monthlyPnl={monthlyPnl}
-      />
+      <div className="w-full min-w-0 max-w-full">
+        <EquityMonthlySection
+          equityCurve={equityCurve}
+          monthlyPnl={monthlyPnl}
+        />
+      </div>
 
-      <DailyPnlSection
-        days={dailyPnl}
-        bestDay={getBestDailyPnl(dailyPnl)}
-        worstDay={getWorstDailyPnl(dailyPnl)}
-      />
+      <div className="w-full min-w-0 max-w-full">
+        <DailyPnlSection
+          days={dailyPnl}
+          bestDay={getBestDailyPnl(dailyPnl)}
+          worstDay={getWorstDailyPnl(dailyPnl)}
+        />
+      </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 xl:grid-cols-2">
         <BestWorstTradeCard
           title="Best Trade"
           trade={bestTrade}
@@ -2029,13 +2367,13 @@ export default async function JournalReportsPage({
         />
       </div>
 
-      <div className="hidden md:block">
+      <div className="hidden w-full min-w-0 max-w-full xl:block">
         <SymbolPerformanceTable symbols={symbolPerformance} />
       </div>
 
       <MobileSymbolPerformanceList symbols={symbolPerformance} />
 
-      <div className="overflow-hidden rounded-xl border border-white/10 bg-slate-900/80">
+      <div className="hidden w-full min-w-0 max-w-full rounded-xl border border-white/10 bg-slate-900/80 xl:block">
         <PerformanceAnalyticsSwitcher
           strategies={strategyPerformance}
           days={dayOfWeekPerformance}
@@ -2048,24 +2386,23 @@ export default async function JournalReportsPage({
         />
       </div>
 
-      <div className="hidden md:block">
+      <MobilePerformanceAnalyticsSection
+        strategies={strategyPerformance}
+        days={dayOfWeekPerformance}
+        hours={hourOfDayPerformance}
+        instruments={instrumentPerformance}
+        confidenceBuckets={confidencePerformance}
+        optionTypes={optionTypePerformance}
+        dteBuckets={dtePerformance}
+        expirationBuckets={expirationPerformance}
+      />
+
+      <div className="hidden w-full min-w-0 max-w-full xl:block">
         <ClosedTradesTable trades={closedTrades} />
       </div>
 
       <MobileClosedTradesList trades={closedTrades} />
 
-      <div className="rounded-xl border border-white/10 bg-slate-900/80 p-6">
-        <h2 className="text-lg font-semibold text-slate-100">
-          Next Report Modules
-        </h2>
-
-        <p className="mt-2 text-sm leading-6 text-slate-400">
-          Equity curve, monthly P/L, daily P/L heatmap, drawdown tracking,
-          streak analytics, and closed trades reporting are now active. Setup
-          performance, tag analytics, mistake analytics, psychology analytics,
-          and AI grade reports are coming next.
-        </p>
-      </div>
     </div>
   );
 }

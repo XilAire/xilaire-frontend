@@ -84,8 +84,8 @@ export default function ReportKpiGrid({
   longestLossStreak,
 }: ReportKpiGridProps) {
   return (
-    <div className="space-y-4">
-      <div className="grid gap-4 md:grid-cols-5">
+    <div className="w-full min-w-0 max-w-full space-y-4 overflow-hidden">
+      <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
         <ReportStatCard
           title="Win Rate"
           value={`${winRate.toFixed(0)}%`}
@@ -125,7 +125,7 @@ export default function ReportKpiGrid({
         />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-5">
+      <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
         <ReportStatCard
           title="Total Trades"
           value={String(totalTrades)}
@@ -159,7 +159,7 @@ export default function ReportKpiGrid({
         />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         <ReportStatCard
           title="Total Profit"
           value={formatMoney(totalProfit)}
@@ -183,7 +183,7 @@ export default function ReportKpiGrid({
         />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <ReportStatCard
           title="Max Drawdown"
           value={formatMoney(-maxDrawdown)}

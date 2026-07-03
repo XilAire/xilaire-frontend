@@ -108,7 +108,7 @@ export default function ClosedTradesTable({ trades }: ClosedTradesTableProps) {
         </p>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-white/10">
+      <div className="rounded-lg border border-white/10">
         <table className="w-full text-left text-sm">
           <thead className="bg-slate-950 text-xs uppercase tracking-wide text-slate-500">
             <tr>

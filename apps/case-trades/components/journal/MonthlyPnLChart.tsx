@@ -67,7 +67,7 @@ export default function MonthlyPnLChart({ months }: MonthlyPnLChartProps) {
         ))}
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-lg border border-white/10">
+      <div className="mt-4 rounded-lg border border-white/10">
         <table className="w-full text-left text-sm">
           <thead className="bg-slate-950 text-xs uppercase tracking-wide text-slate-500">
             <tr>

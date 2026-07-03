@@ -60,7 +60,7 @@ export default function EquityCurveChart({ points }: EquityCurveChartProps) {
         <svg
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
-          className="h-64 w-full overflow-visible"
+          className="h-64 w-full"
           role="img"
           aria-label="Equity curve"
         >

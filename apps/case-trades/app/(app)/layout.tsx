@@ -7,24 +7,15 @@ import CaseTopBar from "@/components/layout/CaseTopBar";
 import { CaseThemeProvider } from "@/components/providers/CaseThemeProvider";
 import { getProfile, type Profile } from "@/lib/getProfile";
 
-/* -------------------------------------------------
-   METADATA
-------------------------------------------------- */
 export const metadata = {
   title: "CASE Trades | Dashboard",
 };
 
-/* -------------------------------------------------
-   LAYOUT (SERVER COMPONENT — PURE)
-------------------------------------------------- */
 export default async function AppLayout({
   children,
 }: {
   children: ReactNode;
 }) {
-  // ---------------------------------------------------------------------------
-  // SERVER-SIDE PROFILE LOAD (DEFENSIVE — TYPED)
-  // ---------------------------------------------------------------------------
   let profile: Profile | undefined;
 
   try {
@@ -35,29 +26,17 @@ export default async function AppLayout({
 
   return (
     <CaseThemeProvider>
-      <div className="min-h-screen bg-slate-950 text-slate-100 transition-colors">
-        <div className="flex min-h-screen">
-          {/* -------------------------------------------------
-              SIDEBAR (CLIENT, MOBILE-AWARE VIA SHELL)
-          ------------------------------------------------- */}
+      <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-slate-950 text-slate-100 transition-colors">
+        <div className="flex min-h-screen w-full max-w-full overflow-x-hidden">
           <CaseSidebarShell>
             <CaseSidebar profile={profile} />
           </CaseSidebarShell>
 
-          {/* -------------------------------------------------
-              MAIN COLUMN
-          ------------------------------------------------- */}
-          <div className="flex flex-1 flex-col">
-            {/* -------------------------------------------------
-                TOP BAR (CLIENT)
-            ------------------------------------------------- */}
+          <div className="flex min-h-screen min-w-0 flex-1 flex-col overflow-x-hidden">
             <CaseTopBar profile={profile} />
 
-            {/* -------------------------------------------------
-                PAGE CONTENT
-            ------------------------------------------------- */}
-            <main className="flex-1 p-6">
-              <div className="mx-auto max-w-7xl">
+            <main className="min-w-0 flex-1 overflow-x-hidden px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+              <div className="mx-auto w-full min-w-0 max-w-7xl overflow-x-hidden">
                 {children}
               </div>
             </main>
