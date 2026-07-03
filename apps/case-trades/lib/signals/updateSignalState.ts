@@ -5,6 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { resolveCurrentUserRole } from "@/lib/auth/resolveCurrentUserRole";
 import { getUserOrganizations } from "@/lib/orgs/getUserOrganizations";
 import { sendClosedSignalAlert } from "@/lib/discord/sendClosedSignalAlert";
+import { sendPartialCloseSignalAlert } from "@/lib/discord/sendPartialCloseSignalAlert";
 
 export type SignalStatus = "Active" | "Triggered" | "Closed" | "Expired";
 export type SignalOutcome = "WIN" | "LOSS" | "BREAKEVEN" | null;
@@ -465,7 +466,37 @@ export async function autoCloseSignalFromExecution(signalId: string) {
     };
   }
 
+  const totalCloseValue = closeFills.reduce((sum, fill) => {
+    const contracts = normalizeNumber(fill.contracts) ?? 0;
+    const price = normalizeNumber(fill.price) ?? 0;
+
+    return sum + contracts * price;
+  }, 0);
+
+  const averageExitPrice =
+    closedContracts > 0
+      ? Number((totalCloseValue / closedContracts).toFixed(4))
+      : null;
+
+  const realizedReturnPct = calculateReturnPct({
+    entryPrice,
+    exitPrice: averageExitPrice,
+  });
+
   if (remainingContracts > 0) {
+    try {
+      await sendPartialCloseSignalAlert({
+        signalId,
+        closedContracts,
+        totalContracts,
+        remainingContracts,
+        exitPrice: averageExitPrice,
+        realizedReturnPct,
+      });
+    } catch (discordError) {
+      console.error("Failed to send Discord partial close alert:", discordError);
+    }
+
     revalidateSignalPaths(signalId);
 
     return {
@@ -475,20 +506,12 @@ export async function autoCloseSignalFromExecution(signalId: string) {
       total_contracts: totalContracts,
       closed_contracts: closedContracts,
       remaining_contracts: remainingContracts,
+      exit_price: averageExitPrice,
+      realized_return_pct: realizedReturnPct,
     };
   }
 
-  const totalCloseValue = closeFills.reduce((sum, fill) => {
-    const contracts = normalizeNumber(fill.contracts) ?? 0;
-    const price = normalizeNumber(fill.price) ?? 0;
-
-    return sum + contracts * price;
-  }, 0);
-
-  const exitPrice =
-    closedContracts > 0
-      ? Number((totalCloseValue / closedContracts).toFixed(4))
-      : null;
+  const exitPrice = averageExitPrice;
 
   const returnPct = calculateReturnPct({
     entryPrice,
