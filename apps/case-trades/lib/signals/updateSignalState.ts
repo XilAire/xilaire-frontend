@@ -306,63 +306,38 @@ export async function updateSignalStatus(
     .single();
 
   if (error || !updatedSignal) {
-  throw new Error(
-    `Failed to update signal status: ${
-      error?.message ?? "No updated signal returned"
-    }`
-  );
-}
-
-/*
-|--------------------------------------------------------------------------
-| Signal Lifecycle Events
-|--------------------------------------------------------------------------
-|
-| Fire notifications only after the database transaction succeeds.
-| This keeps updateSignalState() as the single source of truth while
-| allowing Discord, email, push notifications, etc. to subscribe to
-| lifecycle events.
-|
-*/
-if (
-  (status === "Closed" || status === "Expired") &&
-  currentSignal.status !== status
-) {
-  try {
-    await fetch(
-      `${process.env.NEXT_PUBLIC_CASE_TRADES_APP_URL}/api/discord/send-close-alert`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          signalId: updatedSignal.id,
-        }),
-      }
-    );
-  } catch (discordError) {
-    console.error(
-      "Failed to send Discord close notification:",
-      discordError
+    throw new Error(
+      `Failed to update signal status: ${
+        error?.message ?? "No updated signal returned"
+      }`
     );
   }
-}
 
-if (
-  (status === "Closed" || status === "Expired") &&
-  currentSignal.status !== status
-) {
-  try {
-    await sendClosedSignalAlert(updatedSignal.id);
-  } catch (discordError) {
-    console.error("Failed to send Discord close alert:", discordError);
+  /*
+  |--------------------------------------------------------------------------
+  | Signal Lifecycle Events
+  |--------------------------------------------------------------------------
+  |
+  | Fire notifications only after the database update succeeds.
+  | This keeps updateSignalStatus() as the single source of truth while
+  | allowing Discord, email, push notifications, etc. to subscribe to
+  | lifecycle events.
+  |
+  */
+  if (
+    (status === "Closed" || status === "Expired") &&
+    currentSignal.status !== status
+  ) {
+    try {
+      await sendClosedSignalAlert(updatedSignal.id);
+    } catch (discordError) {
+      console.error("Failed to send Discord close alert:", discordError);
+    }
   }
-}
 
-revalidateSignalPaths(signalId);
+  revalidateSignalPaths(signalId);
 
-return updatedSignal;
+  return updatedSignal;
 }
 
 /* ----------------------------------------------
