@@ -11,7 +11,6 @@ type SignalCloseAlertRow = {
   entry_price: number | null;
   exit_price: number | null;
   underlying_entry_price: number | null;
-  underlying_exit_price: number | null;
   option_type: string | null;
   strike_price: number | null;
   expiration_date: string | null;
@@ -258,7 +257,6 @@ export async function sendClosedSignalAlert(signalId: string) {
       entry_price,
       exit_price,
       underlying_entry_price,
-      underlying_exit_price,
       option_type,
       strike_price,
       expiration_date,
@@ -350,11 +348,6 @@ export async function sendClosedSignalAlert(signalId: string) {
     {
       name: "Exit",
       value: formatMoney(closeSignal.exit_price),
-      inline: true,
-    },
-    {
-      name: "Underlying Exit",
-      value: formatMoney(closeSignal.underlying_exit_price),
       inline: true,
     },
     {
