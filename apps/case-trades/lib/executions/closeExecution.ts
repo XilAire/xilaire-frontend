@@ -16,9 +16,6 @@ export async function closeExecution({
 }: CloseExecutionInput) {
   const supabase = await createSupabaseServerClient();
 
-  /* -------------------------------------------------
-     🔒 AUTH CONTEXT
-  ------------------------------------------------- */
   const {
     data: { user },
     error: authError,
@@ -36,9 +33,6 @@ export async function closeExecution({
     throw new Error("Invalid close input");
   }
 
-  /* -------------------------------------------------
-     📥 LOAD EXECUTION
-  ------------------------------------------------- */
   const { data: execution, error: execError } = await supabase
     .from("signal_executions")
     .select("id, signal_id, status")
@@ -57,9 +51,6 @@ export async function closeExecution({
     throw new Error("Execution already closed");
   }
 
-  /* -------------------------------------------------
-     📊 CALCULATE REMAINING CONTRACTS
-  ------------------------------------------------- */
   const { data: fills, error: fillsError } = await supabase
     .from("execution_fills")
     .select("contracts, side")
@@ -89,9 +80,6 @@ export async function closeExecution({
 
   const isFinalClose = contracts === remainingBeforeClose;
 
-  /* -------------------------------------------------
-     🧾 RECORD CLOSE FILL
-  ------------------------------------------------- */
   const { error: fillError } = await supabase.from("execution_fills").insert({
     execution_id: executionId,
     contracts,
@@ -105,18 +93,6 @@ export async function closeExecution({
     throw new Error("Failed to record close fill");
   }
 
-  /* -------------------------------------------------
-     🔔 SYNC SIGNAL LIFECYCLE AFTER EVERY CLOSE FILL
-     - Partial close: sends Discord partial-close reply
-     - Final close: closes signal and sends final close reply
-  ------------------------------------------------- */
-  const lifecycleResult = await autoCloseSignalFromExecution(
-    execution.signal_id
-  );
-
-  /* -------------------------------------------------
-     🔒 AUTO-CLOSE EXECUTION IF FINAL
-  ------------------------------------------------- */
   if (isFinalClose) {
     const now = new Date().toISOString();
 
@@ -133,6 +109,10 @@ export async function closeExecution({
       throw new Error("Failed to finalize execution");
     }
   }
+
+  const lifecycleResult = await autoCloseSignalFromExecution(
+    execution.signal_id
+  );
 
   return {
     execution_id: executionId,
