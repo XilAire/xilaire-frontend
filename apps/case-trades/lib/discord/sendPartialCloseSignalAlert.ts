@@ -11,7 +11,6 @@ type SignalPartialCloseAlertRow = {
   entry_price: number | string | null;
   exit_price: number | string | null;
   underlying_entry_price: number | string | null;
-  underlying_exit_price: number | string | null;
   option_type: string | null;
   strike_price: number | string | null;
   expiration_date: string | null;
@@ -254,7 +253,6 @@ export async function sendPartialCloseSignalAlert({
       entry_price,
       exit_price,
       underlying_entry_price,
-      underlying_exit_price,
       option_type,
       strike_price,
       expiration_date,
