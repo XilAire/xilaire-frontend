@@ -1,5 +1,16 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import type { Metadata } from "next";
+
+/* -------------------------------------------------
+   🧾 METADATA
+------------------------------------------------- */
+export const metadata: Metadata = {
+  title: "Signal Details | CASE Trades",
+  description:
+    "View detailed information for a trading signal, including trade setup, execution history, performance metrics, lifecycle status, notes, and related analytics within CASE Trades.",
+};
+
 import {
   Activity,
   AlertTriangle,

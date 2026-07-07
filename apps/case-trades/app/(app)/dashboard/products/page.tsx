@@ -1,6 +1,18 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
+import type { Metadata } from "next";
+
+/* -------------------------------------------------
+   🧾 METADATA
+------------------------------------------------- */
+export const metadata: Metadata = {
+  title: "Products | CASE Trades",
+  description:
+    "Browse and manage the products, subscriptions, tools, and services available within the CASE Trades platform.",
+};
+
+
 import {
   Activity,
   ArrowRight,

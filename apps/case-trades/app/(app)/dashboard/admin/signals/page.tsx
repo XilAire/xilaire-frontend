@@ -2,6 +2,17 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
+import type { Metadata } from "next";
+
+/* -------------------------------------------------
+   🧾 METADATA
+------------------------------------------------- */
+export const metadata: Metadata = {
+  title: "Signal Administration | CASE Trades",
+  description:
+    "Manage all trading signals across the CASE Trades platform, including signal moderation, lifecycle management, organization oversight, performance monitoring, and administrative controls.",
+};
+
 import {
   Activity,
   AlertTriangle,
@@ -21,11 +32,6 @@ import {
   getSignalDisplayStatus,
   normalizePersistedSignalStatus,
 } from "@/lib/signals/displayState";
-
-export const metadata = {
-  title: "Manage Signals | CASE Trades",
-  description: "Master-admin signal management for CASE Trades.",
-};
 
 export const dynamic = "force-dynamic";
 

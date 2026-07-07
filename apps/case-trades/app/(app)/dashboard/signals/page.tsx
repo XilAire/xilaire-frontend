@@ -15,6 +15,18 @@ import { getProfile } from "@/lib/getProfile";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getAccessibleOrganizations } from "@/lib/orgs/getAccessibleOrganizations";
 import SignalFilters from "@/components/signals/SignalFilters";
+import type { Metadata } from "next";
+
+/* -------------------------------------------------
+   🧾 METADATA
+------------------------------------------------- */
+export const metadata: Metadata = {
+  title: "Signals | CASE Trades",
+  description:
+    "Create, manage, and analyze your trading signals with watchlists, execution tracking, performance insights, and signal lifecycle management in CASE Trades.",
+};
+
+
 import SignalsTable, {
   type Signal,
 } from "@/components/signals/SignalsTable";
@@ -22,11 +34,6 @@ import {
   getSignalDisplayStatus,
   normalizePersistedSignalStatus,
 } from "@/lib/signals/displayState";
-
-export const metadata = {
-  title: "Signals | CASE Trades",
-  description: "Options-first algorithmic and discretionary trade ideas.",
-};
 
 export const dynamic = "force-dynamic";
 

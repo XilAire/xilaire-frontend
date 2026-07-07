@@ -321,6 +321,8 @@ export async function sendPartialCloseSignalAlert({
     `📈 **Remaining %:** ${formatPercent(remainingPercent)}`,
     `🏁 **Exit:** ${formatMoney(exitPrice)}`,
     `📈 **Realized Return:** ${formatPercent(realizedReturnPct)}`,
+    `@everyone`,
+    `@here`,
     "",
     `#${organization.name.replace(/\s+/g, "")} #PartialClose`,
   ].join("\n");

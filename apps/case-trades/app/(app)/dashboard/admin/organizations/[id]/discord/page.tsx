@@ -1,6 +1,16 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import type { Metadata } from "next";
+
+/* -------------------------------------------------
+   🧾 METADATA
+------------------------------------------------- */
+export const metadata: Metadata = {
+  title: "Organization Discord | CASE Trades",
+  description:
+    "Manage Discord integration for an organization, including server connections, bot configuration, member synchronization, role mapping, invite management, and community settings within the CASE Trades platform.",
+};
 
 export const dynamic = "force-dynamic";
 

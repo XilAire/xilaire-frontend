@@ -1,4 +1,16 @@
 import Link from "next/link";
+
+import type { Metadata } from "next";
+
+/* -------------------------------------------------
+   🧾 METADATA
+------------------------------------------------- */
+export const metadata: Metadata = {
+  title: "Signal Products | CASE Trades",
+  description:
+    "Explore CASE Trades signal subscriptions, trading plans, premium memberships, pricing, features, and available signal products.",
+};
+
 import {
   Activity,
   ArrowRight,

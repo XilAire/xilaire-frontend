@@ -16,7 +16,16 @@ import type { OptionTypePerformance } from "@/components/journal/OptionTypePerfo
 import type { ExpirationPerformance } from "@/components/journal/ExpirationPerformanceTable";
 import type { DtePerformance } from "@/components/journal/DtePerformanceTable";
 
+import type { Metadata } from "next";
 
+/* -------------------------------------------------
+   🧾 METADATA
+------------------------------------------------- */
+export const metadata: Metadata = {
+  title: "Journal Reports | CASE Trades",
+  description:
+    "Analyze your trading performance with comprehensive journal reports, broker import analytics, win rate, profit factor, expectancy, equity curves, symbol performance, and advanced trade statistics in CASE Trades.",
+};
 
 
 export const dynamic = "force-dynamic";
@@ -74,6 +83,24 @@ type ExecutionRow = {
     return_pct: number | null;
     created_by: string | null;
   } | null;
+};
+
+type ImportedJournalTradeRow = {
+  id: string;
+  user_id: string;
+  symbol: string | null;
+  instrument_type: string | null;
+  side: string | null;
+  entry_date: string | null;
+  exit_date: string | null;
+  entry_price: number | null;
+  exit_price: number | null;
+  quantity: number | null;
+  profit_loss: number | null;
+  profit_loss_pct: number | null;
+  notes: string | null;
+  created_at: string | null;
+  updated_at: string | null;
 };
 
 type ReportTrade = {
@@ -560,6 +587,113 @@ return {
   status,
   outcome,
 };
+  });
+}
+
+
+function normalizeImportedInstrument(value: string | null | undefined) {
+  const normalized = String(value ?? "")
+    .trim()
+    .toUpperCase();
+
+  if (
+    normalized === "OPTION" ||
+    normalized === "OPTIONS" ||
+    normalized === "OPT"
+  ) {
+    return "OPTION";
+  }
+
+  if (
+    normalized === "STOCK" ||
+    normalized === "STOCKS" ||
+    normalized === "EQUITY" ||
+    normalized === "EQUITIES" ||
+    normalized === "SHARE" ||
+    normalized === "SHARES"
+  ) {
+    return "STOCK";
+  }
+
+  return normalized || "—";
+}
+
+function normalizeImportedSide(value: string | null | undefined) {
+  const normalized = String(value ?? "")
+    .trim()
+    .toUpperCase();
+
+  if (normalized === "BUY_TO_OPEN") return "Buy to Open";
+  if (normalized === "SELL_TO_OPEN") return "Sell to Open";
+  if (normalized === "BUY_TO_CLOSE") return "Buy to Close";
+  if (normalized === "SELL_TO_CLOSE") return "Sell to Close";
+  if (normalized === "BUY") return "Buy";
+  if (normalized === "SELL") return "Sell";
+
+  return normalized || "—";
+}
+
+function getImportedReportTrades(importedTrades: ImportedJournalTradeRow[]) {
+  return importedTrades.map((trade): ReportTrade => {
+    const entryPrice = normalizeNumber(trade.entry_price);
+    const exitPrice = normalizeNumber(trade.exit_price);
+    const quantity = normalizeNumber(trade.quantity) ?? 0;
+    const instrumentType = normalizeImportedInstrument(trade.instrument_type);
+
+    const calculatedPnlPct =
+      entryPrice !== null && exitPrice !== null && entryPrice !== 0
+        ? Number((((exitPrice - entryPrice) / entryPrice) * 100).toFixed(2))
+        : null;
+
+    const pnl = normalizeNumber(trade.profit_loss);
+    const pnlPct = normalizeNumber(trade.profit_loss_pct) ?? calculatedPnlPct;
+
+    const outcome =
+      pnl !== null
+        ? pnl > 0
+          ? "WIN"
+          : pnl < 0
+            ? "LOSS"
+            : "BREAKEVEN"
+        : null;
+
+    const openedAt = trade.entry_date ?? trade.created_at ?? null;
+    const closedAt = trade.exit_date ?? null;
+
+    const status = closedAt || pnl !== null ? "Closed" : "Open";
+
+    return {
+      id: trade.id,
+      signal_id: trade.id,
+      symbol: String(trade.symbol ?? "—").trim().toUpperCase() || "—",
+
+      instrument_type: instrumentType,
+      option_type: null,
+      expiration_date: null,
+      entry_date: openedAt,
+
+      side: normalizeImportedSide(trade.side),
+
+      trade_style: "IMPORT",
+
+      confidence: null,
+
+      quantity,
+
+      entry_price: entryPrice,
+      exit_price: exitPrice,
+
+      opened_at: openedAt,
+      closed_at: closedAt,
+
+      duration_minutes: getDurationMinutes(openedAt, closedAt),
+
+      profit_loss: pnl,
+      profit_loss_pct: pnlPct,
+
+      status,
+      outcome,
+    };
   });
 }
 
@@ -2168,8 +2302,55 @@ export default async function JournalReportsPage({
     throw new Error("Failed to load journal reports.");
   }
 
+  let importedQuery = supabase
+    .from("journal_trades")
+    .select(
+      `
+      id,
+      user_id,
+      symbol,
+      instrument_type,
+      side,
+      entry_date,
+      exit_date,
+      entry_price,
+      exit_price,
+      quantity,
+      profit_loss,
+      profit_loss_pct,
+      notes,
+      created_at,
+      updated_at
+      `,
+    )
+    .order("created_at", { ascending: false });
+
+  if (!masterAdmin) {
+    importedQuery = importedQuery.eq("user_id", user.id);
+  }
+
+  const { data: importedData, error: importedError } = await importedQuery;
+
+  if (importedError) {
+    console.error("Failed to load imported journal report trades", importedError);
+    throw new Error("Failed to load imported journal report trades.");
+  }
+
   const executions = (data ?? []) as unknown as ExecutionRow[];
-  const allTrades = getReportTrades(executions);
+  const importedRows = (importedData ?? []) as unknown as ImportedJournalTradeRow[];
+  const signalTrades = getReportTrades(executions);
+  const importedTrades = getImportedReportTrades(importedRows);
+
+  const allTrades = [...signalTrades, ...importedTrades].sort((a, b) => {
+    const aTime = new Date(
+      a.opened_at ?? a.closed_at ?? a.entry_date ?? 0,
+    ).getTime();
+    const bTime = new Date(
+      b.opened_at ?? b.closed_at ?? b.entry_date ?? 0,
+    ).getTime();
+
+    return bTime - aTime;
+  });
 
   const trades = filterTrades({
     trades: allTrades,
@@ -2274,7 +2455,7 @@ export default async function JournalReportsPage({
           </h1>
 
           <p className="text-sm text-slate-400">
-            Real execution analytics powered by signals, executions, and fills.
+            Real execution analytics powered by signals, executions, fills, and imported broker trades.
           </p>
         </div>
 
@@ -2406,4 +2587,3 @@ export default async function JournalReportsPage({
     </div>
   );
 }
-

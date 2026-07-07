@@ -1,5 +1,17 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import type { ReactNode } from "react";
+import type { Metadata } from "next";
+
+/* -------------------------------------------------
+   🧾 METADATA
+------------------------------------------------- */
+export const metadata: Metadata = {
+  title: "Trade Details | CASE Trades",
+  description:
+    "View complete trade details, execution history, broker import information, screenshots, notes, AI trade reviews, performance metrics, and journal analytics for an individual trade in CASE Trades.",
+};
+
 import JournalNotesForm from "@/components/journal/JournalNotesForm";
 import TradeScreenshotManager, {
   type TradeScreenshot,
@@ -20,6 +32,7 @@ import {
   Target,
   TrendingDown,
   TrendingUp,
+  Upload,
 } from "lucide-react";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -113,6 +126,24 @@ type ExecutionRow = {
   };
 };
 
+type ImportedJournalTradeRow = {
+  id: string;
+  user_id: string;
+  symbol: string | null;
+  instrument_type: string | null;
+  side: string | null;
+  entry_date: string | null;
+  exit_date: string | null;
+  entry_price: number | string | null;
+  exit_price: number | string | null;
+  quantity: number | string | null;
+  profit_loss: number | string | null;
+  profit_loss_pct: number | string | null;
+  notes: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
 function isMasterAdmin(role: Awaited<ReturnType<typeof resolveCurrentUserRole>>) {
   return (
     role?.role_name === "master_admin" ||
@@ -122,43 +153,65 @@ function isMasterAdmin(role: Awaited<ReturnType<typeof resolveCurrentUserRole>>)
   );
 }
 
-function formatMoney(value: number | null | undefined) {
-  if (value === null || value === undefined || !Number.isFinite(Number(value))) {
+function toFiniteNumber(value: number | string | null | undefined) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  const parsed = Number(value);
+
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+
+  return parsed;
+}
+
+function formatMoney(value: number | string | null | undefined) {
+  const parsed = toFiniteNumber(value);
+
+  if (parsed === null) {
     return "—";
   }
 
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-  }).format(Number(value));
+  }).format(parsed);
 }
 
-function formatMoneyWithSign(value: number | null | undefined) {
-  if (value === null || value === undefined || !Number.isFinite(Number(value))) {
+function formatMoneyWithSign(value: number | string | null | undefined) {
+  const parsed = toFiniteNumber(value);
+
+  if (parsed === null) {
     return "Open";
   }
 
-  const prefix = Number(value) > 0 ? "+" : "";
+  const prefix = parsed > 0 ? "+" : "";
 
-  return `${prefix}${formatMoney(Number(value))}`;
+  return `${prefix}${formatMoney(parsed)}`;
 }
 
-function formatPercentWithSign(value: number | null | undefined) {
-  if (value === null || value === undefined || !Number.isFinite(Number(value))) {
+function formatPercentWithSign(value: number | string | null | undefined) {
+  const parsed = toFiniteNumber(value);
+
+  if (parsed === null) {
     return "—";
   }
 
-  const prefix = Number(value) > 0 ? "+" : "";
+  const prefix = parsed > 0 ? "+" : "";
 
-  return `${prefix}${Number(value).toFixed(2)}%`;
+  return `${prefix}${parsed.toFixed(2)}%`;
 }
 
-function formatNumber(value: number | null | undefined) {
-  if (value === null || value === undefined || !Number.isFinite(Number(value))) {
+function formatNumber(value: number | string | null | undefined) {
+  const parsed = toFiniteNumber(value);
+
+  if (parsed === null) {
     return "—";
   }
 
-  return String(Number(value));
+  return String(parsed);
 }
 
 function formatDateTime(value: string | null | undefined) {
@@ -238,16 +291,18 @@ function averageWeightedPrice(fills: FillRow[]) {
   return Number((totalValue / totalQuantity).toFixed(4));
 }
 
-function getPnlTone(value: number | null | undefined) {
-  if (value === null || value === undefined) {
+function getPnlTone(value: number | string | null | undefined) {
+  const parsed = toFiniteNumber(value);
+
+  if (parsed === null) {
     return "neutral";
   }
 
-  if (value > 0) {
+  if (parsed > 0) {
     return "positive";
   }
 
-  if (value < 0) {
+  if (parsed < 0) {
     return "negative";
   }
 
@@ -268,6 +323,14 @@ function getContractLabel(signal: ExecutionRow["signals"]) {
   return "STOCK";
 }
 
+function getImportedContractLabel(trade: ImportedJournalTradeRow) {
+  if (trade.instrument_type === "OPTION") {
+    return trade.notes ?? "Imported Option";
+  }
+
+  return trade.instrument_type ?? "Imported Trade";
+}
+
 function getMultiplier(signal: ExecutionRow["signals"]) {
   return signal.instrument_type === "OPTION" ? 100 : 1;
 }
@@ -284,6 +347,24 @@ function normalizeOutcome(value: string | null | undefined) {
   }
 
   return "—";
+}
+
+function inferImportedOutcome(pnl: number | string | null | undefined) {
+  const parsed = toFiniteNumber(pnl);
+
+  if (parsed === null) {
+    return "Open";
+  }
+
+  if (parsed > 0) {
+    return "WIN";
+  }
+
+  if (parsed < 0) {
+    return "LOSS";
+  }
+
+  return "BREAKEVEN";
 }
 
 function formatBrokerAction(
@@ -394,8 +475,50 @@ export default async function JournalTradeDetailPage({
     .eq("id", params.tradeId)
     .maybeSingle<ExecutionRow>();
 
-  if (error || !execution || !execution.signals) {
-    notFound();
+  if (error) {
+    console.error("Failed to load execution journal trade detail", error);
+  }
+
+  if (!execution || !execution.signals) {
+    let importedQuery = supabase
+      .from("journal_trades")
+      .select(
+        `
+        id,
+        user_id,
+        symbol,
+        instrument_type,
+        side,
+        entry_date,
+        exit_date,
+        entry_price,
+        exit_price,
+        quantity,
+        profit_loss,
+        profit_loss_pct,
+        notes,
+        created_at,
+        updated_at
+        `
+      )
+      .eq("id", params.tradeId);
+
+    if (!masterAdmin) {
+      importedQuery = importedQuery.eq("user_id", user.id);
+    }
+
+    const { data: importedTrade, error: importedError } =
+      await importedQuery.maybeSingle<ImportedJournalTradeRow>();
+
+    if (importedError) {
+      console.error("Failed to load imported journal trade detail", importedError);
+    }
+
+    if (!importedTrade) {
+      notFound();
+    }
+
+    return <ImportedBrokerTradeDetail trade={importedTrade} />;
   }
 
   const tradeExecution = execution;
@@ -872,6 +995,276 @@ export default async function JournalTradeDetailPage({
   );
 }
 
+function ImportedBrokerTradeDetail({
+  trade,
+}: {
+  trade: ImportedJournalTradeRow;
+}) {
+  const pnl = toFiniteNumber(trade.profit_loss);
+  const pnlPct = toFiniteNumber(trade.profit_loss_pct);
+  const status = trade.exit_date ? "Closed" : "Open";
+  const outcome = inferImportedOutcome(trade.profit_loss);
+  const duration = formatDuration(trade.entry_date, trade.exit_date);
+
+  return (
+    <div className="max-w-7xl space-y-8">
+      <div>
+        <Link
+          href="/dashboard/journal"
+          className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-slate-200"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Journal
+        </Link>
+
+        <div className="mt-4 flex flex-col justify-between gap-4 md:flex-row md:items-start">
+          <div>
+            <p className="text-sm font-semibold text-emerald-300">
+              Imported Broker Trade
+            </p>
+
+            <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-100">
+              {trade.symbol ?? "—"} · {getImportedContractLabel(trade)}
+            </h1>
+
+            <p className="mt-2 text-sm text-slate-400">
+              Journal Trade ID: {trade.id}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <StatusBadge status={status} />
+            <OutcomeBadge outcome={outcome} />
+            <SourceBadge />
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-4">
+        <Metric
+          title="P/L"
+          value={formatMoneyWithSign(pnl)}
+          icon={<BarChart3 />}
+          tone={getPnlTone(pnl)}
+        />
+
+        <Metric
+          title="P/L %"
+          value={formatPercentWithSign(pnlPct)}
+          icon={<TrendingUp />}
+          tone={getPnlTone(pnlPct)}
+        />
+
+        <Metric
+          title="Quantity"
+          value={formatNumber(trade.quantity)}
+          icon={<Target />}
+        />
+
+        <Metric title="Duration" value={duration} icon={<Clock />} />
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-3">
+        <section className="rounded-xl border border-white/10 bg-slate-900/80 p-6 xl:col-span-2">
+          <div className="mb-5 flex items-center gap-3">
+            <div className="rounded-xl bg-emerald-500/10 p-3 text-emerald-400">
+              <BookOpen className="h-5 w-5" />
+            </div>
+
+            <div>
+              <h2 className="text-lg font-semibold text-slate-100">
+                Imported Trade Summary
+              </h2>
+
+              <p className="text-sm text-slate-400">
+                Broker-imported trade details from the journal ledger.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <Info label="Symbol" value={trade.symbol ?? "—"} />
+            <Info label="Instrument" value={trade.instrument_type ?? "—"} />
+            <Info
+              label="Contract / Notes"
+              value={getImportedContractLabel(trade)}
+            />
+            <Info label="Side" value={formatBrokerAction(trade.side)} />
+            <Info label="Entry Price" value={formatMoney(trade.entry_price)} />
+            <Info
+              label="Exit Price"
+              value={formatMoney(trade.exit_price)}
+              tone={getPnlTone(pnl)}
+            />
+            <Info label="Entry Date" value={formatDateTime(trade.entry_date)} />
+            <Info label="Exit Date" value={formatDateTime(trade.exit_date)} />
+            <Info label="Quantity" value={formatNumber(trade.quantity)} />
+            <Info
+              label="Profit / Loss"
+              value={formatMoneyWithSign(trade.profit_loss)}
+              tone={getPnlTone(trade.profit_loss)}
+            />
+            <Info
+              label="Return"
+              value={formatPercentWithSign(trade.profit_loss_pct)}
+              tone={getPnlTone(trade.profit_loss_pct)}
+            />
+            <Info label="Outcome" value={outcome} />
+            <Info label="Imported At" value={formatDateTime(trade.created_at)} />
+            <Info label="Updated At" value={formatDateTime(trade.updated_at)} />
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-white/10 bg-slate-900/80 p-6">
+          <div className="mb-5 flex items-center gap-3">
+            <div className="rounded-xl bg-sky-500/10 p-3 text-sky-300">
+              <Upload className="h-5 w-5" />
+            </div>
+
+            <div>
+              <h2 className="text-lg font-semibold text-slate-100">
+                Import Health
+              </h2>
+
+              <p className="text-sm text-slate-400">
+                Broker CSV import validation state.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <MiniCheck
+              label="Imported row"
+              value="Found"
+              complete={Boolean(trade.id)}
+            />
+            <MiniCheck
+              label="Entry date"
+              value={formatDate(trade.entry_date)}
+              complete={Boolean(trade.entry_date)}
+            />
+            <MiniCheck
+              label="Exit date"
+              value={formatDate(trade.exit_date)}
+              complete={Boolean(trade.exit_date)}
+            />
+            <MiniCheck
+              label="P/L calculated"
+              value={formatMoneyWithSign(trade.profit_loss)}
+              complete={pnl !== null}
+            />
+          </div>
+        </section>
+      </div>
+
+      <section className="rounded-xl border border-white/10 bg-slate-900/80 p-6">
+        <div className="mb-5 flex items-center gap-3">
+          <div className="rounded-xl bg-emerald-500/10 p-3 text-emerald-400">
+            <LineChart className="h-5 w-5" />
+          </div>
+
+          <div>
+            <h2 className="text-lg font-semibold text-slate-100">
+              Imported Trade Ledger
+            </h2>
+
+            <p className="text-sm text-slate-400">
+              Imported broker trades are stored directly in journal_trades.
+            </p>
+          </div>
+        </div>
+
+        <div className="overflow-hidden rounded-lg border border-white/10">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-slate-950 text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-4 py-3">Side</th>
+                <th className="px-4 py-3">Quantity</th>
+                <th className="px-4 py-3">Entry</th>
+                <th className="px-4 py-3">Exit</th>
+                <th className="px-4 py-3">P/L</th>
+              </tr>
+            </thead>
+
+            <tbody className="divide-y divide-white/10">
+              <tr>
+                <td className="px-4 py-3">
+                  <FillBadge side={trade.side} />
+                </td>
+                <td className="px-4 py-3 text-slate-300">
+                  {formatNumber(trade.quantity)}
+                </td>
+                <td className="px-4 py-3 text-slate-300">
+                  <div>{formatMoney(trade.entry_price)}</div>
+                  <div className="text-xs text-slate-500">
+                    {formatDateTime(trade.entry_date)}
+                  </div>
+                </td>
+                <td className="px-4 py-3 text-slate-300">
+                  <div>{formatMoney(trade.exit_price)}</div>
+                  <div className="text-xs text-slate-500">
+                    {formatDateTime(trade.exit_date)}
+                  </div>
+                </td>
+                <td
+                  className={`px-4 py-3 font-medium ${
+                    getPnlTone(trade.profit_loss) === "positive"
+                      ? "text-emerald-400"
+                      : getPnlTone(trade.profit_loss) === "negative"
+                        ? "text-red-400"
+                        : "text-slate-300"
+                  }`}
+                >
+                  <div>{formatMoneyWithSign(trade.profit_loss)}</div>
+                  <div className="text-xs">
+                    {formatPercentWithSign(trade.profit_loss_pct)}
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {trade.notes ? (
+        <section className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-6">
+          <div className="mb-5 flex items-center gap-3">
+            <div className="rounded-xl bg-emerald-500/10 p-3 text-emerald-400">
+              <StickyNote className="h-5 w-5" />
+            </div>
+
+            <div>
+              <h2 className="text-lg font-semibold text-slate-100">
+                Broker Notes
+              </h2>
+
+              <p className="text-sm text-slate-400">
+                Imported description from the broker CSV.
+              </p>
+            </div>
+          </div>
+
+          <TextBlock title="Imported Notes" value={trade.notes} />
+        </section>
+      ) : null}
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <WorkspaceCard
+          title="Broker Import"
+          icon={<Upload />}
+          body="This trade was imported from a broker CSV and is stored in the journal_trades table."
+        />
+
+        <WorkspaceCard
+          title="Future Enhancements"
+          icon={<Bot />}
+          body="Next, imported trades can be connected to journal notes, screenshots, AI review, and matching CASE signals."
+        />
+      </div>
+    </div>
+  );
+}
+
 function JournalUpgradeRequired() {
   return (
     <div className="max-w-4xl space-y-6">
@@ -920,7 +1313,7 @@ function Metric({
 }: {
   title: string;
   value: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
   tone?: "positive" | "negative" | "neutral";
 }) {
   const iconClass =
@@ -969,7 +1362,7 @@ function Info({
   return (
     <div className="rounded-lg border border-white/10 bg-slate-950 p-4">
       <p className="text-xs text-slate-500">{label}</p>
-      <p className={`mt-1 font-medium ${valueClass}`}>{value}</p>
+      <p className={`mt-1 break-words font-medium ${valueClass}`}>{value}</p>
     </div>
   );
 }
@@ -1021,6 +1414,14 @@ function MiniCheck({
   );
 }
 
+function SourceBadge() {
+  return (
+    <span className="rounded-full bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-300">
+      Broker Import
+    </span>
+  );
+}
+
 function StatusBadge({ status }: { status: string }) {
   const normalized = status.toLowerCase();
 
@@ -1065,9 +1466,9 @@ function FillBadge({ side }: { side: string | null }) {
   const normalized = String(side ?? "").toUpperCase();
 
   const className =
-    normalized === "OPEN"
+    normalized === "OPEN" || normalized === "BUY"
       ? "bg-emerald-500/10 text-emerald-300"
-      : normalized === "CLOSE"
+      : normalized === "CLOSE" || normalized === "SELL"
         ? "bg-sky-500/10 text-sky-300"
         : "bg-slate-500/10 text-slate-300";
 
@@ -1084,7 +1485,7 @@ function WorkspaceCard({
   body,
 }: {
   title: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
   body: string;
 }) {
   return (

@@ -1,5 +1,16 @@
 import { sendManualDiscordMessage } from "./actions";
 
+import type { Metadata } from "next";
+
+/* -------------------------------------------------
+   🧾 METADATA
+------------------------------------------------- */
+export const metadata: Metadata = {
+  title: "Discord Administration | CASE Trades",
+  description:
+    "Manage Discord server integration, organization invites, member synchronization, role mapping, bot configuration, and community administration for the CASE Trades platform.",
+};
+
 const DISCORD_CHANNELS = [
   { label: "q-n-a", value: "1090305629974958151" },
   { label: "read-me-first", value: "925605160548450304" },

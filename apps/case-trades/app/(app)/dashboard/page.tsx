@@ -1,4 +1,15 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+
+/* -------------------------------------------------
+   🧾 METADATA
+------------------------------------------------- */
+export const metadata: Metadata = {
+  title: "Dashboard | CASE Trades",
+  description:
+    "View your CASE Trades dashboard with portfolio statistics, journal insights, trading activity, performance metrics, and account summaries.",
+};
+
 import {
   Activity,
   BarChart3,

@@ -1,5 +1,15 @@
 import Link from "next/link";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import type { Metadata } from "next";
+
+/* -------------------------------------------------
+   🧾 METADATA
+------------------------------------------------- */
+export const metadata: Metadata = {
+  title: "Platform Settings | CASE Trades",
+  description:
+    "Configure global CASE Trades platform settings, system preferences, integrations, feature flags, security options, branding, and administrative controls.",
+};
 
 export const dynamic = "force-dynamic";
 

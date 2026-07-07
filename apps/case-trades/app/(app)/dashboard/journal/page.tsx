@@ -15,12 +15,24 @@ import {
   Activity,
   TrendingDown,
   FileText,
+  Upload,
 } from "lucide-react";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getUserEntitlements } from "@/lib/auth/getUserEntitlements";
 import { resolveCurrentUserRole } from "@/lib/auth/resolveCurrentUserRole";
 import { getSignalDisplayStatus } from "@/lib/signals/displayState";
+
+import type { Metadata } from "next";
+
+/* -------------------------------------------------
+   🧾 METADATA
+------------------------------------------------- */
+export const metadata: Metadata = {
+  title: "Journal | CASE Trades",
+  description:
+    "Manage your trading journal with manual and imported broker trades, execution tracking, screenshots, notes, analytics, performance insights, and AI-powered trade reviews in CASE Trades.",
+};
 
 export const dynamic = "force-dynamic";
 
@@ -74,6 +86,24 @@ type SignalRow = {
   signal_executions: SignalExecutionRow[] | null;
 };
 
+type ImportedJournalTradeRow = {
+  id: string;
+  user_id: string;
+  symbol: string | null;
+  instrument_type: string | null;
+  side: string | null;
+  entry_date: string | null;
+  exit_date: string | null;
+  entry_price: number | null;
+  exit_price: number | null;
+  quantity: number | null;
+  profit_loss: number | null;
+  profit_loss_pct: number | null;
+  notes: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
 type JournalTrade = {
   id: string;
   signal_id: string;
@@ -93,6 +123,7 @@ type JournalTrade = {
   status: string;
   outcome: string;
   confidence: number | null;
+  source: "CASE" | "IMPORT";
 };
 
 function isMasterAdmin(
@@ -229,6 +260,41 @@ function normalizeOutcome(value: string | null) {
   return "—";
 }
 
+function inferImportedOutcome(pnl: number | null) {
+  if (pnl === null) return "—";
+  if (pnl > 0) return "WIN";
+  if (pnl < 0) return "LOSS";
+  return "BREAKEVEN";
+}
+
+function buildImportedJournalTrades(importedTrades: ImportedJournalTradeRow[]) {
+  return importedTrades.map((trade): JournalTrade => {
+    const isClosed = Boolean(trade.exit_date || trade.exit_price !== null);
+
+    return {
+      id: trade.id,
+      signal_id: trade.id,
+      symbol: trade.symbol ?? "—",
+      instrument: trade.instrument_type ?? "—",
+      contractLabel: trade.instrument_type ?? "Imported Trade",
+      side: trade.side ?? "—",
+      strategy: "BROKER IMPORT",
+      quantity: Number(trade.quantity ?? 0),
+      entryPrice: trade.entry_price ?? null,
+      exitPrice: trade.exit_price ?? null,
+      entryDate: trade.entry_date,
+      exitDate: trade.exit_date,
+      duration: formatDuration(trade.entry_date, trade.exit_date),
+      pnl: trade.profit_loss ?? null,
+      pnlPct: trade.profit_loss_pct ?? null,
+      status: isClosed ? "Closed" : "Open",
+      outcome: inferImportedOutcome(trade.profit_loss ?? null),
+      confidence: null,
+      source: "IMPORT",
+    };
+  });
+}
+
 function buildJournalTrades(signals: SignalRow[]) {
   return signals.flatMap((signal): JournalTrade[] => {
     const executions = signal.signal_executions ?? [];
@@ -273,6 +339,7 @@ function buildJournalTrades(signals: SignalRow[]) {
           status: displayStatus,
           outcome: normalizeOutcome(signal.outcome),
           confidence: signal.confidence,
+          source: "CASE",
         },
       ];
     }
@@ -380,6 +447,7 @@ function buildJournalTrades(signals: SignalRow[]) {
               : displayStatus,
         outcome: normalizeOutcome(signal.outcome),
         confidence: signal.confidence,
+        source: "CASE",
       };
     });
   });
@@ -432,7 +500,7 @@ export default async function JournalPage() {
     ? "master"
     : entitlements.journal.analytics;
 
-  let query = supabase
+  let signalsQuery = supabase
     .from("signals")
     .select(
       `
@@ -484,18 +552,62 @@ export default async function JournalPage() {
     .order("created_at", { ascending: false });
 
   if (!masterAdmin) {
-    query = query.eq("created_by", user.id);
+    signalsQuery = signalsQuery.eq("created_by", user.id);
   }
 
-  const { data, error } = await query;
+  const { data: signalsData, error: signalsError } = await signalsQuery;
 
-  if (error) {
-    console.error("Failed to load journal trades", error);
-    throw new Error("Failed to load journal trades");
+  if (signalsError) {
+    console.error("Failed to load signal journal trades", signalsError);
+    throw new Error("Failed to load signal journal trades");
   }
 
-  const signals = (data ?? []) as SignalRow[];
-  const trades = buildJournalTrades(signals);
+  let importedQuery = supabase
+    .from("journal_trades")
+    .select(
+      `
+      id,
+      user_id,
+      symbol,
+      instrument_type,
+      side,
+      entry_date,
+      exit_date,
+      entry_price,
+      exit_price,
+      quantity,
+      profit_loss,
+      profit_loss_pct,
+      notes,
+      created_at,
+      updated_at
+      `,
+    )
+    .order("created_at", { ascending: false });
+
+  if (!masterAdmin) {
+    importedQuery = importedQuery.eq("user_id", user.id);
+  }
+
+  const { data: importedData, error: importedError } = await importedQuery;
+
+  if (importedError) {
+    console.error("Failed to load imported journal trades", importedError);
+    throw new Error("Failed to load imported journal trades");
+  }
+
+  const signals = (signalsData ?? []) as SignalRow[];
+  const signalTrades = buildJournalTrades(signals);
+  const importedTrades = buildImportedJournalTrades(
+    (importedData ?? []) as ImportedJournalTradeRow[],
+  );
+
+  const trades = [...signalTrades, ...importedTrades].sort((a, b) => {
+    const aDate = new Date(a.entryDate ?? a.exitDate ?? 0).getTime();
+    const bDate = new Date(b.entryDate ?? b.exitDate ?? 0).getTime();
+
+    return bDate - aDate;
+  });
 
   const closedTrades = trades.filter((trade) => trade.status === "Closed");
   const winningTrades = closedTrades.filter((trade) => {
@@ -535,18 +647,28 @@ export default async function JournalPage() {
           </h1>
 
           <p className="text-sm text-slate-400">
-            Execution-powered trade journal built from signals, executions, and
-            fills.
+            Execution-powered trade journal built from signals, executions,
+            fills, and imported broker trades.
           </p>
         </div>
 
-        <Link
-          href="/dashboard/admin/signals/create"
-          className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500"
-        >
-          <PlusCircle className="h-4 w-4" />
-          New Trade Signal
-        </Link>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Link
+            href="/dashboard/journal/import"
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-500/30 px-4 py-2 text-sm font-medium text-emerald-300 transition hover:bg-emerald-500/10"
+          >
+            <Upload className="h-4 w-4" />
+            Import Trades
+          </Link>
+
+          <Link
+            href="/dashboard/admin/signals/create"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-500"
+          >
+            <PlusCircle className="h-4 w-4" />
+            New Trade Signal
+          </Link>
+        </div>
       </div>
 
       <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4">
@@ -560,7 +682,8 @@ export default async function JournalPage() {
 
             <p className="text-xs text-slate-400">
               Tier: {formatTier(journalTier)} • Analytics:{" "}
-              {String(analyticsLevel).toUpperCase()}
+              {String(analyticsLevel).toUpperCase()} • Imported Trades:{" "}
+              {importedTrades.length}
             </p>
           </div>
 
@@ -621,7 +744,7 @@ export default async function JournalPage() {
               </h2>
 
               <p className="text-sm text-slate-400">
-                Real trades from the CASE execution ledger.
+                Real trades from the CASE execution ledger and broker imports.
               </p>
             </div>
 
@@ -636,17 +759,18 @@ export default async function JournalPage() {
 
           {trades.length === 0 ? (
             <div className="rounded-lg border border-white/10 bg-slate-950 px-4 py-10 text-center text-sm text-slate-500">
-              No real execution trades found yet. Create a signal and open an
-              execution to populate the journal.
+              No trades found yet. Create a signal, open an execution, or import
+              a broker CSV to populate the journal.
             </div>
           ) : (
             <>
               <div className="hidden overflow-hidden rounded-lg border border-white/10 md:block">
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[1100px] text-left text-sm">
+                  <table className="w-full min-w-[1150px] text-left text-sm">
                     <thead className="bg-slate-950 text-xs uppercase tracking-wide text-slate-500">
                       <tr>
                         <th className="px-4 py-3">Symbol</th>
+                        <th className="px-4 py-3">Source</th>
                         <th className="px-4 py-3">Contract</th>
                         <th className="px-4 py-3">Side</th>
                         <th className="px-4 py-3">Qty</th>
@@ -674,6 +798,9 @@ export default async function JournalPage() {
                             </div>
                           </td>
 
+                          <td className="px-4 py-3">
+                            <SourceBadge source={trade.source} />
+                          </td>
                           <td className="px-4 py-3">{trade.contractLabel}</td>
                           <td className="px-4 py-3">{trade.side}</td>
                           <td className="px-4 py-3">{trade.quantity}</td>
@@ -737,9 +864,21 @@ export default async function JournalPage() {
 
         <div className="space-y-6">
           <JournalSideCard
+            title="Broker Imports"
+            icon={<Upload />}
+            body="Import historical trades from Charles Schwab, Robinhood, Fidelity, Webull, IBKR, Tastytrade, E*TRADE, TradeStation, ThinkOrSwim, and generic CSV exports."
+            items={[
+              "CSV preview before saving",
+              "Duplicate detection",
+              "Broker format detection",
+              "Journal-ready trade rows",
+            ]}
+          />
+
+          <JournalSideCard
             title="Execution Ledger"
             icon={<Activity />}
-            body="The journal now reads from signals, signal executions, and execution fills. Demo data has been removed."
+            body="The journal now reads from signals, signal executions, execution fills, and imported broker trades. Demo data has been removed."
             items={[
               "Signals are the trade idea.",
               "Executions are the trade container.",
@@ -762,7 +901,7 @@ export default async function JournalPage() {
           <JournalSideCard
             title="Reports Ready"
             icon={<BarChart3 />}
-            body="Because this journal is ledger-powered, reports can now be built from real execution data."
+            body="Because this journal is ledger-powered, reports can now be built from real execution data and imported broker trades."
             items={[
               "Win rate",
               "Expectancy",
@@ -804,13 +943,17 @@ function MobileJournalTradeCard({ trade }: { trade: JournalTrade }) {
         </div>
       </div>
 
-      <div className="mb-4 rounded-lg border border-white/10 bg-slate-900/70 p-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Contract
-        </p>
-        <p className="mt-1 break-words text-sm text-slate-200">
-          {trade.contractLabel}
-        </p>
+      <div className="mb-4 flex items-center justify-between rounded-lg border border-white/10 bg-slate-900/70 p-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Contract
+          </p>
+          <p className="mt-1 break-words text-sm text-slate-200">
+            {trade.contractLabel}
+          </p>
+        </div>
+
+        <SourceBadge source={trade.source} />
       </div>
 
       <div className="grid grid-cols-2 gap-3 text-sm">
@@ -986,6 +1129,19 @@ function FilterPill({
       }
     >
       {label}
+    </span>
+  );
+}
+
+function SourceBadge({ source }: { source: JournalTrade["source"] }) {
+  const className =
+    source === "IMPORT"
+      ? "bg-blue-500/10 text-blue-300"
+      : "bg-emerald-500/10 text-emerald-300";
+
+  return (
+    <span className={`rounded-full px-2 py-1 text-xs font-medium ${className}`}>
+      {source === "IMPORT" ? "Import" : "CASE"}
     </span>
   );
 }

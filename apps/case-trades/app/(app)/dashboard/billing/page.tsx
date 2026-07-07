@@ -1,6 +1,17 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 import type { ReactNode } from "react";
+import type { Metadata } from "next";
+
+/* -------------------------------------------------
+   🧾 METADATA
+------------------------------------------------- */
+export const metadata: Metadata = {
+  title: "Billing | CASE Trades",
+  description:
+    "Manage your CASE Trades subscription, billing information, invoices, payment methods, and account plan settings.",
+};
+
 import {
   BellRing,
   BookOpen,

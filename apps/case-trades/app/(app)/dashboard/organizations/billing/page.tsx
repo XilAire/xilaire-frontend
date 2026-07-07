@@ -1,5 +1,18 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
+
+import type { Metadata } from "next";
+
+/* -------------------------------------------------
+   🧾 METADATA
+------------------------------------------------- */
+export const metadata: Metadata = {
+  title: "Organization Billing | CASE Trades",
+  description:
+    "Manage your organization's subscription, billing details, payment methods, invoices, seats, and plan settings for your CASE Trades workspace.",
+};
+
+
 import {
   AlertTriangle,
   CheckCircle2,

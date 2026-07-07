@@ -320,6 +320,8 @@ export async function sendClosedSignalAlert(signalId: string) {
     `📈 **Return:** ${formatPercent(closeSignal.return_pct)}`,
     `💵 **Entry:** ${formatMoney(closeSignal.entry_price)}`,
     `🏁 **Exit:** ${formatMoney(closeSignal.exit_price)}`,
+    `@everyone`,
+    `@here`,
     "",
     `#${organization.name.replace(/\s+/g, "")} #SignalClosed`,
   ].join("\n");

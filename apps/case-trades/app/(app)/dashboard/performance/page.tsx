@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 import {
   Activity,
   AlertTriangle,
@@ -12,6 +13,15 @@ import {
   TrendingUp,
   Trophy,
 } from "lucide-react";
+
+/* -------------------------------------------------
+   🧾 METADATA
+------------------------------------------------- */
+export const metadata: Metadata = {
+  title: "Performance | CASE Trades",
+  description:
+    "View signal performance, imported broker trade results, win rate, expectancy, equity curve, and risk analytics inside CASE Trades.",
+};
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { resolveCurrentUserRole } from "@/lib/auth/resolveCurrentUserRole";
@@ -75,9 +85,42 @@ type SignalRow = {
   closed_at: string | null;
 };
 
+type ImportedJournalTradeRow = {
+  id: string;
+  user_id: string;
+  symbol: string | null;
+  instrument_type: string | null;
+  side: string | null;
+  entry_date: string | null;
+  exit_date: string | null;
+  entry_price: number | string | null;
+  exit_price: number | string | null;
+  quantity: number | string | null;
+  profit_loss: number | string | null;
+  profit_loss_pct: number | string | null;
+  notes: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
 type NormalizedSignal = SignalRow & {
   normalized_return_pct: number | null;
   display_status: "Watching" | "Active" | "Triggered" | "Closed" | "Expired";
+};
+
+type PerformanceTrade = {
+  id: string;
+  source: "SIGNAL" | "IMPORT";
+  symbol: string;
+  instrument_type: string | null;
+  action: string | null;
+  status: "Watching" | "Active" | "Triggered" | "Closed" | "Expired" | "Open";
+  outcome: NormalizedOutcome;
+  return_pct: number | null;
+  entry_price: number | string | null;
+  created_at: string;
+  closed_at: string | null;
+  needs_outcome: boolean;
 };
 
 function getRangeStart(range: RangeKey) {
@@ -111,6 +154,17 @@ function normalizeReturnPct(value: number | string | null | undefined) {
 
   if (typeof value === "string") {
     const parsed = Number(value.replace("%", "").trim());
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+}
+
+function normalizeMoneyNumber(value: number | string | null | undefined) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+
+  if (typeof value === "string") {
+    const parsed = Number(value.replace("$", "").replace(",", "").trim());
     return Number.isFinite(parsed) ? parsed : null;
   }
 
@@ -214,6 +268,164 @@ function isSignalInsideRange(signal: NormalizedSignal, since: string | null) {
   return new Date(getRangeDate(signal)).getTime() >= new Date(since).getTime();
 }
 
+function getTradeRangeDate(trade: PerformanceTrade) {
+  if (trade.status === "Closed" || trade.status === "Expired") {
+    return trade.closed_at ?? trade.created_at;
+  }
+
+  return trade.created_at;
+}
+
+function isTradeInsideRange(trade: PerformanceTrade, since: string | null) {
+  if (!since) {
+    return true;
+  }
+
+  return new Date(getTradeRangeDate(trade)).getTime() >= new Date(since).getTime();
+}
+
+function normalizeImportedInstrument(value: string | null | undefined) {
+  const normalized = String(value ?? "")
+    .trim()
+    .toUpperCase();
+
+  if (
+    normalized === "OPTION" ||
+    normalized === "OPTIONS" ||
+    normalized === "OPT"
+  ) {
+    return "OPTION";
+  }
+
+  if (
+    normalized === "STOCK" ||
+    normalized === "STOCKS" ||
+    normalized === "EQUITY" ||
+    normalized === "EQUITIES" ||
+    normalized === "SHARE" ||
+    normalized === "SHARES"
+  ) {
+    return "STOCK";
+  }
+
+  return normalized || null;
+}
+
+function normalizeImportedSide(value: string | null | undefined) {
+  const normalized = String(value ?? "")
+    .trim()
+    .toUpperCase();
+
+  if (normalized === "BUY_TO_OPEN") return "Buy to Open";
+  if (normalized === "SELL_TO_OPEN") return "Sell to Open";
+  if (normalized === "BUY_TO_CLOSE") return "Buy to Close";
+  if (normalized === "SELL_TO_CLOSE") return "Sell to Close";
+  if (normalized === "BUY") return "Buy";
+  if (normalized === "SELL") return "Sell";
+
+  return normalized || "Import";
+}
+
+function getImportedReturnPct(trade: ImportedJournalTradeRow) {
+  const importedReturnPct = normalizeReturnPct(trade.profit_loss_pct);
+
+  if (importedReturnPct !== null) {
+    return importedReturnPct;
+  }
+
+  const entryPrice = normalizeMoneyNumber(trade.entry_price);
+  const exitPrice = normalizeMoneyNumber(trade.exit_price);
+
+  if (entryPrice === null || exitPrice === null || entryPrice === 0) {
+    return null;
+  }
+
+  return Number((((exitPrice - entryPrice) / entryPrice) * 100).toFixed(2));
+}
+
+function getImportedOutcome(trade: ImportedJournalTradeRow): NormalizedOutcome {
+  const pnl = normalizeMoneyNumber(trade.profit_loss);
+
+  if (pnl === null) {
+    return null;
+  }
+
+  if (pnl > 0) {
+    return "WIN";
+  }
+
+  if (pnl < 0) {
+    return "LOSS";
+  }
+
+  return "BREAKEVEN";
+}
+
+function getImportedStatus(trade: ImportedJournalTradeRow) {
+  if (trade.exit_date || trade.profit_loss !== null) {
+    return "Closed" as const;
+  }
+
+  return "Open" as const;
+}
+
+function getSignalPerformanceTrade(signal: NormalizedSignal): PerformanceTrade {
+  const outcome = getNormalizedOutcome(signal);
+  const needsOutcome = outcome === "UNRESOLVED";
+
+  return {
+    id: signal.id,
+    source: "SIGNAL",
+    symbol: signal.asset ?? signal.underlying ?? "—",
+    instrument_type: signal.instrument_type,
+    action: signal.action,
+    status: signal.display_status,
+    outcome,
+    return_pct: signal.normalized_return_pct,
+    entry_price: signal.entry_price,
+    created_at: signal.created_at,
+    closed_at: signal.closed_at,
+    needs_outcome: needsOutcome,
+  };
+}
+
+function getImportedPerformanceTrade(
+  trade: ImportedJournalTradeRow,
+): PerformanceTrade {
+  const status = getImportedStatus(trade);
+  const outcome = getImportedOutcome(trade);
+  const returnPct = getImportedReturnPct(trade);
+  const createdAt = trade.entry_date ?? trade.created_at ?? new Date(0).toISOString();
+
+  return {
+    id: trade.id,
+    source: "IMPORT",
+    symbol: String(trade.symbol ?? "—").trim().toUpperCase() || "—",
+    instrument_type: normalizeImportedInstrument(trade.instrument_type),
+    action: normalizeImportedSide(trade.side),
+    status,
+    outcome,
+    return_pct: returnPct,
+    entry_price: trade.entry_price,
+    created_at: createdAt,
+    closed_at: trade.exit_date,
+    needs_outcome: false,
+  };
+}
+
+function isActivePerformanceTrade(trade: PerformanceTrade) {
+  return (
+    trade.status === "Active" ||
+    trade.status === "Watching" ||
+    trade.status === "Triggered" ||
+    trade.status === "Open"
+  );
+}
+
+function isClosedPerformanceTrade(trade: PerformanceTrade) {
+  return trade.status === "Closed" || trade.status === "Expired";
+}
+
 export default async function PerformancePage({
   searchParams,
 }: PerformancePageProps) {
@@ -270,7 +482,42 @@ export default async function PerformancePage({
     throw new Error("Failed to load performance data");
   }
 
-  const allUnfiltered = ((signals ?? []) as SignalRow[]).map((signal) => {
+  let importedQuery = supabase
+    .from("journal_trades")
+    .select(
+      `
+      id,
+      user_id,
+      symbol,
+      instrument_type,
+      side,
+      entry_date,
+      exit_date,
+      entry_price,
+      exit_price,
+      quantity,
+      profit_loss,
+      profit_loss_pct,
+      notes,
+      created_at,
+      updated_at
+    `
+    )
+    .order("created_at", { ascending: false });
+
+  if (role?.role_rank !== 4) {
+    importedQuery = importedQuery.eq("user_id", user.id);
+  }
+
+  const { data: importedTradesData, error: importedTradesError } =
+    await importedQuery;
+
+  if (importedTradesError) {
+    console.error("Failed to load imported performance data", importedTradesError);
+    throw new Error("Failed to load imported performance data");
+  }
+
+  const allSignalUnfiltered = ((signals ?? []) as SignalRow[]).map((signal) => {
     const normalizedReturnPct = normalizeReturnPct(signal.return_pct);
 
     return {
@@ -292,43 +539,60 @@ export default async function PerformancePage({
     };
   }) as NormalizedSignal[];
 
-  const all = allUnfiltered.filter((signal) =>
-    isSignalInsideRange(signal, since)
+  const allImportedUnfiltered = ((importedTradesData ??
+    []) as ImportedJournalTradeRow[]).map(getImportedPerformanceTrade);
+
+  const signalPerformanceTrades =
+    allSignalUnfiltered.map(getSignalPerformanceTrade);
+
+  const allUnfiltered = [
+    ...signalPerformanceTrades,
+    ...allImportedUnfiltered,
+  ].sort((a, b) => {
+    const aDate = getTradeRangeDate(a);
+    const bDate = getTradeRangeDate(b);
+
+    return new Date(bDate).getTime() - new Date(aDate).getTime();
+  });
+
+  const all = allUnfiltered.filter((trade) => isTradeInsideRange(trade, since));
+
+  const activeTrades = all.filter(isActivePerformanceTrade);
+  const closedTrades = all.filter(isClosedPerformanceTrade);
+
+  const outcomeTrades = closedTrades.filter((trade) =>
+    ["WIN", "LOSS", "BREAKEVEN"].includes(String(trade.outcome))
   );
 
-  const activeSignals = all.filter(isActiveSignal);
-  const closedSignals = all.filter(isClosedSignal);
-
-  const outcomeSignals = closedSignals.filter((signal) =>
-    ["WIN", "LOSS", "BREAKEVEN"].includes(String(getNormalizedOutcome(signal)))
+  const unresolvedTrades = closedTrades.filter(
+    (trade) => trade.outcome === "UNRESOLVED"
   );
 
-  const unresolvedSignals = closedSignals.filter(
-    (signal) => getNormalizedOutcome(signal) === "UNRESOLVED"
-  );
+  const unresolvedSignals = allSignalUnfiltered
+    .filter((signal) => isSignalInsideRange(signal, since))
+    .filter((signal) => getNormalizedOutcome(signal) === "UNRESOLVED");
 
   const total = all.length;
-  const active = activeSignals.length;
-  const closed = closedSignals.length;
-  const unresolved = unresolvedSignals.length;
+  const active = activeTrades.length;
+  const closed = closedTrades.length;
+  const unresolved = unresolvedTrades.length;
 
-  const wins = outcomeSignals.filter(
-    (signal) => getNormalizedOutcome(signal) === "WIN"
+  const wins = outcomeTrades.filter((trade) => trade.outcome === "WIN").length;
+
+  const losses = outcomeTrades.filter((trade) => trade.outcome === "LOSS").length;
+
+  const breakeven = outcomeTrades.filter(
+    (trade) => trade.outcome === "BREAKEVEN"
   ).length;
 
-  const losses = outcomeSignals.filter(
-    (signal) => getNormalizedOutcome(signal) === "LOSS"
-  ).length;
-
-  const breakeven = outcomeSignals.filter(
-    (signal) => getNormalizedOutcome(signal) === "BREAKEVEN"
-  ).length;
+  const importedCount = all.filter((trade) => trade.source === "IMPORT").length;
+  const signalCount = all.filter((trade) => trade.source === "SIGNAL").length;
 
   const winRate =
     wins + losses > 0 ? Math.round((wins / (wins + losses)) * 100) : null;
 
-  const closedReturns = outcomeSignals
-    .map((signal) => signal.normalized_return_pct)
+  const closedReturns = outcomeTrades
+    .map((trade) => trade.return_pct)
     .filter((value): value is number => value !== null);
 
   const winReturns = closedReturns.filter((value) => value > 0);
@@ -365,17 +629,17 @@ export default async function PerformancePage({
         )
       : null;
 
-  const equityCurve = outcomeSignals
-    .filter((signal) => signal.normalized_return_pct !== null)
+  const equityCurve = outcomeTrades
+    .filter((trade) => trade.return_pct !== null)
     .sort((a, b) => {
       const aDate = a.closed_at ?? a.created_at;
       const bDate = b.closed_at ?? b.created_at;
 
       return new Date(aDate).getTime() - new Date(bDate).getTime();
     })
-    .reduce<number[]>((acc, signal) => {
+    .reduce<number[]>((acc, trade) => {
       const previous = acc.at(-1) ?? 0;
-      const returnPct = signal.normalized_return_pct ?? 0;
+      const returnPct = trade.return_pct ?? 0;
 
       acc.push(Number((previous + returnPct).toFixed(2)));
       return acc;
@@ -425,7 +689,7 @@ export default async function PerformancePage({
           </h1>
 
           <p className="text-sm text-slate-400">
-            Professional-grade analytics, outcomes, expectancy, and risk.
+            Professional-grade analytics powered by signals and imported broker trades.
           </p>
         </div>
 
@@ -449,7 +713,7 @@ export default async function PerformancePage({
 
       <div className="grid gap-4 md:grid-cols-4">
         <PerformanceStat
-          title="Total Signals"
+          title="Total Trades"
           value={String(total)}
           icon={<Activity />}
         />
@@ -507,19 +771,19 @@ export default async function PerformancePage({
           <MetricGrid
             items={[
               {
-                label: "Total Signals",
+                label: "Total Trades",
                 value: total,
                 icon: <Activity />,
               },
               {
-                label: "Active Signals",
-                value: active,
+                label: "Signal Trades",
+                value: signalCount,
                 icon: <TrendingUp />,
               },
               {
-                label: "Closed Signals",
-                value: closed,
-                icon: <Target />,
+                label: "Imported Trades",
+                value: importedCount,
+                icon: <BarChart3 />,
               },
               {
                 label: "Needs Outcome",
@@ -594,7 +858,7 @@ export default async function PerformancePage({
               },
               {
                 label: "Outcome-Ready Trades",
-                value: outcomeSignals.length,
+                value: outcomeTrades.length,
                 icon: <BarChart3 />,
               },
             ]}
@@ -741,7 +1005,7 @@ export default async function PerformancePage({
       )}
 
       <footer className="text-xs text-slate-500">
-        CASE Trades • Performance v10
+        CASE Trades • Performance v11
       </footer>
     </div>
   );

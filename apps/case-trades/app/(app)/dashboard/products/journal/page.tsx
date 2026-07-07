@@ -1,4 +1,15 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+
+/* -------------------------------------------------
+   🧾 METADATA
+------------------------------------------------- */
+export const metadata: Metadata = {
+  title: "Journal Products | CASE Trades",
+  description:
+    "Explore CASE Trades journal subscriptions, trading journal features, broker import capabilities, AI trade reviews, analytics, and premium journaling tools.",
+};
+
 import {
   ArrowRight,
   BarChart3,

@@ -8,7 +8,7 @@ import { CaseThemeProvider } from "@/components/providers/CaseThemeProvider";
 import { getProfile, type Profile } from "@/lib/getProfile";
 
 export const metadata = {
-  title: "CASE Trades | Dashboard",
+  title: "CASE Trades",
 };
 
 export default async function AppLayout({

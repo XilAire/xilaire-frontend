@@ -2,6 +2,18 @@ import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
+
+import type { Metadata } from "next";
+
+/* -------------------------------------------------
+   🧾 METADATA
+------------------------------------------------- */
+export const metadata: Metadata = {
+  title: "Organizations | CASE Trades",
+  description:
+    "Manage organizations, teams, members, roles, permissions, and collaborative trading workspaces within the CASE Trades platform.",
+};
+
 import {
   Building2,
   CheckCircle2,
