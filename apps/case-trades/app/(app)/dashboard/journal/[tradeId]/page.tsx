@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
 import type { Metadata } from "next";
 
 /* -------------------------------------------------
@@ -26,6 +26,7 @@ import {
   Bot,
   CheckCircle2,
   Clock,
+  Download,
   LineChart,
   Lock,
   StickyNote,
@@ -39,6 +40,12 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getUserEntitlements } from "@/lib/auth/getUserEntitlements";
 import { resolveCurrentUserRole } from "@/lib/auth/resolveCurrentUserRole";
 import { getSignalDisplayStatus } from "@/lib/signals/displayState";
+
+const JournalNotesFormComponent = JournalNotesForm as ComponentType<any>;
+const TradeTimelineComponent = TradeTimeline as ComponentType<any>;
+const TradeScreenshotManagerComponent =
+  TradeScreenshotManager as ComponentType<any>;
+const TradeReviewPanelComponent = TradeReviewPanel as ComponentType<any>;
 
 export const dynamic = "force-dynamic";
 
@@ -168,54 +175,68 @@ function toFiniteNumber(value: number | string | null | undefined) {
 }
 
 function formatMoney(value: number | string | null | undefined) {
-  const parsed = toFiniteNumber(value);
+  const amount = toFiniteNumber(value);
 
-  if (parsed === null) {
+  if (amount === null) {
     return "—";
   }
 
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-  }).format(parsed);
+  }).format(amount);
 }
 
 function formatMoneyWithSign(value: number | string | null | undefined) {
-  const parsed = toFiniteNumber(value);
+  const amount = toFiniteNumber(value);
 
-  if (parsed === null) {
-    return "Open";
+  if (amount === null) {
+    return "—";
   }
 
-  const prefix = parsed > 0 ? "+" : "";
+  const formatted = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(Math.abs(amount));
 
-  return `${prefix}${formatMoney(parsed)}`;
+  if (amount > 0) return `+${formatted}`;
+  if (amount < 0) return `-${formatted}`;
+
+  return formatted;
 }
 
 function formatPercentWithSign(value: number | string | null | undefined) {
-  const parsed = toFiniteNumber(value);
+  const amount = toFiniteNumber(value);
 
-  if (parsed === null) {
+  if (amount === null) {
     return "—";
   }
 
-  const prefix = parsed > 0 ? "+" : "";
+  const prefix = amount > 0 ? "+" : "";
 
-  return `${prefix}${parsed.toFixed(2)}%`;
+  return `${prefix}${amount.toFixed(2)}%`;
 }
 
 function formatNumber(value: number | string | null | undefined) {
-  const parsed = toFiniteNumber(value);
+  const amount = toFiniteNumber(value);
 
-  if (parsed === null) {
+  if (amount === null) {
     return "—";
   }
 
-  return String(parsed);
+  return new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 4,
+  }).format(amount);
 }
 
 function formatDateTime(value: string | null | undefined) {
   if (!value) {
+    return "—";
+  }
+
+  const date = new Date(value);
+
+  if (!Number.isFinite(date.getTime())) {
     return "—";
   }
 
@@ -225,25 +246,10 @@ function formatDateTime(value: string | null | undefined) {
     year: "numeric",
     hour: "numeric",
     minute: "2-digit",
-  }).format(new Date(value));
+  }).format(date);
 }
 
-function formatDate(value: string | null | undefined) {
-  if (!value) {
-    return "—";
-  }
-
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(new Date(value));
-}
-
-function formatDuration(
-  start: string | null | undefined,
-  end: string | null | undefined
-) {
+function formatDuration(start: string | null | undefined, end: string | null | undefined) {
   if (!start) {
     return "—";
   }
@@ -277,7 +283,7 @@ function formatDuration(
 function averageWeightedPrice(fills: FillRow[]) {
   const totalQuantity = fills.reduce(
     (sum, fill) => sum + Number(fill.contracts ?? 0),
-    0
+    0,
   );
 
   if (totalQuantity <= 0) {
@@ -291,22 +297,8 @@ function averageWeightedPrice(fills: FillRow[]) {
   return Number((totalValue / totalQuantity).toFixed(4));
 }
 
-function getPnlTone(value: number | string | null | undefined) {
-  const parsed = toFiniteNumber(value);
-
-  if (parsed === null) {
-    return "neutral";
-  }
-
-  if (parsed > 0) {
-    return "positive";
-  }
-
-  if (parsed < 0) {
-    return "negative";
-  }
-
-  return "neutral";
+function getMultiplier(signal: ExecutionRow["signals"]) {
+  return signal.instrument_type === "OPTION" ? 100 : 1;
 }
 
 function getContractLabel(signal: ExecutionRow["signals"]) {
@@ -314,7 +306,7 @@ function getContractLabel(signal: ExecutionRow["signals"]) {
     const parts = [
       signal.strike_price ? String(signal.strike_price) : null,
       signal.option_type,
-      signal.expiration_date ? formatDate(signal.expiration_date) : null,
+      signal.expiration_date,
     ].filter(Boolean);
 
     return parts.length > 0 ? parts.join(" ") : "OPTION";
@@ -323,20 +315,10 @@ function getContractLabel(signal: ExecutionRow["signals"]) {
   return "STOCK";
 }
 
-function getImportedContractLabel(trade: ImportedJournalTradeRow) {
-  if (trade.instrument_type === "OPTION") {
-    return trade.notes ?? "Imported Option";
-  }
-
-  return trade.instrument_type ?? "Imported Trade";
-}
-
-function getMultiplier(signal: ExecutionRow["signals"]) {
-  return signal.instrument_type === "OPTION" ? 100 : 1;
-}
-
 function normalizeOutcome(value: string | null | undefined) {
-  const normalized = String(value ?? "").trim().toUpperCase();
+  const normalized = String(value ?? "")
+    .trim()
+    .toUpperCase();
 
   if (
     normalized === "WIN" ||
@@ -349,36 +331,71 @@ function normalizeOutcome(value: string | null | undefined) {
   return "—";
 }
 
-function inferImportedOutcome(pnl: number | string | null | undefined) {
-  const parsed = toFiniteNumber(pnl);
+function inferImportedOutcome(value: number | string | null | undefined) {
+  const pnl = toFiniteNumber(value);
 
-  if (parsed === null) {
-    return "Open";
+  if (pnl === null) {
+    return "—";
   }
 
-  if (parsed > 0) {
+  if (pnl > 0) {
     return "WIN";
   }
 
-  if (parsed < 0) {
+  if (pnl < 0) {
     return "LOSS";
   }
 
   return "BREAKEVEN";
 }
 
-function formatBrokerAction(
-  value: string | null | undefined,
-  fallback?: string | null
-) {
-  const normalized = String(value ?? fallback ?? "").trim().toUpperCase();
+function getPnlTone(value: number | string | null | undefined) {
+  const amount = toFiniteNumber(value);
+
+  if (amount === null) {
+    return "neutral";
+  }
+
+  if (amount > 0) {
+    return "positive";
+  }
+
+  if (amount < 0) {
+    return "negative";
+  }
+
+  return "neutral";
+}
+
+function formatBrokerAction(value: string | null | undefined) {
+  const normalized = String(value ?? "")
+    .trim()
+    .toUpperCase();
 
   if (normalized === "BUY_TO_OPEN") return "Buy to Open";
   if (normalized === "SELL_TO_OPEN") return "Sell to Open";
+  if (normalized === "BUY_TO_CLOSE") return "Buy to Close";
+  if (normalized === "SELL_TO_CLOSE") return "Sell to Close";
   if (normalized === "BUY") return "Buy";
   if (normalized === "SELL") return "Sell";
 
   return normalized || "—";
+}
+
+function getImportedContractLabel(trade: ImportedJournalTradeRow) {
+  const instrument = String(trade.instrument_type ?? "")
+    .trim()
+    .toUpperCase();
+
+  if (instrument === "OPTION") {
+    return "Imported Option";
+  }
+
+  if (instrument === "STOCK") {
+    return "Imported Stock";
+  }
+
+  return trade.instrument_type ?? "Imported Trade";
 }
 
 function hasJournalNotes(notes: JournalNotesRow | null) {
@@ -394,6 +411,180 @@ function hasJournalNotes(notes: JournalNotesRow | null) {
       notes.discipline_score ||
       (Array.isArray(notes.tags) && notes.tags.length > 0)
   );
+}
+
+function escapeCsvValue(value: string | number | null | undefined) {
+  const normalized = String(value ?? "");
+  const escaped = normalized.replace(/"/g, '""');
+
+  return `"${escaped}"`;
+}
+
+function escapeHtmlValue(value: string | number | null | undefined) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function buildDetailCsv(rows: Array<[string, string | number | null | undefined]>) {
+  const headers = ["Field", "Value"];
+
+  return [headers, ...rows]
+    .map((row) => row.map((value) => escapeCsvValue(value)).join(","))
+    .join("\n");
+}
+
+function buildDetailJson(rows: Array<[string, string | number | null | undefined]>) {
+  return JSON.stringify(
+    rows.reduce<Record<string, string | number | null | undefined>>(
+      (acc, [label, value]) => {
+        acc[label] = value;
+        return acc;
+      },
+      {},
+    ),
+    null,
+    2,
+  );
+}
+
+function buildDetailExcelHtml(
+  title: string,
+  rows: Array<[string, string | number | null | undefined]>,
+) {
+  const rowHtml = rows
+    .map(([label, value]) => {
+      return `<tr><th>${escapeHtmlValue(label)}</th><td>${escapeHtmlValue(
+        value,
+      )}</td></tr>`;
+    })
+    .join("");
+
+  return `
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>${escapeHtmlValue(title)}</title>
+  </head>
+  <body>
+    <table>
+      <thead>
+        <tr>
+          <th>Field</th>
+          <th>Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rowHtml}
+      </tbody>
+    </table>
+  </body>
+</html>
+`.trim();
+}
+
+function buildDownloadHref(content: string, mimeType: string) {
+  return `data:${mimeType};charset=utf-8,${encodeURIComponent(content)}`;
+}
+
+function buildCaseTradeExportRows({
+  tradeExecution,
+  signal,
+  symbol,
+  tradeType,
+  status,
+  outcome,
+  totalQuantity,
+  remainingQuantity,
+  openedQuantity,
+  closedQuantity,
+  averageEntry,
+  averageExit,
+  pnl,
+  pnlPct,
+  duration,
+  fills,
+}: {
+  tradeExecution: ExecutionRow;
+  signal: NonNullable<ExecutionRow["signals"]>;
+  symbol: string;
+  tradeType: string;
+  status: string;
+  outcome: string;
+  totalQuantity: number;
+  remainingQuantity: number;
+  openedQuantity: number;
+  closedQuantity: number;
+  averageEntry: number | null;
+  averageExit: number | null;
+  pnl: number | null;
+  pnlPct: number | null;
+  duration: string;
+  fills: FillRow[];
+}) {
+  return [
+    ["Export Type", "CASE Execution Trade"],
+    ["Execution ID", tradeExecution.id],
+    ["Signal ID", tradeExecution.signal_id],
+    ["Symbol", symbol],
+    ["Trade Type", tradeType],
+    ["Instrument", signal.instrument_type],
+    ["Contract", getContractLabel(signal)],
+    ["Action", formatBrokerAction(signal.open_action ?? signal.action)],
+    ["Strategy", signal.trade_style?.toUpperCase() ?? "—"],
+    ["Status", status],
+    ["Outcome", outcome],
+    ["Total Quantity", totalQuantity],
+    ["Remaining Quantity", remainingQuantity],
+    ["Opened Quantity", openedQuantity],
+    ["Closed Quantity", closedQuantity],
+    ["Average Entry", averageEntry],
+    ["Average Exit", averageExit],
+    ["P/L", pnl],
+    ["P/L %", pnlPct],
+    ["Duration", duration],
+    ["Confidence", signal.confidence],
+    ["Signal Created At", signal.created_at],
+    ["Execution Opened At", tradeExecution.opened_at ?? signal.opened_at],
+    ["Execution Closed At", tradeExecution.closed_at ?? signal.closed_at],
+    ["Fill Count", fills.length],
+  ] satisfies Array<[string, string | number | null | undefined]>;
+}
+
+function buildImportedTradeExportRows({
+  trade,
+  status,
+  outcome,
+  duration,
+}: {
+  trade: ImportedJournalTradeRow;
+  status: string;
+  outcome: string;
+  duration: string;
+}) {
+  return [
+    ["Export Type", "Imported Broker Trade"],
+    ["Journal Trade ID", trade.id],
+    ["Symbol", trade.symbol],
+    ["Instrument", trade.instrument_type],
+    ["Contract / Notes", getImportedContractLabel(trade)],
+    ["Side", formatBrokerAction(trade.side)],
+    ["Status", status],
+    ["Outcome", outcome],
+    ["Quantity", trade.quantity],
+    ["Entry Price", trade.entry_price],
+    ["Exit Price", trade.exit_price],
+    ["Entry Date", trade.entry_date],
+    ["Exit Date", trade.exit_date],
+    ["Duration", duration],
+    ["P/L", trade.profit_loss],
+    ["P/L %", trade.profit_loss_pct],
+    ["Notes", trade.notes],
+    ["Created At", trade.created_at],
+    ["Updated At", trade.updated_at],
+  ] satisfies Array<[string, string | number | null | undefined]>;
 }
 
 export default async function JournalTradeDetailPage({
@@ -676,6 +867,40 @@ export default async function JournalTradeDetailPage({
   );
   const outcome = normalizeOutcome(signal.outcome);
 
+  const caseExportRows = buildCaseTradeExportRows({
+    tradeExecution,
+    signal,
+    symbol,
+    tradeType,
+    status,
+    outcome,
+    totalQuantity,
+    remainingQuantity,
+    openedQuantity,
+    closedQuantity,
+    averageEntry,
+    averageExit,
+    pnl,
+    pnlPct,
+    duration,
+    fills,
+  });
+
+  const caseCsvDownloadHref = buildDownloadHref(
+    buildDetailCsv(caseExportRows),
+    "text/csv",
+  );
+
+  const caseJsonDownloadHref = buildDownloadHref(
+    buildDetailJson(caseExportRows),
+    "application/json",
+  );
+
+  const caseExcelDownloadHref = buildDownloadHref(
+    buildDetailExcelHtml(`${symbol} CASE Trade Export`, caseExportRows),
+    "application/vnd.ms-excel",
+  );
+
   return (
     <div className="max-w-7xl space-y-8">
       <div>
@@ -702,9 +927,24 @@ export default async function JournalTradeDetailPage({
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={status} />
             <OutcomeBadge outcome={outcome} />
+            <ExportLink
+              href={caseCsvDownloadHref}
+              filename={`case-trades-${symbol}-${tradeExecution.id}.csv`}
+              label="CSV"
+            />
+            <ExportLink
+              href={caseExcelDownloadHref}
+              filename={`case-trades-${symbol}-${tradeExecution.id}.xls`}
+              label="Excel"
+            />
+            <ExportLink
+              href={caseJsonDownloadHref}
+              filename={`case-trades-${symbol}-${tradeExecution.id}.json`}
+              label="JSON"
+            />
           </div>
         </div>
       </div>
@@ -756,43 +996,26 @@ export default async function JournalTradeDetailPage({
             <Info label="Instrument" value={signal.instrument_type ?? "—"} />
             <Info label="Contract" value={getContractLabel(signal)} />
             <Info
-              label="Open Action"
-              value={formatBrokerAction(signal.open_action, signal.action)}
+              label="Side"
+              value={formatBrokerAction(signal.open_action ?? signal.action)}
             />
-            <Info
-              label="Strategy"
-              value={signal.trade_style?.toUpperCase() ?? "—"}
-            />
-            <Info
-              label="Confidence"
-              value={signal.confidence ? `${signal.confidence}%` : "—"}
-            />
+            <Info label="Strategy" value={signal.trade_style?.toUpperCase() ?? "—"} />
+            <Info label="Confidence" value={`${signal.confidence ?? "—"}%`} />
             <Info label="Average Entry" value={formatMoney(averageEntry)} />
             <Info
               label="Average Exit"
               value={formatMoney(averageExit)}
               tone={getPnlTone(pnl)}
             />
+            <Info label="Opened" value={formatDateTime(tradeExecution.opened_at ?? signal.opened_at)} />
+            <Info label="Closed" value={formatDateTime(tradeExecution.closed_at ?? signal.closed_at)} />
+            <Info label="Opened Quantity" value={formatNumber(openedQuantity)} />
+            <Info label="Closed Quantity" value={formatNumber(closedQuantity)} />
             <Info
-              label="Opened"
-              value={formatDateTime(
-                tradeExecution.opened_at ??
-                  signal.opened_at ??
-                  signal.created_at
-              )}
+              label="Profit / Loss"
+              value={formatMoneyWithSign(pnl)}
+              tone={getPnlTone(pnl)}
             />
-            <Info
-              label="Closed"
-              value={formatDateTime(
-                tradeExecution.closed_at ?? signal.closed_at
-              )}
-            />
-            <Info label="Total Quantity" value={formatNumber(totalQuantity)} />
-            <Info
-              label="Remaining Quantity"
-              value={formatNumber(remainingQuantity)}
-            />
-            <Info label="Outcome" value={outcome} />
             <Info
               label="Return"
               value={formatPercentWithSign(pnlPct)}
@@ -803,38 +1026,38 @@ export default async function JournalTradeDetailPage({
 
         <section className="rounded-xl border border-white/10 bg-slate-900/80 p-6">
           <div className="mb-5 flex items-center gap-3">
-            <div className="rounded-xl bg-sky-500/10 p-3 text-sky-300">
+            <div className="rounded-xl bg-emerald-500/10 p-3 text-emerald-400">
               <Activity className="h-5 w-5" />
             </div>
 
             <div>
               <h2 className="text-lg font-semibold text-slate-100">
-                Ledger Health
+                Import Health
               </h2>
 
               <p className="text-sm text-slate-400">
-                Source-of-truth execution state.
+                Data quality and execution completeness.
               </p>
             </div>
           </div>
 
           <div className="space-y-3">
-            <MiniCheck
-              label="Open fills"
-              value={String(openFills.length)}
-              complete={openFills.length > 0}
+            <HealthCheck
+              label="Entry Price"
+              value={formatMoney(averageEntry)}
+              complete={averageEntry !== null}
             />
-            <MiniCheck
-              label="Close fills"
-              value={String(closeFills.length)}
-              complete={status === "Closed" ? closeFills.length > 0 : true}
+            <HealthCheck
+              label="Exit Price"
+              value={formatMoney(averageExit)}
+              complete={status !== "Closed" || averageExit !== null}
             />
-            <MiniCheck
-              label="Signal synced"
-              value={displayStatus}
-              complete={status === "Closed" ? displayStatus === "Closed" : true}
+            <HealthCheck
+              label="Closed Quantity"
+              value={`${closedQuantity} / ${totalQuantity}`}
+              complete={status !== "Closed" || closedQuantity > 0}
             />
-            <MiniCheck
+            <HealthCheck
               label="Outcome"
               value={outcome}
               complete={status !== "Closed" || outcome !== "—"}
@@ -904,7 +1127,7 @@ export default async function JournalTradeDetailPage({
         </div>
       </section>
 
-      <TradeTimeline
+      <TradeTimelineComponent
         signalCreatedAt={signal.created_at}
         openedAt={tradeExecution.opened_at ?? signal.opened_at}
         closedAt={tradeExecution.closed_at ?? signal.closed_at}
@@ -922,75 +1145,106 @@ export default async function JournalTradeDetailPage({
 
             <div>
               <h2 className="text-lg font-semibold text-slate-100">
-                Saved Journal Notes
+                Journal Notes
               </h2>
 
               <p className="text-sm text-slate-400">
-                These are the notes currently saved for this trade.
+                Your saved notes, tags, mistakes, and discipline review.
               </p>
             </div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <Info label="Setup" value={journalNotes?.setup ?? "—"} />
-            <Info label="Emotion" value={journalNotes?.emotion ?? "—"} />
-            <Info
-              label="Discipline Score"
-              value={
-                journalNotes?.discipline_score
-                  ? `${journalNotes.discipline_score}/10`
-                  : "—"
-              }
-            />
-            <Info
-              label="Tags"
-              value={
-                journalNotes?.tags && journalNotes.tags.length > 0
-                  ? journalNotes.tags.join(", ")
-                  : "—"
-              }
-            />
-          </div>
-
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
-            <TextBlock title="Trade Notes" value={journalNotes?.notes} />
+            <TextBlock title="Notes" value={journalNotes?.notes} />
+            <TextBlock title="Setup" value={journalNotes?.setup} />
+            <TextBlock title="Mistakes" value={journalNotes?.mistakes} />
+            <TextBlock title="Emotion" value={journalNotes?.emotion} />
             <TextBlock
-              title="Mistakes / Lessons"
-              value={journalNotes?.mistakes}
+              title="Discipline Score"
+              value={
+                journalNotes?.discipline_score !== null &&
+                journalNotes?.discipline_score !== undefined
+                  ? `${journalNotes.discipline_score}/10`
+                  : null
+              }
+            />
+            <TextBlock
+              title="Tags"
+              value={
+                Array.isArray(journalNotes?.tags) && journalNotes.tags.length > 0
+                  ? journalNotes.tags.join(", ")
+                  : null
+              }
             />
           </div>
         </section>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <JournalNotesFormComponent
+        executionId={tradeExecution.id}
+        signalId={tradeExecution.signal_id}
+        initialNotes={{
+          notes: journalNotes?.notes ?? "",
+          setup: journalNotes?.setup ?? "",
+          mistakes: journalNotes?.mistakes ?? "",
+          tags: journalNotes?.tags ?? [],
+          emotion: journalNotes?.emotion ?? "",
+          discipline_score:
+            journalNotes?.discipline_score !== null &&
+            journalNotes?.discipline_score !== undefined
+              ? String(journalNotes.discipline_score)
+              : "",
+        }}
+      />
+
+      <TradeScreenshotManagerComponent
+        executionId={tradeExecution.id}
+        signalId={tradeExecution.signal_id}
+        screenshots={(screenshots ?? []) as TradeScreenshot[]}
+      />
+
+      <TradeReviewPanelComponent
+        executionId={tradeExecution.id}
+        signalId={tradeExecution.signal_id}
+        trade={{
+          symbol,
+          instrument_type: signal.instrument_type,
+          strategy: signal.trade_style,
+          confidence: signal.confidence,
+          entry_price: averageEntry,
+          exit_price: averageExit,
+          quantity: totalQuantity,
+          pnl,
+          pnl_pct: pnlPct,
+          status,
+          outcome,
+          opened_at: tradeExecution.opened_at ?? signal.opened_at,
+          closed_at: tradeExecution.closed_at ?? signal.closed_at,
+          fills,
+          notes: journalNotes,
+        }}
+        initialReview={tradeReview}
+      />
+
+      <div className="grid gap-6 lg:grid-cols-3">
         <WorkspaceCard
-          title="Notes"
+          title="Trade Notes"
           icon={<StickyNote />}
-          body="Use the journal notes section below to capture setup, tags, emotions, trade notes, mistakes, and lessons learned."
+          body="Capture your setup, emotions, mistakes, and trade discipline for this execution."
+        />
+
+        <WorkspaceCard
+          title="Screenshots"
+          icon={<Upload />}
+          body="Upload entry, exit, and chart screenshots to document the trade visually."
         />
 
         <WorkspaceCard
           title="AI Review"
           icon={<Bot />}
-          body="CASE AI will grade execution quality, risk management, patience, and exit discipline."
+          body="Generate a coaching-style review with execution grade, mistakes, and improvement plan."
         />
       </div>
-
-      <TradeScreenshotManager
-        tradeId={tradeExecution.id}
-        signalId={signal.id}
-        initialScreenshots={(screenshots ?? []) as TradeScreenshot[]}
-      />
-
-      <TradeReviewPanel
-        tradeId={tradeExecution.id}
-        initialReview={tradeReview}
-      />
-
-      <JournalNotesForm
-        tradeId={tradeExecution.id}
-        initialNotes={journalNotes}
-      />
     </div>
   );
 }
@@ -1005,6 +1259,31 @@ function ImportedBrokerTradeDetail({
   const status = trade.exit_date ? "Closed" : "Open";
   const outcome = inferImportedOutcome(trade.profit_loss);
   const duration = formatDuration(trade.entry_date, trade.exit_date);
+
+  const importedExportRows = buildImportedTradeExportRows({
+    trade,
+    status,
+    outcome,
+    duration,
+  });
+
+  const importedCsvDownloadHref = buildDownloadHref(
+    buildDetailCsv(importedExportRows),
+    "text/csv",
+  );
+
+  const importedJsonDownloadHref = buildDownloadHref(
+    buildDetailJson(importedExportRows),
+    "application/json",
+  );
+
+  const importedExcelDownloadHref = buildDownloadHref(
+    buildDetailExcelHtml(
+      `${trade.symbol ?? "Imported"} Broker Trade Export`,
+      importedExportRows,
+    ),
+    "application/vnd.ms-excel",
+  );
 
   return (
     <div className="max-w-7xl space-y-8">
@@ -1032,10 +1311,25 @@ function ImportedBrokerTradeDetail({
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={status} />
             <OutcomeBadge outcome={outcome} />
             <SourceBadge />
+            <ExportLink
+              href={importedCsvDownloadHref}
+              filename={`case-trades-import-${trade.symbol ?? "trade"}-${trade.id}.csv`}
+              label="CSV"
+            />
+            <ExportLink
+              href={importedExcelDownloadHref}
+              filename={`case-trades-import-${trade.symbol ?? "trade"}-${trade.id}.xls`}
+              label="Excel"
+            />
+            <ExportLink
+              href={importedJsonDownloadHref}
+              filename={`case-trades-import-${trade.symbol ?? "trade"}-${trade.id}.json`}
+              label="JSON"
+            />
           </div>
         </div>
       </div>
@@ -1109,16 +1403,14 @@ function ImportedBrokerTradeDetail({
               value={formatPercentWithSign(trade.profit_loss_pct)}
               tone={getPnlTone(trade.profit_loss_pct)}
             />
-            <Info label="Outcome" value={outcome} />
-            <Info label="Imported At" value={formatDateTime(trade.created_at)} />
-            <Info label="Updated At" value={formatDateTime(trade.updated_at)} />
+            <Info label="Created" value={formatDateTime(trade.created_at)} />
           </div>
         </section>
 
         <section className="rounded-xl border border-white/10 bg-slate-900/80 p-6">
           <div className="mb-5 flex items-center gap-3">
-            <div className="rounded-xl bg-sky-500/10 p-3 text-sky-300">
-              <Upload className="h-5 w-5" />
+            <div className="rounded-xl bg-emerald-500/10 p-3 text-emerald-400">
+              <Activity className="h-5 w-5" />
             </div>
 
             <div>
@@ -1127,31 +1419,31 @@ function ImportedBrokerTradeDetail({
               </h2>
 
               <p className="text-sm text-slate-400">
-                Broker CSV import validation state.
+                Imported row completeness.
               </p>
             </div>
           </div>
 
           <div className="space-y-3">
-            <MiniCheck
-              label="Imported row"
-              value="Found"
-              complete={Boolean(trade.id)}
+            <HealthCheck
+              label="Entry Price"
+              value={formatMoney(trade.entry_price)}
+              complete={toFiniteNumber(trade.entry_price) !== null}
             />
-            <MiniCheck
-              label="Entry date"
-              value={formatDate(trade.entry_date)}
-              complete={Boolean(trade.entry_date)}
+            <HealthCheck
+              label="Exit Price"
+              value={formatMoney(trade.exit_price)}
+              complete={status !== "Closed" || toFiniteNumber(trade.exit_price) !== null}
             />
-            <MiniCheck
-              label="Exit date"
-              value={formatDate(trade.exit_date)}
-              complete={Boolean(trade.exit_date)}
+            <HealthCheck
+              label="Quantity"
+              value={formatNumber(trade.quantity)}
+              complete={toFiniteNumber(trade.quantity) !== null}
             />
-            <MiniCheck
-              label="P/L calculated"
+            <HealthCheck
+              label="P/L"
               value={formatMoneyWithSign(trade.profit_loss)}
-              complete={pnl !== null}
+              complete={status !== "Closed" || toFiniteNumber(trade.profit_loss) !== null}
             />
           </div>
         </section>
@@ -1165,11 +1457,11 @@ function ImportedBrokerTradeDetail({
 
           <div>
             <h2 className="text-lg font-semibold text-slate-100">
-              Imported Trade Ledger
+              Imported Ledger
             </h2>
 
             <p className="text-sm text-slate-400">
-              Imported broker trades are stored directly in journal_trades.
+              Normalized imported trade values saved to journal_trades.
             </p>
           </div>
         </div>
@@ -1186,7 +1478,7 @@ function ImportedBrokerTradeDetail({
               </tr>
             </thead>
 
-            <tbody className="divide-y divide-white/10">
+            <tbody>
               <tr>
                 <td className="px-4 py-3">
                   <FillBadge side={trade.side} />
@@ -1265,6 +1557,27 @@ function ImportedBrokerTradeDetail({
   );
 }
 
+function ExportLink({
+  href,
+  filename,
+  label,
+}: {
+  href: string;
+  filename: string;
+  label: string;
+}) {
+  return (
+    <a
+      href={href}
+      download={filename}
+      className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-slate-950 px-3 py-1 text-xs font-medium text-slate-300 transition hover:bg-slate-800"
+    >
+      <Download className="h-3.5 w-3.5" />
+      {label}
+    </a>
+  );
+}
+
 function JournalUpgradeRequired() {
   return (
     <div className="max-w-4xl space-y-6">
@@ -1284,20 +1597,27 @@ function JournalUpgradeRequired() {
         </div>
 
         <h1 className="text-2xl font-semibold text-slate-100">
-          Journal Plan Required
+          Unlock CASE Journal
         </h1>
 
         <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
-          You need an active CASE Journal subscription to view journal trade
-          details.
+          CASE Journal is a subscription-based trading journal for tracking
+          trades, notes, screenshots, performance, and future AI trade reviews.
         </p>
 
-        <div className="mt-6">
+        <div className="mt-6 flex flex-wrap gap-3">
           <Link
             href="/dashboard/billing"
             className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500"
           >
             View Journal Plans
+          </Link>
+
+          <Link
+            href="/"
+            className="rounded-lg border border-white/10 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800"
+          >
+            Learn More
           </Link>
         </div>
       </div>
@@ -1314,32 +1634,25 @@ function Metric({
   title: string;
   value: string;
   icon: ReactNode;
-  tone?: "positive" | "negative" | "neutral";
+  tone?: string;
 }) {
-  const iconClass =
-    tone === "negative"
-      ? "text-red-400"
-      : tone === "positive"
-        ? "text-emerald-400"
-        : "text-emerald-400";
-
-  const valueClass =
-    tone === "negative"
-      ? "text-red-400"
-      : tone === "positive"
-        ? "text-emerald-400"
+  const toneClass =
+    tone === "positive"
+      ? "text-emerald-400"
+      : tone === "negative"
+        ? "text-red-400"
         : "text-slate-100";
 
   return (
-    <div className="rounded-xl border border-white/10 bg-slate-900/80 p-5">
-      <div className={`mb-3 [&>svg]:h-5 [&>svg]:w-5 ${iconClass}`}>
+    <section className="rounded-xl border border-white/10 bg-slate-900/80 p-5">
+      <div className="mb-3 text-emerald-400 [&>svg]:h-5 [&>svg]:w-5">
         {icon}
       </div>
 
       <p className="text-sm text-slate-400">{title}</p>
 
-      <p className={`mt-1 text-xl font-semibold ${valueClass}`}>{value}</p>
-    </div>
+      <p className={`mt-1 text-2xl font-semibold ${toneClass}`}>{value}</p>
+    </section>
   );
 }
 
@@ -1350,19 +1663,22 @@ function Info({
 }: {
   label: string;
   value: string;
-  tone?: "positive" | "negative" | "neutral";
+  tone?: string;
 }) {
-  const valueClass =
-    tone === "negative"
-      ? "text-red-400"
-      : tone === "positive"
-        ? "text-emerald-400"
-        : "text-slate-100";
+  const toneClass =
+    tone === "positive"
+      ? "text-emerald-400"
+      : tone === "negative"
+        ? "text-red-400"
+        : "text-slate-200";
 
   return (
     <div className="rounded-lg border border-white/10 bg-slate-950 p-4">
-      <p className="text-xs text-slate-500">{label}</p>
-      <p className={`mt-1 break-words font-medium ${valueClass}`}>{value}</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        {label}
+      </p>
+
+      <p className={`mt-2 text-sm font-medium ${toneClass}`}>{value}</p>
     </div>
   );
 }
@@ -1376,20 +1692,18 @@ function TextBlock({
 }) {
   return (
     <div className="rounded-lg border border-white/10 bg-slate-950 p-4">
-      <p className="text-xs text-slate-500">{title}</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        {title}
+      </p>
 
-      {value ? (
-        <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-200">
-          {value}
-        </p>
-      ) : (
-        <p className="mt-2 text-sm text-slate-500">—</p>
-      )}
+      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-300">
+        {value || "—"}
+      </p>
     </div>
   );
 }
 
-function MiniCheck({
+function HealthCheck({
   label,
   value,
   complete,
@@ -1399,25 +1713,25 @@ function MiniCheck({
   complete: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between rounded-lg border border-white/10 bg-slate-950 px-3 py-2">
-      <div className="flex items-center gap-2">
-        {complete ? (
-          <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-        ) : (
-          <TrendingDown className="h-4 w-4 text-red-400" />
-        )}
-        <span className="text-sm text-slate-400">{label}</span>
+    <div className="flex items-center justify-between gap-4 rounded-lg border border-white/10 bg-slate-950 p-3">
+      <div>
+        <p className="text-sm font-medium text-slate-200">{label}</p>
+        <p className="text-xs text-slate-500">{value}</p>
       </div>
 
-      <span className="text-sm font-medium text-slate-100">{value}</span>
+      <CheckCircle2
+        className={
+          complete ? "h-5 w-5 text-emerald-400" : "h-5 w-5 text-slate-600"
+        }
+      />
     </div>
   );
 }
 
 function SourceBadge() {
   return (
-    <span className="rounded-full bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-300">
-      Broker Import
+    <span className="rounded-full bg-blue-500/10 px-2 py-1 text-xs font-medium text-blue-300">
+      Import
     </span>
   );
 }
@@ -1437,27 +1751,27 @@ function StatusBadge({ status }: { status: string }) {
             : "bg-slate-500/10 text-slate-300";
 
   return (
-    <span className={`rounded-full px-3 py-1 text-xs font-medium ${className}`}>
+    <span className={`rounded-full px-2 py-1 text-xs font-medium ${className}`}>
       {status}
     </span>
   );
 }
 
 function OutcomeBadge({ outcome }: { outcome: string }) {
-  const normalized = outcome.toLowerCase();
+  const normalized = outcome.toUpperCase();
 
   const className =
-    normalized === "win"
+    normalized === "WIN"
       ? "bg-emerald-500/10 text-emerald-300"
-      : normalized === "loss"
+      : normalized === "LOSS"
         ? "bg-red-500/10 text-red-300"
-        : normalized === "breakeven"
-          ? "bg-slate-500/10 text-slate-300"
-          : "bg-orange-500/10 text-orange-300";
+        : normalized === "BREAKEVEN"
+          ? "bg-amber-500/10 text-amber-300"
+          : "bg-slate-500/10 text-slate-300";
 
   return (
-    <span className={`rounded-full px-3 py-1 text-xs font-medium ${className}`}>
-      Outcome: {outcome}
+    <span className={`rounded-full px-2 py-1 text-xs font-medium ${className}`}>
+      {outcome}
     </span>
   );
 }

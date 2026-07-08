@@ -10,12 +10,13 @@ import {
   Target,
   Lock,
   CheckCircle2,
-  Clock,
   CircleDollarSign,
   Activity,
-  TrendingDown,
   FileText,
   Upload,
+  Download,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -35,6 +36,27 @@ export const metadata: Metadata = {
 };
 
 export const dynamic = "force-dynamic";
+
+type JournalPageProps = {
+  searchParams?: {
+    limit?: string;
+    page?: string;
+  };
+};
+
+type TradeLogLimit = 10 | 20 | 50 | 100 | 250 | "all";
+
+const TRADE_LOG_LIMIT_OPTIONS: Array<{
+  label: string;
+  value: TradeLogLimit;
+}> = [
+  { label: "10", value: 10 },
+  { label: "20", value: 20 },
+  { label: "50", value: 50 },
+  { label: "100", value: 100 },
+  { label: "250", value: 250 },
+  { label: "All", value: "all" },
+];
 
 type SignalFillRow = {
   side: string | null;
@@ -135,6 +157,65 @@ function isMasterAdmin(
     String(role?.email ?? "").toLowerCase() ===
       "csthilaire@xilairetechnologies.com"
   );
+}
+
+function normalizeTradeLogLimit(value: string | null | undefined): TradeLogLimit {
+  const normalized = String(value ?? "")
+    .trim()
+    .toLowerCase();
+
+  if (normalized === "all") {
+    return "all";
+  }
+
+  const parsed = Number(normalized);
+
+  if (
+    parsed === 10 ||
+    parsed === 20 ||
+    parsed === 50 ||
+    parsed === 100 ||
+    parsed === 250
+  ) {
+    return parsed;
+  }
+
+  return 10;
+}
+
+function normalizeTradeLogPage(value: string | null | undefined) {
+  const parsed = Number(String(value ?? "").trim());
+
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return 1;
+  }
+
+  return Math.floor(parsed);
+}
+
+function buildJournalUrl({
+  limit,
+  page,
+}: {
+  limit: TradeLogLimit;
+  page?: number;
+}) {
+  const params = new URLSearchParams();
+
+  params.set("limit", String(limit));
+
+  if (page && page > 1) {
+    params.set("page", String(page));
+  }
+
+  return `/dashboard/journal?${params.toString()}`;
+}
+
+function buildJournalLimitUrl(limit: TradeLogLimit) {
+  return buildJournalUrl({
+    limit,
+    page: 1,
+  });
 }
 
 function formatTier(tier: string) {
@@ -469,8 +550,213 @@ function getPnlClass(value: number | null) {
   return "text-slate-300";
 }
 
-export default async function JournalPage() {
+function escapeCsvValue(value: string | number | null | undefined) {
+  const normalized = String(value ?? "");
+  const escaped = normalized.replace(/"/g, '""');
+
+  return `"${escaped}"`;
+}
+
+function escapeHtmlValue(value: string | number | null | undefined) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function buildTradeExportRows(trades: JournalTrade[]) {
+  return trades.map((trade) => ({
+    symbol: trade.symbol,
+    source: trade.source,
+    instrument: trade.instrument,
+    contract: trade.contractLabel,
+    side: trade.side,
+    strategy: trade.strategy,
+    quantity: trade.quantity,
+    entry_price: trade.entryPrice,
+    exit_price: trade.exitPrice,
+    entry_date: trade.entryDate,
+    exit_date: trade.exitDate,
+    duration: trade.duration,
+    pnl: trade.pnl,
+    pnl_pct: trade.pnlPct,
+    status: trade.status,
+    outcome: trade.outcome,
+    confidence: trade.confidence,
+  }));
+}
+
+function buildTradesCsv(trades: JournalTrade[]) {
+  const headers = [
+    "Symbol",
+    "Source",
+    "Instrument",
+    "Contract",
+    "Side",
+    "Strategy",
+    "Quantity",
+    "Entry Price",
+    "Exit Price",
+    "Entry Date",
+    "Exit Date",
+    "Duration",
+    "P/L",
+    "P/L %",
+    "Status",
+    "Outcome",
+    "Confidence",
+  ];
+
+  const rows = buildTradeExportRows(trades).map((trade) => [
+    trade.symbol,
+    trade.source,
+    trade.instrument,
+    trade.contract,
+    trade.side,
+    trade.strategy,
+    trade.quantity,
+    trade.entry_price,
+    trade.exit_price,
+    trade.entry_date,
+    trade.exit_date,
+    trade.duration,
+    trade.pnl,
+    trade.pnl_pct,
+    trade.status,
+    trade.outcome,
+    trade.confidence,
+  ]);
+
+  return [headers, ...rows]
+    .map((row) => row.map((value) => escapeCsvValue(value)).join(","))
+    .join("\n");
+}
+
+function buildTradesJson(trades: JournalTrade[]) {
+  return JSON.stringify(buildTradeExportRows(trades), null, 2);
+}
+
+function buildTradesExcelHtml(trades: JournalTrade[]) {
+  const headers = [
+    "Symbol",
+    "Source",
+    "Instrument",
+    "Contract",
+    "Side",
+    "Strategy",
+    "Quantity",
+    "Entry Price",
+    "Exit Price",
+    "Entry Date",
+    "Exit Date",
+    "Duration",
+    "P/L",
+    "P/L %",
+    "Status",
+    "Outcome",
+    "Confidence",
+  ];
+
+  const rows = buildTradeExportRows(trades).map((trade) => [
+    trade.symbol,
+    trade.source,
+    trade.instrument,
+    trade.contract,
+    trade.side,
+    trade.strategy,
+    trade.quantity,
+    trade.entry_price,
+    trade.exit_price,
+    trade.entry_date,
+    trade.exit_date,
+    trade.duration,
+    trade.pnl,
+    trade.pnl_pct,
+    trade.status,
+    trade.outcome,
+    trade.confidence,
+  ]);
+
+  const headerHtml = headers
+    .map((header) => `<th>${escapeHtmlValue(header)}</th>`)
+    .join("");
+
+  const rowHtml = rows
+    .map((row) => {
+      const cells = row
+        .map((value) => `<td>${escapeHtmlValue(value)}</td>`)
+        .join("");
+
+      return `<tr>${cells}</tr>`;
+    })
+    .join("");
+
+  return `
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>CASE Trades Journal Export</title>
+  </head>
+  <body>
+    <table>
+      <thead>
+        <tr>${headerHtml}</tr>
+      </thead>
+      <tbody>
+        ${rowHtml}
+      </tbody>
+    </table>
+  </body>
+</html>
+`.trim();
+}
+
+function buildDownloadHref(content: string, mimeType: string) {
+  return `data:${mimeType};charset=utf-8,${encodeURIComponent(content)}`;
+}
+
+function getPaginationPages(currentPage: number, totalPages: number) {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  const pages = new Set<number>();
+
+  pages.add(1);
+  pages.add(totalPages);
+  pages.add(currentPage);
+
+  if (currentPage - 1 > 1) {
+    pages.add(currentPage - 1);
+  }
+
+  if (currentPage + 1 < totalPages) {
+    pages.add(currentPage + 1);
+  }
+
+  if (currentPage <= 3) {
+    pages.add(2);
+    pages.add(3);
+    pages.add(4);
+  }
+
+  if (currentPage >= totalPages - 2) {
+    pages.add(totalPages - 1);
+    pages.add(totalPages - 2);
+    pages.add(totalPages - 3);
+  }
+
+  return Array.from(pages)
+    .filter((page) => page >= 1 && page <= totalPages)
+    .sort((a, b) => a - b);
+}
+
+export default async function JournalPage({ searchParams }: JournalPageProps) {
   const supabase = await createSupabaseServerClient();
+
+  const tradeLogLimit = normalizeTradeLogLimit(searchParams?.limit);
+  const requestedPage = normalizeTradeLogPage(searchParams?.page);
 
   const {
     data: { user },
@@ -609,6 +895,35 @@ export default async function JournalPage() {
     return bDate - aDate;
   });
 
+  const pageSize = tradeLogLimit === "all" ? trades.length || 1 : tradeLogLimit;
+  const totalPages =
+    tradeLogLimit === "all" ? 1 : Math.max(Math.ceil(trades.length / pageSize), 1);
+  const currentPage =
+    tradeLogLimit === "all" ? 1 : Math.min(requestedPage, totalPages);
+  const startIndex = tradeLogLimit === "all" ? 0 : (currentPage - 1) * pageSize;
+  const endIndex =
+    tradeLogLimit === "all" ? trades.length : startIndex + pageSize;
+  const visibleTrades = trades.slice(startIndex, endIndex);
+  const visibleStart = trades.length === 0 ? 0 : startIndex + 1;
+  const visibleEnd = Math.min(endIndex, trades.length);
+  const hiddenTradeCount = Math.max(trades.length - visibleTrades.length, 0);
+  const paginationPages = getPaginationPages(currentPage, totalPages);
+
+  const csvDownloadHref = buildDownloadHref(
+    buildTradesCsv(trades),
+    "text/csv",
+  );
+
+  const jsonDownloadHref = buildDownloadHref(
+    buildTradesJson(trades),
+    "application/json",
+  );
+
+  const excelDownloadHref = buildDownloadHref(
+    buildTradesExcelHtml(trades),
+    "application/vnd.ms-excel",
+  );
+
   const closedTrades = trades.filter((trade) => trade.status === "Closed");
   const winningTrades = closedTrades.filter((trade) => {
     if (trade.outcome === "WIN") return true;
@@ -737,23 +1052,115 @@ export default async function JournalPage() {
 
       <div className="grid gap-6 lg:grid-cols-4">
         <div className="rounded-xl border border-white/10 bg-slate-900/80 p-4 md:p-6 lg:col-span-3">
-          <div className="mb-5 flex flex-col justify-between gap-3 md:flex-row md:items-center">
+          <div className="mb-5 flex flex-col justify-between gap-4 xl:flex-row xl:items-start">
             <div>
               <h2 className="text-lg font-semibold text-slate-100">
                 Trade Log
               </h2>
 
               <p className="text-sm text-slate-400">
-                Real trades from the CASE execution ledger and broker imports.
+                Showing{" "}
+                <span className="font-medium text-slate-200">
+                  {visibleStart}
+                </span>
+                –
+                <span className="font-medium text-slate-200">
+                  {visibleEnd}
+                </span>{" "}
+                of{" "}
+                <span className="font-medium text-slate-200">
+                  {trades.length}
+                </span>{" "}
+                real trades from the CASE execution ledger and broker imports.
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-2 text-xs">
-              <FilterPill label="All Trades" active />
-              <FilterPill label="Open" />
-              <FilterPill label="Closed" />
-              <FilterPill label="Options" />
-              <FilterPill label="Stocks" />
+            <div className="flex flex-col gap-3 xl:items-end">
+              <div className="flex flex-wrap gap-2 text-xs">
+                <FilterPill label="All Trades" active />
+                <FilterPill label="Open" />
+                <FilterPill label="Closed" />
+                <FilterPill label="Options" />
+                <FilterPill label="Stocks" />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <form
+                  action="/dashboard/journal"
+                  className="flex items-center gap-2"
+                >
+                  <label htmlFor="trade-log-limit" className="sr-only">
+                    Trade log row limit
+                  </label>
+
+                  <select
+                    id="trade-log-limit"
+                    name="limit"
+                    defaultValue={String(tradeLogLimit)}
+                    className="rounded-full border border-white/10 bg-slate-950 px-3 py-1.5 text-xs font-medium text-slate-300 outline-none transition hover:bg-slate-900 focus:border-emerald-500/40 focus:ring-2 focus:ring-emerald-500/10"
+                  >
+                    {TRADE_LOG_LIMIT_OPTIONS.map((option) => (
+                      <option
+                        key={String(option.value)}
+                        value={String(option.value)}
+                      >
+                        Show {option.label}
+                      </option>
+                    ))}
+                  </select>
+
+                  <button
+                    type="submit"
+                    className="rounded-full border border-white/10 bg-slate-950 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:bg-slate-800"
+                  >
+                    Apply
+                  </button>
+                </form>
+
+                <div className="flex flex-wrap gap-2">
+                  {TRADE_LOG_LIMIT_OPTIONS.map((option) => (
+                    <Link
+                      key={String(option.value)}
+                      href={buildJournalLimitUrl(option.value)}
+                      className={
+                        "rounded-full px-3 py-1.5 text-xs font-medium transition " +
+                        (tradeLogLimit === option.value
+                          ? "bg-emerald-600 text-white"
+                          : "border border-white/10 bg-slate-950 text-slate-400 hover:bg-slate-800")
+                      }
+                    >
+                      {option.label}
+                    </Link>
+                  ))}
+                </div>
+
+                <a
+                  href={csvDownloadHref}
+                  download="case-trades-journal.csv"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-slate-950 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:bg-slate-800"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  CSV
+                </a>
+
+                <a
+                  href={excelDownloadHref}
+                  download="case-trades-journal.xls"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-slate-950 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:bg-slate-800"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Excel
+                </a>
+
+                <a
+                  href={jsonDownloadHref}
+                  download="case-trades-journal.json"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-slate-950 px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:bg-slate-800"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  JSON
+                </a>
+              </div>
             </div>
           </div>
 
@@ -787,7 +1194,7 @@ export default async function JournalPage() {
                     </thead>
 
                     <tbody className="divide-y divide-white/10">
-                      {trades.map((trade) => (
+                      {visibleTrades.map((trade) => (
                         <tr key={trade.id} className="text-slate-300">
                           <td className="px-4 py-3">
                             <div className="font-semibold text-slate-100">
@@ -854,10 +1261,29 @@ export default async function JournalPage() {
               </div>
 
               <div className="space-y-3 md:hidden">
-                {trades.map((trade) => (
+                {visibleTrades.map((trade) => (
                   <MobileJournalTradeCard key={trade.id} trade={trade} />
                 ))}
               </div>
+
+              {tradeLogLimit !== "all" && totalPages > 1 && (
+                <TradeLogPagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  limit={tradeLogLimit}
+                  pages={paginationPages}
+                  visibleStart={visibleStart}
+                  visibleEnd={visibleEnd}
+                  totalTrades={trades.length}
+                />
+              )}
+
+              {hiddenTradeCount > 0 && tradeLogLimit === "all" && (
+                <div className="mt-4 rounded-lg border border-white/10 bg-slate-950 px-4 py-3 text-center text-xs text-slate-500">
+                  {hiddenTradeCount} more trade
+                  {hiddenTradeCount === 1 ? "" : "s"} hidden.
+                </div>
+              )}
             </>
           )}
         </div>
@@ -910,6 +1336,105 @@ export default async function JournalPage() {
             ]}
           />
         </div>
+      </div>
+    </div>
+  );
+}
+
+function TradeLogPagination({
+  currentPage,
+  totalPages,
+  limit,
+  pages,
+  visibleStart,
+  visibleEnd,
+  totalTrades,
+}: {
+  currentPage: number;
+  totalPages: number;
+  limit: TradeLogLimit;
+  pages: number[];
+  visibleStart: number;
+  visibleEnd: number;
+  totalTrades: number;
+}) {
+  return (
+    <div className="mt-5 flex flex-col gap-4 rounded-xl border border-white/10 bg-slate-950 px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
+      <div className="text-xs text-slate-500">
+        Showing{" "}
+        <span className="font-semibold text-slate-300">{visibleStart}</span>
+        –
+        <span className="font-semibold text-slate-300">{visibleEnd}</span> of{" "}
+        <span className="font-semibold text-slate-300">{totalTrades}</span>{" "}
+        trades • Page{" "}
+        <span className="font-semibold text-slate-300">{currentPage}</span> of{" "}
+        <span className="font-semibold text-slate-300">{totalPages}</span>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Link
+          href={
+            currentPage > 1
+              ? buildJournalUrl({ limit, page: currentPage - 1 })
+              : buildJournalUrl({ limit, page: 1 })
+          }
+          aria-disabled={currentPage <= 1}
+          className={
+            "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium transition " +
+            (currentPage <= 1
+              ? "pointer-events-none border-white/5 bg-slate-900 text-slate-700"
+              : "border-white/10 bg-slate-900 text-slate-300 hover:bg-slate-800")
+          }
+        >
+          <ChevronLeft className="h-3.5 w-3.5" />
+          Previous
+        </Link>
+
+        <div className="flex flex-wrap items-center gap-1">
+          {pages.map((page, index) => {
+            const previousPage = pages[index - 1];
+            const showEllipsis =
+              previousPage !== undefined && page - previousPage > 1;
+
+            return (
+              <div key={page} className="flex items-center gap-1">
+                {showEllipsis && (
+                  <span className="px-2 text-xs text-slate-600">…</span>
+                )}
+
+                <Link
+                  href={buildJournalUrl({ limit, page })}
+                  className={
+                    "inline-flex h-8 min-w-8 items-center justify-center rounded-full px-3 text-xs font-semibold transition " +
+                    (page === currentPage
+                      ? "bg-emerald-600 text-white"
+                      : "border border-white/10 bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-slate-200")
+                  }
+                >
+                  {page}
+                </Link>
+              </div>
+            );
+          })}
+        </div>
+
+        <Link
+          href={
+            currentPage < totalPages
+              ? buildJournalUrl({ limit, page: currentPage + 1 })
+              : buildJournalUrl({ limit, page: totalPages })
+          }
+          aria-disabled={currentPage >= totalPages}
+          className={
+            "inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium transition " +
+            (currentPage >= totalPages
+              ? "pointer-events-none border-white/5 bg-slate-900 text-slate-700"
+              : "border-white/10 bg-slate-900 text-slate-300 hover:bg-slate-800")
+          }
+        >
+          Next
+          <ChevronRight className="h-3.5 w-3.5" />
+        </Link>
       </div>
     </div>
   );

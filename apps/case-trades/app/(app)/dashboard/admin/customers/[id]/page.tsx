@@ -1,5 +1,18 @@
 import Link from "next/link";
+import { revalidatePath } from "next/cache";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import type { Metadata } from "next";
+
+import { resolveCurrentUserRole } from "@/lib/auth/resolveCurrentUserRole";
+
+/* -------------------------------------------------
+   🧾 METADATA
+------------------------------------------------- */
+export const metadata: Metadata = {
+  title: "Customer Details | CASE Trades",
+  description:
+    "View and manage CASE Trades customer details, subscriptions, organizations, Discord account status, and platform role administration.",
+};
 
 export const dynamic = "force-dynamic";
 
@@ -7,6 +20,13 @@ type PageProps = {
   params: {
     id: string;
   };
+};
+
+type RoleRow = {
+  id: string;
+  name: string;
+  rank: number;
+  created_at: string | null;
 };
 
 function getSupabaseUrl() {
@@ -32,6 +52,23 @@ function createAdminSupabaseClient() {
       autoRefreshToken: false,
     },
   });
+}
+
+function isMasterAdmin(
+  role: Awaited<ReturnType<typeof resolveCurrentUserRole>>,
+) {
+  return (
+    role?.role_name === "master_admin" ||
+    role?.role_rank === 4 ||
+    String(role?.email ?? "").toLowerCase() ===
+      "csthilaire@xilairetechnologies.com"
+  );
+}
+
+function canManageRoles(
+  role: Awaited<ReturnType<typeof resolveCurrentUserRole>>,
+) {
+  return isMasterAdmin(role) || Number(role?.role_rank ?? 0) >= 2;
 }
 
 function formatDate(value: string | null | undefined) {
@@ -64,8 +101,24 @@ function statusBadge(status: string | null | undefined) {
   return "rounded-full bg-slate-800 px-2 py-1 text-xs text-slate-300";
 }
 
+function roleBadgeClass(roleName: string | null | undefined) {
+  if (roleName === "master_admin") {
+    return "rounded-full border border-purple-500/30 bg-purple-500/10 px-2 py-1 text-xs font-medium text-purple-300";
+  }
+
+  if (roleName === "super_admin") {
+    return "rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-1 text-xs font-medium text-sky-300";
+  }
+
+  if (roleName === "admin") {
+    return "rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-300";
+  }
+
+  return "rounded-full border border-slate-700 bg-slate-800 px-2 py-1 text-xs font-medium text-slate-300";
+}
+
 function formatRole(value: string | null | undefined) {
-  if (!value) return "user";
+  if (!value) return "User";
 
   return value
     .split("_")
@@ -73,8 +126,177 @@ function formatRole(value: string | null | undefined) {
     .join(" ");
 }
 
+async function updateCustomerRole(formData: FormData) {
+  "use server";
+
+  const profileId = String(formData.get("profileId") ?? "").trim();
+  const roleName = String(formData.get("roleName") ?? "").trim();
+
+  if (!profileId || !roleName) {
+    throw new Error("Missing profile or role.");
+  }
+
+  const currentRole = await resolveCurrentUserRole();
+  const currentUserIsMasterAdmin = isMasterAdmin(currentRole);
+  const currentUserCanManageRoles = canManageRoles(currentRole);
+
+  if (!currentUserCanManageRoles) {
+    throw new Error("You do not have permission to manage customer roles.");
+  }
+
+  const supabaseUrl = getSupabaseUrl();
+  const serviceRoleKey = getSupabaseServiceRoleKey();
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error("Missing Supabase service configuration.");
+  }
+
+  const adminSupabase = createAdminSupabaseClient();
+
+  const { data: targetRole, error: targetRoleError } = await adminSupabase
+    .from("roles")
+    .select("id, name, rank")
+    .eq("name", roleName)
+    .maybeSingle<Pick<RoleRow, "id" | "name" | "rank">>();
+
+  if (targetRoleError) {
+    throw new Error(`Failed to load target role: ${targetRoleError.message}`);
+  }
+
+  if (!targetRole) {
+    throw new Error("Selected role does not exist.");
+  }
+
+  if (targetRole.name === "master_admin" && !currentUserIsMasterAdmin) {
+    throw new Error("Only a master admin can assign the master_admin role.");
+  }
+
+  const { data: currentCustomerProfile, error: currentCustomerProfileError } =
+    await adminSupabase
+      .from("profiles")
+      .select(
+        `
+        id,
+        role_id,
+        roles (
+          id,
+          name,
+          rank
+        )
+        `,
+      )
+      .eq("id", profileId)
+      .maybeSingle();
+
+  if (currentCustomerProfileError) {
+    throw new Error(
+      `Failed to load current customer role: ${currentCustomerProfileError.message}`,
+    );
+  }
+
+  const currentCustomerRole = Array.isArray(currentCustomerProfile?.roles)
+    ? currentCustomerProfile?.roles[0]
+    : currentCustomerProfile?.roles;
+
+  if (currentCustomerRole?.name === "master_admin" && !currentUserIsMasterAdmin) {
+    throw new Error("Only a master admin can change a master_admin user.");
+  }
+
+  const { error: updateError } = await adminSupabase
+    .from("profiles")
+    .update({
+      role_id: targetRole.id,
+    })
+    .eq("id", profileId);
+
+  if (updateError) {
+    throw new Error(`Failed to update customer role: ${updateError.message}`);
+  }
+
+  revalidatePath("/dashboard/admin/customers");
+  revalidatePath(`/dashboard/admin/customers/${profileId}`);
+}
+
 export default async function AdminCustomerDetailsPage({ params }: PageProps) {
+  const supabaseUrl = getSupabaseUrl();
+  const serviceRoleKey = getSupabaseServiceRoleKey();
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    return (
+      <main className="space-y-6">
+        <div>
+          <p className="text-sm font-medium text-red-300">
+            Configuration Error
+          </p>
+
+          <h1 className="mt-1 text-2xl font-bold text-slate-100">
+            Customer Details
+          </h1>
+
+          <p className="mt-2 text-sm text-slate-400">
+            Missing Supabase environment variables. Confirm
+            NEXT_PUBLIC_SUPABASE_URL_CASE_TRADES and
+            SUPABASE_SERVICE_ROLE_KEY_CASE_TRADES exist in .env.local.
+          </p>
+
+          <Link
+            href="/dashboard/admin/customers"
+            className="mt-4 inline-flex rounded-lg border border-white/10 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-white/5"
+          >
+            Back to Customers
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
+  const currentRole = await resolveCurrentUserRole();
+  const currentUserIsMasterAdmin = isMasterAdmin(currentRole);
+  const currentUserCanManageRoles = canManageRoles(currentRole);
+
   const supabase = createAdminSupabaseClient();
+
+  const { data: rolesData, error: rolesError } = await supabase
+    .from("roles")
+    .select("id, name, rank, created_at")
+    .order("rank", { ascending: true });
+
+  if (rolesError) {
+    return (
+      <main className="space-y-6">
+        <div>
+          <p className="text-sm font-medium text-red-300">
+            Platform Administration
+          </p>
+
+          <h1 className="mt-1 text-2xl font-bold text-slate-100">
+            Customer Details
+          </h1>
+
+          <p className="mt-2 text-sm text-red-300">
+            Failed to load roles: {rolesError.message}
+          </p>
+
+          <Link
+            href="/dashboard/admin/customers"
+            className="mt-4 inline-flex rounded-lg border border-white/10 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-white/5"
+          >
+            Back to Customers
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
+  const roles = (rolesData ?? []) as RoleRow[];
+
+  const selectableRoles = roles.filter((availableRole) => {
+    if (availableRole.name === "master_admin") {
+      return currentUserIsMasterAdmin;
+    }
+
+    return true;
+  });
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
@@ -83,7 +305,7 @@ export default async function AdminCustomerDetailsPage({ params }: PageProps) {
     .maybeSingle();
 
   const { data: authUserResult } = await supabase.auth.admin.getUserById(
-    params.id
+    params.id,
   );
 
   const authUser = authUserResult?.user ?? null;
@@ -125,6 +347,10 @@ export default async function AdminCustomerDetailsPage({ params }: PageProps) {
         .maybeSingle()
     : { data: null };
 
+  const roleIsMasterAdmin = role?.name === "master_admin";
+  const canEditCustomerRole =
+    currentUserCanManageRoles && (!roleIsMasterAdmin || currentUserIsMasterAdmin);
+
   const { data: subscriptions } = await supabase
     .from("subscriptions")
     .select(
@@ -137,7 +363,7 @@ export default async function AdminCustomerDetailsPage({ params }: PageProps) {
       organization_id,
       stripe_customer_id,
       stripe_subscription_id
-    `
+    `,
     )
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
@@ -176,7 +402,7 @@ export default async function AdminCustomerDetailsPage({ params }: PageProps) {
     (organizations ?? []).map((organization: any) => [
       organization.id,
       organization,
-    ])
+    ]),
   );
 
   const { data: discordAccount } = await supabase
@@ -211,13 +437,13 @@ export default async function AdminCustomerDetailsPage({ params }: PageProps) {
     (membershipOrganizations ?? []).map((organization: any) => [
       organization.id,
       organization,
-    ])
+    ]),
   );
 
   const activeSubscriptions = safeSubscriptions.filter(
     (subscription: any) =>
       subscription.status === "active" ||
-      subscription.status === "trialing"
+      subscription.status === "trialing",
   );
 
   const primarySubscription =
@@ -341,7 +567,75 @@ export default async function AdminCustomerDetailsPage({ params }: PageProps) {
             <p className="text-xs uppercase tracking-wide text-slate-500">
               Platform Role
             </p>
-            <p className="mt-1 text-slate-100">{formatRole(role?.name)}</p>
+
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <span className={roleBadgeClass(role?.name)}>
+                {formatRole(role?.name)}
+              </span>
+
+              {role?.rank ? (
+                <span className="rounded-full border border-white/10 bg-slate-950 px-2 py-1 text-xs font-medium text-slate-500">
+                  Rank {role.rank}
+                </span>
+              ) : null}
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs uppercase tracking-wide text-slate-500">
+              Change Platform Role
+            </p>
+
+            <div className="mt-2">
+              {canEditCustomerRole ? (
+                <form
+                  action={updateCustomerRole}
+                  className="flex flex-wrap items-center gap-2"
+                >
+                  <input type="hidden" name="profileId" value={userId} />
+
+                  <select
+                    name="roleName"
+                    defaultValue={role?.name || "user"}
+                    className="rounded-full border border-white/10 bg-slate-950 px-3 py-1.5 text-xs font-medium text-slate-300 outline-none transition hover:bg-slate-900 focus:border-emerald-500/40 focus:ring-2 focus:ring-emerald-500/10"
+                  >
+                    {selectableRoles.map((availableRole) => (
+                      <option key={availableRole.id} value={availableRole.name}>
+                        {formatRole(availableRole.name)}
+                      </option>
+                    ))}
+                  </select>
+
+                  <button
+                    type="submit"
+                    className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-300 transition hover:bg-emerald-500/20"
+                  >
+                    Save Role
+                  </button>
+                </form>
+              ) : roleIsMasterAdmin ? (
+                <div>
+                  <span className="rounded-full border border-purple-500/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-300">
+                    Master Admin Locked
+                  </span>
+
+                  <p className="mt-2 text-xs text-slate-500">
+                    Only a master admin can change this role.
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <span className="rounded-full border border-white/10 bg-slate-950 px-3 py-1.5 text-xs font-medium text-slate-500">
+                    Role Editing Locked
+                  </span>
+
+                  <p className="mt-2 text-xs text-slate-500">
+                    Your account does not have permission to manage customer
+                    roles.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
           <div>
@@ -410,6 +704,162 @@ export default async function AdminCustomerDetailsPage({ params }: PageProps) {
               {formatDate(discordAccount?.created_at)}
             </p>
           </div>
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-white/10 bg-slate-900/80">
+        <div className="border-b border-white/10 px-5 py-4">
+          <h2 className="font-semibold text-slate-100">Subscriptions</h2>
+
+          <p className="mt-1 text-sm text-slate-400">
+            Customer subscription history and connected Stripe records.
+          </p>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[900px] text-left text-sm">
+            <thead className="bg-slate-950/80 text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-5 py-3">Plan</th>
+                <th className="px-5 py-3">Organization</th>
+                <th className="px-5 py-3">Status</th>
+                <th className="px-5 py-3">Current Period End</th>
+                <th className="px-5 py-3">Stripe Customer</th>
+                <th className="px-5 py-3">Stripe Subscription</th>
+              </tr>
+            </thead>
+
+            <tbody className="divide-y divide-white/10">
+              {safeSubscriptions.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={6}
+                    className="px-5 py-8 text-center text-slate-400"
+                  >
+                    No subscriptions found.
+                  </td>
+                </tr>
+              ) : (
+                safeSubscriptions.map((subscription: any) => {
+                  const subscriptionPlan = planById.get(subscription.plan_id);
+                  const subscriptionOrganization = organizationById.get(
+                    subscription.organization_id,
+                  );
+
+                  return (
+                    <tr key={subscription.id} className="hover:bg-white/[0.03]">
+                      <td className="px-5 py-4">
+                        <p className="text-slate-100">
+                          {subscriptionPlan?.name || "—"}
+                        </p>
+
+                        <p className="mt-1 text-xs text-slate-500">
+                          {subscriptionPlan?.key || ""}
+                        </p>
+                      </td>
+
+                      <td className="px-5 py-4">
+                        <p className="text-slate-100">
+                          {subscriptionOrganization?.name || "—"}
+                        </p>
+
+                        <p className="mt-1 text-xs text-slate-500">
+                          {subscriptionOrganization?.slug || ""}
+                        </p>
+                      </td>
+
+                      <td className="px-5 py-4">
+                        <span className={statusBadge(subscription.status)}>
+                          {subscription.status || "none"}
+                        </span>
+                      </td>
+
+                      <td className="px-5 py-4 text-slate-300">
+                        {formatDate(subscription.current_period_end)}
+                      </td>
+
+                      <td className="px-5 py-4 text-slate-300">
+                        <span className="break-all text-xs">
+                          {subscription.stripe_customer_id || "—"}
+                        </span>
+                      </td>
+
+                      <td className="px-5 py-4 text-slate-300">
+                        <span className="break-all text-xs">
+                          {subscription.stripe_subscription_id || "—"}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-white/10 bg-slate-900/80">
+        <div className="border-b border-white/10 px-5 py-4">
+          <h2 className="font-semibold text-slate-100">
+            Organization Memberships
+          </h2>
+
+          <p className="mt-1 text-sm text-slate-400">
+            Workspaces this customer belongs to.
+          </p>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[700px] text-left text-sm">
+            <thead className="bg-slate-950/80 text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-5 py-3">Organization</th>
+                <th className="px-5 py-3">Membership Role</th>
+                <th className="px-5 py-3">Joined</th>
+              </tr>
+            </thead>
+
+            <tbody className="divide-y divide-white/10">
+              {safeMemberships.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={3}
+                    className="px-5 py-8 text-center text-slate-400"
+                  >
+                    No organization memberships found.
+                  </td>
+                </tr>
+              ) : (
+                safeMemberships.map((membership: any) => {
+                  const membershipOrganization = membershipOrganizationById.get(
+                    membership.organization_id,
+                  );
+
+                  return (
+                    <tr key={membership.id} className="hover:bg-white/[0.03]">
+                      <td className="px-5 py-4">
+                        <p className="text-slate-100">
+                          {membershipOrganization?.name || "—"}
+                        </p>
+
+                        <p className="mt-1 text-xs text-slate-500">
+                          {membershipOrganization?.slug || ""}
+                        </p>
+                      </td>
+
+                      <td className="px-5 py-4 text-slate-300">
+                        {formatRole(membership.role)}
+                      </td>
+
+                      <td className="px-5 py-4 text-slate-300">
+                        {formatDate(membership.created_at)}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       </section>
     </main>
