@@ -15,6 +15,10 @@ import type { ConfidencePerformance } from "@/components/journal/ConfidencePerfo
 import type { OptionTypePerformance } from "@/components/journal/OptionTypePerformanceTable";
 import type { ExpirationPerformance } from "@/components/journal/ExpirationPerformanceTable";
 import type { DtePerformance } from "@/components/journal/DtePerformanceTable";
+import {
+  buildTradeSummary,
+  type TradeSummaryOptionLegInput,
+} from "@/lib/signals/buildTradeSummary";
 
 import type { Metadata } from "next";
 
@@ -52,6 +56,19 @@ type FillRow = {
   created_at: string | null;
 };
 
+type SignalOptionLegRow = {
+  id: string;
+  signal_id: string;
+  leg_order: number;
+  action: string | null;
+  option_type: string | null;
+  strike_price: number | null;
+  expiration_date: string | null;
+  contracts: number | null;
+  entry_price: number | null;
+  exit_price: number | null;
+};
+
 type ExecutionRow = {
   id: string;
   signal_id: string;
@@ -76,12 +93,25 @@ type ExecutionRow = {
     expiration_date: string | null;
     entry_date: string | null;
     strike_price: number | null;
+
+    /**
+     * Execution style:
+     * scalp, swing, leap
+     */
     trade_style: string | null;
+
+    /**
+     * Strategy structure:
+     * LONG_CALL, IRON_CONDOR, BULL_PUT_CREDIT, etc.
+     */
+    strategy_type: string | null;
+
     confidence: number | null;
     status: string | null;
     outcome: string | null;
     return_pct: number | null;
     created_by: string | null;
+    signal_option_legs: SignalOptionLegRow[] | null;
   } | null;
 };
 
@@ -111,7 +141,24 @@ type ReportTrade = {
   option_type: string | null;
   expiration_date: string | null;
   entry_date: string | null;
+
+  /**
+   * Strategy structure used for strategy analytics.
+   */
+  strategy_type: string;
+
+  /**
+   * Execution style used for timeframe analytics.
+   */
+  execution_style: string;
+
+  /**
+   * Legacy compatibility alias retained for existing report components.
+   * This now mirrors strategy_type rather than execution style.
+   */
   trade_style: string;
+
+  leg_count: number;
   confidence: number | null;
   side: string;
   quantity: number;
@@ -198,6 +245,22 @@ function normalizeNumber(value: number | string | null | undefined) {
   }
 
   return null;
+}
+
+function formatDisplayText(value: string | null | undefined) {
+  const normalized = String(value ?? "").trim();
+
+  if (!normalized) {
+    return "—";
+  }
+
+  if (normalized.toLowerCase() === "leap") {
+    return "LEAP";
+  }
+
+  return normalized
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function normalizeOutcome(value: string | null | undefined) {
@@ -325,6 +388,154 @@ function getDurationMinutes(start: string | null, end: string | null) {
 
 function getMultiplier(execution: ExecutionRow) {
   return execution.signals?.instrument_type === "OPTION" ? 100 : 1;
+}
+
+function getExecutionTradeSummary(execution: ExecutionRow) {
+  const signal = execution.signals;
+
+  if (!signal) {
+    return null;
+  }
+
+  return buildTradeSummary({
+    symbol:
+      signal.asset,
+
+    underlying:
+      signal.underlying,
+
+    instrument_type:
+      signal.instrument_type,
+
+    /*
+     * strategy_type is authoritative.
+     * Legacy signals fall back to option-leg detection or trade_style.
+     */
+    trade_style:
+      signal.strategy_type ??
+      signal.trade_style,
+
+    /*
+     * trade_style is now the execution style.
+     */
+    execution_style:
+      signal.trade_style,
+
+    action:
+      signal.action,
+
+    open_action:
+      signal.open_action,
+
+    entry_price:
+      execution.entry_price,
+
+    exit_price:
+      execution.exit_price,
+
+    contracts:
+      execution.contracts,
+
+    option_type:
+      signal.option_type,
+
+    strike_price:
+      signal.strike_price,
+
+    expiration_date:
+      signal.expiration_date,
+
+    option_legs:
+      (signal.signal_option_legs ??
+        []) as TradeSummaryOptionLegInput[],
+  });
+}
+
+function isCreditOpeningAction(value: string | null | undefined) {
+  const normalized = String(value ?? "")
+    .trim()
+    .toUpperCase();
+
+  return (
+    normalized === "SELL_TO_OPEN" ||
+    normalized === "STO" ||
+    normalized === "SELL" ||
+    normalized === "SHORT"
+  );
+}
+
+function calculateDirectionalPnl({
+  execution,
+  entryPrice,
+  exitPrice,
+  closedQuantity,
+}: {
+  execution: ExecutionRow;
+  entryPrice: number | null;
+  exitPrice: number | null;
+  closedQuantity: number;
+}) {
+  if (
+    entryPrice === null ||
+    exitPrice === null ||
+    closedQuantity <= 0
+  ) {
+    return null;
+  }
+
+  const directionMultiplier =
+    isCreditOpeningAction(
+      execution.signals?.open_action ??
+      execution.signals?.action,
+    )
+      ? -1
+      : 1;
+
+  return Number(
+    (
+      (exitPrice - entryPrice) *
+      directionMultiplier *
+      closedQuantity *
+      getMultiplier(execution)
+    ).toFixed(2),
+  );
+}
+
+function calculateDirectionalReturnPct({
+  execution,
+  entryPrice,
+  exitPrice,
+}: {
+  execution: ExecutionRow;
+  entryPrice: number | null;
+  exitPrice: number | null;
+}) {
+  if (
+    entryPrice === null ||
+    exitPrice === null ||
+    entryPrice === 0
+  ) {
+    return null;
+  }
+
+  const directionMultiplier =
+    isCreditOpeningAction(
+      execution.signals?.open_action ??
+      execution.signals?.action,
+    )
+      ? -1
+      : 1;
+
+  return Number(
+    (
+      (
+        (exitPrice - entryPrice) /
+        Math.abs(entryPrice)
+      ) *
+      directionMultiplier *
+      100
+    ).toFixed(2),
+  );
 }
 
 function getSymbol(execution: ExecutionRow) {
@@ -481,6 +692,22 @@ function filterTrades({
 function getReportTrades(executions: ExecutionRow[]) {
   return executions.map((execution): ReportTrade => {
     const fills = execution.execution_fills ?? [];
+    const tradeSummary =
+      getExecutionTradeSummary(execution);
+
+    const strategyType =
+      tradeSummary &&
+      tradeSummary.tradeStyleLabel !==
+        "Unknown"
+        ? tradeSummary.tradeStyleLabel
+        : formatDisplayText(
+            execution.signals?.strategy_type,
+          );
+
+    const executionStyle =
+      formatDisplayText(
+        execution.signals?.trade_style,
+      );
     const openFills = getOpenFills(fills);
     const closeFills = getCloseFills(fills);
 
@@ -504,22 +731,23 @@ function getReportTrades(executions: ExecutionRow[]) {
       averageWeightedPrice(closeFills) ?? normalizeNumber(execution.exit_price);
 
     const calculatedPnl =
-      averageEntry !== null && averageExit !== null && closedQuantity > 0
-        ? Number(
-            (
-              (averageExit - averageEntry) *
-              closedQuantity *
-              getMultiplier(execution)
-            ).toFixed(2),
-          )
-        : null;
+      calculateDirectionalPnl({
+        execution,
+        entryPrice:
+          averageEntry,
+        exitPrice:
+          averageExit,
+        closedQuantity,
+      });
 
     const calculatedPnlPct =
-      averageEntry !== null && averageExit !== null && averageEntry !== 0
-        ? Number(
-            (((averageExit - averageEntry) / averageEntry) * 100).toFixed(2),
-          )
-        : null;
+      calculateDirectionalReturnPct({
+        execution,
+        entryPrice:
+          averageEntry,
+        exitPrice:
+          averageExit,
+      });
 
     const pnl = normalizeNumber(execution.pnl) ?? calculatedPnl;
     const pnlPct =
@@ -567,7 +795,23 @@ return {
 
   side: getSide(execution),
 
-  trade_style: execution.signals?.trade_style?.toUpperCase() ?? "—",
+  strategy_type:
+    strategyType,
+
+  execution_style:
+    executionStyle,
+
+  trade_style:
+    strategyType,
+
+  leg_count:
+    tradeSummary?.legCount ??
+    (
+      execution.signals?.instrument_type ===
+      "OPTION"
+        ? 1
+        : 0
+    ),
 
   confidence: normalizeNumber(execution.signals?.confidence),
 
@@ -674,7 +918,20 @@ function getImportedReportTrades(importedTrades: ImportedJournalTradeRow[]) {
 
       side: normalizeImportedSide(trade.side),
 
-      trade_style: "IMPORT",
+      strategy_type:
+        "Broker Import",
+
+      execution_style:
+        "Import",
+
+      trade_style:
+        "Broker Import",
+
+      leg_count:
+        instrumentType ===
+        "OPTION"
+          ? 1
+          : 0,
 
       confidence: null,
 
@@ -895,7 +1152,10 @@ function groupByStrategy(trades: ReportTrade[]) {
   >();
 
   trades.forEach((trade) => {
-    const strategy = trade.trade_style || "UNKNOWN";
+    const strategy =
+      trade.strategy_type ||
+      trade.trade_style ||
+      "UNKNOWN";
 
     const current =
       groups.get(strategy) ??
@@ -952,6 +1212,121 @@ function groupByStrategy(trades: ReportTrade[]) {
       };
     })
     .sort((a, b) => b.netPnl - a.netPnl);
+}
+
+function groupByExecutionStyle(trades: ReportTrade[]) {
+  const groups = new Map<
+    string,
+    {
+      strategy: string;
+      trades: number;
+      winners: number;
+      losers: number;
+      breakevens: number;
+      totalProfit: number;
+      totalLoss: number;
+      netPnl: number;
+    }
+  >();
+
+  trades.forEach((trade) => {
+    const executionStyle =
+      trade.execution_style ||
+      "UNKNOWN";
+
+    const current =
+      groups.get(executionStyle) ??
+      {
+        strategy:
+          executionStyle,
+        trades: 0,
+        winners: 0,
+        losers: 0,
+        breakevens: 0,
+        totalProfit: 0,
+        totalLoss: 0,
+        netPnl: 0,
+      };
+
+    const pnl =
+      Number(
+        trade.profit_loss ??
+        0,
+      );
+
+    current.trades += 1;
+    current.netPnl += pnl;
+
+    if (pnl > 0) {
+      current.winners += 1;
+      current.totalProfit += pnl;
+    } else if (pnl < 0) {
+      current.losers += 1;
+      current.totalLoss +=
+        Math.abs(pnl);
+    } else {
+      current.breakevens += 1;
+    }
+
+    groups.set(
+      executionStyle,
+      current,
+    );
+  });
+
+  return Array.from(
+    groups.values(),
+  )
+    .map((group) => {
+      const gradedTrades =
+        group.winners +
+        group.losers;
+
+      return {
+        strategy:
+          group.strategy,
+        trades:
+          group.trades,
+        winners:
+          group.winners,
+        losers:
+          group.losers,
+        breakevens:
+          group.breakevens,
+        winRate:
+          gradedTrades > 0
+            ? (
+                group.winners /
+                gradedTrades
+              ) *
+              100
+            : 0,
+        averageWinner:
+          group.winners > 0
+            ? group.totalProfit /
+              group.winners
+            : 0,
+        averageLoser:
+          group.losers > 0
+            ? group.totalLoss /
+              group.losers
+            : 0,
+        profitFactor:
+          group.totalLoss > 0
+            ? group.totalProfit /
+              group.totalLoss
+            : group.totalProfit > 0
+              ? group.totalProfit
+              : 0,
+        netPnl:
+          group.netPnl,
+      };
+    })
+    .sort(
+      (a, b) =>
+        b.netPnl -
+        a.netPnl,
+    );
 }
 
 function groupByDayOfWeek(trades: ReportTrade[]) {
@@ -2181,7 +2556,15 @@ function MobileClosedTradeCard({ trade }: { trade: ReportTrade }) {
           </div>
 
           <p className="mt-1 text-xs text-slate-500">
-            {trade.instrument_type} • {trade.trade_style} • {trade.side}
+            {trade.instrument_type} • {trade.strategy_type} •{" "}
+            {trade.execution_style} • {trade.side}
+            {trade.leg_count > 0
+              ? ` • ${trade.leg_count} leg${
+                  trade.leg_count === 1
+                    ? ""
+                    : "s"
+                }`
+              : ""}
           </p>
         </div>
 
@@ -2196,6 +2579,18 @@ function MobileClosedTradeCard({ trade }: { trade: ReportTrade }) {
       </div>
 
       <div className="grid w-full min-w-0 grid-cols-2 gap-3 text-sm">
+        <MobileReportField
+          label="Strategy"
+          value={trade.strategy_type}
+        />
+        <MobileReportField
+          label="Execution Style"
+          value={trade.execution_style}
+        />
+        <MobileReportField
+          label="Option Legs"
+          value={String(trade.leg_count)}
+        />
         <MobileReportField label="Qty" value={String(trade.quantity)} />
         <MobileReportField label="Confidence" value={trade.confidence === null ? "—" : `${trade.confidence}%`} />
         <MobileReportField label="Entry" value={formatReportPlainMoney(trade.entry_price)} />
@@ -2281,11 +2676,24 @@ export default async function JournalReportsPage({
         strike_price,
         expiration_date,
         trade_style,
+        strategy_type,
         confidence,
         status,
         outcome,
         return_pct,
-        created_by
+        created_by,
+        signal_option_legs!left (
+          id,
+          signal_id,
+          leg_order,
+          action,
+          option_type,
+          strike_price,
+          expiration_date,
+          contracts,
+          entry_price,
+          exit_price
+        )
       )
       `,
     )
@@ -2433,7 +2841,16 @@ export default async function JournalReportsPage({
   }, null);
 
   const symbolPerformance = groupBySymbol(closedTrades);
-  const strategyPerformance = groupByStrategy(closedTrades);
+  const strategyPerformance =
+    groupByStrategy(
+      closedTrades,
+    );
+
+  const executionStylePerformance =
+    groupByExecutionStyle(
+      closedTrades,
+    );
+
   const dayOfWeekPerformance = groupByDayOfWeek(closedTrades);
   const hourOfDayPerformance = groupByHourOfDay(closedTrades);
   const instrumentPerformance = groupByInstrument(closedTrades);
@@ -2455,7 +2872,9 @@ export default async function JournalReportsPage({
           </h1>
 
           <p className="text-sm text-slate-400">
-            Real execution analytics powered by signals, executions, fills, and imported broker trades.
+            Real execution analytics with separate strategy and execution-style
+            reporting, multi-leg option structures, fills, and imported broker
+            trades.
           </p>
         </div>
 
@@ -2556,7 +2975,16 @@ export default async function JournalReportsPage({
 
       <div className="hidden w-full min-w-0 max-w-full rounded-xl border border-white/10 bg-slate-900/80 xl:block">
         <PerformanceAnalyticsSwitcher
-          strategies={strategyPerformance}
+          strategies={[
+            ...strategyPerformance,
+            ...executionStylePerformance.map(
+              (item) => ({
+                ...item,
+                strategy:
+                  `Execution: ${item.strategy}`,
+              }),
+            ),
+          ]}
           days={dayOfWeekPerformance}
           hours={hourOfDayPerformance}
           instruments={instrumentPerformance}
@@ -2568,7 +2996,16 @@ export default async function JournalReportsPage({
       </div>
 
       <MobilePerformanceAnalyticsSection
-        strategies={strategyPerformance}
+        strategies={[
+          ...strategyPerformance,
+          ...executionStylePerformance.map(
+            (item) => ({
+              ...item,
+              strategy:
+                `Execution: ${item.strategy}`,
+            }),
+          ),
+        ]}
         days={dayOfWeekPerformance}
         hours={hourOfDayPerformance}
         instruments={instrumentPerformance}

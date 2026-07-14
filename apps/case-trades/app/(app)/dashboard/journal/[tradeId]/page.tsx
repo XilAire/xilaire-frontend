@@ -40,6 +40,10 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getUserEntitlements } from "@/lib/auth/getUserEntitlements";
 import { resolveCurrentUserRole } from "@/lib/auth/resolveCurrentUserRole";
 import { getSignalDisplayStatus } from "@/lib/signals/displayState";
+import {
+  buildTradeSummary,
+  type TradeSummaryOptionLegInput,
+} from "@/lib/signals/buildTradeSummary";
 
 const JournalNotesFormComponent = JournalNotesForm as ComponentType<any>;
 const TradeTimelineComponent = TradeTimeline as ComponentType<any>;
@@ -60,6 +64,19 @@ type FillRow = {
   contracts: number | null;
   price: number | null;
   created_at: string | null;
+};
+
+type SignalOptionLegRow = {
+  id: string;
+  signal_id: string;
+  leg_order: number;
+  action: string | null;
+  option_type: string | null;
+  strike_price: number | null;
+  expiration_date: string | null;
+  contracts: number | null;
+  entry_price: number | null;
+  exit_price: number | null;
 };
 
 type JournalNotesRow = {
@@ -120,7 +137,19 @@ type ExecutionRow = {
     quantity: number | null;
     contracts: number | null;
     shares: number | null;
+
+    /**
+     * Execution style:
+     * scalp, swing, leap
+     */
     trade_style: string | null;
+
+    /**
+     * Strategy structure:
+     * LONG_CALL, IRON_CONDOR, BULL_PUT_CREDIT, etc.
+     */
+    strategy_type: string | null;
+
     confidence: number | null;
     status: string | null;
     watching: boolean | null;
@@ -130,6 +159,7 @@ type ExecutionRow = {
     opened_at: string | null;
     closed_at: string | null;
     created_at: string | null;
+    signal_option_legs: SignalOptionLegRow[] | null;
   };
 };
 
@@ -172,6 +202,22 @@ function toFiniteNumber(value: number | string | null | undefined) {
   }
 
   return parsed;
+}
+
+function formatDisplayText(value: string | null | undefined) {
+  const normalized = String(value ?? "").trim();
+
+  if (!normalized) {
+    return "—";
+  }
+
+  if (normalized.toLowerCase() === "leap") {
+    return "LEAP";
+  }
+
+  return normalized
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function formatMoney(value: number | string | null | undefined) {
@@ -301,18 +347,204 @@ function getMultiplier(signal: ExecutionRow["signals"]) {
   return signal.instrument_type === "OPTION" ? 100 : 1;
 }
 
+function getTradeSummary(signal: ExecutionRow["signals"]) {
+  return buildTradeSummary({
+    symbol:
+      signal.asset,
+
+    underlying:
+      signal.underlying,
+
+    instrument_type:
+      signal.instrument_type,
+
+    /*
+     * strategy_type is authoritative.
+     * Legacy signals fall back to leg detection or trade_style.
+     */
+    trade_style:
+      signal.strategy_type ??
+      signal.trade_style,
+
+    /*
+     * trade_style is the execution style.
+     */
+    execution_style:
+      signal.trade_style,
+
+    action:
+      signal.action,
+
+    open_action:
+      signal.open_action,
+
+    entry_price:
+      signal.entry_price ??
+      signal.price,
+
+    exit_price:
+      signal.exit_price,
+
+    contracts:
+      signal.contracts,
+
+    quantity:
+      signal.quantity,
+
+    shares:
+      signal.shares,
+
+    option_type:
+      signal.option_type,
+
+    strike_price:
+      signal.strike_price,
+
+    expiration_date:
+      signal.expiration_date,
+
+    option_legs:
+      (signal.signal_option_legs ??
+        []) as TradeSummaryOptionLegInput[],
+  });
+}
+
 function getContractLabel(signal: ExecutionRow["signals"]) {
   if (signal.instrument_type === "OPTION") {
+    const tradeSummary =
+      getTradeSummary(signal);
+
+    if (tradeSummary.legs.length > 1) {
+      return tradeSummary.legs
+        .map((leg) => {
+          const strike =
+            leg.strikePrice !== null
+              ? String(leg.strikePrice)
+              : "—";
+
+          return `${leg.action} ${strike} ${leg.optionType}`;
+        })
+        .join(" | ");
+    }
+
+    const primaryLeg =
+      tradeSummary.legs[0];
+
+    if (primaryLeg) {
+      const parts = [
+        primaryLeg.strikePrice !== null
+          ? String(primaryLeg.strikePrice)
+          : null,
+        primaryLeg.optionType,
+        primaryLeg.expirationDate,
+      ].filter(Boolean);
+
+      return parts.length > 0
+        ? parts.join(" ")
+        : "OPTION";
+    }
+
     const parts = [
-      signal.strike_price ? String(signal.strike_price) : null,
+      signal.strike_price
+        ? String(signal.strike_price)
+        : null,
       signal.option_type,
       signal.expiration_date,
     ].filter(Boolean);
 
-    return parts.length > 0 ? parts.join(" ") : "OPTION";
+    return parts.length > 0
+      ? parts.join(" ")
+      : "OPTION";
   }
 
   return "STOCK";
+}
+
+function isCreditOpeningAction(value: string | null | undefined) {
+  const normalized = String(value ?? "")
+    .trim()
+    .toUpperCase();
+
+  return (
+    normalized === "SELL_TO_OPEN" ||
+    normalized === "STO" ||
+    normalized === "SELL" ||
+    normalized === "SHORT"
+  );
+}
+
+function calculateDirectionalPnl({
+  signal,
+  entryPrice,
+  exitPrice,
+  closedQuantity,
+}: {
+  signal: ExecutionRow["signals"];
+  entryPrice: number | null;
+  exitPrice: number | null;
+  closedQuantity: number;
+}) {
+  if (
+    entryPrice === null ||
+    exitPrice === null ||
+    closedQuantity <= 0
+  ) {
+    return null;
+  }
+
+  const directionMultiplier =
+    isCreditOpeningAction(
+      signal.open_action ??
+      signal.action,
+    )
+      ? -1
+      : 1;
+
+  return Number(
+    (
+      (exitPrice - entryPrice) *
+      directionMultiplier *
+      closedQuantity *
+      getMultiplier(signal)
+    ).toFixed(2),
+  );
+}
+
+function calculateDirectionalReturnPct({
+  signal,
+  entryPrice,
+  exitPrice,
+}: {
+  signal: ExecutionRow["signals"];
+  entryPrice: number | null;
+  exitPrice: number | null;
+}) {
+  if (
+    entryPrice === null ||
+    exitPrice === null ||
+    entryPrice === 0
+  ) {
+    return null;
+  }
+
+  const directionMultiplier =
+    isCreditOpeningAction(
+      signal.open_action ??
+      signal.action,
+    )
+      ? -1
+      : 1;
+
+  return Number(
+    (
+      (
+        (exitPrice - entryPrice) /
+        Math.abs(entryPrice)
+      ) *
+      directionMultiplier *
+      100
+    ).toFixed(2),
+  );
 }
 
 function normalizeOutcome(value: string | null | undefined) {
@@ -506,6 +738,13 @@ function buildCaseTradeExportRows({
   pnlPct,
   duration,
   fills,
+  strategyLabel,
+  executionStyleLabel,
+  entryType,
+  netEntry,
+  premiumPaid,
+  premiumReceived,
+  legCount,
 }: {
   tradeExecution: ExecutionRow;
   signal: NonNullable<ExecutionRow["signals"]>;
@@ -523,6 +762,13 @@ function buildCaseTradeExportRows({
   pnlPct: number | null;
   duration: string;
   fills: FillRow[];
+  strategyLabel: string;
+  executionStyleLabel: string;
+  entryType: string;
+  netEntry: number | null;
+  premiumPaid: number;
+  premiumReceived: number;
+  legCount: number;
 }) {
   return [
     ["Export Type", "CASE Execution Trade"],
@@ -533,7 +779,13 @@ function buildCaseTradeExportRows({
     ["Instrument", signal.instrument_type],
     ["Contract", getContractLabel(signal)],
     ["Action", formatBrokerAction(signal.open_action ?? signal.action)],
-    ["Strategy", signal.trade_style?.toUpperCase() ?? "—"],
+    ["Strategy", strategyLabel],
+    ["Execution Style", executionStyleLabel],
+    ["Entry Type", entryType],
+    ["Net Entry", netEntry],
+    ["Premium Paid", premiumPaid],
+    ["Premium Received", premiumReceived],
+    ["Option Leg Count", legCount],
     ["Status", status],
     ["Outcome", outcome],
     ["Total Quantity", totalQuantity],
@@ -651,6 +903,7 @@ export default async function JournalTradeDetailPage({
         contracts,
         shares,
         trade_style,
+        strategy_type,
         confidence,
         status,
         watching,
@@ -659,7 +912,19 @@ export default async function JournalTradeDetailPage({
         return_pct,
         opened_at,
         closed_at,
-        created_at
+        created_at,
+        signal_option_legs!left (
+          id,
+          signal_id,
+          leg_order,
+          action,
+          option_type,
+          strike_price,
+          expiration_date,
+          contracts,
+          entry_price,
+          exit_price
+        )
       )
     `
     )
@@ -714,6 +979,34 @@ export default async function JournalTradeDetailPage({
 
   const tradeExecution = execution;
   const signal = tradeExecution.signals;
+
+  const tradeSummary =
+    getTradeSummary(signal);
+
+  const strategyLabel =
+    tradeSummary.tradeStyleLabel !==
+    "Unknown"
+      ? tradeSummary.tradeStyleLabel
+      : formatDisplayText(
+          signal.strategy_type,
+        );
+
+  const executionStyleLabel =
+    formatDisplayText(
+      signal.trade_style,
+    );
+
+  const strategyEntryLabel =
+    tradeSummary.debitCredit ===
+    "DEBIT"
+      ? "Net Debit"
+      : tradeSummary.debitCredit ===
+          "CREDIT"
+        ? "Net Credit"
+        : tradeSummary.debitCredit ===
+            "EVEN"
+          ? "Net Entry"
+          : "Entry";
 
   const { data: journalNotes } = await supabase
     .from("journal_execution_notes")
@@ -815,23 +1108,24 @@ export default async function JournalTradeDetailPage({
     signal.exit_price ??
     null;
 
-  const multiplier = getMultiplier(signal);
-
   const calculatedPnl =
-    averageEntry !== null && averageExit !== null && closedQuantity > 0
-      ? Number(
-          (
-            (averageExit - averageEntry) *
-            closedQuantity *
-            multiplier
-          ).toFixed(2)
-        )
-      : null;
+    calculateDirectionalPnl({
+      signal,
+      entryPrice:
+        averageEntry,
+      exitPrice:
+        averageExit,
+      closedQuantity,
+    });
 
   const calculatedPnlPct =
-    averageEntry !== null && averageExit !== null && averageEntry !== 0
-      ? Number((((averageExit - averageEntry) / averageEntry) * 100).toFixed(2))
-      : null;
+    calculateDirectionalReturnPct({
+      signal,
+      entryPrice:
+        averageEntry,
+      exitPrice:
+        averageExit,
+    });
 
   const pnl = tradeExecution.pnl ?? calculatedPnl;
   const pnlPct = tradeExecution.pnl_pct ?? signal.return_pct ?? calculatedPnlPct;
@@ -884,6 +1178,18 @@ export default async function JournalTradeDetailPage({
     pnlPct,
     duration,
     fills,
+    strategyLabel,
+    executionStyleLabel,
+    entryType:
+      tradeSummary.debitCredit,
+    netEntry:
+      tradeSummary.netEntryAmount,
+    premiumPaid:
+      tradeSummary.totalPaid,
+    premiumReceived:
+      tradeSummary.totalReceived,
+    legCount:
+      tradeSummary.legCount,
   });
 
   const caseCsvDownloadHref = buildDownloadHref(
@@ -919,7 +1225,7 @@ export default async function JournalTradeDetailPage({
             </p>
 
             <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-100">
-              {symbol} · {tradeType}
+              {symbol} · {strategyLabel}
             </h1>
 
             <p className="mt-2 text-sm text-slate-400">
@@ -999,7 +1305,44 @@ export default async function JournalTradeDetailPage({
               label="Side"
               value={formatBrokerAction(signal.open_action ?? signal.action)}
             />
-            <Info label="Strategy" value={signal.trade_style?.toUpperCase() ?? "—"} />
+            <Info
+              label="Strategy"
+              value={strategyLabel}
+            />
+            <Info
+              label="Execution Style"
+              value={executionStyleLabel}
+            />
+            <Info
+              label="Entry Type"
+              value={formatDisplayText(
+                tradeSummary.debitCredit,
+              )}
+            />
+            <Info
+              label={strategyEntryLabel}
+              value={formatMoney(
+                tradeSummary.netEntryAmount,
+              )}
+            />
+            <Info
+              label="Premium Paid"
+              value={formatMoney(
+                tradeSummary.totalPaid,
+              )}
+            />
+            <Info
+              label="Premium Received"
+              value={formatMoney(
+                tradeSummary.totalReceived,
+              )}
+            />
+            <Info
+              label="Option Legs"
+              value={String(
+                tradeSummary.legCount,
+              )}
+            />
             <Info label="Confidence" value={`${signal.confidence ?? "—"}%`} />
             <Info label="Average Entry" value={formatMoney(averageEntry)} />
             <Info
@@ -1065,6 +1408,88 @@ export default async function JournalTradeDetailPage({
           </div>
         </section>
       </div>
+
+      {signal.instrument_type === "OPTION" && (
+        <section className="rounded-xl border border-white/10 bg-slate-900/80 p-6">
+          <div className="mb-5 flex items-center gap-3">
+            <div className="rounded-xl bg-purple-500/10 p-3 text-purple-300">
+              <Target className="h-5 w-5" />
+            </div>
+
+            <div>
+              <h2 className="text-lg font-semibold text-slate-100">
+                Option Strategy Structure
+              </h2>
+
+              <p className="text-sm text-slate-400">
+                Every option leg used to build the {strategyLabel} strategy.
+              </p>
+            </div>
+          </div>
+
+          {tradeSummary.legs.length > 0 ? (
+            <div className="grid gap-3 md:grid-cols-2">
+              {tradeSummary.legs.map((leg) => (
+                <div
+                  key={`${leg.legOrder}-${leg.displayLine}`}
+                  className="min-w-0 rounded-lg border border-white/10 bg-slate-950 p-4"
+                >
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Leg {leg.legOrder}
+                  </p>
+
+                  <p className="mt-2 break-words text-sm font-semibold text-slate-100">
+                    {leg.displayLine}
+                  </p>
+
+                  <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <p className="text-slate-500">
+                        Action
+                      </p>
+                      <p className="mt-1 text-slate-300">
+                        {leg.actionLabel}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-slate-500">
+                        Contracts
+                      </p>
+                      <p className="mt-1 text-slate-300">
+                        {leg.contracts}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-slate-500">
+                        Entry Premium
+                      </p>
+                      <p className="mt-1 text-slate-300">
+                        {formatMoney(leg.entryPrice)}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-slate-500">
+                        Exit Premium
+                      </p>
+                      <p className="mt-1 text-slate-300">
+                        {formatMoney(leg.exitPrice)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-4 text-sm text-amber-200">
+              No option-leg rows were found. CASE is displaying the saved
+              legacy option fields for this trade.
+            </div>
+          )}
+        </section>
+      )}
 
       <section className="rounded-xl border border-white/10 bg-slate-900/80 p-6">
         <div className="mb-5 flex items-center gap-3">
@@ -1209,7 +1634,20 @@ export default async function JournalTradeDetailPage({
         trade={{
           symbol,
           instrument_type: signal.instrument_type,
-          strategy: signal.trade_style,
+          strategy:
+            strategyLabel,
+          execution_style:
+            executionStyleLabel,
+          option_legs:
+            tradeSummary.legs,
+          entry_type:
+            tradeSummary.debitCredit,
+          net_entry:
+            tradeSummary.netEntryAmount,
+          premium_paid:
+            tradeSummary.totalPaid,
+          premium_received:
+            tradeSummary.totalReceived,
           confidence: signal.confidence,
           entry_price: averageEntry,
           exit_price: averageExit,
@@ -1644,7 +2082,7 @@ function Metric({
         : "text-slate-100";
 
   return (
-    <section className="rounded-xl border border-white/10 bg-slate-900/80 p-5">
+    <section className="min-w-0 rounded-xl border border-white/10 bg-slate-900/80 p-5">
       <div className="mb-3 text-emerald-400 [&>svg]:h-5 [&>svg]:w-5">
         {icon}
       </div>
@@ -1673,12 +2111,14 @@ function Info({
         : "text-slate-200";
 
   return (
-    <div className="rounded-lg border border-white/10 bg-slate-950 p-4">
+    <div className="min-w-0 rounded-lg border border-white/10 bg-slate-950 p-4">
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
         {label}
       </p>
 
-      <p className={`mt-2 text-sm font-medium ${toneClass}`}>{value}</p>
+      <p className={`mt-2 break-words text-sm font-medium ${toneClass}`}>
+        {value}
+      </p>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { createClient } from "@supabase/supabase-js";
 import { redirect, notFound } from "next/navigation";
 import {
   Activity,
@@ -15,14 +16,148 @@ import {
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { resolveCurrentUserRole } from "@/lib/auth/resolveCurrentUserRole";
 import { getProfile } from "@/lib/getProfile";
+import {
+  detectTradeStyle,
+  type TradeStyleOptionLeg,
+} from "@/lib/signals/detectTradeStyle";
+import {
+  buildTradeSummary,
+  type TradeSummaryOptionLegInput,
+} from "@/lib/signals/buildTradeSummary";
 
 import { Button } from "@/components/ui/button";
+
+type ExecutionStyle = "scalp" | "swing" | "leap";
+type OptionLegAction = "BUY_TO_OPEN" | "SELL_TO_OPEN";
+type OptionType = "CALL" | "PUT";
+
+type SignalOptionLegRow = {
+  id: string;
+  signal_id: string;
+  leg_order: number;
+  action: OptionLegAction;
+  option_type: OptionType;
+  strike_price: number | string | null;
+  expiration_date: string | null;
+  contracts: number | string | null;
+  entry_price: number | string | null;
+  exit_price: number | string | null;
+};
+
+type NormalizedOptionLeg = {
+  id?: string;
+  leg_order: number;
+  action: OptionLegAction;
+  option_type: OptionType;
+  strike_price: number;
+  expiration_date: string;
+  contracts: number;
+  entry_price: number;
+};
+
+type StrategyEntryType = "DEBIT" | "CREDIT" | "EVEN";
+
+type StrategyEntrySummary = {
+  type: StrategyEntryType;
+  absoluteNetEntry: number;
+  signedNetEntry: number;
+  totalPaid: number;
+  totalReceived: number;
+};
 
 interface EditSignalPageProps {
   params: {
     signalId: string;
   };
   searchParams?: Record<string, string>;
+}
+
+function createSupabaseAdminClient() {
+  const supabaseUrl =
+    process.env.NEXT_PUBLIC_SUPABASE_URL_CASE_TRADES;
+  const serviceRoleKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY_CASE_TRADES;
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error("Missing CASE Trades Supabase server environment variables.");
+  }
+
+  return createClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
+}
+
+function toNumber(
+  value: FormDataEntryValue | number | string | null | undefined,
+  fallback = 0,
+) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function normalizeStrategyType(value?: string | null) {
+  return String(value ?? "").trim().toUpperCase();
+}
+
+function formatStyleLabel(value?: string | null) {
+  if (!value) return "—";
+
+  const normalized = String(value).trim();
+
+  if (!normalized) return "—";
+  if (normalized.toLowerCase() === "leap") return "LEAP";
+
+  return normalized
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function calculateStrategyEntry(
+  optionLegs: NormalizedOptionLeg[],
+): StrategyEntrySummary {
+  let totalPaid = 0;
+  let totalReceived = 0;
+
+  for (const leg of optionLegs) {
+    const premium = leg.contracts * leg.entry_price;
+
+    if (leg.action === "BUY_TO_OPEN") {
+      totalPaid += premium;
+    } else {
+      totalReceived += premium;
+    }
+  }
+
+  const signedNetEntry = totalPaid - totalReceived;
+
+  return {
+    type:
+      signedNetEntry > 0
+        ? "DEBIT"
+        : signedNetEntry < 0
+          ? "CREDIT"
+          : "EVEN",
+    absoluteNetEntry: Number(Math.abs(signedNetEntry).toFixed(4)),
+    signedNetEntry: Number(signedNetEntry.toFixed(4)),
+    totalPaid: Number(totalPaid.toFixed(4)),
+    totalReceived: Number(totalReceived.toFixed(4)),
+  };
+}
+
+function mapLegsForDetection(
+  optionLegs: NormalizedOptionLeg[],
+): TradeStyleOptionLeg[] {
+  return optionLegs.map((leg) => ({
+    action: leg.action,
+    optionType: leg.option_type,
+    strikePrice: leg.strike_price,
+    expirationDate: leg.expiration_date,
+    contracts: leg.contracts,
+    entryPrice: leg.entry_price,
+  }));
 }
 
 function formatDateTime(value?: string | null) {
@@ -103,6 +238,155 @@ export default async function EditSignalPage({
     notFound();
   }
 
+  const supabaseAdmin = createSupabaseAdminClient();
+
+  const { data: optionLegRows, error: optionLegsError } =
+    await supabaseAdmin
+      .from("signal_option_legs")
+      .select(
+        `
+        id,
+        signal_id,
+        leg_order,
+        action,
+        option_type,
+        strike_price,
+        expiration_date,
+        contracts,
+        entry_price,
+        exit_price
+      `,
+      )
+      .eq("signal_id", signalId)
+      .order("leg_order", { ascending: true });
+
+  if (optionLegsError) {
+    console.error("Edit signal option-leg load error", optionLegsError);
+    throw new Error("Failed to load signal option legs");
+  }
+
+  const savedOptionLegs = (optionLegRows ?? []) as SignalOptionLegRow[];
+
+  const editableOptionLegs: SignalOptionLegRow[] =
+    savedOptionLegs.length > 0
+      ? savedOptionLegs
+      : [
+          {
+            id: "",
+            signal_id: signalId,
+            leg_order: 1,
+            action:
+              signal.action === "SELL"
+                ? "SELL_TO_OPEN"
+                : "BUY_TO_OPEN",
+            option_type: signal.option_type ?? "CALL",
+            strike_price: signal.strike_price,
+            expiration_date: signal.expiration_date,
+            contracts: signal.contracts ?? signal.quantity ?? 1,
+            entry_price: signal.entry_price ?? signal.price,
+            exit_price: signal.exit_price ?? null,
+          },
+        ];
+
+  const normalizedLoadedLegs: NormalizedOptionLeg[] =
+    editableOptionLegs.map((leg, index) => ({
+      id: leg.id || undefined,
+      leg_order: index + 1,
+      action: leg.action,
+      option_type: leg.option_type,
+      strike_price: toNumber(leg.strike_price),
+      expiration_date: leg.expiration_date ?? "",
+      contracts: Math.max(toNumber(leg.contracts, 1), 1),
+      entry_price: toNumber(leg.entry_price),
+    }));
+
+  const loadedStrategySummary =
+    calculateStrategyEntry(normalizedLoadedLegs);
+
+  const loadedDetection = detectTradeStyle({
+    instrumentType: "OPTION",
+    legs: mapLegsForDetection(normalizedLoadedLegs),
+  });
+
+  /*
+   * Centralized strategy summary.
+   *
+   * The existing local calculation remains available for compatibility,
+   * while buildTradeSummary is now the authoritative source used by the
+   * signal detail page, Discord alerts, and this edit page.
+   */
+  const loadedTradeSummary =
+    buildTradeSummary({
+      symbol:
+        signal.asset,
+
+      underlying:
+        signal.underlying,
+
+      instrument_type:
+        "OPTION",
+
+      trade_style:
+        signal.strategy_type ??
+        loadedDetection.style,
+
+      execution_style:
+        signal.trade_style,
+
+      action:
+        signal.action,
+
+      open_action:
+        signal.open_action,
+
+      entry_price:
+        signal.entry_price,
+
+      exit_price:
+        signal.exit_price,
+
+      contracts:
+        signal.contracts,
+
+      quantity:
+        signal.quantity,
+
+      option_type:
+        signal.option_type,
+
+      strike_price:
+        signal.strike_price,
+
+      expiration_date:
+        signal.expiration_date,
+
+      option_legs:
+        normalizedLoadedLegs as TradeSummaryOptionLegInput[],
+    });
+
+  const currentStrategyType =
+  normalizeStrategyType(
+    signal.strategy_type,
+  ) ||
+  loadedTradeSummary.tradeStyle ||
+  loadedDetection.style;
+
+const loadedEntryAmount =
+  loadedTradeSummary.netEntryAmount ??
+  loadedStrategySummary.absoluteNetEntry;
+
+const loadedEntryType =
+  loadedTradeSummary.debitCredit ===
+  "UNKNOWN"
+    ? loadedStrategySummary.type
+    : loadedTradeSummary.debitCredit;
+
+const loadedPremiumPaid =
+  loadedTradeSummary.totalPaid;
+
+const loadedPremiumReceived =
+  loadedTradeSummary.totalReceived;
+
   /* -------------------------------------------------
      🧾 SERVER ACTION — UPDATE SIGNAL
   ------------------------------------------------- */
@@ -131,16 +415,114 @@ export default async function EditSignalPage({
       .trim()
       .toUpperCase();
     const action = String(formData.get("action") || "");
-    const optionType = String(formData.get("option_type") || "");
-    const tradeStyle = String(formData.get("trade_style") || "");
-    const entryPrice = Number(formData.get("entry_price"));
+
+    const executionStyle = String(
+      formData.get("trade_style") || "",
+    ) as ExecutionStyle;
+
+    const optionLegCount = Math.max(
+      toNumber(formData.get("option_leg_count")),
+      0,
+    );
+
+    const optionLegs: NormalizedOptionLeg[] = Array.from(
+      { length: optionLegCount },
+      (_, index) => {
+        const legNumber = index + 1;
+
+        return {
+          id:
+            String(
+              formData.get(`option_leg_${legNumber}_id`) ?? "",
+            ).trim() || undefined,
+          leg_order: legNumber,
+          action: String(
+            formData.get(`option_leg_${legNumber}_action`) ?? "",
+          ) as OptionLegAction,
+          option_type: String(
+            formData.get(`option_leg_${legNumber}_option_type`) ?? "",
+          ) as OptionType,
+          strike_price: toNumber(
+            formData.get(`option_leg_${legNumber}_strike_price`),
+          ),
+          expiration_date: String(
+            formData.get(`option_leg_${legNumber}_expiration_date`) ?? "",
+          ),
+          contracts: toNumber(
+            formData.get(`option_leg_${legNumber}_contracts`),
+          ),
+          entry_price: toNumber(
+            formData.get(`option_leg_${legNumber}_entry_price`),
+          ),
+        };
+      },
+    );
+
+    const strategySummary = calculateStrategyEntry(optionLegs);
+
+    const detectedStrategy = detectTradeStyle({
+      instrumentType: "OPTION",
+      legs: mapLegsForDetection(optionLegs),
+    });
+
+    const strategyType = normalizeStrategyType(
+      detectedStrategy.style,
+    );
+
+    const primaryLeg = optionLegs[0];
+
+    const openAction: OptionLegAction =
+      primaryLeg?.action ??
+      (
+        action === "SELL"
+          ? "SELL_TO_OPEN"
+          : "BUY_TO_OPEN"
+      );
+
+    const tradeSummary =
+      buildTradeSummary({
+        symbol:
+          asset,
+
+        underlying,
+
+        instrument_type:
+          "OPTION",
+
+        trade_style:
+          strategyType,
+
+        execution_style:
+          executionStyle,
+
+        action,
+
+        open_action:
+          openAction,
+
+        option_type:
+          primaryLeg?.option_type,
+
+        strike_price:
+          primaryLeg?.strike_price,
+
+        expiration_date:
+          primaryLeg?.expiration_date,
+
+        option_legs:
+          optionLegs as TradeSummaryOptionLegInput[],
+      });
+    const optionType = primaryLeg?.option_type ?? "CALL";
+    const entryPrice =
+      tradeSummary.netEntryAmount ??
+      strategySummary.absoluteNetEntry;
+    const strikePrice = primaryLeg?.strike_price ?? 0;
+    const expirationDate = primaryLeg?.expiration_date ?? "";
     const underlyingEntryPriceRaw = formData.get("underlying_entry_price");
     const underlyingEntryPrice =
       underlyingEntryPriceRaw === null || String(underlyingEntryPriceRaw) === ""
         ? null
         : Number(underlyingEntryPriceRaw);
-    const strikePrice = Number(formData.get("strike_price"));
-    const expirationDate = String(formData.get("expiration_date") || "");
     const stopLossPctRaw = formData.get("stop_loss_pct");
     const takeProfitPctRaw = formData.get("take_profit_pct");
     const stopLossPct =
@@ -170,16 +552,59 @@ export default async function EditSignalPage({
       formErrors.action = "Action must be BUY, SELL, or HOLD.";
     }
 
-    if (!["CALL", "PUT"].includes(optionType)) {
-      formErrors.option_type = "Option type must be CALL or PUT.";
+    if (!["scalp", "swing", "leap"].includes(executionStyle)) {
+      formErrors.trade_style =
+        "Execution style must be scalp, swing, or leap.";
     }
 
-    if (!["scalp", "swing", "leap"].includes(tradeStyle)) {
-      formErrors.trade_style = "Trade style must be scalp, swing, or leap.";
+    if (optionLegs.length === 0) {
+      formErrors.option_legs =
+        "At least one option leg is required.";
     }
 
-    if (!entryPrice || Number.isNaN(entryPrice) || entryPrice <= 0) {
-      formErrors.entry_price = "Entry price must be greater than 0.";
+    optionLegs.forEach((leg, index) => {
+      const prefix = `Leg ${index + 1}`;
+
+      if (!["BUY_TO_OPEN", "SELL_TO_OPEN"].includes(leg.action)) {
+        formErrors.option_legs = `${prefix} has an invalid action.`;
+      }
+
+      if (!["CALL", "PUT"].includes(leg.option_type)) {
+        formErrors.option_legs = `${prefix} has an invalid option type.`;
+      }
+
+      if (!Number.isFinite(leg.strike_price) || leg.strike_price <= 0) {
+        formErrors.option_legs =
+          `${prefix} strike must be greater than 0.`;
+      }
+
+      if (!leg.expiration_date) {
+        formErrors.option_legs = `${prefix} expiration is required.`;
+      }
+
+      if (!Number.isInteger(leg.contracts) || leg.contracts <= 0) {
+        formErrors.option_legs =
+          `${prefix} contracts must be a positive whole number.`;
+      }
+
+      if (!Number.isFinite(leg.entry_price) || leg.entry_price < 0) {
+        formErrors.option_legs =
+          `${prefix} premium must be zero or greater.`;
+      }
+    });
+
+    if (
+      strategySummary.type === "EVEN" ||
+      !Number.isFinite(entryPrice) ||
+      entryPrice <= 0
+    ) {
+      formErrors.entry_price =
+        "The option legs must produce a positive net debit or credit.";
+    }
+
+    if (!strategyType) {
+      formErrors.strategy_type =
+        "Option strategy could not be detected.";
     }
 
     if (
@@ -188,14 +613,6 @@ export default async function EditSignalPage({
     ) {
       formErrors.underlying_entry_price =
         "Underlying entry price must be greater than 0.";
-    }
-
-    if (!strikePrice || Number.isNaN(strikePrice) || strikePrice <= 0) {
-      formErrors.strike_price = "Strike must be greater than 0.";
-    }
-
-    if (!expirationDate) {
-      formErrors.expiration_date = "Expiration date is required.";
     }
 
     if (
@@ -239,7 +656,7 @@ export default async function EditSignalPage({
 
     const { data: currentSignal, error: currentSignalError } = await supabase
       .from("signals")
-      .select("id, organization_id, closed_at")
+      .select("id, organization_id, closed_at, strategy_type, trade_style")
       .eq("id", signalId)
       .eq("organization_id", formOrganizationId)
       .maybeSingle();
@@ -265,14 +682,20 @@ export default async function EditSignalPage({
         asset,
         underlying,
         action,
+        open_action: openAction,
         instrument_type: "OPTION",
         option_type: optionType,
-        trade_style: tradeStyle,
+        trade_style: executionStyle,
+        strategy_type: strategyType,
         price: entryPrice,
         entry_price: entryPrice,
         underlying_entry_price: underlyingEntryPrice,
         strike_price: strikePrice,
         expiration_date: expirationDate,
+        contracts:
+          tradeSummary.strategyContracts,
+        quantity:
+          tradeSummary.strategyContracts,
         stop_loss_pct: stopLossPct,
         take_profit_pct: takeProfitPct,
         confidence,
@@ -300,7 +723,55 @@ export default async function EditSignalPage({
       redirect(`/dashboard/signals/edit/${signalId}?${params.toString()}`);
     }
 
-    redirect(withOrgQuery("/dashboard/admin/signals?saved=1", formOrganizationSlug));
+    const supabaseAdmin = createSupabaseAdminClient();
+
+    const { error: optionLegDeleteError } = await supabaseAdmin
+      .from("signal_option_legs")
+      .delete()
+      .eq("signal_id", signalId);
+
+    if (optionLegDeleteError) {
+      console.error(
+        "Edit signal option-leg cleanup failed",
+        optionLegDeleteError,
+      );
+      throw new Error(
+        "Signal was updated, but existing option legs could not be replaced.",
+      );
+    }
+
+    const { error: optionLegInsertError } = await supabaseAdmin
+      .from("signal_option_legs")
+      .insert(
+        optionLegs.map((leg) => ({
+          signal_id: signalId,
+          leg_order: leg.leg_order,
+          action: leg.action,
+          option_type: leg.option_type,
+          strike_price: leg.strike_price,
+          expiration_date: leg.expiration_date,
+          contracts: leg.contracts,
+          entry_price: leg.entry_price,
+          updated_at: new Date().toISOString(),
+        })),
+      );
+
+    if (optionLegInsertError) {
+      console.error(
+        "Edit signal option-leg insert failed",
+        optionLegInsertError,
+      );
+      throw new Error(
+        "Signal was updated, but option legs could not be saved.",
+      );
+    }
+
+    redirect(
+      withOrgQuery(
+        `/dashboard/signals/${signalId}?saved=1`,
+        formOrganizationSlug,
+      ),
+    );
   }
 
   /* -------------------------------------------------
@@ -319,8 +790,9 @@ export default async function EditSignalPage({
           </h1>
 
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-            Update option details, strike, expiration, confidence, risk targets,
-            and lifecycle status. Master-admin only. Changes are audited.
+            Update execution style, detected strategy, every option leg,
+            confidence, risk targets, and lifecycle status. Master-admin only.
+            Changes are audited.
           </p>
         </div>
 
@@ -347,6 +819,16 @@ export default async function EditSignalPage({
         >
           <input type="hidden" name="organization_id" value={organizationId} />
           <input type="hidden" name="org" value={organizationSlug} />
+          <input
+            type="hidden"
+            name="option_leg_count"
+            value={editableOptionLegs.length}
+          />
+          <input
+            type="hidden"
+            name="strategy_type"
+            value={currentStrategyType}
+          />
 
           <script
             dangerouslySetInnerHTML={{
@@ -430,25 +912,12 @@ export default async function EditSignalPage({
             />
 
             <SelectField
-              label="Option Type"
-              name="option_type"
-              required
-              defaultValue={signal.option_type ?? "CALL"}
-              error={errors.option_type}
-              hint="Call or put contract."
-              options={[
-                { label: "Call", value: "CALL" },
-                { label: "Put", value: "PUT" },
-              ]}
-            />
-
-            <SelectField
-              label="Trade Style"
+              label="Execution Style"
               name="trade_style"
               required
               defaultValue={signal.trade_style ?? "swing"}
               error={errors.trade_style}
-              hint="Scalp, swing, or leap."
+              hint="Controls the execution-rule timeframe. This is separate from the option strategy."
               options={[
                 { label: "Scalp", value: "scalp" },
                 { label: "Swing", value: "swing" },
@@ -456,27 +925,159 @@ export default async function EditSignalPage({
               ]}
             />
 
-            <Field
-              label="Strike"
-              name="strike_price"
-              type="number"
-              step="0.01"
-              required
-              defaultValue={signal.strike_price ?? ""}
-              error={errors.strike_price}
-              hint="Option strike price."
-            />
+            <div className="md:col-span-2 rounded-xl border border-purple-500/20 bg-purple-500/10 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-purple-300">
+                Detected Strategy
+              </p>
+              <p className="mt-2 text-lg font-bold text-slate-100">
+                {formatStyleLabel(currentStrategyType)}
+              </p>
+              <p className="mt-1 text-xs text-slate-400">
+                The server recalculates this value from all option legs when you save.
+              </p>
+            </div>
 
-            <Field
-              label="Entry Price"
-              name="entry_price"
-              type="number"
-              step="0.01"
-              required
-              defaultValue={signal.entry_price ?? signal.price ?? ""}
-              error={errors.entry_price}
-              hint="Expected option contract entry price."
-            />
+            <div className="md:col-span-2 space-y-4">
+              <div>
+                <h3 className="text-base font-semibold text-slate-100">
+                  Option Legs
+                </h3>
+                <p className="mt-1 text-sm text-slate-400">
+                  Update every saved leg. Strategy Entry / Open Price is recalculated from premiums paid and received.
+                </p>
+              </div>
+
+              {errors.option_legs && (
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                  {errors.option_legs}
+                </div>
+              )}
+
+              <div className="space-y-4">
+                {editableOptionLegs.map((leg, index) => {
+                  const legNumber = index + 1;
+
+                  return (
+                    <div
+                      key={leg.id || `leg-${legNumber}`}
+                      className="rounded-xl border border-white/10 bg-slate-950/60 p-4"
+                    >
+                      <input
+                        type="hidden"
+                        name={`option_leg_${legNumber}_id`}
+                        value={leg.id ?? ""}
+                      />
+
+                      <div className="mb-4">
+                        <p className="text-sm font-semibold text-slate-100">
+                          Leg {legNumber}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {leg.action === "BUY_TO_OPEN"
+                            ? "Premium paid"
+                            : "Premium received"}
+                        </p>
+                      </div>
+
+                      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                        <SelectField
+                          label="Leg Action"
+                          name={`option_leg_${legNumber}_action`}
+                          required
+                          defaultValue={leg.action}
+                          hint="Buy to Open pays premium. Sell to Open receives premium."
+                          options={[
+                            {
+                              label: "Buy to Open (Debit)",
+                              value: "BUY_TO_OPEN",
+                            },
+                            {
+                              label: "Sell to Open (Credit)",
+                              value: "SELL_TO_OPEN",
+                            },
+                          ]}
+                        />
+
+                        <SelectField
+                          label="Option Type"
+                          name={`option_leg_${legNumber}_option_type`}
+                          required
+                          defaultValue={leg.option_type}
+                          options={[
+                            { label: "Call", value: "CALL" },
+                            { label: "Put", value: "PUT" },
+                          ]}
+                        />
+
+                        <Field
+                          label="Strike"
+                          name={`option_leg_${legNumber}_strike_price`}
+                          type="number"
+                          step="0.01"
+                          required
+                          defaultValue={leg.strike_price}
+                        />
+
+                        <Field
+                          label="Expiration"
+                          name={`option_leg_${legNumber}_expiration_date`}
+                          type="date"
+                          required
+                          defaultValue={leg.expiration_date}
+                        />
+
+                        <Field
+                          label="Contracts"
+                          name={`option_leg_${legNumber}_contracts`}
+                          type="number"
+                          min={1}
+                          required
+                          defaultValue={leg.contracts ?? 1}
+                        />
+
+                        <Field
+                          label={
+                            leg.action === "BUY_TO_OPEN"
+                              ? "Premium Paid"
+                              : "Premium Received"
+                          }
+                          name={`option_leg_${legNumber}_entry_price`}
+                          type="number"
+                          step="0.01"
+                          min={0}
+                          required
+                          defaultValue={leg.entry_price}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="md:col-span-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-emerald-300">
+                    Current Strategy Entry
+                  </p>
+                  <p className="mt-1 text-sm text-slate-400">
+                    This preview reflects the currently saved leg values.
+                  </p>
+                </div>
+
+                <div className="text-left sm:text-right">
+                  <p className="text-xl font-bold text-slate-100">
+                    ${loadedEntryAmount.toFixed(2)}{" "}
+                    {loadedEntryType}
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    Paid: ${loadedPremiumPaid.toFixed(2)} ·
+                    Received: ${loadedPremiumReceived.toFixed(2)}
+                  </p>
+                </div>
+              </div>
+            </div>
 
             <Field
               label="Underlying Entry Price"
@@ -486,16 +1087,6 @@ export default async function EditSignalPage({
               defaultValue={signal.underlying_entry_price ?? ""}
               error={errors.underlying_entry_price}
               hint="Optional underlying price at signal entry."
-            />
-
-            <Field
-              label="Expiration"
-              name="expiration_date"
-              type="date"
-              required
-              defaultValue={signal.expiration_date ?? ""}
-              error={errors.expiration_date}
-              hint="Option expiration date."
             />
 
             <Field
@@ -619,18 +1210,23 @@ export default async function EditSignalPage({
             <div className="mt-6 grid gap-3">
               <Metric
                 icon={<Hash />}
-                label="Strike"
-                value={signal.strike_price ?? "—"}
+                label="Strategy"
+                value={formatStyleLabel(currentStrategyType)}
+              />
+              <Metric
+                icon={<Activity />}
+                label="Execution Style"
+                value={formatStyleLabel(signal.trade_style)}
               />
               <Metric
                 icon={<CircleDollarSign />}
-                label="Entry"
-                value={signal.entry_price ?? signal.price ?? "—"}
+                label="Net Entry"
+                value={`$${loadedEntryAmount.toFixed(2)} ${loadedEntryType}`}
               />
               <Metric
                 icon={<CalendarDays />}
-                label="Expiration"
-                value={signal.expiration_date ?? "—"}
+                label="Option Legs"
+                value={editableOptionLegs.length}
               />
               <Metric
                 icon={<Gauge />}
@@ -670,6 +1266,14 @@ export default async function EditSignalPage({
                 label="Organization ID"
                 value={signal.organization_id ?? "—"}
                 mono
+              />
+              <AuditRow
+                label="Strategy Type"
+                value={formatStyleLabel(currentStrategyType)}
+              />
+              <AuditRow
+                label="Execution Style"
+                value={formatStyleLabel(signal.trade_style)}
               />
               <AuditRow label="Status" value={signal.status} />
               <AuditRow label="Outcome" value={signal.outcome ?? "—"} />
@@ -802,11 +1406,17 @@ function Metric({
   value: string | number;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-slate-950 p-4">
-      <div className="text-emerald-400 [&>svg]:h-4 [&>svg]:w-4">{icon}</div>
-      <div>
-        <p className="text-xs text-slate-500">{label}</p>
-        <p className="font-semibold text-slate-100">{value}</p>
+    <div className="flex min-w-0 items-center gap-3 rounded-xl border border-white/10 bg-slate-950 p-4">
+      <div className="shrink-0 text-emerald-400 [&>svg]:h-4 [&>svg]:w-4">
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs text-slate-500">
+          {label}
+        </p>
+        <p className="break-words font-semibold text-slate-100">
+          {value}
+        </p>
       </div>
     </div>
   );

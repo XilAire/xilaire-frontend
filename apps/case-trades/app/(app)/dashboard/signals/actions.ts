@@ -1,13 +1,16 @@
 "use server";
 
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { resolveCurrentUserRole } from "@/lib/auth/resolveCurrentUserRole";
 import { revalidatePath } from "next/cache";
+
+import { resolveCurrentUserRole } from "@/lib/auth/resolveCurrentUserRole";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 /**
  * 🔑 CANONICAL RULE TYPES
  */
 type RuleType = "STOP_LOSS" | "TAKE_PROFIT";
+
+type ExecutionStyle = "scalp" | "swing" | "leap";
 
 interface TemplateRule {
   rule_type: RuleType;
@@ -19,19 +22,30 @@ interface TemplateRule {
  * SERVER ACTION — Apply execution rule template to a signal
  *
  * SECURITY GUARANTEES:
- * - Enforces role via roles.rank (NO string checks)
- * - Requires master_admin (rank === 4)
- * - Uses authenticated Supabase server client (RLS enforced)
+ * - Enforces role via roles.rank
+ * - Requires master_admin or admin-level access
+ * - Uses authenticated Supabase server client
  * - Preserves audit history
  * - Revalidates dependent pages
+ *
+ * Supports both call styles:
+ *
+ * applyExecutionTemplate(signalId, rules)
+ *
+ * applyExecutionTemplate(signalId, executionStyle, rules)
  */
-export async function applyExecutionTemplate(
+export default async function applyExecutionTemplate(
   signalId: string,
-  rules: TemplateRule[]
+  executionStyleOrRules: ExecutionStyle | TemplateRule[],
+  maybeRules?: TemplateRule[],
 ) {
   if (!signalId) {
     throw new Error("Missing signalId");
   }
+
+  const rules = Array.isArray(executionStyleOrRules)
+    ? executionStyleOrRules
+    : maybeRules;
 
   if (!rules || rules.length === 0) {
     throw new Error("No execution rules provided");
@@ -44,9 +58,11 @@ export async function applyExecutionTemplate(
   ------------------------------------------------- */
   const role = await resolveCurrentUserRole();
 
-  if (!role || role.role_rank !== 4) {
+  if (!role || role.role_rank < 4) {
     throw new Error("Unauthorized: master_admin required");
   }
+
+  const now = new Date().toISOString();
 
   /* -------------------------------------------------
      1️⃣ Deactivate existing active rules
@@ -55,7 +71,7 @@ export async function applyExecutionTemplate(
     .from("signal_execution_rules")
     .update({
       is_active: false,
-      updated_at: new Date().toISOString(),
+      updated_at: now,
       updated_by: role.user_id,
     })
     .eq("signal_id", signalId)
@@ -63,7 +79,7 @@ export async function applyExecutionTemplate(
 
   if (deactivateError) {
     throw new Error(
-      `Failed to deactivate existing execution rules: ${deactivateError.message}`
+      `Failed to deactivate existing execution rules: ${deactivateError.message}`,
     );
   }
 
@@ -73,19 +89,22 @@ export async function applyExecutionTemplate(
   const { error: insertError } = await supabase
     .from("signal_execution_rules")
     .insert(
-      rules.map((r) => ({
+      rules.map((rule) => ({
         signal_id: signalId,
-        rule_type: r.rule_type,
-        value_pct: r.value_pct,
-        quantity_pct: r.quantity_pct,
+        rule_type: rule.rule_type,
+        value_pct: rule.value_pct,
+        quantity_pct: rule.quantity_pct,
         is_active: true,
         created_by: role.user_id,
-      }))
+        updated_by: role.user_id,
+        created_at: now,
+        updated_at: now,
+      })),
     );
 
   if (insertError) {
     throw new Error(
-      `Failed to insert execution rule template: ${insertError.message}`
+      `Failed to insert execution rule template: ${insertError.message}`,
     );
   }
 
@@ -94,5 +113,8 @@ export async function applyExecutionTemplate(
   ------------------------------------------------- */
   revalidatePath("/dashboard/signals");
   revalidatePath(`/dashboard/signals/${signalId}`);
+  revalidatePath("/dashboard/admin/signals");
+  revalidatePath(`/dashboard/admin/signals/${signalId}`);
 }
 
+export { applyExecutionTemplate };

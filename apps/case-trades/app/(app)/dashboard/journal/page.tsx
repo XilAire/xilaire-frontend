@@ -23,6 +23,10 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getUserEntitlements } from "@/lib/auth/getUserEntitlements";
 import { resolveCurrentUserRole } from "@/lib/auth/resolveCurrentUserRole";
 import { getSignalDisplayStatus } from "@/lib/signals/displayState";
+import {
+  buildTradeSummary,
+  type TradeSummaryOptionLegInput,
+} from "@/lib/signals/buildTradeSummary";
 
 import type { Metadata } from "next";
 
@@ -65,6 +69,19 @@ type SignalFillRow = {
   created_at: string | null;
 };
 
+type SignalOptionLegRow = {
+  id: string;
+  signal_id: string;
+  leg_order: number;
+  action: string | null;
+  option_type: string | null;
+  strike_price: number | null;
+  expiration_date: string | null;
+  contracts: number | null;
+  entry_price: number | null;
+  exit_price: number | null;
+};
+
 type SignalExecutionRow = {
   id: string;
   status: string | null;
@@ -95,7 +112,19 @@ type SignalRow = {
   quantity: number | null;
   contracts: number | null;
   shares: number | null;
+
+  /**
+   * Execution style:
+   * scalp, swing, leap
+   */
   trade_style: string | null;
+
+  /**
+   * Strategy structure:
+   * LONG_CALL, IRON_CONDOR, BEAR_CALL_CREDIT, etc.
+   */
+  strategy_type: string | null;
+
   confidence: number | null;
   status: string | null;
   watching: boolean | null;
@@ -105,6 +134,7 @@ type SignalRow = {
   opened_at: string | null;
   closed_at: string | null;
   created_at: string | null;
+  signal_option_legs: SignalOptionLegRow[] | null;
   signal_executions: SignalExecutionRow[] | null;
 };
 
@@ -134,6 +164,8 @@ type JournalTrade = {
   contractLabel: string;
   side: string;
   strategy: string;
+  executionStyle: string;
+  legCount: number;
   quantity: number;
   entryPrice: number | null;
   exitPrice: number | null;
@@ -226,6 +258,22 @@ function formatTier(tier: string) {
   return tier.replace("journal_", "").replace("_", " ").toUpperCase();
 }
 
+function formatDisplayText(value: string | null | undefined) {
+  const normalized = String(value ?? "").trim();
+
+  if (!normalized) {
+    return "—";
+  }
+
+  if (normalized.toLowerCase() === "leap") {
+    return "LEAP";
+  }
+
+  return normalized
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 function formatCurrency(value: number | null) {
   if (value === null || !Number.isFinite(value)) {
     return "—";
@@ -307,15 +355,114 @@ function averageWeightedPrice(fills: SignalFillRow[]) {
   return Number((totalValue / totalQuantity).toFixed(4));
 }
 
+function getSignalTradeSummary(signal: SignalRow) {
+  return buildTradeSummary({
+    symbol:
+      signal.asset,
+
+    underlying:
+      signal.underlying,
+
+    instrument_type:
+      signal.instrument_type,
+
+    /*
+     * strategy_type is authoritative.
+     * Legacy records fall back to leg detection or trade_style.
+     */
+    trade_style:
+      signal.strategy_type ??
+      signal.trade_style,
+
+    /*
+     * trade_style now represents execution style.
+     */
+    execution_style:
+      signal.trade_style,
+
+    action:
+      signal.action,
+
+    open_action:
+      signal.open_action,
+
+    entry_price:
+      signal.entry_price ??
+      signal.price,
+
+    exit_price:
+      signal.exit_price,
+
+    contracts:
+      signal.contracts,
+
+    quantity:
+      signal.quantity,
+
+    shares:
+      signal.shares,
+
+    option_type:
+      signal.option_type,
+
+    strike_price:
+      signal.strike_price,
+
+    expiration_date:
+      signal.expiration_date,
+
+    option_legs:
+      (signal.signal_option_legs ??
+        []) as TradeSummaryOptionLegInput[],
+  });
+}
+
 function getContractLabel(signal: SignalRow) {
   if (signal.instrument_type === "OPTION") {
+    const tradeSummary =
+      getSignalTradeSummary(signal);
+
+    if (tradeSummary.legs.length > 1) {
+      return tradeSummary.legs
+        .map((leg) => {
+          const strike =
+            leg.strikePrice !== null
+              ? String(leg.strikePrice)
+              : "—";
+
+          return `${leg.action} ${strike} ${leg.optionType}`;
+        })
+        .join(" | ");
+    }
+
+    const primaryLeg =
+      tradeSummary.legs[0];
+
+    if (primaryLeg) {
+      const parts = [
+        primaryLeg.strikePrice !== null
+          ? String(primaryLeg.strikePrice)
+          : null,
+        primaryLeg.optionType,
+        primaryLeg.expirationDate,
+      ].filter(Boolean);
+
+      return parts.length > 0
+        ? parts.join(" ")
+        : "OPTION";
+    }
+
     const parts = [
-      signal.strike_price ? String(signal.strike_price) : null,
+      signal.strike_price
+        ? String(signal.strike_price)
+        : null,
       signal.option_type,
       signal.expiration_date,
     ].filter(Boolean);
 
-    return parts.length > 0 ? parts.join(" ") : "OPTION";
+    return parts.length > 0
+      ? parts.join(" ")
+      : "OPTION";
   }
 
   return "STOCK";
@@ -323,6 +470,93 @@ function getContractLabel(signal: SignalRow) {
 
 function getMultiplier(signal: SignalRow) {
   return signal.instrument_type === "OPTION" ? 100 : 1;
+}
+
+function isCreditOpeningAction(value: string | null | undefined) {
+  const normalized = String(value ?? "")
+    .trim()
+    .toUpperCase();
+
+  return (
+    normalized === "SELL_TO_OPEN" ||
+    normalized === "STO" ||
+    normalized === "SELL" ||
+    normalized === "SHORT"
+  );
+}
+
+function calculateDirectionalPnl({
+  signal,
+  entryPrice,
+  exitPrice,
+  closedQuantity,
+}: {
+  signal: SignalRow;
+  entryPrice: number | null;
+  exitPrice: number | null;
+  closedQuantity: number;
+}) {
+  if (
+    entryPrice === null ||
+    exitPrice === null ||
+    closedQuantity <= 0
+  ) {
+    return null;
+  }
+
+  const directionMultiplier =
+    isCreditOpeningAction(
+      signal.open_action ??
+      signal.action,
+    )
+      ? -1
+      : 1;
+
+  return Number(
+    (
+      (exitPrice - entryPrice) *
+      directionMultiplier *
+      closedQuantity *
+      getMultiplier(signal)
+    ).toFixed(2),
+  );
+}
+
+function calculateDirectionalReturnPct({
+  signal,
+  entryPrice,
+  exitPrice,
+}: {
+  signal: SignalRow;
+  entryPrice: number | null;
+  exitPrice: number | null;
+}) {
+  if (
+    entryPrice === null ||
+    exitPrice === null ||
+    entryPrice === 0
+  ) {
+    return null;
+  }
+
+  const directionMultiplier =
+    isCreditOpeningAction(
+      signal.open_action ??
+      signal.action,
+    )
+      ? -1
+      : 1;
+
+  return Number(
+    (
+      (
+        (exitPrice - entryPrice) /
+        Math.abs(entryPrice)
+      ) *
+      directionMultiplier *
+      100
+    ).toFixed(2),
+  );
 }
 
 function normalizeOutcome(value: string | null) {
@@ -359,7 +593,9 @@ function buildImportedJournalTrades(importedTrades: ImportedJournalTradeRow[]) {
       instrument: trade.instrument_type ?? "—",
       contractLabel: trade.instrument_type ?? "Imported Trade",
       side: trade.side ?? "—",
-      strategy: "BROKER IMPORT",
+      strategy: "Broker Import",
+      executionStyle: "—",
+      legCount: trade.instrument_type === "OPTION" ? 1 : 0,
       quantity: Number(trade.quantity ?? 0),
       entryPrice: trade.entry_price ?? null,
       exitPrice: trade.exit_price ?? null,
@@ -379,6 +615,21 @@ function buildImportedJournalTrades(importedTrades: ImportedJournalTradeRow[]) {
 function buildJournalTrades(signals: SignalRow[]) {
   return signals.flatMap((signal): JournalTrade[] => {
     const executions = signal.signal_executions ?? [];
+    const tradeSummary =
+      getSignalTradeSummary(signal);
+
+    const strategyLabel =
+      tradeSummary.tradeStyleLabel !==
+      "Unknown"
+        ? tradeSummary.tradeStyleLabel
+        : formatDisplayText(
+            signal.strategy_type,
+          );
+
+    const executionStyleLabel =
+      formatDisplayText(
+        signal.trade_style,
+      );
 
     if (executions.length === 0) {
       const displayStatus = getSignalDisplayStatus({
@@ -403,7 +654,9 @@ function buildJournalTrades(signals: SignalRow[]) {
           instrument: signal.instrument_type ?? "—",
           contractLabel: getContractLabel(signal),
           side: signal.open_action ?? signal.action ?? "—",
-          strategy: signal.trade_style?.toUpperCase() ?? "—",
+          strategy: strategyLabel,
+          executionStyle: executionStyleLabel,
+          legCount: tradeSummary.legCount,
           quantity: Number(
             signal.quantity ?? signal.contracts ?? signal.shares ?? 0,
           ),
@@ -467,25 +720,24 @@ function buildJournalTrades(signals: SignalRow[]) {
         signal.exit_price ??
         null;
 
-      const multiplier = getMultiplier(signal);
-
       const calculatedPnl =
-        averageEntry !== null && averageExit !== null && closedQuantity > 0
-          ? Number(
-              (
-                (averageExit - averageEntry) *
-                closedQuantity *
-                multiplier
-              ).toFixed(2),
-            )
-          : null;
+        calculateDirectionalPnl({
+          signal,
+          entryPrice:
+            averageEntry,
+          exitPrice:
+            averageExit,
+          closedQuantity,
+        });
 
       const calculatedPnlPct =
-        averageEntry !== null && averageExit !== null && averageEntry !== 0
-          ? Number(
-              (((averageExit - averageEntry) / averageEntry) * 100).toFixed(2),
-            )
-          : null;
+        calculateDirectionalReturnPct({
+          signal,
+          entryPrice:
+            averageEntry,
+          exitPrice:
+            averageExit,
+        });
 
       const displayStatus = getSignalDisplayStatus({
         status: signal.status,
@@ -508,7 +760,9 @@ function buildJournalTrades(signals: SignalRow[]) {
         instrument: signal.instrument_type ?? "—",
         contractLabel: getContractLabel(signal),
         side: signal.open_action ?? signal.action ?? "—",
-        strategy: signal.trade_style?.toUpperCase() ?? "—",
+        strategy: strategyLabel,
+        executionStyle: executionStyleLabel,
+        legCount: tradeSummary.legCount,
         quantity,
         entryPrice: averageEntry,
         exitPrice: averageExit,
@@ -573,6 +827,10 @@ function buildTradeExportRows(trades: JournalTrade[]) {
     contract: trade.contractLabel,
     side: trade.side,
     strategy: trade.strategy,
+    execution_style:
+      trade.executionStyle,
+    leg_count:
+      trade.legCount,
     quantity: trade.quantity,
     entry_price: trade.entryPrice,
     exit_price: trade.exitPrice,
@@ -595,6 +853,8 @@ function buildTradesCsv(trades: JournalTrade[]) {
     "Contract",
     "Side",
     "Strategy",
+    "Execution Style",
+    "Leg Count",
     "Quantity",
     "Entry Price",
     "Exit Price",
@@ -615,6 +875,8 @@ function buildTradesCsv(trades: JournalTrade[]) {
     trade.contract,
     trade.side,
     trade.strategy,
+    trade.execution_style,
+    trade.leg_count,
     trade.quantity,
     trade.entry_price,
     trade.exit_price,
@@ -645,6 +907,8 @@ function buildTradesExcelHtml(trades: JournalTrade[]) {
     "Contract",
     "Side",
     "Strategy",
+    "Execution Style",
+    "Leg Count",
     "Quantity",
     "Entry Price",
     "Exit Price",
@@ -665,6 +929,8 @@ function buildTradesExcelHtml(trades: JournalTrade[]) {
     trade.contract,
     trade.side,
     trade.strategy,
+    trade.execution_style,
+    trade.leg_count,
     trade.quantity,
     trade.entry_price,
     trade.exit_price,
@@ -807,6 +1073,7 @@ export default async function JournalPage({ searchParams }: JournalPageProps) {
       contracts,
       shares,
       trade_style,
+      strategy_type,
       confidence,
       status,
       watching,
@@ -816,6 +1083,18 @@ export default async function JournalPage({ searchParams }: JournalPageProps) {
       opened_at,
       closed_at,
       created_at,
+      signal_option_legs!left (
+        id,
+        signal_id,
+        leg_order,
+        action,
+        option_type,
+        strike_price,
+        expiration_date,
+        contracts,
+        entry_price,
+        exit_price
+      ),
       signal_executions!left (
         id,
         status,
@@ -962,8 +1241,9 @@ export default async function JournalPage({ searchParams }: JournalPageProps) {
           </h1>
 
           <p className="text-sm text-slate-400">
-            Execution-powered trade journal built from signals, executions,
-            fills, and imported broker trades.
+            Execution-powered trade journal with separate strategy and
+            execution-style tracking, multi-leg option structures, fills, and
+            imported broker trades.
           </p>
         </div>
 
@@ -1201,7 +1481,13 @@ export default async function JournalPage({ searchParams }: JournalPageProps) {
                               {trade.symbol}
                             </div>
                             <div className="text-xs text-slate-500">
-                              {trade.instrument} • {trade.strategy}
+                              {trade.instrument} • {trade.strategy} •{" "}
+                              {trade.executionStyle}
+                              {trade.legCount > 0
+                                ? ` • ${trade.legCount} leg${
+                                    trade.legCount === 1 ? "" : "s"
+                                  }`
+                                : ""}
                             </div>
                           </td>
 
@@ -1315,9 +1601,9 @@ export default async function JournalPage({ searchParams }: JournalPageProps) {
           <JournalSideCard
             title="Next Journal Phase"
             icon={<FileText />}
-            body="Next we will add notes, setups, mistakes, screenshots, and AI review to each executed trade."
+            body="Multi-leg strategy separation is now integrated. Next we will add notes, setups, mistakes, screenshots, and AI review to each executed trade."
             items={[
-              "Trade notes",
+              "Strategy-aware trade notes",
               "Setup tags",
               "Mistake tracking",
               "AI trade grade",
@@ -1454,7 +1740,13 @@ function MobileJournalTradeCard({ trade }: { trade: JournalTrade }) {
           </div>
 
           <p className="mt-1 text-xs text-slate-500">
-            {trade.instrument} • {trade.strategy}
+            {trade.instrument} • {trade.strategy} •{" "}
+            {trade.executionStyle}
+            {trade.legCount > 0
+              ? ` • ${trade.legCount} leg${
+                  trade.legCount === 1 ? "" : "s"
+                }`
+              : ""}
           </p>
         </div>
 
@@ -1483,6 +1775,18 @@ function MobileJournalTradeCard({ trade }: { trade: JournalTrade }) {
 
       <div className="grid grid-cols-2 gap-3 text-sm">
         <MobileTradeField label="Side" value={trade.side} />
+        <MobileTradeField
+          label="Strategy"
+          value={trade.strategy}
+        />
+        <MobileTradeField
+          label="Execution Style"
+          value={trade.executionStyle}
+        />
+        <MobileTradeField
+          label="Legs"
+          value={String(trade.legCount)}
+        />
         <MobileTradeField label="Qty" value={String(trade.quantity)} />
         <MobileTradeField
           label="Entry"

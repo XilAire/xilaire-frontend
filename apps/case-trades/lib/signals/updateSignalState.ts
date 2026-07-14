@@ -6,6 +6,11 @@ import { resolveCurrentUserRole } from "@/lib/auth/resolveCurrentUserRole";
 import { getUserOrganizations } from "@/lib/orgs/getUserOrganizations";
 import { sendClosedSignalAlert } from "@/lib/discord/sendClosedSignalAlert";
 import { sendPartialCloseSignalAlert } from "@/lib/discord/sendPartialCloseSignalAlert";
+import {
+  buildTradeSummary,
+  type TradeSummaryDebitCredit,
+  type TradeSummaryOptionLegInput,
+} from "@/lib/signals/buildTradeSummary";
 
 export type SignalStatus = "Active" | "Triggered" | "Closed" | "Expired";
 export type SignalOutcome = "WIN" | "LOSS" | "BREAKEVEN" | null;
@@ -13,14 +18,60 @@ export type SignalOutcome = "WIN" | "LOSS" | "BREAKEVEN" | null;
 type CurrentSignalAccess = {
   id: string;
   organization_id: string | null;
+
   status: SignalStatus;
   closed_at: string | null;
+
   watching: boolean;
   watched: boolean;
+
+  asset: string | null;
+  underlying: string | null;
+
+  instrument_type: string | null;
+
+  /**
+   * Execution style:
+   * scalp, swing, leap
+   */
+  trade_style: string | null;
+
+  /**
+   * Strategy structure:
+   * LONG_CALL, IRON_CONDOR, BULL_PUT_CREDIT_SPREAD, etc.
+   */
+  strategy_type: string | null;
+
+  action: string | null;
+  open_action: string | null;
+
+  option_type: string | null;
+  strike_price: string | number | null;
+  expiration_date: string | null;
+
+  contracts: string | number | null;
+  quantity: string | number | null;
+  shares: string | number | null;
+
   entry_price: string | number | null;
   price: string | number | null;
   return_pct: string | number | null;
   outcome: string | null;
+  exit_price: string | number | null;
+
+  signal_option_legs: SignalOptionLegRow[] | null;
+};
+
+type SignalOptionLegRow = {
+  id: string;
+  signal_id: string;
+  leg_order: number | string | null;
+  action: string | null;
+  option_type: string | null;
+  strike_price: string | number | null;
+  expiration_date: string | null;
+  contracts: string | number | null;
+  entry_price: string | number | null;
   exit_price: string | number | null;
 };
 
@@ -33,6 +84,7 @@ type SignalExecutionRow = {
 type ExecutionFillRow = {
   id: string;
   execution_id: string;
+  signal_option_leg_id: string | null;
   side: string | null;
   contracts: number | string | null;
   price: number | string | null;
@@ -51,7 +103,16 @@ function normalizeNumber(value: string | number | null | undefined) {
   if (typeof value === "number" && Number.isFinite(value)) return value;
 
   if (typeof value === "string") {
-    const parsed = Number(value.replace("%", "").trim());
+    const parsed = Number(
+      value
+        .replace(/\$/g, "")
+        .replace(/,/g, "")
+        .replace(/%/g, "")
+        .replace(/\(/g, "-")
+        .replace(/\)/g, "")
+        .trim()
+    );
+
     return Number.isFinite(parsed) ? parsed : null;
   }
 
@@ -90,14 +151,83 @@ function inferOutcomeFromReturnPct(returnPct: number | null): SignalOutcome {
 function calculateReturnPct({
   entryPrice,
   exitPrice,
+  debitCredit,
 }: {
   entryPrice: number | null;
   exitPrice: number | null;
+  debitCredit?: TradeSummaryDebitCredit;
 }) {
   if (entryPrice === null || exitPrice === null) return null;
   if (entryPrice === 0) return null;
 
-  return Number((((exitPrice - entryPrice) / entryPrice) * 100).toFixed(2));
+  const absoluteEntry = Math.abs(entryPrice);
+
+  const pnl =
+    debitCredit === "CREDIT"
+      ? absoluteEntry - Math.abs(exitPrice)
+      : Math.abs(exitPrice) - absoluteEntry;
+
+  return Number(((pnl / absoluteEntry) * 100).toFixed(2));
+}
+
+function buildCurrentTradeSummary(
+  signal: CurrentSignalAccess,
+) {
+  return buildTradeSummary({
+    symbol:
+      signal.asset ??
+      signal.underlying,
+
+    underlying:
+      signal.underlying,
+
+    instrument_type:
+      signal.instrument_type,
+
+    strategy_type:
+      signal.strategy_type,
+
+    trade_style:
+      signal.trade_style,
+
+    execution_style:
+      signal.trade_style,
+
+    action:
+      signal.action,
+
+    open_action:
+      signal.open_action,
+
+    entry_price:
+      signal.entry_price ??
+      signal.price,
+
+    exit_price:
+      signal.exit_price,
+
+    contracts:
+      signal.contracts,
+
+    quantity:
+      signal.quantity,
+
+    shares:
+      signal.shares,
+
+    option_type:
+      signal.option_type,
+
+    strike_price:
+      signal.strike_price,
+
+    expiration_date:
+      signal.expiration_date,
+
+    option_legs:
+      (signal.signal_option_legs ??
+        []) as TradeSummaryOptionLegInput[],
+  });
 }
 
 async function assertSignalAccess({
@@ -121,11 +251,36 @@ async function assertSignalAccess({
       closed_at,
       watching,
       watched,
+      asset,
+      underlying,
+      instrument_type,
+      trade_style,
+      strategy_type,
+      action,
+      open_action,
+      option_type,
+      strike_price,
+      expiration_date,
+      contracts,
+      quantity,
+      shares,
       entry_price,
       price,
       return_pct,
       outcome,
-      exit_price
+      exit_price,
+      signal_option_legs!left (
+        id,
+        signal_id,
+        leg_order,
+        action,
+        option_type,
+        strike_price,
+        expiration_date,
+        contracts,
+        entry_price,
+        exit_price
+      )
       `
     )
     .eq("id", signalId)
@@ -144,11 +299,34 @@ async function assertSignalAccess({
     closed_at: signal.closed_at ?? null,
     watching: Boolean(signal.watching),
     watched: Boolean(signal.watched),
+
+    asset: signal.asset ?? null,
+    underlying: signal.underlying ?? null,
+
+    instrument_type: signal.instrument_type ?? null,
+    trade_style: signal.trade_style ?? null,
+    strategy_type: signal.strategy_type ?? null,
+
+    action: signal.action ?? null,
+    open_action: signal.open_action ?? null,
+
+    option_type: signal.option_type ?? null,
+    strike_price: signal.strike_price ?? null,
+    expiration_date: signal.expiration_date ?? null,
+
+    contracts: signal.contracts ?? null,
+    quantity: signal.quantity ?? null,
+    shares: signal.shares ?? null,
+
     entry_price: signal.entry_price ?? null,
     price: signal.price ?? null,
     return_pct: signal.return_pct ?? null,
     outcome: signal.outcome ?? null,
     exit_price: signal.exit_price ?? null,
+
+    signal_option_legs:
+      (signal.signal_option_legs ??
+        []) as SignalOptionLegRow[],
   };
 
   if (isAdmin) {
@@ -180,6 +358,8 @@ function revalidateSignalPaths(signalId: string) {
   revalidatePath("/dashboard/signals");
   revalidatePath("/dashboard/admin/signals");
   revalidatePath("/dashboard/performance");
+  revalidatePath("/dashboard/journal");
+  revalidatePath("/dashboard/journal/reports");
   revalidatePath(`/dashboard/signals/${signalId}`);
   revalidatePath(`/dashboard/signals/edit/${signalId}`);
 }
@@ -232,7 +412,13 @@ export async function updateSignalStatus(
 
   const providedReturnPct = normalizeNumber(options?.return_pct);
   const exitPrice = normalizeNumber(options?.exit_price);
+  const tradeSummary =
+    buildCurrentTradeSummary(
+      currentSignal
+    );
+
   const entryPrice =
+    tradeSummary.netEntryAmount ??
     normalizeNumber(currentSignal.entry_price) ??
     normalizeNumber(currentSignal.price);
 
@@ -241,6 +427,8 @@ export async function updateSignalStatus(
     calculateReturnPct({
       entryPrice,
       exitPrice,
+      debitCredit:
+        tradeSummary.debitCredit,
     });
 
   const existingReturnPct = normalizeNumber(currentSignal.return_pct);
@@ -381,7 +569,13 @@ export async function autoCloseSignalFromExecution(signalId: string) {
     };
   }
 
+  const tradeSummary =
+    buildCurrentTradeSummary(
+      currentSignal
+    );
+
   const entryPrice =
+    tradeSummary.netEntryAmount ??
     normalizeNumber(currentSignal.entry_price) ??
     normalizeNumber(currentSignal.price);
 
@@ -416,7 +610,9 @@ export async function autoCloseSignalFromExecution(signalId: string) {
 
   const { data: fillsData, error: fillsError } = await supabase
     .from("execution_fills")
-    .select("id, execution_id, side, contracts, price")
+    .select(
+      "id, execution_id, signal_option_leg_id, side, contracts, price"
+    )
     .in("execution_id", executionIds);
 
   if (fillsError) {
@@ -462,6 +658,8 @@ export async function autoCloseSignalFromExecution(signalId: string) {
   const realizedReturnPct = calculateReturnPct({
     entryPrice,
     exitPrice: averageExitPrice,
+    debitCredit:
+      tradeSummary.debitCredit,
   });
 
   if (closedContracts <= 0) {
@@ -510,6 +708,8 @@ export async function autoCloseSignalFromExecution(signalId: string) {
   const returnPct = calculateReturnPct({
     entryPrice,
     exitPrice,
+    debitCredit:
+      tradeSummary.debitCredit,
   });
 
   const outcome = inferOutcomeFromReturnPct(returnPct);

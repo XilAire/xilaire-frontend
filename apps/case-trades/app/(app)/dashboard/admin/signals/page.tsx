@@ -32,6 +32,10 @@ import {
   getSignalDisplayStatus,
   normalizePersistedSignalStatus,
 } from "@/lib/signals/displayState";
+import {
+  buildTradeSummary,
+  type TradeSummaryOptionLegInput,
+} from "@/lib/signals/buildTradeSummary";
 
 export const dynamic = "force-dynamic";
 
@@ -46,13 +50,26 @@ type SignalsPageProps = {
 };
 
 type SignalStatus = "Active" | "Triggered" | "Closed" | "Expired";
-type SignalTradeStyle = "scalp" | "swing" | "leap";
+type SignalTradeStyle = string;
 type SignalOutcome = "WIN" | "LOSS" | "BREAKEVEN";
 
 type OrganizationOption = {
   id: string;
   name: string;
   slug: string;
+};
+
+type SignalOptionLegRow = {
+  id: string;
+  signal_id: string;
+  leg_order: number;
+  action: string;
+  option_type: "CALL" | "PUT" | string;
+  strike_price: number | string | null;
+  expiration_date: string | null;
+  contracts: number | string | null;
+  entry_price: number | string | null;
+  exit_price: number | string | null;
 };
 
 type SignalRow = {
@@ -62,12 +79,17 @@ type SignalRow = {
   underlying: string;
   instrument_type: "OPTION" | "STOCK";
   action: "BUY" | "SELL";
+  open_action: string | null;
+  quantity: number | null;
+  contracts: number | null;
+  shares: number | null;
   option_type: "CALL" | "PUT" | null;
   strike_price: number | null;
   expiration_date: string | null;
   entry_price: number | null;
   price: number | null;
   trade_style: string | null;
+  strategy_type: string | null;
   confidence: number | null;
   status: string;
   watching: boolean | null;
@@ -90,6 +112,7 @@ type SignalRow = {
         contracts: number;
         execution_fills:
           | {
+              signal_option_leg_id: string | null;
               side: string;
               contracts: number;
               price: number;
@@ -172,15 +195,50 @@ function isProfileMasterAdmin(profile: any) {
 function normalizeTradeStyle(
   value: string | null
 ): SignalTradeStyle | undefined {
-  if (value === "scalp" || value === "swing" || value === "leap") {
-    return value;
+  if (!value) {
+    return undefined;
   }
 
-  return undefined;
+  return value;
 }
 
 function normalizeSignalStatus(value: string | null): SignalStatus {
   return normalizePersistedSignalStatus(value);
+}
+
+function toNumber(
+  value: number | string | null | undefined,
+  fallback = 0
+) {
+  const parsed = Number(value);
+
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+
+  return parsed;
+}
+
+function getStrategyQuantity({
+  optionLegs,
+  fallbackQuantity,
+}: {
+  optionLegs: SignalOptionLegRow[];
+  fallbackQuantity: number | null;
+}) {
+  if (optionLegs.length === 0) {
+    return fallbackQuantity;
+  }
+
+  const quantities = optionLegs
+    .map((leg) => toNumber(leg.contracts))
+    .filter((quantity) => quantity > 0);
+
+  if (quantities.length === 0) {
+    return fallbackQuantity;
+  }
+
+  return Math.max(...quantities);
 }
 
 function getRangeStart(range: string) {
@@ -430,6 +488,24 @@ async function deleteSignalAction(formData: FormData) {
     );
   }
 
+  const { error: optionLegsDeleteError } = await supabase
+    .from("signal_option_legs")
+    .delete()
+    .eq("signal_id", signalId);
+
+  if (optionLegsDeleteError) {
+    console.error("Delete signal option legs failed", optionLegsDeleteError);
+
+    redirect(
+      buildSignalsRedirectUrl({
+        org: orgSlug,
+        range,
+        status,
+        error: "delete_option_legs_failed",
+      })
+    );
+  }
+
   const { data: deletedSignalRows, error: signalDeleteError } = await supabase
     .from("signals")
     .delete()
@@ -561,12 +637,17 @@ export default async function SignalsPage({
       underlying,
       instrument_type,
       action,
+      open_action,
+      quantity,
+      contracts,
+      shares,
       option_type,
       strike_price,
       expiration_date,
       entry_price,
       price,
       trade_style,
+      strategy_type,
       confidence,
       status,
       watching,
@@ -585,6 +666,7 @@ export default async function SignalsPage({
         id,
         contracts,
         execution_fills!left (
+          signal_option_leg_id,
           side,
           contracts,
           price
@@ -631,6 +713,81 @@ export default async function SignalsPage({
   }
 
   const rows = (data ?? []) as SignalRow[];
+  const signalIds = rows.map((row) => row.id);
+
+  /*
+   * The authenticated client currently receives an empty array from
+   * signal_option_legs because of that table's SELECT RLS policy.
+   *
+   * The signal IDs below were already restricted to the selected
+   * organization by the authorized signal query above, so the service-role
+   * lookup is scoped only to those approved parent rows.
+   */
+  const legsBySignalId = new Map<string, SignalOptionLegRow[]>();
+
+  if (signalIds.length > 0) {
+    const supabaseAdmin = createSupabaseAdminClient();
+
+    const { data: optionLegData, error: optionLegsError } = await supabaseAdmin
+      .from("signal_option_legs")
+      .select(
+        `
+        id,
+        signal_id,
+        leg_order,
+        action,
+        option_type,
+        strike_price,
+        expiration_date,
+        contracts,
+        entry_price,
+        exit_price
+      `
+      )
+      .in("signal_id", signalIds)
+      .order("signal_id", { ascending: true })
+      .order("leg_order", { ascending: true });
+
+    if (optionLegsError) {
+      console.error("Failed to load admin signal option legs", {
+        organizationId: selectedOrganization.id,
+        signalIds,
+        error: optionLegsError,
+      });
+
+      throw new Error("Failed to load admin signal option legs");
+    }
+
+    const authorizedSignalIds = new Set(signalIds);
+
+    for (const rawLeg of optionLegData ?? []) {
+      const leg = rawLeg as SignalOptionLegRow;
+
+      if (!authorizedSignalIds.has(leg.signal_id)) {
+        continue;
+      }
+
+      const existingLegs = legsBySignalId.get(leg.signal_id) ?? [];
+
+      existingLegs.push(leg);
+      legsBySignalId.set(leg.signal_id, existingLegs);
+    }
+
+    for (const [signalId, legs] of legsBySignalId.entries()) {
+      legs.sort((firstLeg, secondLeg) => {
+        return firstLeg.leg_order - secondLeg.leg_order;
+      });
+
+      legsBySignalId.set(signalId, legs);
+    }
+
+    console.log("Admin signals page option-leg load", {
+      organization_id: selectedOrganization.id,
+      requested_signal_count: signalIds.length,
+      returned_leg_count: optionLegData?.length ?? 0,
+      signals_with_legs: legsBySignalId.size,
+    });
+  }
 
   const signals: Signal[] = rows.map((row) => {
     const rules = (row.signal_execution_rules ?? []).filter(
@@ -643,6 +800,35 @@ export default async function SignalsPage({
       (rule) => rule.rule_type === "TAKE_PROFIT"
     );
 
+    const optionLegs = legsBySignalId.get(row.id) ?? [];
+
+    const tradeSummary = buildTradeSummary({
+      symbol: row.asset,
+      underlying: row.underlying,
+      instrument_type: row.instrument_type,
+      trade_style:
+        row.strategy_type ??
+        row.trade_style,
+      action: row.action,
+      open_action: row.open_action,
+      entry_price: row.entry_price ?? row.price,
+      exit_price: row.exit_price,
+      contracts: row.contracts,
+      quantity: row.quantity,
+      option_type: row.option_type,
+      strike_price: row.strike_price,
+      expiration_date: row.expiration_date,
+      option_legs: optionLegs as TradeSummaryOptionLegInput[],
+    });
+
+    const strategyQuantity = getStrategyQuantity({
+      optionLegs,
+      fallbackQuantity:
+        row.instrument_type === "OPTION"
+          ? row.contracts ?? row.quantity
+          : row.shares ?? row.quantity,
+    });
+
     const execution = row.signal_executions?.[0] ?? null;
 
     let contracts: number | null = null;
@@ -651,31 +837,98 @@ export default async function SignalsPage({
     let pnl: number | null = null;
     let pnl_pct: number | null = null;
 
-    if (execution && typeof row.entry_price === "number") {
-      const totalContracts = execution.contracts;
-      const entryPrice = row.entry_price;
+    if (execution) {
+      const totalContracts = toNumber(execution.contracts);
+      const entryPrice = toNumber(row.entry_price ?? row.price);
 
       const closeFills =
-        execution.execution_fills?.filter((fill) => fill.side === "CLOSE") ??
-        [];
-
-      const closedContracts = closeFills.reduce(
-        (sum, fill) => sum + fill.contracts,
-        0
-      );
-
-      const remaining = Math.max(totalContracts - closedContracts, 0);
+        execution.execution_fills?.filter(
+          (fill) => String(fill.side).toUpperCase() === "CLOSE"
+        ) ?? [];
 
       contracts = totalContracts;
-      remaining_contracts = remaining;
-      execution_status = remaining > 0 ? "OPEN" : "CLOSED";
 
-      if (closeFills.length > 0) {
-        pnl = closeFills.reduce((sum, fill) => {
-          return sum + (fill.price - entryPrice) * fill.contracts * 100;
-        }, 0);
+      if (optionLegs.length > 1) {
+        const closeFillsByLeg = new Map<string, number>();
 
-        pnl_pct = (pnl / (entryPrice * totalContracts * 100)) * 100;
+        for (const fill of closeFills) {
+          if (!fill.signal_option_leg_id) {
+            continue;
+          }
+
+          closeFillsByLeg.set(
+            fill.signal_option_leg_id,
+            (closeFillsByLeg.get(fill.signal_option_leg_id) ?? 0) +
+              toNumber(fill.contracts)
+          );
+        }
+
+        const remainingByLeg = optionLegs.map((leg) => {
+          const openedLegContracts = Math.max(toNumber(leg.contracts), 1);
+          const closedLegContracts =
+            closeFillsByLeg.get(leg.id) ?? 0;
+
+          return Math.max(openedLegContracts - closedLegContracts, 0);
+        });
+
+        const remaining =
+          remainingByLeg.length > 0
+            ? Math.min(...remainingByLeg)
+            : totalContracts;
+
+        const hasCloseFills = closeFills.length > 0;
+
+        remaining_contracts =
+          row.status === "Closed" ? 0 : remaining;
+
+        execution_status =
+          row.status === "Closed"
+            ? "CLOSED"
+            : hasCloseFills
+              ? remaining > 0
+                ? "PARTIAL"
+                : "CLOSED"
+              : "OPEN";
+
+        pnl_pct = row.return_pct ?? null;
+      } else {
+        const closedContracts = closeFills.reduce(
+          (sum, fill) => sum + toNumber(fill.contracts),
+          0
+        );
+
+        const remaining = Math.max(totalContracts - closedContracts, 0);
+
+        remaining_contracts = remaining;
+
+        execution_status =
+          remaining > 0 && closedContracts > 0
+            ? "PARTIAL"
+            : remaining > 0
+              ? "OPEN"
+              : "CLOSED";
+
+        if (closeFills.length > 0 && entryPrice > 0) {
+          const multiplier =
+            row.instrument_type === "OPTION" ? 100 : 1;
+
+          pnl = closeFills.reduce((sum, fill) => {
+            return (
+              sum +
+              (toNumber(fill.price) - entryPrice) *
+                toNumber(fill.contracts) *
+                multiplier
+            );
+          }, 0);
+
+          const entryBasis =
+            entryPrice * totalContracts * multiplier;
+
+          pnl_pct =
+            entryBasis > 0
+              ? (pnl / entryBasis) * 100
+              : null;
+        }
       }
     }
 
@@ -699,17 +952,34 @@ export default async function SignalsPage({
       underlying: row.underlying,
       instrument_type: row.instrument_type,
       action: row.action,
+      open_action: row.open_action,
       option_type: row.option_type ?? undefined,
-      strike_price: row.strike_price ?? undefined,
-      expiration_date: row.expiration_date ?? undefined,
-      entry_price: row.entry_price ?? row.price ?? undefined,
+      strike_price:
+        tradeSummary.primaryStrikePrice ??
+        row.strike_price ??
+        undefined,
+      expiration_date:
+        tradeSummary.primaryExpirationDate ??
+        row.expiration_date ??
+        undefined,
+      entry_price:
+        tradeSummary.netEntry !== null
+          ? Math.abs(tradeSummary.netEntry)
+          : row.entry_price ?? row.price ?? undefined,
       price:
         row.price !== null && row.price !== undefined
           ? String(row.price)
           : undefined,
-      trade_style: normalizeTradeStyle(row.trade_style),
+      trade_style:
+        normalizeTradeStyle(row.trade_style),
+      strategy_type:
+        normalizeTradeStyle(
+          row.strategy_type ??
+          tradeSummary.tradeStyleLabel,
+        ),
+      option_legs: optionLegs,
       execution_status,
-      contracts,
+      contracts: contracts ?? strategyQuantity,
       remaining_contracts,
       pnl,
       pnl_pct,
@@ -730,13 +1000,27 @@ export default async function SignalsPage({
   const totalSignals = signals.length;
 
   const activeSignals = signals.filter((signal) => {
-    const displayStatus = getSignalDisplayStatus(signal);
+    const displayStatus = getSignalDisplayStatus({
+      status: signal.status,
+      watching: signal.watching,
+      watched: signal.watched,
+      closed_at: signal.closed_at,
+      outcome: signal.outcome,
+      return_pct: signal.return_pct,
+    });
 
     return displayStatus === "Active" || displayStatus === "Watching";
   }).length;
 
   const watchingSignals = signals.filter((signal) => {
-    const displayStatus = getSignalDisplayStatus(signal);
+    const displayStatus = getSignalDisplayStatus({
+      status: signal.status,
+      watching: signal.watching,
+      watched: signal.watched,
+      closed_at: signal.closed_at,
+      outcome: signal.outcome,
+      return_pct: signal.return_pct,
+    });
 
     return displayStatus === "Watching" || signal.watching;
   }).length;

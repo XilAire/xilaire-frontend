@@ -1,6 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import {
+  useState,
+  useTransition,
+  type ReactNode,
+} from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
@@ -31,77 +35,265 @@ type TradeReview = {
   updated_at?: string | null;
 };
 
-type TradeReviewPanelProps = {
-  tradeId: string;
-  initialReview?: TradeReview | null;
+type TradeReviewInput = {
+  symbol?: string | null;
+  instrument_type?: string | null;
+  strategy?: string | null;
+  execution_style?: string | null;
+  option_legs?: unknown[];
+  entry_type?: string | null;
+  net_entry?: number | null;
+  premium_paid?: number | null;
+  premium_received?: number | null;
+  confidence?: number | null;
+  entry_price?: number | null;
+  exit_price?: number | null;
+  quantity?: number | null;
+  pnl?: number | null;
+  pnl_pct?: number | null;
+  status?: string | null;
+  outcome?: string | null;
+  opened_at?: string | null;
+  closed_at?: string | null;
+  fills?: unknown[];
+  notes?: unknown;
 };
 
-function formatDateTime(value?: string | null) {
-  if (!value) return "—";
+type TradeReviewPanelProps = {
+  /**
+   * Primary journal execution identifier.
+   *
+   * The journal details page passes executionId. The review generator
+   * currently expects this value under the tradeId property.
+   */
+  executionId: string;
 
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(value));
+  /**
+   * Signal associated with the execution.
+   */
+  signalId: string;
+
+  /**
+   * Complete normalized trade context used by the AI review generator.
+   */
+  trade?: TradeReviewInput;
+
+  initialReview?: TradeReview | null;
+
+  /**
+   * Backward-compatible alias for older callers.
+   */
+  tradeId?: string;
+};
+
+function formatDateTime(
+  value?: string | null,
+) {
+  if (!value) {
+    return "—";
+  }
+
+  const date =
+    new Date(value);
+
+  if (
+    Number.isNaN(
+      date.getTime(),
+    )
+  ) {
+    return "—";
+  }
+
+  return new Intl.DateTimeFormat(
+    "en-US",
+    {
+      month:
+        "short",
+      day:
+        "numeric",
+      year:
+        "numeric",
+      hour:
+        "numeric",
+      minute:
+        "2-digit",
+    },
+  ).format(date);
 }
 
-function getGradeTone(grade: string) {
-  if (grade.startsWith("A")) return "text-emerald-300 bg-emerald-500/10";
-  if (grade.startsWith("B")) return "text-sky-300 bg-sky-500/10";
-  if (grade.startsWith("C")) return "text-orange-300 bg-orange-500/10";
+function getGradeTone(
+  grade: string,
+) {
+  const normalized =
+    grade
+      .trim()
+      .toUpperCase();
+
+  if (
+    normalized.startsWith(
+      "A",
+    )
+  ) {
+    return "text-emerald-300 bg-emerald-500/10";
+  }
+
+  if (
+    normalized.startsWith(
+      "B",
+    )
+  ) {
+    return "text-sky-300 bg-sky-500/10";
+  }
+
+  if (
+    normalized.startsWith(
+      "C",
+    )
+  ) {
+    return "text-orange-300 bg-orange-500/10";
+  }
+
   return "text-red-300 bg-red-500/10";
 }
 
-function getScoreTone(score: number) {
-  if (score >= 85) return "text-emerald-300";
-  if (score >= 70) return "text-sky-300";
-  if (score >= 55) return "text-orange-300";
+function getScoreTone(
+  score: number,
+) {
+  if (
+    score >= 85
+  ) {
+    return "text-emerald-300";
+  }
+
+  if (
+    score >= 70
+  ) {
+    return "text-sky-300";
+  }
+
+  if (
+    score >= 55
+  ) {
+    return "text-orange-300";
+  }
+
   return "text-red-300";
 }
 
 export default function TradeReviewPanel({
+  executionId,
+  signalId,
   tradeId,
   initialReview = null,
 }: TradeReviewPanelProps) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const [review, setReview] = useState<TradeReview | null>(initialReview);
-  const [message, setMessage] = useState<{
-    type: "success" | "error" | "info";
-    text: string;
-  } | null>(null);
+  const router =
+    useRouter();
+
+  const [
+    isPending,
+    startTransition,
+  ] =
+    useTransition();
+
+  const [
+    review,
+    setReview,
+  ] =
+    useState<TradeReview | null>(
+      initialReview,
+    );
+
+  const [
+    message,
+    setMessage,
+  ] =
+    useState<{
+      type:
+        | "success"
+        | "error"
+        | "info";
+      text: string;
+    } | null>(
+      null,
+    );
+
+  const resolvedTradeId =
+    tradeId?.trim() ||
+    executionId?.trim();
 
   function handleGenerateReview() {
     setMessage(null);
 
-    startTransition(async () => {
-      const result = await generateTradeReview({
-        tradeId,
+    if (
+      !resolvedTradeId
+    ) {
+      setMessage({
+        type:
+          "error",
+        text:
+          "Missing trade ID.",
       });
 
-      if (!result.success) {
+      return;
+    }
+
+    if (
+      !signalId?.trim()
+    ) {
+      setMessage({
+        type:
+          "error",
+        text:
+          "Missing signal ID.",
+      });
+
+      return;
+    }
+
+    const hadExistingReview =
+      Boolean(review);
+
+    startTransition(
+      async () => {
+        const result =
+          await generateTradeReview({
+            /*
+             * The review generator currently names this value tradeId,
+             * but the journal details route uses the execution ID.
+             */
+            tradeId:
+              resolvedTradeId,
+          });
+
+        if (
+          !result.success
+        ) {
+          setMessage({
+            type:
+              "error",
+            text:
+              result.error,
+          });
+
+          return;
+        }
+
+        setReview(
+          result.review,
+        );
+
         setMessage({
-          type: "error",
-          text: result.error,
+          type:
+            "success",
+          text:
+            hadExistingReview
+              ? "Trade review regenerated."
+              : "Trade review generated.",
         });
 
-        return;
-      }
-
-      setReview(result.review);
-
-      setMessage({
-        type: "success",
-        text: review
-          ? "Trade review regenerated."
-          : "Trade review generated.",
-      });
-
-      router.refresh();
-    });
+        router.refresh();
+      },
+    );
   }
 
   return (
@@ -126,8 +318,14 @@ export default function TradeReviewPanel({
 
         <button
           type="button"
-          onClick={handleGenerateReview}
-          disabled={isPending}
+          onClick={
+            handleGenerateReview
+          }
+          disabled={
+            isPending ||
+            !resolvedTradeId ||
+            !signalId
+          }
           className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isPending ? (
@@ -137,6 +335,7 @@ export default function TradeReviewPanel({
           ) : (
             <Sparkles className="h-4 w-4" />
           )}
+
           {isPending
             ? "Reviewing..."
             : review
@@ -145,20 +344,37 @@ export default function TradeReviewPanel({
         </button>
       </div>
 
-      {message && (
+      {!resolvedTradeId ? (
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+          Missing trade ID.
+        </div>
+      ) : null}
+
+      {resolvedTradeId &&
+      !signalId ? (
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+          Missing signal ID.
+        </div>
+      ) : null}
+
+      {message ? (
         <div
           className={
             "rounded-lg border px-4 py-3 text-sm " +
-            (message.type === "success"
-              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-              : message.type === "error"
-                ? "border-red-500/30 bg-red-500/10 text-red-300"
-                : "border-sky-500/30 bg-sky-500/10 text-sky-300")
+            (
+              message.type ===
+              "success"
+                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                : message.type ===
+                    "error"
+                  ? "border-red-500/30 bg-red-500/10 text-red-300"
+                  : "border-sky-500/30 bg-sky-500/10 text-sky-300"
+            )
           }
         >
           {message.text}
         </div>
-      )}
+      ) : null}
 
       {!review ? (
         <div className="rounded-xl border border-dashed border-white/10 bg-slate-950 p-6">
@@ -183,22 +399,40 @@ export default function TradeReviewPanel({
           <div className="grid gap-4 md:grid-cols-3">
             <ReviewMetric
               label="Grade"
-              value={review.grade}
-              className={getGradeTone(review.grade)}
+              value={
+                review.grade
+              }
+              className={
+                getGradeTone(
+                  review.grade,
+                )
+              }
             />
 
             <ReviewMetric
               label="Execution Score"
-              value={`${Number(review.execution_score).toFixed(0)}/100`}
-              className={getScoreTone(Number(review.execution_score))}
+              value={`${Number(
+                review.execution_score,
+              ).toFixed(0)}/100`}
+              className={
+                getScoreTone(
+                  Number(
+                    review.execution_score,
+                  ),
+                )
+              }
             />
 
             <ReviewMetric
               label="Discipline"
               value={
-                review.discipline_score !== null &&
-                review.discipline_score !== undefined
-                  ? `${Number(review.discipline_score).toFixed(0)}/10`
+                review.discipline_score !==
+                  null &&
+                review.discipline_score !==
+                  undefined
+                  ? `${Number(
+                      review.discipline_score,
+                    ).toFixed(0)}/10`
                   : "—"
               }
               className="text-slate-100"
@@ -208,7 +442,10 @@ export default function TradeReviewPanel({
           <div className="rounded-xl border border-white/10 bg-slate-950 p-5">
             <div className="mb-3 flex items-center gap-2 text-emerald-400">
               <ClipboardCheck className="h-4 w-4" />
-              <h3 className="font-semibold text-slate-100">Summary</h3>
+
+              <h3 className="font-semibold text-slate-100">
+                Summary
+              </h3>
             </div>
 
             <p className="text-sm leading-7 text-slate-300">
@@ -216,36 +453,56 @@ export default function TradeReviewPanel({
             </p>
 
             <p className="mt-4 text-xs text-slate-600">
-              Last updated: {formatDateTime(review.updated_at ?? review.created_at)}
+              Last updated:{" "}
+              {formatDateTime(
+                review.updated_at ??
+                  review.created_at,
+              )}
             </p>
           </div>
 
           <div className="grid gap-4 lg:grid-cols-3">
             <ReviewList
               title="What Went Well"
-              icon={<CheckCircle2 />}
+              icon={
+                <CheckCircle2 />
+              }
               tone="positive"
-              items={review.what_went_well ?? []}
+              items={
+                review.what_went_well ??
+                []
+              }
             />
 
             <ReviewList
               title="Mistakes"
-              icon={<AlertTriangle />}
+              icon={
+                <AlertTriangle />
+              }
               tone="negative"
-              items={review.mistakes ?? []}
+              items={
+                review.mistakes ??
+                []
+              }
             />
 
             <ReviewList
               title="Improvement Plan"
-              icon={<Target />}
+              icon={
+                <Target />
+              }
               tone="neutral"
-              items={review.improvement_plan ?? []}
+              items={
+                review.improvement_plan ??
+                []
+              }
             />
           </div>
 
           <div className="rounded-xl border border-white/10 bg-slate-950 p-5">
             <div className="mb-3 flex items-center gap-2 text-sky-300">
               <Bot className="h-4 w-4" />
+
               <h3 className="font-semibold text-slate-100">
                 Psychology Review
               </h3>
@@ -272,8 +529,15 @@ function ReviewMetric({
 }) {
   return (
     <div className="rounded-xl border border-white/10 bg-slate-950 p-5">
-      <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
-      <p className={`mt-2 text-3xl font-bold ${className}`}>{value}</p>
+      <p className="text-xs uppercase tracking-wide text-slate-500">
+        {label}
+      </p>
+
+      <p
+        className={`mt-2 text-3xl font-bold ${className}`}
+      >
+        {value}
+      </p>
     </div>
   );
 }
@@ -285,9 +549,12 @@ function ReviewList({
   tone,
 }: {
   title: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
   items: string[];
-  tone: "positive" | "negative" | "neutral";
+  tone:
+    | "positive"
+    | "negative"
+    | "neutral";
 }) {
   const iconClass =
     tone === "positive"
@@ -298,24 +565,45 @@ function ReviewList({
 
   return (
     <div className="rounded-xl border border-white/10 bg-slate-950 p-5">
-      <div className={`mb-4 flex items-center gap-2 ${iconClass}`}>
+      <div
+        className={`mb-4 flex items-center gap-2 ${iconClass}`}
+      >
         {icon}
-        <h3 className="font-semibold text-slate-100">{title}</h3>
+
+        <h3 className="font-semibold text-slate-100">
+          {title}
+        </h3>
       </div>
 
-      {items.length === 0 ? (
-        <p className="text-sm text-slate-500">No items generated.</p>
+      {items.length ===
+      0 ? (
+        <p className="text-sm text-slate-500">
+          No items generated.
+        </p>
       ) : (
         <ul className="space-y-3">
-          {items.map((item, index) => (
-            <li
-              key={`${title}-${index}`}
-              className="flex gap-3 text-sm leading-6 text-slate-300"
-            >
-              <span className={`mt-2 h-1.5 w-1.5 shrink-0 rounded-full ${iconClass.replace("text-", "bg-")}`} />
-              <span>{item}</span>
-            </li>
-          ))}
+          {items.map(
+            (
+              item,
+              index,
+            ) => (
+              <li
+                key={`${title}-${index}`}
+                className="flex gap-3 text-sm leading-6 text-slate-300"
+              >
+                <span
+                  className={`mt-2 h-1.5 w-1.5 shrink-0 rounded-full ${iconClass.replace(
+                    "text-",
+                    "bg-",
+                  )}`}
+                />
+
+                <span>
+                  {item}
+                </span>
+              </li>
+            ),
+          )}
         </ul>
       )}
     </div>

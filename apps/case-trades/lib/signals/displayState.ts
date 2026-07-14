@@ -11,7 +11,18 @@ export type SignalDisplayStatus =
   | "Closed"
   | "Expired";
 
-export type SignalExecutionStatus = "OPEN" | "CLOSED" | null | undefined;
+export type SignalExecutionStatus =
+  | "OPEN"
+  | "PARTIAL"
+  | "CLOSED"
+  | null
+  | undefined;
+
+export type SignalOutcome =
+  | "WIN"
+  | "LOSS"
+  | "BREAKEVEN"
+  | null;
 
 export type SignalDisplayStateInput = {
   status?: string | null;
@@ -19,51 +30,49 @@ export type SignalDisplayStateInput = {
   watched?: boolean | null;
   execution_status?: SignalExecutionStatus;
   closed_at?: string | null;
-  outcome?: "WIN" | "LOSS" | "BREAKEVEN" | null;
+
+  outcome?: SignalOutcome;
   return_pct?: number | null;
+
+  strategy_type?: string | null;
+  trade_style?: string | null;
+  leg_count?: number | null;
+  remaining_contracts?: number | null;
 };
 
 export function normalizePersistedSignalStatus(
-  status?: string | null
+  status?: string | null,
 ): SignalPersistedStatus {
-  const normalized = String(status ?? "")
-    .trim()
-    .toLowerCase();
-
-  switch (normalized) {
+  switch (String(status ?? "").trim().toLowerCase()) {
     case "triggered":
       return "Triggered";
-
     case "closed":
       return "Closed";
-
     case "expired":
       return "Expired";
-
-    case "active":
     default:
       return "Active";
   }
 }
 
 export function getSignalDisplayStatus(
-  signal: SignalDisplayStateInput
+  signal: SignalDisplayStateInput,
 ): SignalDisplayStatus {
-  const persistedStatus = normalizePersistedSignalStatus(signal.status);
+  const persisted = normalizePersistedSignalStatus(signal.status);
 
-  if (persistedStatus === "Closed") {
-    return "Closed";
-  }
+  if (persisted === "Closed") return "Closed";
+  if (persisted === "Expired") return "Expired";
 
-  if (persistedStatus === "Expired") {
-    return "Expired";
-  }
-
-  if (persistedStatus === "Triggered") {
+  if (
+    signal.execution_status === "PARTIAL" &&
+    persisted === "Active"
+  ) {
     return "Triggered";
   }
 
-  if (persistedStatus === "Active" && signal.watching === true) {
+  if (persisted === "Triggered") return "Triggered";
+
+  if (persisted === "Active" && signal.watching) {
     return "Watching";
   }
 
@@ -71,57 +80,52 @@ export function getSignalDisplayStatus(
 }
 
 export function getPersistedStatusFromDisplayStatus(
-  status: SignalDisplayStatus
+  status: SignalDisplayStatus,
 ): SignalPersistedStatus {
-  if (status === "Watching") {
-    return "Active";
-  }
-
-  return status;
+  return status === "Watching" ? "Active" : status;
 }
 
-export function getWatchingFromDisplayStatus(status: SignalDisplayStatus) {
-  return status === "Watching";
-}
+export const getWatchingFromDisplayStatus = (
+  status: SignalDisplayStatus,
+) => status === "Watching";
 
-export function isWatchingSignal(signal: SignalDisplayStateInput) {
-  return getSignalDisplayStatus(signal) === "Watching";
-}
+export const isWatchingSignal = (
+  signal: SignalDisplayStateInput,
+) => getSignalDisplayStatus(signal) === "Watching";
 
-export function isActiveSignal(signal: SignalDisplayStateInput) {
-  return getSignalDisplayStatus(signal) === "Active";
-}
+export const isActiveSignal = (
+  signal: SignalDisplayStateInput,
+) => getSignalDisplayStatus(signal) === "Active";
 
-export function isTriggeredSignal(signal: SignalDisplayStateInput) {
-  return getSignalDisplayStatus(signal) === "Triggered";
-}
+export const isTriggeredSignal = (
+  signal: SignalDisplayStateInput,
+) => getSignalDisplayStatus(signal) === "Triggered";
 
-export function isClosedSignal(signal: SignalDisplayStateInput) {
-  return getSignalDisplayStatus(signal) === "Closed";
-}
+export const isClosedSignal = (
+  signal: SignalDisplayStateInput,
+) => getSignalDisplayStatus(signal) === "Closed";
 
-export function isExpiredSignal(signal: SignalDisplayStateInput) {
-  return getSignalDisplayStatus(signal) === "Expired";
-}
+export const isExpiredSignal = (
+  signal: SignalDisplayStateInput,
+) => getSignalDisplayStatus(signal) === "Expired";
 
-export function canWatchSignal(signal: SignalDisplayStateInput) {
-  const displayStatus = getSignalDisplayStatus(signal);
-
-  return displayStatus === "Active" || displayStatus === "Watching";
+export function canWatchSignal(
+  signal: SignalDisplayStateInput,
+) {
+  const display = getSignalDisplayStatus(signal);
+  return display === "Active" || display === "Watching";
 }
 
 export function canMoveSignalToStatus(
   signal: SignalDisplayStateInput,
-  nextStatus: SignalDisplayStatus
+  nextStatus: SignalDisplayStatus,
 ) {
-  const currentStatus = getSignalDisplayStatus(signal);
+  const current = getSignalDisplayStatus(signal);
 
-  if (currentStatus === nextStatus) {
-    return false;
-  }
+  if (current === nextStatus) return false;
 
   if (
-    (currentStatus === "Closed" || currentStatus === "Expired") &&
+    (current === "Closed" || current === "Expired") &&
     nextStatus === "Watching"
   ) {
     return false;
@@ -130,34 +134,25 @@ export function canMoveSignalToStatus(
   return true;
 }
 
-export function signalNeedsOutcome(signal: SignalDisplayStateInput) {
-  const displayStatus = getSignalDisplayStatus(signal);
+export function signalNeedsOutcome(
+  signal: SignalDisplayStateInput,
+) {
+  const display = getSignalDisplayStatus(signal);
 
   return (
-    (displayStatus === "Closed" || displayStatus === "Expired") &&
-    (signal.outcome === null ||
-      signal.outcome === undefined ||
-      signal.return_pct === null ||
-      signal.return_pct === undefined)
+    (display === "Closed" || display === "Expired") &&
+    (signal.outcome == null || signal.return_pct == null)
   );
 }
 
-export function shouldClearWatchingForDisplayStatus(
-  status: SignalDisplayStatus
-) {
-  return status !== "Watching";
-}
+export const shouldClearWatchingForDisplayStatus = (
+  status: SignalDisplayStatus,
+) => status !== "Watching";
 
 export function inferSignalOutcomeFromReturnPct(
-  returnPct: number
-): "WIN" | "LOSS" | "BREAKEVEN" {
-  if (returnPct > 0) {
-    return "WIN";
-  }
-
-  if (returnPct < 0) {
-    return "LOSS";
-  }
-
+  returnPct: number,
+): Exclude<SignalOutcome, null> {
+  if (returnPct > 0) return "WIN";
+  if (returnPct < 0) return "LOSS";
   return "BREAKEVEN";
 }

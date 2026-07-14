@@ -15,7 +15,7 @@ import {
   type ImportPreviewResult,
   type ImportTradesResult,
 } from "./actions";
-import type { ParsedBrokerTrade } from "@/lib/journal/import/parseBrokerCsv";
+import type { GroupedBrokerStrategyTrade } from "@/lib/journal/import/groupStrategies";
 
 function formatMoney(value: number | null | undefined) {
   if (value === null || value === undefined || Number.isNaN(value)) {
@@ -45,6 +45,59 @@ function formatDate(value: string | null | undefined) {
   }
 
   return date.toLocaleDateString();
+}
+
+function formatDisplayText(value: string | null | undefined) {
+  const normalized = String(value ?? "").trim();
+
+  if (!normalized) {
+    return "—";
+  }
+
+  if (normalized.toLowerCase() === "leap") {
+    return "LEAP";
+  }
+
+  return normalized
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatDebitCredit(
+  value: string | null | undefined,
+) {
+  const normalized =
+    String(value ?? "")
+      .trim()
+      .toUpperCase();
+
+  if (normalized === "DEBIT") {
+    return "Net Debit";
+  }
+
+  if (normalized === "CREDIT") {
+    return "Net Credit";
+  }
+
+  if (normalized === "EVEN") {
+    return "Net Entry";
+  }
+
+  return "Entry";
+}
+
+function getTradeKey(
+  trade: GroupedBrokerStrategyTrade,
+  index: number,
+) {
+  return [
+    trade.symbol,
+    trade.strategy_type,
+    trade.entry_date,
+    trade.exit_date,
+    trade.leg_count,
+    index,
+  ].join("-");
 }
 
 function isPreviewSuccess(
@@ -88,8 +141,11 @@ export default function JournalImportPage() {
   const importSuccess = isImportSuccess(importResult);
   const importFailure = isImportFailure(importResult);
 
-  const trades = useMemo<ParsedBrokerTrade[]>(() => {
-    if (!previewSuccess) return [];
+  const trades = useMemo<GroupedBrokerStrategyTrade[]>(() => {
+    if (!previewSuccess) {
+      return [];
+    }
+
     return preview.trades;
   }, [previewSuccess, preview]);
 
@@ -143,7 +199,9 @@ export default function JournalImportPage() {
             <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
               Upload a broker CSV from Charles Schwab, Robinhood, Fidelity, or a
               generic trade export. CASE Trades will parse the file, preview the
-              trades, detect duplicates, and import them into your journal.
+              trades, reconstruct lifecycle activity, group related option
+              contracts into multi-leg strategies, detect strategy and execution
+              metadata, identify duplicates, and import them into your journal.
             </p>
           </div>
 
@@ -259,6 +317,21 @@ export default function JournalImportPage() {
             </div>
           ) : null}
 
+          {previewFailure && preview.warnings.length > 0 ? (
+            <div className="mt-5 rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-sm text-yellow-200">
+              <div className="mb-2 flex items-center gap-2 font-semibold">
+                <AlertCircle className="h-4 w-4" />
+                Preview warnings
+              </div>
+
+              <ul className="list-inside list-disc space-y-1">
+                {preview.warnings.map((warning: string) => (
+                  <li key={warning}>{warning}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
           {previewSuccess && preview.warnings.length > 0 ? (
             <div className="mt-5 rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-sm text-yellow-200">
               <div className="mb-2 flex items-center gap-2 font-semibold">
@@ -292,10 +365,20 @@ export default function JournalImportPage() {
               </div>
 
               {importSuccess ? (
-                <p>
-                  Imported {importResult.imported} trades. Skipped{" "}
-                  {importResult.skipped} duplicates or invalid rows.
-                </p>
+                <>
+                  <p>
+                    Imported {importResult.imported} trades. Skipped{" "}
+                    {importResult.skipped} duplicates or invalid rows.
+                  </p>
+
+                  {importResult.warnings.length > 0 ? (
+                    <ul className="mt-3 list-inside list-disc space-y-1 text-yellow-200">
+                      {importResult.warnings.map((warning: string) => (
+                        <li key={warning}>{warning}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </>
               ) : null}
 
               {importFailure ? (
@@ -317,17 +400,19 @@ export default function JournalImportPage() {
                   Import Preview
                 </h2>
                 <p className="text-sm text-slate-400">
-                  Review parsed trades before saving them to your journal.
+                  Review parsed trades before saving them to your journal. Strategy, execution style, and multi-leg structures will be detected during import where supported.
                 </p>
               </div>
 
               {previewSuccess ? (
-                <div className="w-full rounded-xl border border-white/10 bg-slate-950/70 px-4 py-2 text-sm text-slate-300 lg:w-auto lg:max-w-xs">
+                <div className="w-full rounded-xl border border-white/10 bg-slate-950/70 px-4 py-2 text-sm text-slate-300 lg:w-auto lg:max-w-md">
                   <span className="text-slate-500">Broker:</span>{" "}
                   <span className="break-words font-semibold text-emerald-300">
                     {preview.broker}
                   </span>{" "}
-                  · {preview.totalTrades} trades
+                  · {preview.totalTrades} strategies ·{" "}
+                  {preview.groupedStrategies} grouped ·{" "}
+                  {preview.totalOptionLegs} option legs
                 </div>
               ) : null}
             </div>
@@ -344,64 +429,183 @@ export default function JournalImportPage() {
 
           {previewSuccess && trades.length > 0 ? (
             <>
-              <div className="hidden md:block">
-                <table className="w-full table-fixed text-left text-sm">
+              <div className="grid gap-3 border-b border-white/10 p-4 sm:grid-cols-2 xl:grid-cols-4">
+                <PreviewMetricCard
+                  label="Strategies"
+                  value={String(preview.totalTrades)}
+                />
+
+                <PreviewMetricCard
+                  label="Grouped Strategies"
+                  value={String(preview.groupedStrategies)}
+                />
+
+                <PreviewMetricCard
+                  label="Option Legs"
+                  value={String(preview.totalOptionLegs)}
+                />
+
+                <PreviewMetricCard
+                  label="Single Trades"
+                  value={String(
+                    Math.max(
+                      preview.totalTrades -
+                        preview.groupedStrategies,
+                      0,
+                    ),
+                  )}
+                />
+              </div>
+
+              <div className="hidden overflow-x-auto md:block">
+                <table className="min-w-[1450px] w-full table-fixed text-left text-sm">
                   <thead className="border-b border-white/10 bg-slate-950 text-xs uppercase tracking-wide text-slate-500">
                     <tr>
-                      <th className="w-[20%] px-4 py-3">Symbol</th>
-                      <th className="w-[12%] px-4 py-3">Type</th>
-                      <th className="w-[10%] px-4 py-3">Side</th>
-                      <th className="w-[17%] px-4 py-3">Entry</th>
-                      <th className="w-[17%] px-4 py-3">Exit</th>
-                      <th className="w-[10%] px-4 py-3">Qty</th>
-                      <th className="w-[14%] px-4 py-3 text-right">P/L</th>
+                      <th className="w-[150px] px-4 py-3">Symbol</th>
+                      <th className="w-[180px] px-4 py-3">Strategy</th>
+                      <th className="w-[110px] px-4 py-3">Execution</th>
+                      <th className="w-[90px] px-4 py-3">Grouped</th>
+                      <th className="w-[90px] px-4 py-3">Legs</th>
+                      <th className="w-[130px] px-4 py-3">Entry Type</th>
+                      <th className="w-[130px] px-4 py-3">Net Entry</th>
+                      <th className="w-[130px] px-4 py-3">Paid</th>
+                      <th className="w-[130px] px-4 py-3">Received</th>
+                      <th className="w-[170px] px-4 py-3">Entry</th>
+                      <th className="w-[170px] px-4 py-3">Exit</th>
+                      <th className="w-[110px] px-4 py-3">Contracts</th>
+                      <th className="w-[140px] px-4 py-3 text-right">P/L</th>
                     </tr>
                   </thead>
 
                   <tbody className="divide-y divide-white/10">
                     {trades
                       .slice(0, 100)
-                      .map((trade: ParsedBrokerTrade, index: number) => (
-                        <tr
-                          key={`${trade.symbol}-${index}`}
-                          className="text-slate-300"
-                        >
-                          <td className="truncate px-4 py-3 font-semibold text-slate-100">
-                            {trade.symbol}
-                          </td>
-                          <td className="truncate px-4 py-3">
-                            {trade.instrument_type}
-                          </td>
-                          <td className="truncate px-4 py-3">{trade.side}</td>
-                          <td className="px-4 py-3">
-                            <div className="truncate">
-                              {formatDate(trade.entry_date)}
-                            </div>
-                            <div className="truncate text-xs text-slate-500">
-                              {formatMoney(trade.entry_price)}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="truncate">
-                              {formatDate(trade.exit_date)}
-                            </div>
-                            <div className="truncate text-xs text-slate-500">
-                              {formatMoney(trade.exit_price)}
-                            </div>
-                          </td>
-                          <td className="truncate px-4 py-3">
-                            {trade.quantity ?? "—"}
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <div className="truncate font-medium">
-                              {formatMoney(trade.profit_loss)}
-                            </div>
-                            <div className="truncate text-xs text-slate-500">
-                              {formatPercent(trade.profit_loss_pct)}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                      .map(
+                        (
+                          trade: GroupedBrokerStrategyTrade,
+                          index: number,
+                        ) => (
+                          <tr
+                            key={getTradeKey(trade, index)}
+                            className="align-top text-slate-300"
+                          >
+                            <td className="px-4 py-3">
+                              <div className="font-semibold text-slate-100">
+                                {trade.symbol}
+                              </div>
+                              <div className="mt-1 text-xs text-slate-500">
+                                {trade.instrument_type}
+                              </div>
+                            </td>
+
+                            <td className="px-4 py-3">
+                              <div className="break-words font-medium text-purple-300">
+                                {formatDisplayText(
+                                  trade.strategy_type,
+                                )}
+                              </div>
+
+                              {trade.option_legs.length > 0 ? (
+                                <div className="mt-2 space-y-1 text-xs text-slate-500">
+                                  {trade.option_legs.map((leg) => (
+                                    <div
+                                      key={leg.id}
+                                      className="break-words"
+                                    >
+                                      {formatDisplayText(leg.action)}{" "}
+                                      {leg.contracts} ×{" "}
+                                      {leg.strike_price ?? "—"}{" "}
+                                      {leg.option_type}
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : null}
+                            </td>
+
+                            <td className="px-4 py-3">
+                              {formatDisplayText(trade.trade_style)}
+                            </td>
+
+                            <td className="px-4 py-3">
+                              <span
+                                className={
+                                  trade.grouped
+                                    ? "inline-flex rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-300"
+                                    : "inline-flex rounded-full border border-white/10 bg-slate-950 px-2 py-1 text-xs font-semibold text-slate-400"
+                                }
+                              >
+                                {trade.grouped ? "Yes" : "No"}
+                              </span>
+                            </td>
+
+                            <td className="px-4 py-3">
+                              {trade.leg_count}
+                            </td>
+
+                            <td className="px-4 py-3">
+                              {formatDebitCredit(
+                                trade.strategy_entry_type,
+                              )}
+                            </td>
+
+                            <td className="px-4 py-3 font-medium text-slate-100">
+                              {formatMoney(
+                                trade.strategy_entry_price,
+                              )}
+                            </td>
+
+                            <td className="px-4 py-3 text-red-300">
+                              {formatMoney(trade.total_debit)}
+                            </td>
+
+                            <td className="px-4 py-3 text-emerald-300">
+                              {formatMoney(trade.total_credit)}
+                            </td>
+
+                            <td className="px-4 py-3">
+                              <div>
+                                {formatDate(trade.entry_date)}
+                              </div>
+                              <div className="mt-1 text-xs text-slate-500">
+                                {formatMoney(trade.entry_price)}
+                              </div>
+                            </td>
+
+                            <td className="px-4 py-3">
+                              <div>
+                                {formatDate(trade.exit_date)}
+                              </div>
+                              <div className="mt-1 text-xs text-slate-500">
+                                {formatMoney(trade.exit_price)}
+                              </div>
+                            </td>
+
+                            <td className="px-4 py-3">
+                              <div>
+                                {trade.strategy_contracts}
+                              </div>
+                              <div className="mt-1 text-xs text-slate-500">
+                                {trade.total_contracts} total
+                              </div>
+                            </td>
+
+                            <td className="px-4 py-3 text-right">
+                              <div className="font-medium text-slate-100">
+                                {formatMoney(
+                                  trade.strategy_profit_loss_dollars ??
+                                    trade.profit_loss,
+                                )}
+                              </div>
+                              <div className="mt-1 text-xs text-slate-500">
+                                {formatPercent(
+                                  trade.strategy_return_pct ??
+                                    trade.profit_loss_pct,
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ),
+                      )}
                   </tbody>
                 </table>
               </div>
@@ -409,91 +613,197 @@ export default function JournalImportPage() {
               <div className="grid gap-3 p-4 md:hidden">
                 {trades
                   .slice(0, 100)
-                  .map((trade: ParsedBrokerTrade, index: number) => (
-                    <div
-                      key={`${trade.symbol}-${index}`}
-                      className="rounded-xl border border-white/10 bg-slate-950/70 p-4"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="truncate text-base font-semibold text-slate-100">
-                            {trade.symbol}
+                  .map(
+                    (
+                      trade: GroupedBrokerStrategyTrade,
+                      index: number,
+                    ) => (
+                      <div
+                        key={getTradeKey(trade, index)}
+                        className="min-w-0 rounded-xl border border-white/10 bg-slate-950/70 p-4"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="truncate text-base font-semibold text-slate-100">
+                              {trade.symbol}
+                            </div>
+
+                            <div className="mt-1 break-words text-xs text-slate-500">
+                              {trade.instrument_type} ·{" "}
+                              {formatDisplayText(
+                                trade.strategy_type,
+                              )}{" "}
+                              ·{" "}
+                              {formatDisplayText(
+                                trade.trade_style,
+                              )}
+                            </div>
                           </div>
-                          <div className="text-xs text-slate-500">
-                            {trade.instrument_type} · {trade.side}
+
+                          <div className="shrink-0 text-right">
+                            <div className="text-sm font-medium text-slate-100">
+                              {formatMoney(
+                                trade.strategy_profit_loss_dollars ??
+                                  trade.profit_loss,
+                              )}
+                            </div>
+
+                            <div className="text-xs text-slate-500">
+                              {formatPercent(
+                                trade.strategy_return_pct ??
+                                  trade.profit_loss_pct,
+                              )}
+                            </div>
                           </div>
                         </div>
 
-                        <div className="shrink-0 text-right text-sm font-medium text-slate-200">
-                          {formatMoney(trade.profit_loss)}
-                          <div className="text-xs text-slate-500">
-                            {formatPercent(trade.profit_loss_pct)}
-                          </div>
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          <span
+                            className={
+                              trade.grouped
+                                ? "rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-300"
+                                : "rounded-full border border-white/10 bg-slate-900 px-2 py-1 text-xs font-semibold text-slate-400"
+                            }
+                          >
+                            {trade.grouped
+                              ? "Grouped Strategy"
+                              : "Single Trade"}
+                          </span>
+
+                          <span className="rounded-full border border-purple-500/20 bg-purple-500/10 px-2 py-1 text-xs font-semibold text-purple-300">
+                            {trade.leg_count} leg
+                            {trade.leg_count === 1 ? "" : "s"}
+                          </span>
+
+                          <span className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2 py-1 text-xs font-semibold text-cyan-300">
+                            {formatDebitCredit(
+                              trade.strategy_entry_type,
+                            )}
+                          </span>
                         </div>
+
+                        <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                          <MobileMetric
+                            label="Net Entry"
+                            value={formatMoney(
+                              trade.strategy_entry_price,
+                            )}
+                          />
+
+                          <MobileMetric
+                            label="Strategy Contracts"
+                            value={String(
+                              trade.strategy_contracts,
+                            )}
+                          />
+
+                          <MobileMetric
+                            label="Premium Paid"
+                            value={formatMoney(
+                              trade.total_debit,
+                            )}
+                          />
+
+                          <MobileMetric
+                            label="Premium Received"
+                            value={formatMoney(
+                              trade.total_credit,
+                            )}
+                          />
+
+                          <MobileMetric
+                            label="Entry"
+                            value={`${formatDate(
+                              trade.entry_date,
+                            )} · ${formatMoney(
+                              trade.entry_price,
+                            )}`}
+                          />
+
+                          <MobileMetric
+                            label="Exit"
+                            value={`${formatDate(
+                              trade.exit_date,
+                            )} · ${formatMoney(
+                              trade.exit_price,
+                            )}`}
+                          />
+
+                          <MobileMetric
+                            label="Total Contracts"
+                            value={String(
+                              trade.total_contracts,
+                            )}
+                          />
+
+                          <MobileMetric
+                            label="Broker"
+                            value={trade.broker}
+                          />
+                        </div>
+
+                        {trade.option_legs.length > 0 ? (
+                          <div className="mt-4 rounded-xl border border-white/10 bg-slate-900/60 p-3">
+                            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                              Option Legs
+                            </div>
+
+                            <div className="mt-3 space-y-2">
+                              {trade.option_legs.map((leg) => (
+                                <div
+                                  key={leg.id}
+                                  className="rounded-lg border border-white/10 bg-slate-950/70 p-3 text-xs text-slate-300"
+                                >
+                                  <div className="font-semibold text-slate-100">
+                                    Leg {leg.leg_order}:{" "}
+                                    {formatDisplayText(leg.action)}
+                                  </div>
+
+                                  <div className="mt-1 break-words text-slate-500">
+                                    {leg.contracts} ×{" "}
+                                    {leg.strike_price ?? "—"}{" "}
+                                    {leg.option_type} ·{" "}
+                                    {formatDate(
+                                      leg.expiration_date,
+                                    )}
+                                  </div>
+
+                                  <div className="mt-1 text-slate-500">
+                                    Entry{" "}
+                                    {formatMoney(
+                                      leg.entry_price,
+                                    )}{" "}
+                                    · Exit{" "}
+                                    {formatMoney(
+                                      leg.exit_price,
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
+
+                        {trade.notes ? (
+                          <p className="mt-3 line-clamp-3 text-xs text-slate-500">
+                            {trade.notes}
+                          </p>
+                        ) : null}
                       </div>
-
-                      <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                        <div className="rounded-lg border border-white/10 bg-slate-900/60 p-3">
-                          <div className="text-xs uppercase tracking-wide text-slate-500">
-                            Entry
-                          </div>
-                          <div className="mt-1 text-slate-200">
-                            {formatDate(trade.entry_date)}
-                          </div>
-                          <div className="text-xs text-slate-500">
-                            {formatMoney(trade.entry_price)}
-                          </div>
-                        </div>
-
-                        <div className="rounded-lg border border-white/10 bg-slate-900/60 p-3">
-                          <div className="text-xs uppercase tracking-wide text-slate-500">
-                            Exit
-                          </div>
-                          <div className="mt-1 text-slate-200">
-                            {formatDate(trade.exit_date)}
-                          </div>
-                          <div className="text-xs text-slate-500">
-                            {formatMoney(trade.exit_price)}
-                          </div>
-                        </div>
-
-                        <div className="rounded-lg border border-white/10 bg-slate-900/60 p-3">
-                          <div className="text-xs uppercase tracking-wide text-slate-500">
-                            Quantity
-                          </div>
-                          <div className="mt-1 text-slate-200">
-                            {trade.quantity ?? "—"}
-                          </div>
-                        </div>
-
-                        <div className="rounded-lg border border-white/10 bg-slate-900/60 p-3">
-                          <div className="text-xs uppercase tracking-wide text-slate-500">
-                            Broker
-                          </div>
-                          <div className="mt-1 text-slate-200">
-                            {trade.broker}
-                          </div>
-                        </div>
-                      </div>
-
-                      {trade.notes ? (
-                        <p className="mt-3 line-clamp-2 text-xs text-slate-500">
-                          {trade.notes}
-                        </p>
-                      ) : null}
-                    </div>
-                  ))}
+                    ),
+                  )}
               </div>
 
               {trades.length > 100 ? (
                 <div className="border-t border-white/10 p-4 text-sm text-slate-500">
-                  Showing first 100 of {trades.length} parsed trades.
+                  Showing first 100 of {trades.length} grouped strategies.
                 </div>
               ) : null}
 
               <div className="flex flex-col gap-3 border-t border-white/10 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
                 <p className="text-sm text-slate-400">
-                  Ready to import {trades.length} trades into your journal.
+                  Ready to import {trades.length} strategies containing{" "}
+                  {preview.totalOptionLegs} option legs into your journal.
                 </p>
 
                 <button
@@ -508,13 +818,53 @@ export default function JournalImportPage() {
                       Importing…
                     </>
                   ) : (
-                    "Import Trades"
+                    "Import Strategies"
                   )}
                 </button>
               </div>
             </>
           ) : null}
         </section>
+      </div>
+    </div>
+  );
+}
+
+function PreviewMetricCard({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="min-w-0 rounded-xl border border-white/10 bg-slate-950/70 p-4">
+      <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        {label}
+      </div>
+
+      <div className="mt-2 break-words text-xl font-semibold text-slate-100">
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function MobileMetric({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="min-w-0 rounded-lg border border-white/10 bg-slate-900/60 p-3">
+      <div className="text-xs uppercase tracking-wide text-slate-500">
+        {label}
+      </div>
+
+      <div className="mt-1 break-words text-slate-200">
+        {value}
       </div>
     </div>
   );
