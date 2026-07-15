@@ -219,6 +219,37 @@ function normalizeOptionLegs(
 /* -------------------------------------------------
    STRATEGY ENTRY CALCULATION
 ------------------------------------------------- */
+function greatestCommonDivisor(firstValue: number, secondValue: number) {
+  let first = Math.abs(Math.round(firstValue));
+  let second = Math.abs(Math.round(secondValue));
+
+  while (second !== 0) {
+    const remainder = first % second;
+    first = second;
+    second = remainder;
+  }
+
+  return Math.max(first, 1);
+}
+
+function calculateStrategyContracts(legs: SignalOptionLegForm[]) {
+  const quantities = legs
+    .map((leg) => Number(leg.contracts))
+    .filter(
+      (contracts) =>
+        Number.isInteger(contracts) &&
+        contracts > 0,
+    );
+
+  if (quantities.length === 0) {
+    return 1;
+  }
+
+  return quantities.reduce((currentGcd, contracts) =>
+    greatestCommonDivisor(currentGcd, contracts),
+  );
+}
+
 function calculateStrategyEntry(
   legs: SignalOptionLegForm[],
 ): StrategyEntrySummary {
@@ -239,6 +270,9 @@ function calculateStrategyEntry(
   let totalPaid = 0;
   let totalReceived = 0;
 
+  const strategyContracts =
+    calculateStrategyContracts(legs);
+
   for (const leg of legs) {
     const contracts = Number(
       leg.contracts,
@@ -248,8 +282,11 @@ function calculateStrategyEntry(
       leg.entry_price,
     );
 
+    const legRatio =
+      contracts / strategyContracts;
+
     const legPremium =
-      contracts * entryPrice;
+      legRatio * entryPrice;
 
     if (
       leg.action === "BUY_TO_OPEN"
@@ -692,12 +729,7 @@ export default function CreateSignalPage() {
 
       return;
     }
-console.log("Normalized Legs", normalizedLegs);
 
-console.log(
-  "Strategy Entry",
-  strategyEntry,
-);
     startTransition(async () => {
       try {
         const result =
@@ -1219,8 +1251,8 @@ console.log(
                             <FormInput
                               label={
                                 isDebitLeg
-                                  ? "Premium Paid"
-                                  : "Premium Received"
+                                  ? "Premium Paid Per Contract"
+                                  : "Premium Received Per Contract"
                               }
                               name={`option_legs.${index}.entry_price`}
                               type="number"
@@ -1230,6 +1262,7 @@ console.log(
                               value={
                                 leg.entry_price
                               }
+                              hint="Enter the quoted premium, such as 1.44 — not 144."
                               onChange={(
                                 event,
                               ) => {

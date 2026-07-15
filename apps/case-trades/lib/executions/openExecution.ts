@@ -128,6 +128,19 @@ function getSignedOpeningPremium({
   return 0;
 }
 
+function greatestCommonDivisor(firstValue: number, secondValue: number) {
+  let first = Math.abs(Math.round(firstValue));
+  let second = Math.abs(Math.round(secondValue));
+
+  while (second !== 0) {
+    const remainder = first % second;
+    first = second;
+    second = remainder;
+  }
+
+  return Math.max(first, 1);
+}
+
 function calculateNetOptionEntry(legs: SignalOptionLegRow[]) {
   const pricedLegs = legs.filter((leg) => {
     const legPrice = toNumber(leg.entry_price);
@@ -145,15 +158,22 @@ function calculateNetOptionEntry(legs: SignalOptionLegRow[]) {
     return null;
   }
 
+  const strategyContracts = pricedLegs
+    .map((leg) => toPositiveInteger(leg.contracts, 1))
+    .reduce((currentGcd, contracts) =>
+      greatestCommonDivisor(currentGcd, contracts),
+    );
+
   const netEntry = pricedLegs.reduce((total, leg) => {
     const legPrice = toNumber(leg.entry_price) ?? 0;
     const legContracts = toPositiveInteger(leg.contracts, 1);
+    const legRatio = legContracts / strategyContracts;
 
     return (
       total +
       getSignedOpeningPremium({
         action: leg.action,
-        contracts: legContracts,
+        contracts: legRatio,
         price: legPrice,
       })
     );
@@ -180,7 +200,11 @@ function calculateStrategyContracts({
     return fallbackContracts;
   }
 
-  return Math.max(...legQuantities.map((quantity) => Math.round(quantity)));
+  return legQuantities
+    .map((quantity) => Math.round(quantity))
+    .reduce((currentGcd, quantity) =>
+      greatestCommonDivisor(currentGcd, quantity),
+    );
 }
 
 function buildOptionOpeningFills({

@@ -394,16 +394,55 @@ function validateOptionLegs(
 /* -------------------------------------------------
    STRATEGY ENTRY CALCULATION
 ------------------------------------------------- */
+function greatestCommonDivisor(firstValue: number, secondValue: number) {
+  let first = Math.abs(Math.round(firstValue));
+  let second = Math.abs(Math.round(secondValue));
+
+  while (second !== 0) {
+    const remainder = first % second;
+    first = second;
+    second = remainder;
+  }
+
+  return Math.max(first, 1);
+}
+
+function calculateStrategyContracts(
+  optionLegs: NormalizedOptionLeg[],
+) {
+  const quantities = optionLegs
+    .map((leg) => leg.contracts)
+    .filter(
+      (contracts) =>
+        Number.isInteger(contracts) &&
+        contracts > 0,
+    );
+
+  if (quantities.length === 0) {
+    return 1;
+  }
+
+  return quantities.reduce((currentGcd, contracts) =>
+    greatestCommonDivisor(currentGcd, contracts),
+  );
+}
+
 function calculateStrategyEntry(
   optionLegs: NormalizedOptionLeg[],
 ): StrategyEntryCalculation {
   let totalDebit = 0;
   let totalCredit = 0;
 
+  const strategyContracts =
+    calculateStrategyContracts(optionLegs);
+
   for (const leg of optionLegs) {
+    const legRatio =
+      leg.contracts / strategyContracts;
+
     const legPremium =
       leg.entry_price *
-      leg.contracts;
+      legRatio;
 
     if (
       leg.action ===
