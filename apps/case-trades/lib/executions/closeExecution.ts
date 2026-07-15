@@ -473,19 +473,55 @@ function calculateRemainingStrategyContracts({
       (fill) => fill.signalOptionLegId === leg.id,
     );
 
-    const openedLegContracts = calculateTotalContracts(legFills, "OPEN");
-    const closedLegContracts = calculateTotalContracts(legFills, "CLOSE");
-    const remainingLegContracts = Math.max(
-      openedLegContracts - closedLegContracts,
-      0,
-    );
+    const linkedOpenedLegContracts =
+      calculateTotalContracts(
+        legFills,
+        "OPEN",
+      );
+
+    const closedLegContracts =
+      calculateTotalContracts(
+        legFills,
+        "CLOSE",
+      );
+
+    /*
+     * Older multi-leg executions may have been created before opening fills
+     * were linked to signal_option_legs. In that case, use the saved leg
+     * contract quantity as the opening baseline instead of treating the leg
+     * as unopened.
+     */
+    const savedLegContracts =
+      Math.max(
+        toNumber(
+          leg.contracts,
+        ),
+        0,
+      );
+
+    const openedLegContracts =
+      linkedOpenedLegContracts >
+      0
+        ? linkedOpenedLegContracts
+        : savedLegContracts;
+
+    const remainingLegContracts =
+      Math.max(
+        openedLegContracts -
+          closedLegContracts,
+        0,
+      );
 
     const ratio = getLegRatio({
       openedLegContracts,
-      strategyContracts: executionContracts,
+      strategyContracts:
+        executionContracts,
     });
 
-    return Math.floor(remainingLegContracts / ratio);
+    return Math.floor(
+      remainingLegContracts /
+        ratio,
+    );
   });
 
   if (remainingStrategyUnits.length === 0) {
@@ -1029,24 +1065,42 @@ export async function closeExecution({
         (fill) => fill.signalOptionLegId === leg.id,
       );
 
-      const openedLegContracts = calculateTotalContracts(
-        legFills,
-        "OPEN",
-      );
+      const linkedOpenedLegContracts =
+        calculateTotalContracts(
+          legFills,
+          "OPEN",
+        );
 
-      const closedLegContracts = calculateTotalContracts(
-        legFills,
-        "CLOSE",
-      );
+      const closedLegContracts =
+        calculateTotalContracts(
+          legFills,
+          "CLOSE",
+        );
 
-      const remainingLegContracts = Math.max(
-        openedLegContracts - closedLegContracts,
-        0,
-      );
+      const savedLegContracts =
+        Math.max(
+          toNumber(
+            leg.contracts,
+          ),
+          0,
+        );
+
+      const openedLegContracts =
+        linkedOpenedLegContracts >
+        0
+          ? linkedOpenedLegContracts
+          : savedLegContracts;
+
+      const remainingLegContracts =
+        Math.max(
+          openedLegContracts -
+            closedLegContracts,
+          0,
+        );
 
       if (openedLegContracts <= 0) {
         throw new Error(
-          `Option leg ${leg.leg_order} has no linked opening fill`,
+          `Option leg ${leg.leg_order} has no opening contract quantity`,
         );
       }
 
@@ -1395,19 +1449,56 @@ export async function closeExecution({
   /* -------------------------------------------------
      FINAL-CLOSE LIFECYCLE
   ------------------------------------------------- */
-  const lifecycleResult =
-    nextExecutionStatus === "CLOSED"
-      ? await autoCloseSignalFromExecution(
+  let lifecycleResult: Awaited<
+    ReturnType<typeof autoCloseSignalFromExecution>
+  > | null = null;
+
+  let lifecycleWarning:
+    | {
+        message: string;
+        error: string;
+      }
+    | null = null;
+
+  if (nextExecutionStatus === "CLOSED") {
+    try {
+      lifecycleResult =
+        await autoCloseSignalFromExecution(
           execution.signal_id,
-        )
-      : null;
+        );
+    } catch (error) {
+      console.error(
+        "closeExecution: lifecycle synchronization failed",
+        {
+          executionId,
+          signalId:
+            execution.signal_id,
+          error,
+        },
+      );
+
+      lifecycleWarning = {
+        message:
+          "Execution closed successfully but lifecycle synchronization failed.",
+        error:
+          error instanceof Error
+            ? error.message
+            : String(error),
+      };
+    }
+  }
 
   /* -------------------------------------------------
      FINAL DISCORD CLOSE ALERT
   ------------------------------------------------- */
-  if (nextExecutionStatus === "CLOSED") {
+  if (
+    nextExecutionStatus === "CLOSED" &&
+    !lifecycleResult
+  ) {
     try {
-      await sendClosedSignalAlert(execution.signal_id);
+      await sendClosedSignalAlert(
+        execution.signal_id,
+      );
     } catch (discordError) {
       console.error(
         "closeExecution: Discord close alert failed, but the execution was closed",
@@ -1458,5 +1549,6 @@ export async function closeExecution({
       })) ?? null,
 
     lifecycle: lifecycleResult,
+    lifecycle_warning: lifecycleWarning,
   };
 }
