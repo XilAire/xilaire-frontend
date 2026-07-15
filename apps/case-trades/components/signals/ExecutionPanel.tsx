@@ -116,6 +116,8 @@ type ClosePreview = {
 type CloseExecutionResponse = {
   partial_close_alert_sent?: boolean | null;
 
+  final_close_alert_sent?: boolean | null;
+
   lifecycle_warning?: {
     message: string;
     error: string;
@@ -665,9 +667,26 @@ export default function ExecutionPanel({
             `${result.lifecycle_warning.message} ` +
             "The execution itself was saved successfully.";
         } else if (isFinalClose) {
-          successMessage =
-            "Execution fully closed and signal performance updated.";
-        } else {
+            successMessage =
+              "Execution fully closed and signal performance updated.";
+
+            if (
+              result?.final_close_alert_sent ===
+              true
+            ) {
+              successMessage +=
+                " Discord final-close alert sent successfully.";
+            } else if (
+              result?.final_close_alert_sent ===
+              false
+            ) {
+              successMessage +=
+                " Execution closed successfully, but the Discord final-close alert could not be sent. Check the server logs.";
+            } else {
+              successMessage +=
+                " Discord final-close alert status was not returned.";
+            }
+          } else {
           successMessage =
             isLegAwareExecution
               ? "Multi-leg partial close recorded and performance recalculated."

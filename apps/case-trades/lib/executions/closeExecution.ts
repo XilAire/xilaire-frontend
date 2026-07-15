@@ -1521,7 +1521,44 @@ export async function closeExecution({
       );
     }
   }
+ /* -------------------------------------------------
+        FINAL-CLOSE DISCORD ALERT
+      ------------------------------------------------- */
+      let finalCloseAlertSent: boolean | null = null;
 
+      if (nextExecutionStatus === "CLOSED") {
+        try {
+          finalCloseAlertSent =
+            await sendClosedSignalAlert(
+              execution.signal_id,
+            );
+
+          if (!finalCloseAlertSent) {
+            console.warn(
+              "closeExecution: final Discord close alert was not sent",
+              {
+                executionId,
+                signalId:
+                  execution.signal_id,
+              },
+            );
+          }
+        } catch (discordError) {
+          finalCloseAlertSent =
+            false;
+
+          console.error(
+            "closeExecution: Discord final close alert failed",
+            {
+              executionId,
+              signalId:
+                execution.signal_id,
+              error:
+                discordError,
+            },
+          );
+        }
+      }
   /* -------------------------------------------------
      FINAL-CLOSE LIFECYCLE
   ------------------------------------------------- */
@@ -1564,26 +1601,7 @@ export async function closeExecution({
     }
   }
 
-  /* -------------------------------------------------
-     FINAL DISCORD CLOSE ALERT
-  ------------------------------------------------- */
-  if (
-    nextExecutionStatus === "CLOSED" &&
-    !lifecycleResult
-  ) {
-    try {
-      await sendClosedSignalAlert(
-        execution.signal_id,
-      );
-    } catch (discordError) {
-      console.error(
-        "closeExecution: Discord close alert failed, but the execution was closed",
-        discordError,
-      );
-    }
-  }
-
-  return {
+   return {
     execution_id: executionId,
     signal_id: execution.signal_id,
 
@@ -1626,6 +1644,9 @@ export async function closeExecution({
 
     partial_close_alert_sent:
       partialCloseAlertSent,
+
+    final_close_alert_sent:
+      finalCloseAlertSent,
 
     lifecycle: lifecycleResult,
     lifecycle_warning: lifecycleWarning,

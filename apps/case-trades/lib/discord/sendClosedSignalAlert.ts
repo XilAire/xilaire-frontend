@@ -61,6 +61,7 @@ type SignalCloseAlertRow = {
   closed_at: string | null;
   discord_channel_id: string | null;
   discord_message_id: string | null;
+  discord_close_claimed_at: string | null;
   discord_close_sent_at: string | null;
 };
 
@@ -1363,11 +1364,63 @@ async function postDiscordReply({
 /* -------------------------------------------------
    DUPLICATE-SEND GUARD
 ------------------------------------------------- */
+const CLOSE_ALERT_CLAIM_TIMEOUT_MS =
+  5 * 60 * 1000;
+
+async function clearStaleCloseAlertClaim(
+  signalId: string,
+) {
+  const supabase =
+    createSupabaseAdmin();
+
+  const staleBefore =
+    new Date(
+      Date.now() -
+        CLOSE_ALERT_CLAIM_TIMEOUT_MS,
+    ).toISOString();
+
+  const {
+    error,
+  } = await supabase
+    .from("signals")
+    .update({
+      discord_close_claimed_at:
+        null,
+    })
+    .eq(
+      "id",
+      signalId,
+    )
+    .is(
+      "discord_close_sent_at",
+      null,
+    )
+    .lt(
+      "discord_close_claimed_at",
+      staleBefore,
+    );
+
+  if (error) {
+    console.error(
+      "Unable to clear stale Discord close alert claim",
+      {
+        signalId,
+        staleBefore,
+        error,
+      },
+    );
+  }
+}
+
 async function claimCloseAlert(
   signalId: string,
 ) {
   const supabase =
     createSupabaseAdmin();
+
+  await clearStaleCloseAlertClaim(
+    signalId,
+  );
 
   const claimedAt =
     new Date().toISOString();
@@ -1378,7 +1431,7 @@ async function claimCloseAlert(
   } = await supabase
     .from("signals")
     .update({
-      discord_close_sent_at:
+      discord_close_claimed_at:
         claimedAt,
     })
     .eq(
@@ -1389,8 +1442,16 @@ async function claimCloseAlert(
       "discord_close_sent_at",
       null,
     )
+    .is(
+      "discord_close_claimed_at",
+      null,
+    )
     .select(
-      "id, discord_close_sent_at",
+      `
+      id,
+      discord_close_claimed_at,
+      discord_close_sent_at
+    `,
     )
     .maybeSingle();
 
@@ -1426,7 +1487,7 @@ async function releaseCloseAlertClaim({
   } = await supabase
     .from("signals")
     .update({
-      discord_close_sent_at:
+      discord_close_claimed_at:
         null,
     })
     .eq(
@@ -1434,7 +1495,7 @@ async function releaseCloseAlertClaim({
       signalId,
     )
     .eq(
-      "discord_close_sent_at",
+      "discord_close_claimed_at",
       claimedAt,
     );
 
@@ -1448,6 +1509,79 @@ async function releaseCloseAlertClaim({
       },
     );
   }
+}
+
+async function finalizeCloseAlertSend({
+  signalId,
+  claimedAt,
+}: {
+  signalId: string;
+  claimedAt: string;
+}) {
+  const supabase =
+    createSupabaseAdmin();
+
+  const sentAt =
+    new Date().toISOString();
+
+  const {
+    data,
+    error,
+  } = await supabase
+    .from("signals")
+    .update({
+      discord_close_sent_at:
+        sentAt,
+      discord_close_claimed_at:
+        null,
+    })
+    .eq(
+      "id",
+      signalId,
+    )
+    .eq(
+      "discord_close_claimed_at",
+      claimedAt,
+    )
+    .is(
+      "discord_close_sent_at",
+      null,
+    )
+    .select(
+      `
+      id,
+      discord_close_sent_at,
+      discord_close_claimed_at
+    `,
+    )
+    .maybeSingle();
+
+  if (error) {
+    console.error(
+      "Unable to finalize Discord close alert",
+      {
+        signalId,
+        claimedAt,
+        error,
+      },
+    );
+
+    return false;
+  }
+
+  if (!data) {
+    console.error(
+      "Discord close alert sent, but the database claim could not be finalized",
+      {
+        signalId,
+        claimedAt,
+      },
+    );
+
+    return false;
+  }
+
+  return true;
 }
 
 /* -------------------------------------------------
@@ -1510,6 +1644,7 @@ export async function sendClosedSignalAlert(
       closed_at,
       discord_channel_id,
       discord_message_id,
+      discord_close_claimed_at,
       discord_close_sent_at
     `,
     )
@@ -1541,16 +1676,15 @@ export async function sendClosedSignalAlert(
     closeSignal.discord_close_sent_at
   ) {
     console.warn(
-      "Discord close alert already sent. Skipping duplicate.",
+      "Discord close alert has already been sent.",
       {
         signalId,
-
         discord_close_sent_at:
           closeSignal.discord_close_sent_at,
       },
     );
 
-    return false;
+    return true;
   }
 
   const claimedAt =
@@ -1560,9 +1694,11 @@ export async function sendClosedSignalAlert(
 
   if (!claimedAt) {
     console.warn(
-      "Discord close alert was already claimed by another request.",
+      "Discord close alert is already being processed by another request.",
       {
         signalId,
+        discord_close_claimed_at:
+          closeSignal.discord_close_claimed_at,
       },
     );
 
@@ -2179,12 +2315,29 @@ export async function sendClosedSignalAlert(
       await releaseCloseAlertClaim({
         signalId:
           closeSignal.id,
-
         claimedAt,
       });
+
+      return false;
     }
 
-    return sent;
+    const finalized =
+      await finalizeCloseAlertSend({
+        signalId:
+          closeSignal.id,
+        claimedAt,
+      });
+
+    if (!finalized) {
+      /*
+       * Discord accepted at least one message, so report success to avoid
+       * encouraging an immediate duplicate retry. The database error is
+       * logged above for repair.
+       */
+      return true;
+    }
+
+    return true;
   } catch (error) {
     console.error(
       "Discord final-close alert failed",
