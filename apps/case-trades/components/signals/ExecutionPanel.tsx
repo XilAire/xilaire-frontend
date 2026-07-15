@@ -114,7 +114,12 @@ type ClosePreview = {
  * existing strategy-level fields and the new optional legCloses payload.
  */
 type CloseExecutionResponse = {
-  lifecycle_warning?: {message:string;error:string}|null;
+  partial_close_alert_sent?: boolean | null;
+
+  lifecycle_warning?: {
+    message: string;
+    error: string;
+  } | null;
 };
 
 const submitCloseExecution = closeExecution as unknown as (
@@ -653,14 +658,41 @@ export default function ExecutionPanel({
           ),
         );
 
+        let successMessage: string;
+
+        if (result?.lifecycle_warning) {
+          successMessage =
+            `${result.lifecycle_warning.message} ` +
+            "The execution itself was saved successfully.";
+        } else if (isFinalClose) {
+          successMessage =
+            "Execution fully closed and signal performance updated.";
+        } else {
+          successMessage =
+            isLegAwareExecution
+              ? "Multi-leg partial close recorded and performance recalculated."
+              : "Partial close recorded and performance recalculated.";
+
+          if (
+            result?.partial_close_alert_sent ===
+            true
+          ) {
+            successMessage +=
+              " Discord alert sent successfully.";
+          } else if (
+            result?.partial_close_alert_sent ===
+            false
+          ) {
+            successMessage +=
+              " Execution saved, but the Discord alert could not be sent. Check the server logs.";
+          } else {
+            successMessage +=
+              " Discord alert status was not returned.";
+          }
+        }
+
         setSuccessMessage(
-          result?.lifecycle_warning
-            ? `${result.lifecycle_warning.message} The execution itself was saved successfully.`
-            : isFinalClose
-              ? "Execution fully closed and signal performance updated."
-              : isLegAwareExecution
-                ? "Multi-leg partial close recorded and performance recalculated."
-                : "Partial close recorded and performance recalculated.",
+          successMessage,
         );
 
         router.refresh();

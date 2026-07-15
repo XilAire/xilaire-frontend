@@ -133,6 +133,15 @@ type PartialCloseLegDisplay = {
   realizedPnl: number | null;
 };
 
+type DiscordPostResult = {
+  channelId: string;
+  success: boolean;
+  status: number | null;
+  response: string | null;
+  usedMessageReference: boolean;
+  retriedWithoutReference: boolean;
+};
+
 /* -------------------------------------------------
    CONSTANTS
 ------------------------------------------------- */
@@ -768,105 +777,164 @@ function buildPartialCloseLegs({
 /* -------------------------------------------------
    DISCORD POST
 ------------------------------------------------- */
-async function postDiscordReply({
+async function postDiscordMessage({
   channelId,
   originalMessageId,
   token,
   body,
 }: {
   channelId: string;
-  originalMessageId:
-    | string
-    | null;
+  originalMessageId: string | null;
   token: string;
-  body:
-    Record<
-      string,
-      unknown
-    >;
-}) {
-  const replyBody =
-    originalMessageId &&
-    originalMessageId
-      .trim()
-      .length > 0
-      ? {
-          ...body,
-          message_reference: {
-            message_id:
-              originalMessageId,
-            channel_id:
-              channelId,
-            fail_if_not_exists:
-              false,
+  body: Record<string, unknown>;
+}): Promise<DiscordPostResult> {
+  const normalizedMessageId =
+    String(originalMessageId ?? "").trim();
+
+  const hasMessageReference =
+    normalizedMessageId.length > 0;
+
+  async function performRequest(
+    includeMessageReference: boolean,
+  ) {
+    const requestBody =
+      includeMessageReference &&
+      hasMessageReference
+        ? {
+            ...body,
+            message_reference: {
+              message_id: normalizedMessageId,
+              channel_id: channelId,
+              fail_if_not_exists: false,
+            },
+          }
+        : body;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(
+      () => controller.abort(),
+      15_000,
+    );
+
+    try {
+      const response = await fetch(
+        `https://discord.com/api/v10/channels/${channelId}/messages`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bot ${token}`,
+            "Content-Type": "application/json",
           },
-        }
-      : body;
-
-  console.log(
-    "Sending Discord partial close reply",
-    {
-      channel_id:
-        channelId,
-      original_message_id:
-        originalMessageId,
-      has_reference:
-        Boolean(
-          originalMessageId,
-        ),
-    },
-  );
-
-  const response =
-    await fetch(
-      `https://discord.com/api/v10/channels/${channelId}/messages`,
-      {
-        method: "POST",
-        headers: {
-          Authorization:
-            `Bot ${token}`,
-          "Content-Type":
-            "application/json",
+          body: JSON.stringify(requestBody),
+          signal: controller.signal,
         },
-        body:
-          JSON.stringify(
-            replyBody,
-          ),
-      },
-    );
+      );
 
-  const text =
-    await response.text();
-
-  if (!response.ok) {
-    console.error(
-      "Discord partial close alert failed",
-      {
-        channel_id:
-          channelId,
-        original_message_id:
-          originalMessageId,
-        status:
-          response.status,
-        response:
-          text,
-      },
-    );
-
-    return false;
+      return {
+        ok: response.ok,
+        status: response.status,
+        responseText: await response.text(),
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        status: null,
+        responseText:
+          error instanceof Error
+            ? error.message
+            : String(error),
+      };
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   console.log(
-    "Discord partial close alert sent successfully",
+    "Discord partial close request starting",
     {
-      channel_id:
-        channelId,
+      channel_id: channelId,
       original_message_id:
-        originalMessageId,
+        normalizedMessageId || null,
+      has_reference: hasMessageReference,
     },
   );
 
-  return true;
+  const firstAttempt = await performRequest(
+    hasMessageReference,
+  );
+
+  if (firstAttempt.ok) {
+    console.log(
+      "Discord partial close alert sent successfully",
+      {
+        channel_id: channelId,
+        status: firstAttempt.status,
+        used_message_reference:
+          hasMessageReference,
+      },
+    );
+
+    return {
+      channelId,
+      success: true,
+      status: firstAttempt.status,
+      response: firstAttempt.responseText,
+      usedMessageReference: hasMessageReference,
+      retriedWithoutReference: false,
+    };
+  }
+
+  console.error(
+    "Discord partial close first attempt failed",
+    {
+      channel_id: channelId,
+      status: firstAttempt.status,
+      response: firstAttempt.responseText,
+      used_message_reference:
+        hasMessageReference,
+    },
+  );
+
+  if (!hasMessageReference) {
+    return {
+      channelId,
+      success: false,
+      status: firstAttempt.status,
+      response: firstAttempt.responseText,
+      usedMessageReference: false,
+      retriedWithoutReference: false,
+    };
+  }
+
+  const retryAttempt = await performRequest(false);
+
+  if (retryAttempt.ok) {
+    console.log(
+      "Discord partial close alert sent after removing message reference",
+      {
+        channel_id: channelId,
+        status: retryAttempt.status,
+      },
+    );
+  } else {
+    console.error(
+      "Discord partial close retry failed",
+      {
+        channel_id: channelId,
+        status: retryAttempt.status,
+        response: retryAttempt.responseText,
+      },
+    );
+  }
+
+  return {
+    channelId,
+    success: retryAttempt.ok,
+    status: retryAttempt.status,
+    response: retryAttempt.responseText,
+    usedMessageReference: false,
+    retriedWithoutReference: true,
+  };
 }
 
 /* -------------------------------------------------
@@ -882,6 +950,20 @@ export async function sendPartialCloseSignalAlert({
   realizedReturnPct,
   legCloses = [],
 }: PartialCloseAlertInput) {
+  console.log(
+    "Discord partial close alert invoked",
+    {
+      signalId,
+      closedContracts,
+      totalContracts,
+      remainingContracts,
+      exitPrice,
+      realizedPnl,
+      realizedReturnPct,
+      legCloseCount: legCloses.length,
+    },
+  );
+
   const token =
     process.env.DISCORD_BOT_TOKEN;
 
@@ -1086,16 +1168,24 @@ export async function sendPartialCloseSignalAlert({
       legCloses,
     });
 
-  const channels =
-    partialSignal.discord_channel_id
-      ? [
-          partialSignal.discord_channel_id,
-        ]
-      : getPartialCloseAlertChannels(
-          await getOrganizationDiscordChannels(
-            organization.id,
-          ),
-        );
+  const configuredChannels =
+    getPartialCloseAlertChannels(
+      await getOrganizationDiscordChannels(
+        organization.id,
+      ),
+    );
+
+  const channels = Array.from(
+    new Set(
+      [
+        partialSignal.discord_channel_id,
+        ...configuredChannels,
+      ].filter(
+        (channelId): channelId is string =>
+          Boolean(channelId && channelId.trim()),
+      ),
+    ),
+  );
 
   if (
     channels.length === 0
@@ -1441,29 +1531,66 @@ export async function sendPartialCloseSignalAlert({
       new Date().toISOString(),
   };
 
-  const results =
-    await Promise.all(
-      channels.map(
-        (channelId) =>
-          postDiscordReply({
-            channelId,
-            originalMessageId:
-              partialSignal.discord_message_id,
-            token,
-            body: {
-              content,
-              embeds: [
-                embed,
-              ],
-              allowed_mentions: {
-                parse: [],
-              },
-            },
-          }),
-      ),
-    );
-
-  return results.some(
-    Boolean,
+  console.log(
+    "Discord partial close alert dispatch",
+    {
+      signal_id: partialSignal.id,
+      organization_id: organization.id,
+      channels,
+      original_message_id:
+        partialSignal.discord_message_id,
+      closed_contracts: closedContracts,
+      total_contracts: totalContracts,
+      remaining_contracts: remainingContracts,
+      leg_close_count: partialCloseLegs.length,
+    },
   );
+
+  const results = await Promise.all(
+    channels.map((channelId) =>
+      postDiscordMessage({
+        channelId,
+        originalMessageId:
+          partialSignal.discord_message_id,
+        token,
+        body: {
+          content,
+          embeds: [embed],
+          allowed_mentions: {
+            parse: [],
+          },
+        },
+      }),
+    ),
+  );
+
+  const successfulChannels = results.filter(
+    (result) => result.success,
+  );
+
+  const failedChannels = results.filter(
+    (result) => !result.success,
+  );
+
+  console.log(
+    "Discord partial close alert dispatch completed",
+    {
+      signal_id: partialSignal.id,
+      total_channels: results.length,
+      successful_channels:
+        successfulChannels.map(
+          (result) => result.channelId,
+        ),
+      failed_channels:
+        failedChannels.map((result) => ({
+          channel_id: result.channelId,
+          status: result.status,
+          response: result.response,
+          retried_without_reference:
+            result.retriedWithoutReference,
+        })),
+    },
+  );
+
+  return successfulChannels.length > 0;
 }
