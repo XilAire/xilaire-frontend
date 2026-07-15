@@ -113,9 +113,13 @@ type ClosePreview = {
  * contract keeps the component strongly typed while supporting both the
  * existing strategy-level fields and the new optional legCloses payload.
  */
+type CloseExecutionResponse = {
+  lifecycle_warning?: {message:string;error:string}|null;
+};
+
 const submitCloseExecution = closeExecution as unknown as (
   input: CloseExecutionRequest,
-) => Promise<unknown>;
+) => Promise<CloseExecutionResponse>;
 
 /* -------------------------------------------------
    NUMBER HELPERS
@@ -633,7 +637,7 @@ export default function ExecutionPanel({
           closePrice ??
           0;
 
-        await submitCloseExecution({
+        const result = await submitCloseExecution({
           executionId: execution.id,
           contracts: closeQty,
           price: aggregatePrice,
@@ -650,11 +654,13 @@ export default function ExecutionPanel({
         );
 
         setSuccessMessage(
-          isFinalClose
-            ? "Execution fully closed and signal performance updated."
-            : isLegAwareExecution
-              ? "Multi-leg partial close recorded and performance recalculated."
-              : "Partial close recorded and performance recalculated.",
+          result?.lifecycle_warning
+            ? `${result.lifecycle_warning.message} The execution itself was saved successfully.`
+            : isFinalClose
+              ? "Execution fully closed and signal performance updated."
+              : isLegAwareExecution
+                ? "Multi-leg partial close recorded and performance recalculated."
+                : "Partial close recorded and performance recalculated.",
         );
 
         router.refresh();

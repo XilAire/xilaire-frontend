@@ -1330,17 +1330,51 @@ export async function closeExecution({
   /* -------------------------------------------------
      FINAL-CLOSE LIFECYCLE
   ------------------------------------------------- */
-  const lifecycleResult =
-    nextExecutionStatus === "CLOSED"
-      ? await autoCloseSignalFromExecution(
+  let lifecycleResult: Awaited<
+    ReturnType<typeof autoCloseSignalFromExecution>
+  > | null = null;
+
+  let lifecycleWarning:
+    | {
+        message: string;
+        error: string;
+      }
+    | null = null;
+
+  if (nextExecutionStatus === "CLOSED") {
+    try {
+      lifecycleResult =
+        await autoCloseSignalFromExecution(
           execution.signal_id,
-        )
-      : null;
+        );
+    } catch (error) {
+      console.error(
+        "closeExecution: lifecycle synchronization failed",
+        {
+          executionId,
+          signalId: execution.signal_id,
+          error,
+        },
+      );
+
+      lifecycleWarning = {
+        message:
+          "Execution closed successfully but lifecycle synchronization failed.",
+        error:
+          error instanceof Error
+            ? error.message
+            : String(error),
+      };
+    }
+  }
 
   /* -------------------------------------------------
      FINAL DISCORD CLOSE ALERT
   ------------------------------------------------- */
-  if (nextExecutionStatus === "CLOSED") {
+  if (
+    nextExecutionStatus === "CLOSED" &&
+    !lifecycleResult
+  ) {
     try {
       await sendClosedSignalAlert(execution.signal_id);
     } catch (discordError) {
@@ -1393,5 +1427,6 @@ export async function closeExecution({
       })) ?? null,
 
     lifecycle: lifecycleResult,
+    lifecycle_warning: lifecycleWarning,
   };
 }

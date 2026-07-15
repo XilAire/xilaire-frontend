@@ -78,7 +78,12 @@ type SignalOptionLegRow = {
 type SignalExecutionRow = {
   id: string;
   signal_id: string;
+  status: string | null;
   contracts: number | string | null;
+  exit_price: number | string | null;
+  pnl: number | string | null;
+  pnl_pct: number | string | null;
+  closed_at: string | null;
 };
 
 type ExecutionFillRow = {
@@ -548,6 +553,259 @@ export async function closeSignalWithoutOutcome(signalId: string) {
   });
 }
 
+type ExecutionLifecycleSummary = {
+  totalStrategyContracts: number;
+  closedStrategyContracts: number;
+  remainingStrategyContracts: number;
+  averageExitPrice: number | null;
+  realizedReturnPct: number | null;
+};
+
+function getFillContracts(fill: ExecutionFillRow) {
+  return Math.max(normalizeNumber(fill.contracts) ?? 0, 0);
+}
+
+function getLegStrategyRatio({
+  openedLegContracts,
+  executionContracts,
+}: {
+  openedLegContracts: number;
+  executionContracts: number;
+}) {
+  if (executionContracts <= 0) {
+    return Math.max(openedLegContracts, 1);
+  }
+
+  return Math.max(openedLegContracts / executionContracts, 1);
+}
+
+function calculateExecutionStrategyLifecycle({
+  execution,
+  fills,
+  optionLegs,
+}: {
+  execution: SignalExecutionRow;
+  fills: ExecutionFillRow[];
+  optionLegs: SignalOptionLegRow[];
+}) {
+  const executionContracts = Math.max(
+    normalizeNumber(execution.contracts) ?? 0,
+    0,
+  );
+
+  if (executionContracts <= 0) {
+    return {
+      total: 0,
+      closed: 0,
+      remaining: 0,
+    };
+  }
+
+  const executionFills = fills.filter(
+    (fill) => fill.execution_id === execution.id,
+  );
+
+  const linkedLegIds = Array.from(
+    new Set(
+      executionFills
+        .map((fill) => fill.signal_option_leg_id)
+        .filter((legId): legId is string => Boolean(legId)),
+    ),
+  );
+
+  if (linkedLegIds.length > 0) {
+    const relevantLegs = optionLegs.filter((leg) =>
+      linkedLegIds.includes(leg.id),
+    );
+
+    if (relevantLegs.length > 0) {
+      const remainingUnits = relevantLegs.map((leg) => {
+        const legFills = executionFills.filter(
+          (fill) => fill.signal_option_leg_id === leg.id,
+        );
+
+        const openedLegContracts = legFills
+          .filter(
+            (fill) =>
+              String(fill.side ?? "").toUpperCase() === "OPEN",
+          )
+          .reduce((sum, fill) => sum + getFillContracts(fill), 0);
+
+        const closedLegContracts = legFills
+          .filter(
+            (fill) =>
+              String(fill.side ?? "").toUpperCase() === "CLOSE",
+          )
+          .reduce((sum, fill) => sum + getFillContracts(fill), 0);
+
+        const remainingLegContracts = Math.max(
+          openedLegContracts - closedLegContracts,
+          0,
+        );
+
+        const ratio = getLegStrategyRatio({
+          openedLegContracts,
+          executionContracts,
+        });
+
+        return Math.floor(remainingLegContracts / ratio);
+      });
+
+      const remaining =
+        remainingUnits.length > 0
+          ? Math.max(Math.min(...remainingUnits), 0)
+          : executionContracts;
+
+      return {
+        total: executionContracts,
+        closed: Math.max(executionContracts - remaining, 0),
+        remaining,
+      };
+    }
+  }
+
+  const legacyOpenContracts = executionFills
+    .filter(
+      (fill) =>
+        fill.signal_option_leg_id === null &&
+        String(fill.side ?? "").toUpperCase() === "OPEN",
+    )
+    .reduce((sum, fill) => sum + getFillContracts(fill), 0);
+
+  const legacyCloseContracts = executionFills
+    .filter(
+      (fill) =>
+        fill.signal_option_leg_id === null &&
+        String(fill.side ?? "").toUpperCase() === "CLOSE",
+    )
+    .reduce((sum, fill) => sum + getFillContracts(fill), 0);
+
+  const openedContracts =
+    legacyOpenContracts > 0
+      ? legacyOpenContracts
+      : executionContracts;
+
+  const remaining = Math.max(
+    openedContracts - legacyCloseContracts,
+    0,
+  );
+
+  return {
+    total: executionContracts,
+    closed: Math.max(executionContracts - remaining, 0),
+    remaining,
+  };
+}
+
+function buildExecutionLifecycleSummary({
+  executions,
+  fills,
+  optionLegs,
+  currentSignal,
+}: {
+  executions: SignalExecutionRow[];
+  fills: ExecutionFillRow[];
+  optionLegs: SignalOptionLegRow[];
+  currentSignal: CurrentSignalAccess;
+}): ExecutionLifecycleSummary {
+  const lifecycleRows = executions.map((execution) =>
+    calculateExecutionStrategyLifecycle({
+      execution,
+      fills,
+      optionLegs,
+    }),
+  );
+
+  const totalStrategyContracts = lifecycleRows.reduce(
+    (sum, row) => sum + row.total,
+    0,
+  );
+
+  const closedStrategyContracts = lifecycleRows.reduce(
+    (sum, row) => sum + row.closed,
+    0,
+  );
+
+  const remainingStrategyContracts = lifecycleRows.reduce(
+    (sum, row) => sum + row.remaining,
+    0,
+  );
+
+  const executionsWithExitPrice = executions.filter(
+    (execution) => normalizeNumber(execution.exit_price) !== null,
+  );
+
+  const weightedExitValue = executionsWithExitPrice.reduce(
+    (sum, execution) => {
+      const executionContracts = Math.max(
+        normalizeNumber(execution.contracts) ?? 0,
+        0,
+      );
+
+      const exitPrice = normalizeNumber(execution.exit_price) ?? 0;
+
+      return sum + executionContracts * exitPrice;
+    },
+    0,
+  );
+
+  const exitPriceWeight = executionsWithExitPrice.reduce(
+    (sum, execution) =>
+      sum + Math.max(normalizeNumber(execution.contracts) ?? 0, 0),
+    0,
+  );
+
+  const averageExitPrice =
+    normalizeNumber(currentSignal.exit_price) ??
+    (exitPriceWeight > 0
+      ? Number((weightedExitValue / exitPriceWeight).toFixed(4))
+      : null);
+
+  const executionsWithReturn = executions.filter(
+    (execution) => normalizeNumber(execution.pnl_pct) !== null,
+  );
+
+  const weightedReturnValue = executionsWithReturn.reduce(
+    (sum, execution) => {
+      const executionContracts = Math.max(
+        normalizeNumber(execution.contracts) ?? 0,
+        0,
+      );
+
+      const returnPct = normalizeNumber(execution.pnl_pct) ?? 0;
+
+      return sum + executionContracts * returnPct;
+    },
+    0,
+  );
+
+  const returnWeight = executionsWithReturn.reduce(
+    (sum, execution) =>
+      sum + Math.max(normalizeNumber(execution.contracts) ?? 0, 0),
+    0,
+  );
+
+  const realizedReturnPct =
+    normalizeNumber(currentSignal.return_pct) ??
+    (returnWeight > 0
+      ? Number((weightedReturnValue / returnWeight).toFixed(2))
+      : null);
+
+  return {
+    totalStrategyContracts,
+    closedStrategyContracts: Math.min(
+      closedStrategyContracts,
+      totalStrategyContracts,
+    ),
+    remainingStrategyContracts: Math.max(
+      remainingStrategyContracts,
+      0,
+    ),
+    averageExitPrice,
+    realizedReturnPct,
+  };
+}
+
 /* ----------------------------------------------
    AUTO-CLOSE / PARTIAL-CLOSE SIGNAL FROM FILLS
 ---------------------------------------------- */
@@ -556,43 +814,25 @@ export async function autoCloseSignalFromExecution(signalId: string) {
 
   const { currentSignal } = await getAuthorizedSignal(signalId);
 
-  if (
-    currentSignal.status === "Closed" &&
-    currentSignal.outcome &&
-    currentSignal.return_pct !== null
-  ) {
-    revalidateSignalPaths(signalId);
-    return {
-      closed: false,
-      reason: "already_closed",
-      signal_id: signalId,
-    };
-  }
-
-  const tradeSummary =
-    buildCurrentTradeSummary(
-      currentSignal
-    );
-
-  const entryPrice =
-    tradeSummary.netEntryAmount ??
-    normalizeNumber(currentSignal.entry_price) ??
-    normalizeNumber(currentSignal.price);
-
-  if (entryPrice === null || entryPrice === 0) {
-    throw new Error(
-      "Cannot auto-close signal because entry price is missing or invalid."
-    );
-  }
-
   const { data: executionsData, error: executionsError } = await supabase
     .from("signal_executions")
-    .select("id, signal_id, contracts")
+    .select(
+      `
+      id,
+      signal_id,
+      status,
+      contracts,
+      exit_price,
+      pnl,
+      pnl_pct,
+      closed_at
+      `,
+    )
     .eq("signal_id", signalId);
 
   if (executionsError) {
     throw new Error(
-      `Failed to load signal executions: ${executionsError.message}`
+      `Failed to load signal executions: ${executionsError.message}`,
     );
   }
 
@@ -611,29 +851,35 @@ export async function autoCloseSignalFromExecution(signalId: string) {
   const { data: fillsData, error: fillsError } = await supabase
     .from("execution_fills")
     .select(
-      "id, execution_id, signal_option_leg_id, side, contracts, price"
+      `
+      id,
+      execution_id,
+      signal_option_leg_id,
+      side,
+      contracts,
+      price
+      `,
     )
     .in("execution_id", executionIds);
 
   if (fillsError) {
-    throw new Error(`Failed to load execution fills: ${fillsError.message}`);
+    throw new Error(
+      `Failed to load execution fills: ${fillsError.message}`,
+    );
   }
 
   const fills = (fillsData ?? []) as ExecutionFillRow[];
 
-  const totalContracts = executions.reduce((sum, execution) => {
-    return sum + (normalizeNumber(execution.contracts) ?? 0);
-  }, 0);
+  const lifecycle = buildExecutionLifecycleSummary({
+    executions,
+    fills,
+    optionLegs: currentSignal.signal_option_legs ?? [],
+    currentSignal,
+  });
 
-  const closeFills = fills.filter(
-    (fill) => String(fill.side ?? "").toUpperCase() === "CLOSE"
-  );
-
-  const closedContracts = closeFills.reduce((sum, fill) => {
-    return sum + (normalizeNumber(fill.contracts) ?? 0);
-  }, 0);
-
-  const remainingContracts = Math.max(totalContracts - closedContracts, 0);
+  const totalContracts = lifecycle.totalStrategyContracts;
+  const closedContracts = lifecycle.closedStrategyContracts;
+  const remainingContracts = lifecycle.remainingStrategyContracts;
 
   if (totalContracts <= 0) {
     return {
@@ -642,25 +888,6 @@ export async function autoCloseSignalFromExecution(signalId: string) {
       signal_id: signalId,
     };
   }
-
-  const totalCloseValue = closeFills.reduce((sum, fill) => {
-    const contracts = normalizeNumber(fill.contracts) ?? 0;
-    const price = normalizeNumber(fill.price) ?? 0;
-
-    return sum + contracts * price;
-  }, 0);
-
-  const averageExitPrice =
-    closedContracts > 0
-      ? Number((totalCloseValue / closedContracts).toFixed(4))
-      : null;
-
-  const realizedReturnPct = calculateReturnPct({
-    entryPrice,
-    exitPrice: averageExitPrice,
-    debitCredit:
-      tradeSummary.debitCredit,
-  });
 
   if (closedContracts <= 0) {
     revalidateSignalPaths(signalId);
@@ -675,6 +902,9 @@ export async function autoCloseSignalFromExecution(signalId: string) {
     };
   }
 
+  const averageExitPrice = lifecycle.averageExitPrice;
+  const realizedReturnPct = lifecycle.realizedReturnPct;
+
   if (remainingContracts > 0) {
     try {
       await sendPartialCloseSignalAlert({
@@ -686,7 +916,10 @@ export async function autoCloseSignalFromExecution(signalId: string) {
         realizedReturnPct,
       });
     } catch (discordError) {
-      console.error("Failed to send Discord partial close alert:", discordError);
+      console.error(
+        "Failed to send Discord partial close alert:",
+        discordError,
+      );
     }
 
     revalidateSignalPaths(signalId);
@@ -703,27 +936,52 @@ export async function autoCloseSignalFromExecution(signalId: string) {
     };
   }
 
-  const exitPrice = averageExitPrice;
+  const finalReturnPct =
+    realizedReturnPct ??
+    normalizeNumber(currentSignal.return_pct);
 
-  const returnPct = calculateReturnPct({
-    entryPrice,
-    exitPrice,
-    debitCredit:
-      tradeSummary.debitCredit,
-  });
+  const finalExitPrice =
+    averageExitPrice ??
+    normalizeNumber(currentSignal.exit_price);
 
-  const outcome = inferOutcomeFromReturnPct(returnPct);
+  const finalOutcome =
+    normalizeOutcome(currentSignal.outcome) ??
+    inferOutcomeFromReturnPct(finalReturnPct);
 
-  if (exitPrice === null || returnPct === null || outcome === null) {
+  if (
+    currentSignal.status === "Closed" &&
+    finalOutcome !== null &&
+    finalReturnPct !== null
+  ) {
+    revalidateSignalPaths(signalId);
+
+    return {
+      closed: true,
+      reason: "already_synchronized",
+      signal_id: signalId,
+      total_contracts: totalContracts,
+      closed_contracts: closedContracts,
+      remaining_contracts: 0,
+      exit_price: finalExitPrice,
+      return_pct: finalReturnPct,
+      outcome: finalOutcome,
+    };
+  }
+
+  if (
+    finalExitPrice === null ||
+    finalReturnPct === null ||
+    finalOutcome === null
+  ) {
     throw new Error(
-      "Cannot auto-close signal because exit price, return percentage, or outcome could not be calculated."
+      "Cannot synchronize the completed execution because exit price, return percentage, or outcome is missing.",
     );
   }
 
   const updatedSignal = await updateSignalStatus(signalId, "Closed", {
-    outcome,
-    return_pct: returnPct,
-    exit_price: exitPrice,
+    outcome: finalOutcome,
+    return_pct: finalReturnPct,
+    exit_price: finalExitPrice,
   });
 
   return {
@@ -732,10 +990,10 @@ export async function autoCloseSignalFromExecution(signalId: string) {
     signal_id: signalId,
     total_contracts: totalContracts,
     closed_contracts: closedContracts,
-    remaining_contracts: remainingContracts,
-    exit_price: exitPrice,
-    return_pct: returnPct,
-    outcome,
+    remaining_contracts: 0,
+    exit_price: finalExitPrice,
+    return_pct: finalReturnPct,
+    outcome: finalOutcome,
     signal: updatedSignal,
   };
 }
