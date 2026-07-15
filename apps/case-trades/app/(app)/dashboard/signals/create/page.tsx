@@ -692,7 +692,12 @@ export default function CreateSignalPage() {
 
       return;
     }
+console.log("Normalized Legs", normalizedLegs);
 
+console.log(
+  "Strategy Entry",
+  strategyEntry,
+);
     startTransition(async () => {
       try {
         const result =

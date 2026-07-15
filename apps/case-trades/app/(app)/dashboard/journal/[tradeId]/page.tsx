@@ -1631,36 +1631,6 @@ export default async function JournalTradeDetailPage({
       <TradeReviewPanelComponent
         executionId={tradeExecution.id}
         signalId={tradeExecution.signal_id}
-        trade={{
-          symbol,
-          instrument_type: signal.instrument_type,
-          strategy:
-            strategyLabel,
-          execution_style:
-            executionStyleLabel,
-          option_legs:
-            tradeSummary.legs,
-          entry_type:
-            tradeSummary.debitCredit,
-          net_entry:
-            tradeSummary.netEntryAmount,
-          premium_paid:
-            tradeSummary.totalPaid,
-          premium_received:
-            tradeSummary.totalReceived,
-          confidence: signal.confidence,
-          entry_price: averageEntry,
-          exit_price: averageExit,
-          quantity: totalQuantity,
-          pnl,
-          pnl_pct: pnlPct,
-          status,
-          outcome,
-          opened_at: tradeExecution.opened_at ?? signal.opened_at,
-          closed_at: tradeExecution.closed_at ?? signal.closed_at,
-          fills,
-          notes: journalNotes,
-        }}
         initialReview={tradeReview}
       />
 
