@@ -1,8 +1,44 @@
 "use server";
 
+import { createClient } from "@supabase/supabase-js";
+
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { sendClosedSignalAlert } from "@/lib/discord/sendClosedSignalAlert";
 import { autoCloseSignalFromExecution } from "@/lib/signals/updateSignalState";
+
+/* -------------------------------------------------
+   SCOPED SUPABASE ADMIN CLIENT
+------------------------------------------------- */
+function createSupabaseAdminClient() {
+  const supabaseUrl =
+    process.env.NEXT_PUBLIC_SUPABASE_URL_CASE_TRADES;
+
+  const serviceRoleKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY_CASE_TRADES;
+
+  if (!supabaseUrl) {
+    throw new Error(
+      "Missing NEXT_PUBLIC_SUPABASE_URL_CASE_TRADES",
+    );
+  }
+
+  if (!serviceRoleKey) {
+    throw new Error(
+      "Missing SUPABASE_SERVICE_ROLE_KEY_CASE_TRADES",
+    );
+  }
+
+  return createClient(
+    supabaseUrl,
+    serviceRoleKey,
+    {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    },
+  );
+}
 
 /* -------------------------------------------------
    INPUT TYPES
@@ -833,8 +869,18 @@ export async function closeExecution({
       (legClose) => legClose.signalOptionLegId,
     );
 
+    /*
+     * The parent execution and signal have already been loaded through the
+     * authenticated server client. Use a service-role client only for this
+     * tightly scoped child-table lookup because the current
+     * signal_option_legs SELECT RLS policy can return an empty result even
+     * when the authenticated user is authorized to manage the parent signal.
+     */
+    const supabaseAdmin =
+      createSupabaseAdminClient();
+
     const { data: optionLegData, error: optionLegError } =
-      await supabase
+      await supabaseAdmin
         .from("signal_option_legs")
         .select(
           `
@@ -857,7 +903,12 @@ export async function closeExecution({
     if (optionLegError) {
       console.error(
         "closeExecution: option leg lookup failed",
-        optionLegError,
+        {
+          executionId,
+          signalId: execution.signal_id,
+          requestedLegIds,
+          error: optionLegError,
+        },
       );
 
       throw new Error("Failed to load option legs");
@@ -866,6 +917,17 @@ export async function closeExecution({
     optionLegs = (optionLegData ?? []) as SignalOptionLegRow[];
 
     if (optionLegs.length !== requestedLegIds.length) {
+      console.error(
+        "closeExecution: option leg ownership validation failed",
+        {
+          executionId,
+          signalId: execution.signal_id,
+          requestedLegIds,
+          returnedLegIds: optionLegs.map((leg) => leg.id),
+          returnedLegCount: optionLegs.length,
+        },
+      );
+
       throw new Error(
         "One or more option legs do not belong to this execution's signal",
       );
@@ -1231,7 +1293,10 @@ export async function closeExecution({
   ------------------------------------------------- */
   if (multiLegPerformance) {
     for (const legPerformance of multiLegPerformance.legPerformance) {
-      const { error: optionLegUpdateError } = await supabase
+      const supabaseAdmin =
+        createSupabaseAdminClient();
+
+      const { error: optionLegUpdateError } = await supabaseAdmin
         .from("signal_option_legs")
         .update({
           exit_price: legPerformance.averageClosePrice,
@@ -1330,51 +1395,17 @@ export async function closeExecution({
   /* -------------------------------------------------
      FINAL-CLOSE LIFECYCLE
   ------------------------------------------------- */
-  let lifecycleResult: Awaited<
-    ReturnType<typeof autoCloseSignalFromExecution>
-  > | null = null;
-
-  let lifecycleWarning:
-    | {
-        message: string;
-        error: string;
-      }
-    | null = null;
-
-  if (nextExecutionStatus === "CLOSED") {
-    try {
-      lifecycleResult =
-        await autoCloseSignalFromExecution(
+  const lifecycleResult =
+    nextExecutionStatus === "CLOSED"
+      ? await autoCloseSignalFromExecution(
           execution.signal_id,
-        );
-    } catch (error) {
-      console.error(
-        "closeExecution: lifecycle synchronization failed",
-        {
-          executionId,
-          signalId: execution.signal_id,
-          error,
-        },
-      );
-
-      lifecycleWarning = {
-        message:
-          "Execution closed successfully but lifecycle synchronization failed.",
-        error:
-          error instanceof Error
-            ? error.message
-            : String(error),
-      };
-    }
-  }
+        )
+      : null;
 
   /* -------------------------------------------------
      FINAL DISCORD CLOSE ALERT
   ------------------------------------------------- */
-  if (
-    nextExecutionStatus === "CLOSED" &&
-    !lifecycleResult
-  ) {
+  if (nextExecutionStatus === "CLOSED") {
     try {
       await sendClosedSignalAlert(execution.signal_id);
     } catch (discordError) {
@@ -1427,6 +1458,5 @@ export async function closeExecution({
       })) ?? null,
 
     lifecycle: lifecycleResult,
-    lifecycle_warning: lifecycleWarning,
   };
 }
