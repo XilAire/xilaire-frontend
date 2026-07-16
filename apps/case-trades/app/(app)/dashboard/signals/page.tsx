@@ -101,7 +101,16 @@ type SignalExecutionFillRow = {
 
 type SignalExecutionRow = {
   id: string;
+  status: string | null;
   contracts: number | string | null;
+  entry_price: number | string | null;
+  exit_price: number | string | null;
+  entry_cost: number | string | null;
+  exit_value: number | string | null;
+  pnl: number | string | null;
+  pnl_pct: number | string | null;
+  opened_at: string | null;
+  closed_at: string | null;
   execution_fills: SignalExecutionFillRow[] | null;
 };
 
@@ -829,7 +838,16 @@ export default async function SignalsPage({
 
       signal_executions!left (
         id,
+        status,
         contracts,
+        entry_price,
+        exit_price,
+        entry_cost,
+        exit_value,
+        pnl,
+        pnl_pct,
+        opened_at,
+        closed_at,
         execution_fills!left (
           side,
           contracts,
@@ -1086,7 +1104,32 @@ export default async function SignalsPage({
         });
 
       const execution =
-        row.signal_executions?.[0] ??
+        [...(row.signal_executions ?? [])]
+          .sort(
+            (
+              firstExecution,
+              secondExecution,
+            ) => {
+              const firstOpenedAt =
+                firstExecution.opened_at
+                  ? new Date(
+                      firstExecution.opened_at,
+                    ).getTime()
+                  : 0;
+
+              const secondOpenedAt =
+                secondExecution.opened_at
+                  ? new Date(
+                      secondExecution.opened_at,
+                    ).getTime()
+                  : 0;
+
+              return (
+                secondOpenedAt -
+                firstOpenedAt
+              );
+            },
+          )[0] ??
         null;
 
       let executionContracts:
@@ -1110,6 +1153,22 @@ export default async function SignalsPage({
       let calculatedPnlPct:
         | number
         | null = null;
+
+      const authoritativeExecutionPnl =
+        execution?.pnl === null ||
+        execution?.pnl === undefined
+          ? null
+          : toNumber(
+              execution.pnl,
+            );
+
+      const authoritativeExecutionPnlPct =
+        execution?.pnl_pct === null ||
+        execution?.pnl_pct === undefined
+          ? null
+          : toNumber(
+              execution.pnl_pct,
+            );
 
       const strategyQuantity =
         getStrategyQuantity({
@@ -1154,12 +1213,27 @@ export default async function SignalsPage({
           executionContracts =
             totalContracts;
 
+          const persistedExecutionStatus =
+            String(
+              execution.status ?? "",
+            )
+              .trim()
+              .toUpperCase();
+
           executionStatus =
-            hasCloseFills
-              ? row.status === "Closed"
-                ? "CLOSED"
-                : "PARTIAL"
-              : "OPEN";
+            persistedExecutionStatus ===
+              "CLOSED" ||
+            persistedExecutionStatus ===
+              "PARTIAL" ||
+            persistedExecutionStatus ===
+              "OPEN"
+              ? persistedExecutionStatus
+              : hasCloseFills
+                ? row.status ===
+                  "Closed"
+                  ? "CLOSED"
+                  : "PARTIAL"
+                : "OPEN";
 
           remainingContracts =
             executionStatus === "CLOSED"
@@ -1169,8 +1243,13 @@ export default async function SignalsPage({
                 ? null
                 : totalContracts;
 
+          calculatedPnl =
+            authoritativeExecutionPnl;
+
           calculatedPnlPct =
-            row.return_pct ?? null;
+            authoritativeExecutionPnlPct ??
+            row.return_pct ??
+            null;
         } else {
           const closedContracts =
             closeFills.reduce(
@@ -1194,13 +1273,27 @@ export default async function SignalsPage({
           remainingContracts =
             remaining;
 
+          const persistedExecutionStatus =
+            String(
+              execution.status ?? "",
+            )
+              .trim()
+              .toUpperCase();
+
           executionStatus =
-            remaining > 0 &&
-            closedContracts > 0
-              ? "PARTIAL"
-              : remaining > 0
-                ? "OPEN"
-                : "CLOSED";
+            persistedExecutionStatus ===
+              "CLOSED" ||
+            persistedExecutionStatus ===
+              "PARTIAL" ||
+            persistedExecutionStatus ===
+              "OPEN"
+              ? persistedExecutionStatus
+              : remaining > 0 &&
+                  closedContracts > 0
+                ? "PARTIAL"
+                : remaining > 0
+                  ? "OPEN"
+                  : "CLOSED";
 
           const entryPrice =
             toNumber(
@@ -1254,6 +1347,16 @@ export default async function SignalsPage({
                   100
                 : null;
           }
+
+          calculatedPnl =
+            authoritativeExecutionPnl ??
+            calculatedPnl;
+
+          calculatedPnlPct =
+            authoritativeExecutionPnlPct ??
+            calculatedPnlPct ??
+            row.return_pct ??
+            null;
         }
       }
 
@@ -1308,9 +1411,18 @@ export default async function SignalsPage({
             ? Math.abs(
                 tradeSummary.netEntry,
               )
-            : row.entry_price ??
-              row.price ??
-              undefined,
+            : execution?.entry_price !==
+                null &&
+              execution?.entry_price !==
+                undefined
+              ? Math.abs(
+                  toNumber(
+                    execution.entry_price,
+                  ),
+                )
+              : row.entry_price ??
+                row.price ??
+                undefined,
 
         /*
          * The table receives the strategy label that
@@ -1379,10 +1491,18 @@ export default async function SignalsPage({
           row.outcome ?? null,
 
         return_pct:
-          row.return_pct ?? null,
+          authoritativeExecutionPnlPct ??
+          row.return_pct ??
+          null,
 
         exit_price:
-          row.exit_price ?? null,
+          execution?.exit_price !== null &&
+          execution?.exit_price !== undefined
+            ? toNumber(
+                execution.exit_price,
+              )
+            : row.exit_price ??
+              null,
       };
     },
   );
