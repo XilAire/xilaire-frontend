@@ -1606,8 +1606,7 @@ export default async function JournalTradeDetailPage({
       )}
 
       <JournalNotesFormComponent
-        executionId={tradeExecution.id}
-        signalId={tradeExecution.signal_id}
+        tradeId={tradeExecution.id}
         initialNotes={{
           notes: journalNotes?.notes ?? "",
           setup: journalNotes?.setup ?? "",
@@ -1617,15 +1616,19 @@ export default async function JournalTradeDetailPage({
           discipline_score:
             journalNotes?.discipline_score !== null &&
             journalNotes?.discipline_score !== undefined
-              ? String(journalNotes.discipline_score)
+              ? String(
+                  journalNotes.discipline_score,
+                )
               : "",
         }}
       />
 
       <TradeScreenshotManagerComponent
-        executionId={tradeExecution.id}
+        tradeId={tradeExecution.id}
         signalId={tradeExecution.signal_id}
-        screenshots={(screenshots ?? []) as TradeScreenshot[]}
+        initialScreenshots={
+          (screenshots ?? []) as TradeScreenshot[]
+        }
       />
 
       <TradeReviewPanelComponent
