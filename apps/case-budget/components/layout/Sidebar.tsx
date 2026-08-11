@@ -6,12 +6,13 @@ import {
   useState,
 } from "react";
 
+import CaseBudgetLogo from "@/components/branding/CaseBudgetLogo";
+import UserProfileMenu from "@/components/layout/UserProfileMenu";
+import WorkspaceSwitcher from "@/components/layout/WorkspaceSwitcher";
 import WorkspaceManagerModal, {
   type WorkspaceManagerInitialView,
   type WorkspaceManagerWorkspace,
 } from "@/components/workspaces/WorkspaceManagerModal";
-import UserProfileMenu from "@/components/layout/UserProfileMenu";
-import WorkspaceSwitcher from "@/components/layout/WorkspaceSwitcher";
 
 import {
   useApp,
@@ -255,22 +256,15 @@ const navigationSections: SidebarNavigationSection[] = [
 ];
 
 function isSidebarNavigationSectionId(
-  value:
-    unknown,
+  value: unknown,
 ): value is SidebarNavigationSectionId {
   return (
-    value ===
-      "home" ||
-    value ===
-      "budget" ||
-    value ===
-      "wealth" ||
-    value ===
-      "insights" ||
-    value ===
-      "household" ||
-    value ===
-      "settings"
+    value === "home" ||
+    value === "budget" ||
+    value === "wealth" ||
+    value === "insights" ||
+    value === "household" ||
+    value === "settings"
   );
 }
 
@@ -300,8 +294,7 @@ function readStoredOpenSectionId():
 }
 
 function writeStoredOpenSectionId(
-  sectionId:
-    SidebarNavigationSectionId,
+  sectionId: SidebarNavigationSectionId,
 ) {
   if (
     typeof window ===
@@ -321,10 +314,8 @@ function writeStoredOpenSectionId(
 }
 
 function getActiveNavigationSectionId(
-  activePath:
-    string,
-):
-  SidebarNavigationSectionId | null {
+  activePath: string,
+): SidebarNavigationSectionId | null {
   for (
     const section
     of navigationSections
@@ -371,8 +362,7 @@ function isNavigationItemActive(
 function SectionChevronIcon({
   isOpen,
 }: {
-  isOpen:
-    boolean;
+  isOpen: boolean;
 }) {
   return (
     <svg
@@ -673,7 +663,6 @@ function SidebarIcon({
         </svg>
       );
 
-
     case "billing":
       return (
         <svg {...sharedProps}>
@@ -910,7 +899,8 @@ export default function Sidebar({
     item: SidebarNavigationItem,
   ) => {
     if (
-      item.feature === "ai-coach"
+      item.feature ===
+      "ai-coach"
     ) {
       return "Pro";
     }
@@ -935,9 +925,11 @@ export default function Sidebar({
           className="flex items-center gap-3 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
           aria-label="Go to CASE Budget dashboard"
         >
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--primary)] font-black text-[var(--primary-foreground)] shadow-[var(--shadow-primary)]">
-            CB
-          </div>
+          <CaseBudgetLogo
+            size="md"
+            priority
+            className="h-11 w-11"
+          />
 
           <div className="min-w-0">
             <p className="truncate text-lg font-bold tracking-tight text-[var(--sidebar-foreground)]">
@@ -1001,7 +993,6 @@ export default function Sidebar({
             const isOpen =
               openSectionId ===
               section.id;
-
 
             return (
               <section
