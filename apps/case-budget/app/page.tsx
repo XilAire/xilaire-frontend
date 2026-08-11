@@ -3,9 +3,11 @@ import type {
 } from "next";
 import Link from "next/link";
 
+import CaseBudgetLogo from "@/components/branding/CaseBudgetLogo";
+
 export const metadata: Metadata = {
   title:
-    "CASE Budget | Take Control of Every Dollar",
+    "CASE Budget | Plan Your Money. Build Your Future.",
   description:
     "Plan your money, manage bills, track spending, reduce debt, build savings, and grow your net worth with CASE Budget.",
 };
@@ -988,7 +990,7 @@ function FinalCallToAction() {
             <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
               <Link
                 href="/sign-up"
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-white px-6 text-sm font-bold text-[var(--primary)] outline-none transition hover:bg-white/90 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--primary)]"
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-white px-6 text-sm font-bold !text-slate-950 outline-none transition hover:bg-white/90 hover:!text-slate-950 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--primary)]"
               >
                 Create your account
 
@@ -1229,9 +1231,11 @@ function BrandMark() {
       aria-label="CASE Budget home"
       className="inline-flex items-center gap-3 rounded-xl text-[var(--text-primary)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
     >
-      <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--primary)] text-sm font-black text-white">
-        CB
-      </span>
+      <CaseBudgetLogo
+        variant="auto"
+        size="sm"
+        alt="CASE Budget"
+      />
 
       <span>
         <span className="block text-lg font-black tracking-tight">

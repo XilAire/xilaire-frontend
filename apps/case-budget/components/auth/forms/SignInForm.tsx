@@ -389,14 +389,14 @@ export default function SignInPage() {
 
               <footer className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-[var(--text-muted)]">
                 <Link
-                  href="/privacy"
+                  href="/legal/privacy"
                   className="rounded outline-none transition hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
                 >
                   Privacy
                 </Link>
 
                 <Link
-                  href="/terms"
+                  href="/legal/terms"
                   className="rounded outline-none transition hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
                 >
                   Terms

@@ -200,7 +200,7 @@ export default function FinancialHealthOverview() {
     );
 
   return (
-    <div className="min-h-full bg-slate-50/70">
+    <div className="min-h-full bg-[var(--background)]">
       <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-6 px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
         <FinancialHealthHeader
           startDate={
@@ -348,15 +348,15 @@ export default function FinancialHealthOverview() {
 
         <section>
           <div className="mb-4">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--success)]">
               Health factors
             </p>
 
-            <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-950">
+            <h2 className="mt-1 text-xl font-bold tracking-tight text-[var(--text-primary)]">
               What is shaping your score
             </h2>
 
-            <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--text-muted)]">
               Each factor evaluates a
               different part of your
               finances. Factors without
@@ -440,23 +440,23 @@ function FinancialHealthHeader({
     string;
 }) {
   return (
-    <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
+    <section className="overflow-hidden rounded-[28px] border border-[var(--border-subtle)] bg-[var(--surface-default)] shadow-sm">
       <div className="flex flex-col gap-6 p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between lg:p-7">
         <div className="flex min-w-0 items-start gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[color-mix(in_srgb,var(--success)_10%,var(--surface-default))] text-[var(--success)]">
             <HeartPulse className="h-6 w-6" />
           </div>
 
           <div className="min-w-0">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--success)]">
               Financial wellness
             </p>
 
-            <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">
+            <h1 className="mt-1 text-2xl font-bold tracking-tight text-[var(--text-primary)] sm:text-3xl">
               Financial Health
             </h1>
 
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500 sm:text-base">
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-muted)] sm:text-base">
               See how cash flow,
               savings, debt, emergency
               reserves, and bill
@@ -465,7 +465,7 @@ function FinancialHealthHeader({
               financial plan.
             </p>
 
-            <div className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-slate-500">
+            <div className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-[var(--text-muted)]">
               <CalendarDays className="h-4 w-4" />
 
               {formatHealthDateRange({
@@ -479,7 +479,7 @@ function FinancialHealthHeader({
         <div className="flex flex-col gap-3 sm:flex-row">
           <Link
             href="/dashboard/reports"
-            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-5 text-sm font-bold text-slate-800 transition hover:bg-slate-50"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-default)] px-5 text-sm font-bold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]"
           >
             View reports
 
@@ -488,7 +488,7 @@ function FinancialHealthHeader({
 
           <Link
             href="/dashboard/budget"
-            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-emerald-600 px-5 text-sm font-bold text-white transition hover:bg-emerald-700"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-5 text-sm font-bold text-[var(--primary-foreground)] transition hover:opacity-90"
           >
             Review budget
 
@@ -525,10 +525,10 @@ function HealthMetricCard({
     | "warning";
 }) {
   return (
-    <section className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="rounded-[24px] border border-[var(--border-subtle)] bg-[var(--surface-default)] p-5 shadow-sm">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-slate-500">
+          <p className="text-sm font-semibold text-[var(--text-muted)]">
             {label}
           </p>
 
@@ -545,7 +545,7 @@ function HealthMetricCard({
             {value}
           </p>
 
-          <p className="mt-2 text-xs leading-5 text-slate-500">
+          <p className="mt-2 text-xs leading-5 text-[var(--text-muted)]">
             {description}
           </p>
         </div>
@@ -586,19 +586,19 @@ function FinancialPositionSummary({
     number | null;
 }) {
   return (
-    <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
-      <div className="border-b border-slate-100 p-5 sm:p-6">
+    <section className="overflow-hidden rounded-[28px] border border-[var(--border-subtle)] bg-[var(--surface-default)] shadow-sm">
+      <div className="border-b border-[var(--border-subtle)] p-5 sm:p-6">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[color-mix(in_srgb,var(--success)_10%,var(--surface-default))] text-[var(--success)]">
             <Scale className="h-5 w-5" />
           </div>
 
           <div>
-            <h2 className="font-bold text-slate-950">
+            <h2 className="font-bold text-[var(--text-primary)]">
               Financial position
             </h2>
 
-            <p className="mt-0.5 text-sm text-slate-500">
+            <p className="mt-0.5 text-sm text-[var(--text-muted)]">
               The balance between
               tracked assets and
               liabilities.
@@ -661,7 +661,7 @@ function FinancialPositionSummary({
 
         <Link
           href="/dashboard/accounts"
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-5 text-sm font-bold text-slate-800 transition hover:bg-slate-50 sm:col-span-2"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-default)] px-5 text-sm font-bold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)] sm:col-span-2"
         >
           Manage accounts
 
@@ -687,19 +687,19 @@ function PositionStat({
     typeof Scale;
 }) {
   return (
-    <div className="rounded-[20px] border border-slate-200 p-4">
+    <div className="rounded-[20px] border border-[var(--border-subtle)] p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-400">
+          <p className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-muted)]">
             {label}
           </p>
 
-          <p className="mt-2 text-xl font-bold tracking-tight text-slate-950">
+          <p className="mt-2 text-xl font-bold tracking-tight text-[var(--text-primary)]">
             {value}
           </p>
         </div>
 
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-500">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-muted)] text-[var(--text-muted)]">
           <Icon className="h-4 w-4" />
         </div>
       </div>
@@ -722,19 +722,19 @@ function BillsHealthSummary({
     number;
 }) {
   return (
-    <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm">
-      <div className="border-b border-slate-100 p-5 sm:p-6">
+    <section className="overflow-hidden rounded-[28px] border border-[var(--border-subtle)] bg-[var(--surface-default)] shadow-sm">
+      <div className="border-b border-[var(--border-subtle)] p-5 sm:p-6">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[color-mix(in_srgb,var(--success)_10%,var(--surface-default))] text-[var(--success)]">
             <ReceiptText className="h-5 w-5" />
           </div>
 
           <div>
-            <h2 className="font-bold text-slate-950">
+            <h2 className="font-bold text-[var(--text-primary)]">
               Bill health
             </h2>
 
-            <p className="mt-0.5 text-sm text-slate-500">
+            <p className="mt-0.5 text-sm text-[var(--text-muted)]">
               Upcoming and overdue
               obligations.
             </p>
@@ -768,8 +768,8 @@ function BillsHealthSummary({
             />
           </div>
 
-          <div className="mt-4 rounded-2xl bg-slate-50 p-4">
-            <p className="text-sm font-bold text-slate-950">
+          <div className="mt-4 rounded-2xl bg-[var(--surface-muted)] p-4">
+            <p className="text-sm font-bold text-[var(--text-primary)]">
               {trackedBillCount} bill
               {trackedBillCount ===
               1
@@ -778,7 +778,7 @@ function BillsHealthSummary({
               currently tracked
             </p>
 
-            <p className="mt-1 text-sm leading-6 text-slate-500">
+            <p className="mt-1 text-sm leading-6 text-[var(--text-muted)]">
               Staying ahead of due
               dates helps protect cash
               flow and avoid unnecessary
@@ -788,7 +788,7 @@ function BillsHealthSummary({
 
           <Link
             href="/dashboard/bills"
-            className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-emerald-700 transition hover:text-emerald-800"
+            className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[var(--success)] transition hover:text-[var(--success)]"
           >
             Review bills
 
@@ -797,15 +797,15 @@ function BillsHealthSummary({
         </div>
       ) : (
         <div className="flex min-h-[250px] flex-col items-center justify-center p-6 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-500">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--surface-muted)] text-[var(--text-muted)]">
             <ReceiptText className="h-5 w-5" />
           </div>
 
-          <p className="mt-4 font-bold text-slate-950">
+          <p className="mt-4 font-bold text-[var(--text-primary)]">
             No bills are being tracked
           </p>
 
-          <p className="mt-1 max-w-sm text-sm leading-6 text-slate-500">
+          <p className="mt-1 max-w-sm text-sm leading-6 text-[var(--text-muted)]">
             Add recurring and upcoming
             bills so payment timing can
             become part of your
@@ -814,7 +814,7 @@ function BillsHealthSummary({
 
           <Link
             href="/dashboard/bills"
-            className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-emerald-700 transition hover:text-emerald-800"
+            className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[var(--success)] transition hover:text-[var(--success)]"
           >
             Manage bills
 
@@ -845,8 +845,8 @@ function BillHealthStat({
       className={[
         "rounded-[20px] border p-4",
         warning
-          ? "border-rose-200 bg-rose-50"
-          : "border-slate-200 bg-white",
+          ? "border-[color-mix(in_srgb,var(--danger)_35%,var(--border-subtle))] bg-[color-mix(in_srgb,var(--danger)_10%,var(--surface-default))]"
+          : "border-[var(--border-subtle)] bg-[var(--surface-default)]",
       ].join(
         " ",
       )}
@@ -855,8 +855,8 @@ function BillHealthStat({
         className={[
           "text-xs font-bold uppercase tracking-[0.1em]",
           warning
-            ? "text-rose-500"
-            : "text-slate-400",
+            ? "text-[var(--danger)]"
+            : "text-[var(--text-muted)]",
         ].join(
           " ",
         )}
@@ -868,8 +868,8 @@ function BillHealthStat({
         className={[
           "mt-2 text-2xl font-black tracking-tight",
           warning
-            ? "text-rose-700"
-            : "text-slate-950",
+            ? "text-[var(--danger)]"
+            : "text-[var(--text-primary)]",
         ].join(
           " ",
         )}
@@ -889,15 +889,15 @@ function HealthActionSection() {
   return (
     <section>
       <div className="mb-4">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--success)]">
           Improve your position
         </p>
 
-        <h2 className="mt-1 text-xl font-bold tracking-tight text-slate-950">
+        <h2 className="mt-1 text-xl font-bold tracking-tight text-[var(--text-primary)]">
           Keep building financial strength
         </h2>
 
-        <p className="mt-1 text-sm text-slate-500">
+        <p className="mt-1 text-sm text-[var(--text-muted)]">
           Use the core CASE Budget
           tools to improve the areas
           that matter most.
@@ -968,21 +968,21 @@ function HealthActionCard({
       href={
         href
       }
-      className="group rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+      className="group rounded-[24px] border border-[var(--border-subtle)] bg-[var(--surface-default)] p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
     >
-      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[color-mix(in_srgb,var(--success)_10%,var(--surface-default))] text-[var(--success)]">
         <Icon className="h-5 w-5" />
       </div>
 
-      <h3 className="mt-4 font-bold text-slate-950">
+      <h3 className="mt-4 font-bold text-[var(--text-primary)]">
         {title}
       </h3>
 
-      <p className="mt-2 text-sm leading-6 text-slate-500">
+      <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">
         {description}
       </p>
 
-      <div className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-emerald-700">
+      <div className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[var(--success)]">
         Open
 
         <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
@@ -1675,14 +1675,14 @@ function getMetricValueClassName(
     tone
   ) {
     case "positive":
-      return "text-emerald-700";
+      return "text-[var(--success)]";
 
     case "warning":
-      return "text-rose-700";
+      return "text-[var(--danger)]";
 
     case "neutral":
     default:
-      return "text-slate-950";
+      return "text-[var(--text-primary)]";
   }
 }
 
@@ -1696,14 +1696,14 @@ function getMetricIconClassName(
     tone
   ) {
     case "positive":
-      return "bg-emerald-50 text-emerald-600";
+      return "bg-[color-mix(in_srgb,var(--success)_10%,var(--surface-default))] text-[var(--success)]";
 
     case "warning":
-      return "bg-rose-50 text-rose-600";
+      return "bg-[color-mix(in_srgb,var(--danger)_10%,var(--surface-default))] text-[var(--danger)]";
 
     case "neutral":
     default:
-      return "bg-slate-100 text-slate-500";
+      return "bg-[var(--surface-muted)] text-[var(--text-muted)]";
   }
 }
 

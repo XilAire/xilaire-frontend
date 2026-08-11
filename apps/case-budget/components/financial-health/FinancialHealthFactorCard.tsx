@@ -32,7 +32,7 @@ export default function FinancialHealthFactorCard({
     );
 
   return (
-    <section className="overflow-hidden rounded-[26px] border border-slate-200 bg-white shadow-sm">
+    <section className="overflow-hidden rounded-[26px] border border-[var(--border-subtle)] bg-[var(--surface-default)] shadow-sm">
       <div className="flex items-start justify-between gap-4 p-5 sm:p-6">
         <div className="flex min-w-0 items-start gap-3">
           <div
@@ -49,11 +49,11 @@ export default function FinancialHealthFactorCard({
           </div>
 
           <div className="min-w-0">
-            <p className="text-sm font-bold text-slate-950">
+            <p className="text-sm font-bold text-[var(--text-primary)]">
               {factor.label}
             </p>
 
-            <p className="mt-1 text-sm leading-6 text-slate-500">
+            <p className="mt-1 text-sm leading-6 text-[var(--text-muted)]">
               {factor.title}
             </p>
           </div>
@@ -66,14 +66,14 @@ export default function FinancialHealthFactorCard({
         />
       </div>
 
-      <div className="border-t border-slate-100 px-5 py-5 sm:px-6">
+      <div className="border-t border-[var(--border-subtle)] px-5 py-5 sm:px-6">
         <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-400">
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">
               Current value
             </p>
 
-            <p className="mt-1 text-xl font-bold tracking-tight text-slate-950">
+            <p className="mt-1 text-xl font-bold tracking-tight text-[var(--text-primary)]">
               {factor.valueLabel}
             </p>
           </div>
@@ -86,12 +86,12 @@ export default function FinancialHealthFactorCard({
               }
             />
           ) : (
-            <div className="rounded-2xl bg-slate-100 px-4 py-3 text-center">
-              <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-400">
+            <div className="rounded-2xl bg-[var(--surface-muted)] px-4 py-3 text-center">
+              <p className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-muted)]">
                 Score
               </p>
 
-              <p className="mt-1 text-sm font-bold text-slate-600">
+              <p className="mt-1 text-sm font-bold text-[var(--text-secondary)]">
                 Unavailable
               </p>
             </div>
@@ -101,7 +101,7 @@ export default function FinancialHealthFactorCard({
         {factor.score !==
         null ? (
           <div className="mt-4">
-            <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+            <div className="h-2 overflow-hidden rounded-full bg-[var(--surface-muted)]">
               <div
                 className={[
                   "h-full rounded-full transition-[width]",
@@ -120,7 +120,7 @@ export default function FinancialHealthFactorCard({
               />
             </div>
 
-            <div className="mt-2 flex items-center justify-between gap-3 text-[11px] font-semibold text-slate-400">
+            <div className="mt-2 flex items-center justify-between gap-3 text-[11px] font-semibold text-[var(--text-muted)]">
               <span>
                 Needs attention
               </span>
@@ -132,11 +132,11 @@ export default function FinancialHealthFactorCard({
           </div>
         ) : null}
 
-        <p className="mt-5 text-sm leading-6 text-slate-500">
+        <p className="mt-5 text-sm leading-6 text-[var(--text-muted)]">
           {factor.description}
         </p>
 
-        <div className="mt-5 flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-5 flex flex-col gap-3 border-t border-[var(--border-subtle)] pt-5 sm:flex-row sm:items-center sm:justify-between">
           <WeightIndicator
             weight={
               factor.weight
@@ -149,7 +149,7 @@ export default function FinancialHealthFactorCard({
               href={
                 factor.actionHref
               }
-              className="inline-flex items-center gap-2 text-sm font-bold text-emerald-700 transition hover:text-emerald-800"
+              className="inline-flex items-center gap-2 text-sm font-bold text-[var(--success)] transition hover:opacity-80"
             >
               {factor.actionLabel}
 
@@ -198,14 +198,15 @@ function FactorScore({
     );
 
   return (
-    <div className="min-w-[92px] rounded-2xl bg-slate-50 px-4 py-3 text-center">
-      <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-400">
+    <div className="min-w-[92px] rounded-2xl bg-[var(--surface-muted)] px-4 py-3 text-center">
+      <p className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-muted)]">
         Score
       </p>
 
-      <p className="mt-1 text-xl font-black tracking-tight text-slate-950">
+      <p className="mt-1 text-xl font-black tracking-tight text-[var(--text-primary)]">
         {safeScore}
-        <span className="ml-0.5 text-xs font-bold text-slate-400">
+
+        <span className="ml-0.5 text-xs font-bold text-[var(--text-muted)]">
           /100
         </span>
       </p>
@@ -239,7 +240,7 @@ function WeightIndicator({
     );
 
   return (
-    <div className="inline-flex items-center gap-2 text-xs font-semibold text-slate-400">
+    <div className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--text-muted)]">
       <CircleGauge className="h-4 w-4" />
 
       <span>
@@ -284,20 +285,20 @@ function getStatusBadgeClassName(
     status
   ) {
     case "strong":
-      return "bg-emerald-50 text-emerald-700";
+      return "bg-[color-mix(in_srgb,var(--success)_12%,var(--surface-default))] text-[var(--success)]";
 
     case "stable":
-      return "bg-teal-50 text-teal-700";
+      return "bg-[color-mix(in_srgb,var(--success)_10%,var(--surface-default))] text-[var(--success)]";
 
     case "watch":
-      return "bg-amber-50 text-amber-700";
+      return "bg-[color-mix(in_srgb,var(--warning)_12%,var(--surface-default))] text-[var(--warning)]";
 
     case "risk":
-      return "bg-rose-50 text-rose-700";
+      return "bg-[color-mix(in_srgb,var(--danger)_12%,var(--surface-default))] text-[var(--danger)]";
 
     case "not-enough-data":
     default:
-      return "bg-slate-100 text-slate-500";
+      return "bg-[var(--surface-muted)] text-[var(--text-muted)]";
   }
 }
 
@@ -309,20 +310,20 @@ function getIconClassName(
     status
   ) {
     case "strong":
-      return "bg-emerald-50 text-emerald-600";
+      return "bg-[color-mix(in_srgb,var(--success)_10%,var(--surface-default))] text-[var(--success)]";
 
     case "stable":
-      return "bg-teal-50 text-teal-600";
+      return "bg-[color-mix(in_srgb,var(--success)_8%,var(--surface-default))] text-[var(--success)]";
 
     case "watch":
-      return "bg-amber-50 text-amber-600";
+      return "bg-[color-mix(in_srgb,var(--warning)_10%,var(--surface-default))] text-[var(--warning)]";
 
     case "risk":
-      return "bg-rose-50 text-rose-600";
+      return "bg-[color-mix(in_srgb,var(--danger)_10%,var(--surface-default))] text-[var(--danger)]";
 
     case "not-enough-data":
     default:
-      return "bg-slate-100 text-slate-500";
+      return "bg-[var(--surface-muted)] text-[var(--text-muted)]";
   }
 }
 
@@ -334,25 +335,26 @@ function getProgressClassName(
     status
   ) {
     case "strong":
-      return "bg-emerald-500";
+      return "bg-[var(--success)]";
 
     case "stable":
-      return "bg-teal-500";
+      return "bg-[var(--success)]";
 
     case "watch":
-      return "bg-amber-400";
+      return "bg-[var(--warning)]";
 
     case "risk":
-      return "bg-rose-500";
+      return "bg-[var(--danger)]";
 
     case "not-enough-data":
     default:
-      return "bg-slate-300";
+      return "bg-[var(--border-strong)]";
   }
 }
 
 function clampScore(
-  value: number,
+  value:
+    number,
 ) {
   if (
     !Number.isFinite(

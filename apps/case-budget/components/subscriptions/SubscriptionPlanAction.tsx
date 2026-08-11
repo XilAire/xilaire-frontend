@@ -390,11 +390,11 @@ export default function SubscriptionPlanAction({
             ? "w-full"
             : "",
           isCurrentSelection
-            ? "cursor-default border border-emerald-200 bg-emerald-50 text-emerald-700"
+            ? "cursor-default border border-[color-mix(in_srgb,var(--success)_40%,var(--border-subtle))] bg-[color-mix(in_srgb,var(--success)_8%,var(--surface-default))] text-[var(--success)]"
             : targetPlan ===
                 "pro"
-              ? "bg-violet-600 text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
-              : "border border-slate-300 bg-white text-slate-900 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60",
+              ? "bg-[var(--pro)] text-[var(--primary-foreground)] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              : "border border-[var(--border-strong)] bg-[var(--surface-default)] text-[var(--text-primary)] hover:bg-[var(--surface-muted)] disabled:cursor-not-allowed disabled:opacity-60",
           className ??
             "",
         ]
@@ -428,7 +428,7 @@ export default function SubscriptionPlanAction({
 
       {currentStatus ===
       "past_due" ? (
-        <p className="mt-2 text-xs font-medium leading-5 text-amber-700">
+        <p className="mt-2 text-xs font-medium leading-5 text-[var(--warning)]">
           Your current subscription
           has a past-due payment.
           Billing may need attention
@@ -439,7 +439,7 @@ export default function SubscriptionPlanAction({
 
       {currentStatus ===
       "unpaid" ? (
-        <p className="mt-2 text-xs font-medium leading-5 text-rose-700">
+        <p className="mt-2 text-xs font-medium leading-5 text-[var(--danger)]">
           Your current subscription
           is unpaid. Resolve the
           outstanding balance before
@@ -449,7 +449,7 @@ export default function SubscriptionPlanAction({
 
       {currentStatus ===
       "incomplete" ? (
-        <p className="mt-2 text-xs font-medium leading-5 text-amber-700">
+        <p className="mt-2 text-xs font-medium leading-5 text-[var(--warning)]">
           Your subscription setup is
           incomplete. Stripe may
           require payment confirmation
@@ -460,7 +460,7 @@ export default function SubscriptionPlanAction({
 
       {currentStatus ===
       "paused" ? (
-        <p className="mt-2 text-xs font-medium leading-5 text-amber-700">
+        <p className="mt-2 text-xs font-medium leading-5 text-[var(--warning)]">
           Your subscription is
           currently paused.
         </p>
@@ -469,7 +469,7 @@ export default function SubscriptionPlanAction({
       {errorMessage ? (
         <p
           role="alert"
-          className="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium leading-6 text-rose-800"
+          className="mt-3 rounded-2xl border border-[color-mix(in_srgb,var(--danger)_35%,var(--border-subtle))] bg-[color-mix(in_srgb,var(--danger)_10%,var(--surface-default))] px-4 py-3 text-sm font-medium leading-6 text-[var(--danger)]"
         >
           {errorMessage}
         </p>
@@ -478,7 +478,7 @@ export default function SubscriptionPlanAction({
       {successMessage ? (
         <p
           role="status"
-          className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium leading-6 text-emerald-800"
+          className="mt-3 rounded-2xl border border-[color-mix(in_srgb,var(--success)_35%,var(--border-subtle))] bg-[color-mix(in_srgb,var(--success)_10%,var(--surface-default))] px-4 py-3 text-sm font-medium leading-6 text-[var(--success)]"
         >
           {successMessage}
         </p>
@@ -687,7 +687,7 @@ function getString(
 ) {
   if (
     typeof value !==
-    "string"
+      "string"
   ) {
     return null;
   }

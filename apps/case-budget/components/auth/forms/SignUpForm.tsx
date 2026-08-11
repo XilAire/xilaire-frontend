@@ -309,7 +309,7 @@ export default function SignUpForm() {
                         <span className="text-sm leading-5 text-[var(--text-muted)]">
                           I agree to the{" "}
                           <Link
-                            href="/terms"
+                            href="/legal/terms"
                             target="_blank"
                             rel="noreferrer"
                             className="rounded font-bold text-[var(--primary)] outline-none transition hover:underline focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
@@ -318,7 +318,7 @@ export default function SignUpForm() {
                           </Link>{" "}
                           and{" "}
                           <Link
-                            href="/privacy"
+                            href="/legal/privacy"
                             target="_blank"
                             rel="noreferrer"
                             className="rounded font-bold text-[var(--primary)] outline-none transition hover:underline focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
@@ -364,14 +364,14 @@ export default function SignUpForm() {
 
             <footer className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-[var(--text-muted)]">
               <Link
-                href="/privacy"
+                href="/legal/privacy"
                 className="rounded outline-none transition hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
               >
                 Privacy
               </Link>
 
               <Link
-                href="/terms"
+                href="/legal/terms"
                 className="rounded outline-none transition hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
               >
                 Terms

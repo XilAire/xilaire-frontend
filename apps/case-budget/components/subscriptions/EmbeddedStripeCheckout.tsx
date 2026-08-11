@@ -12,6 +12,10 @@ import {
 } from "@stripe/react-stripe-js";
 
 import {
+  useCaseBudgetTheme,
+} from "@/components/providers/CaseBudgetThemeProvider";
+
+import {
   getStripeClient,
 } from "@/lib/stripe/stripe-client";
 
@@ -77,6 +81,11 @@ export default function EmbeddedStripeCheckout({
   workspaceId,
   className,
 }: EmbeddedStripeCheckoutProps) {
+  const {
+    resolvedTheme,
+  } =
+    useCaseBudgetTheme();
+
   const [
     checkoutError,
     setCheckoutError,
@@ -128,6 +137,9 @@ export default function EmbeddedStripeCheckout({
                     workspaceId:
                       workspaceId ??
                       null,
+
+                    theme:
+                      resolvedTheme,
                   }),
 
                 cache:
@@ -204,6 +216,7 @@ export default function EmbeddedStripeCheckout({
       [
         interval,
         plan,
+        resolvedTheme,
         workspaceId,
       ],
     );
@@ -245,7 +258,7 @@ export default function EmbeddedStripeCheckout({
 
       <div
         className={[
-          "overflow-hidden rounded-3xl border border-slate-200 bg-white",
+          "overflow-hidden rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface-default)] transition-colors duration-200",
           checkoutError
             ? "hidden"
             : "",
@@ -254,6 +267,7 @@ export default function EmbeddedStripeCheckout({
         )}
       >
         <EmbeddedCheckoutProvider
+          key={`${plan}-${interval}-${resolvedTheme}-${workspaceId ?? "default"}`}
           stripe={
             stripePromise
           }
@@ -270,18 +284,18 @@ export default function EmbeddedStripeCheckout({
 
 function CheckoutLoadingCard() {
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface-default)] p-6 shadow-sm">
       <div className="flex items-center gap-4">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-violet-50">
-          <span className="h-5 w-5 animate-spin rounded-full border-2 border-violet-200 border-t-violet-600" />
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--pro)_10%,var(--surface-default))]">
+          <span className="h-5 w-5 animate-spin rounded-full border-2 border-[color-mix(in_srgb,var(--pro)_28%,var(--border-subtle))] border-t-[var(--pro)]" />
         </div>
 
         <div>
-          <p className="text-sm font-bold text-slate-900">
+          <p className="text-sm font-bold text-[var(--text-primary)]">
             Preparing secure checkout
           </p>
 
-          <p className="mt-1 text-sm leading-6 text-slate-500">
+          <p className="mt-1 text-sm leading-6 text-[var(--text-muted)]">
             CASE Budget is creating your secure Stripe payment session.
           </p>
         </div>
@@ -317,16 +331,16 @@ function CheckoutErrorCard({
       : "monthly";
 
   return (
-    <div className="rounded-3xl border border-rose-200 bg-rose-50 p-6">
-      <p className="text-sm font-bold text-rose-900">
+    <div className="rounded-3xl border border-[color-mix(in_srgb,var(--danger)_35%,var(--border-subtle))] bg-[color-mix(in_srgb,var(--danger)_10%,var(--surface-default))] p-6">
+      <p className="text-sm font-bold text-[var(--danger)]">
         Checkout could not be started
       </p>
 
-      <p className="mt-2 text-sm leading-6 text-rose-800">
+      <p className="mt-2 text-sm leading-6 text-[var(--danger)]">
         {message}
       </p>
 
-      <p className="mt-3 text-xs leading-5 text-rose-700">
+      <p className="mt-3 text-xs leading-5 text-[var(--danger)]">
         Your {planName} {intervalLabel} subscription has not been created or charged.
       </p>
     </div>

@@ -243,21 +243,21 @@ export default async function BillingPage({
             }
           />
 
-          <section className="min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-            <div className="border-b border-slate-100 p-5 sm:p-6 lg:p-7">
+          <section className="min-w-0 overflow-hidden rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface-default)] shadow-sm">
+            <div className="border-b border-[var(--border-subtle)] p-5 sm:p-6 lg:p-7">
               <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
                 <div className="min-w-0">
                   <p className="text-xs font-black uppercase tracking-[0.14em] text-violet-600">
                     Plans
                   </p>
 
-                  <h2 className="mt-2 max-w-3xl text-xl font-black tracking-tight text-slate-950 sm:text-2xl">
+                  <h2 className="mt-2 max-w-3xl text-xl font-black tracking-tight text-[var(--text-primary)] sm:text-2xl">
                     Choose the plan
                     that fits your
                     financial journey
                   </h2>
 
-                  <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-muted)]">
                     Start with manual
                     budgeting, unlock
                     complete financial
@@ -368,10 +368,10 @@ function BillingHeader({
     );
 
   return (
-    <section className="min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+    <section className="min-w-0 overflow-hidden rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface-default)] shadow-sm">
       <div className="flex flex-col gap-5 p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between lg:p-8">
         <div className="flex min-w-0 items-start gap-4">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-violet-50 text-violet-600">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[color-mix(in_srgb,var(--pro)_10%,var(--surface-default))] text-violet-600">
             <CreditCard className="h-7 w-7" />
           </div>
 
@@ -382,17 +382,17 @@ function BillingHeader({
                 subscription
               </p>
 
-              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">
+              <span className="rounded-full bg-[var(--surface-muted)] px-2.5 py-1 text-xs font-bold text-[var(--text-secondary)]">
                 {plan.name}
               </span>
             </div>
 
-            <h1 className="mt-2 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
+            <h1 className="mt-2 text-2xl font-black tracking-tight text-[var(--text-primary)] sm:text-3xl">
               Manage your CASE
               Budget plan
             </h1>
 
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500 sm:text-base">
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-muted)] sm:text-base">
               Review your current
               subscription, compare
               plans, and manage how
@@ -404,7 +404,7 @@ function BillingHeader({
 
         <Link
           href="/dashboard/settings"
-          className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 sm:w-fit"
+          className="inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-full border border-[var(--border-strong)] bg-[var(--surface-default)] px-5 text-sm font-bold text-[var(--text-secondary)] transition hover:bg-[var(--surface-muted)] sm:w-fit"
         >
           Back to settings
 
@@ -425,23 +425,23 @@ function CurrentSubscriptionCard({
     !subscription
   ) {
     return (
-      <section className="min-w-0 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 lg:p-7">
+      <section className="min-w-0 rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface-default)] p-5 shadow-sm sm:p-6 lg:p-7">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-start gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-600">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-muted)] text-[var(--text-secondary)]">
               <WalletCards className="h-6 w-6" />
             </div>
 
             <div className="min-w-0">
-              <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+              <p className="text-xs font-black uppercase tracking-[0.12em] text-[var(--text-muted)]">
                 Current plan
               </p>
 
-              <h2 className="mt-1 text-xl font-black text-slate-950">
+              <h2 className="mt-1 text-xl font-black text-[var(--text-primary)]">
                 CASE Budget Free
               </h2>
 
-              <p className="mt-1 text-sm leading-6 text-slate-500">
+              <p className="mt-1 text-sm leading-6 text-[var(--text-muted)]">
                 Manual monthly
                 budgeting is enabled.
                 Upgrade whenever you
@@ -451,7 +451,7 @@ function CurrentSubscriptionCard({
             </div>
           </div>
 
-          <span className="inline-flex w-fit shrink-0 items-center gap-2 rounded-full bg-slate-100 px-3 py-2 text-sm font-bold text-slate-700">
+          <span className="inline-flex w-fit shrink-0 items-center gap-2 rounded-full bg-[var(--surface-muted)] px-3 py-2 text-sm font-bold text-[var(--text-secondary)]">
             <CheckCircle2 className="h-4 w-4" />
 
             Free
@@ -467,11 +467,11 @@ function CurrentSubscriptionCard({
     );
 
   return (
-    <section className="min-w-0 overflow-hidden rounded-3xl border border-violet-200 bg-white shadow-sm">
+    <section className="min-w-0 overflow-hidden rounded-3xl border border-[color-mix(in_srgb,var(--pro)_28%,var(--border-subtle))] bg-[var(--surface-default)] shadow-sm">
       <div className="bg-gradient-to-br from-violet-50 via-white to-white p-5 sm:p-6 lg:p-7">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
           <div className="flex min-w-0 items-start gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-violet-100 text-violet-700">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[color-mix(in_srgb,var(--pro)_14%,var(--surface-default))] text-violet-700">
               {subscription.plan ===
               "pro" ? (
                 <Crown className="h-6 w-6" />
@@ -493,14 +493,14 @@ function CurrentSubscriptionCard({
                 />
               </div>
 
-              <h2 className="mt-2 text-xl font-black text-slate-950">
+              <h2 className="mt-2 text-xl font-black text-[var(--text-primary)]">
                 CASE Budget{" "}
                 {
                   entitlements.name
                 }
               </h2>
 
-              <p className="mt-1 text-sm leading-6 text-slate-500">
+              <p className="mt-1 text-sm leading-6 text-[var(--text-muted)]">
                 {subscription.billingInterval ===
                 "annual"
                   ? "Annual billing"
@@ -543,7 +543,7 @@ function CurrentSubscriptionCard({
         </div>
 
         {subscription.cancelAtPeriodEnd ? (
-          <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <div className="mt-5 rounded-2xl border border-amber-200 bg-[color-mix(in_srgb,var(--warning)_10%,var(--surface-default))] p-4">
             <p className="text-sm font-bold text-amber-900">
               Cancellation scheduled
             </p>
@@ -625,10 +625,10 @@ function PaidPlanCard({
   return (
     <article
       className={[
-        "relative flex h-full min-w-0 flex-col overflow-hidden rounded-3xl border bg-white",
+        "relative flex h-full min-w-0 flex-col overflow-hidden rounded-3xl border bg-[var(--surface-default)]",
         isPro
-          ? "border-violet-300 shadow-[0_16px_45px_rgba(124,58,237,0.12)]"
-          : "border-slate-200",
+          ? "border-[color-mix(in_srgb,var(--pro)_38%,var(--border-subtle))] shadow-[0_16px_45px_rgba(124,58,237,0.12)]"
+          : "border-[var(--border-subtle)]",
       ].join(
         " ",
       )}
@@ -643,14 +643,14 @@ function PaidPlanCard({
         <div>
           <div className="flex min-w-0 items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-sm font-black text-slate-950">
+              <p className="text-sm font-black text-[var(--text-primary)]">
                 CASE Budget{" "}
                 {
                   entitlements.name
                 }
               </p>
 
-              <p className="mt-1 text-sm leading-6 text-slate-500">
+              <p className="mt-1 text-sm leading-6 text-[var(--text-muted)]">
                 {
                   entitlements.description
                 }
@@ -661,8 +661,8 @@ function PaidPlanCard({
               className={[
                 "flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl",
                 isPro
-                  ? "bg-violet-100 text-violet-700"
-                  : "bg-emerald-50 text-emerald-700",
+                  ? "bg-[color-mix(in_srgb,var(--pro)_14%,var(--surface-default))] text-violet-700"
+                  : "bg-[color-mix(in_srgb,var(--primary)_10%,var(--surface-default))] text-emerald-700",
               ].join(
                 " ",
               )}
@@ -677,13 +677,13 @@ function PaidPlanCard({
 
           <div className="mt-6 min-w-0">
             <div className="flex flex-wrap items-end gap-x-2 gap-y-1">
-              <span className="whitespace-nowrap text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+              <span className="whitespace-nowrap text-3xl font-black tracking-tight text-[var(--text-primary)] sm:text-4xl">
                 {formatCurrency(
                   price,
                 )}
               </span>
 
-              <span className="whitespace-nowrap pb-1 text-sm font-semibold text-slate-500">
+              <span className="whitespace-nowrap pb-1 text-sm font-semibold text-[var(--text-muted)]">
                 /
                 {interval ===
                 "annual"
@@ -695,7 +695,7 @@ function PaidPlanCard({
             {interval ===
             "annual" ? (
               <div className="mt-2">
-                <p className="text-sm font-semibold text-slate-600">
+                <p className="text-sm font-semibold text-[var(--text-secondary)]">
                   About{" "}
                   {formatCurrency(
                     price /
@@ -716,7 +716,7 @@ function PaidPlanCard({
                 ) : null}
               </div>
             ) : (
-              <p className="mt-2 text-sm text-slate-500">
+              <p className="mt-2 text-sm text-[var(--text-muted)]">
                 Billed monthly
               </p>
             )}
@@ -738,11 +738,11 @@ function PaidPlanCard({
                   }
                   className="flex items-start gap-3"
                 >
-                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--primary)_10%,var(--surface-default))] text-emerald-600">
                     <Icon className="h-3.5 w-3.5" />
                   </span>
 
-                  <span className="min-w-0 text-sm font-medium leading-6 text-slate-700">
+                  <span className="min-w-0 text-sm font-medium leading-6 text-[var(--text-secondary)]">
                     {
                       feature.label
                     }
@@ -791,38 +791,38 @@ function FreePlanCard({
     "free";
 
   return (
-    <article className="flex h-full min-w-0 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white">
+    <article className="flex h-full min-w-0 flex-col overflow-hidden rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface-default)]">
       <div className="flex flex-1 flex-col p-5 sm:p-6">
         <div>
           <div className="flex min-w-0 items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-sm font-black text-slate-950">
+              <p className="text-sm font-black text-[var(--text-primary)]">
                 CASE Budget Free
               </p>
 
-              <p className="mt-1 text-sm leading-6 text-slate-500">
+              <p className="mt-1 text-sm leading-6 text-[var(--text-muted)]">
                 Simple manual
                 monthly budgeting.
               </p>
             </div>
 
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-600">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-muted)] text-[var(--text-secondary)]">
               <WalletCards className="h-5 w-5" />
             </div>
           </div>
 
           <div className="mt-6">
             <div className="flex flex-wrap items-end gap-x-2 gap-y-1">
-              <span className="whitespace-nowrap text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+              <span className="whitespace-nowrap text-3xl font-black tracking-tight text-[var(--text-primary)] sm:text-4xl">
                 $0
               </span>
 
-              <span className="whitespace-nowrap pb-1 text-sm font-semibold text-slate-500">
+              <span className="whitespace-nowrap pb-1 text-sm font-semibold text-[var(--text-muted)]">
                 /month
               </span>
             </div>
 
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-2 text-sm text-[var(--text-muted)]">
               No payment required
             </p>
           </div>
@@ -848,19 +848,19 @@ function FreePlanCard({
 
         <div className="mt-7">
           {isCurrent ? (
-            <div className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-5 text-sm font-bold text-emerald-700">
+            <div className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-emerald-200 bg-[color-mix(in_srgb,var(--primary)_10%,var(--surface-default))] px-5 text-sm font-bold text-emerald-700">
               <Check className="h-4 w-4" />
 
               Current plan
             </div>
           ) : (
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-sm font-bold text-slate-800">
+            <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4">
+              <p className="text-sm font-bold text-[var(--text-primary)]">
                 Want to return to
                 Free?
               </p>
 
-              <p className="mt-1 text-xs leading-5 text-slate-500">
+              <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
                 Subscription
                 cancellation will be
                 managed separately so
@@ -884,15 +884,15 @@ function BillingIntervalToggle({
     CaseBudgetBillingInterval;
 }) {
   return (
-    <div className="inline-flex w-full rounded-full border border-slate-200 bg-slate-100 p-1 sm:w-fit">
+    <div className="inline-flex w-full rounded-full border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-1 sm:w-fit">
       <Link
         href="/dashboard/settings/billing?interval=monthly"
         className={[
           "flex-1 whitespace-nowrap rounded-full px-4 py-2 text-center text-sm font-bold transition sm:flex-none",
           selectedInterval ===
           "monthly"
-            ? "bg-white text-slate-950 shadow-sm"
-            : "text-slate-500 hover:text-slate-900",
+            ? "bg-[var(--surface-raised)] text-[var(--text-primary)] shadow-sm"
+            : "text-[var(--text-muted)] hover:text-[var(--text-primary)]",
         ].join(
           " ",
         )}
@@ -906,8 +906,8 @@ function BillingIntervalToggle({
           "flex-1 whitespace-nowrap rounded-full px-4 py-2 text-center text-sm font-bold transition sm:flex-none",
           selectedInterval ===
           "annual"
-            ? "bg-white text-slate-950 shadow-sm"
-            : "text-slate-500 hover:text-slate-900",
+            ? "bg-[var(--surface-raised)] text-[var(--text-primary)] shadow-sm"
+            : "text-[var(--text-muted)] hover:text-[var(--text-primary)]",
         ].join(
           " ",
         )}
@@ -943,18 +943,18 @@ function BillingSummaryCard({
       : 0;
 
   return (
-    <section className="min-w-0 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+    <section className="min-w-0 rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface-default)] p-5 shadow-sm sm:p-6">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-muted)] text-[var(--text-secondary)]">
           <CircleDollarSign className="h-5 w-5" />
         </div>
 
         <div className="min-w-0">
-          <p className="text-sm font-black text-slate-950">
+          <p className="text-sm font-black text-[var(--text-primary)]">
             Billing summary
           </p>
 
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-[var(--text-muted)]">
             Current subscription
             details
           </p>
@@ -1017,12 +1017,12 @@ function BillingSummaryCard({
 
       {subscription
         ?.providerSubscriptionId ? (
-        <div className="mt-5 border-t border-slate-100 pt-4">
-          <p className="text-xs font-bold uppercase tracking-[0.08em] text-slate-400">
+        <div className="mt-5 border-t border-[var(--border-subtle)] pt-4">
+          <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--text-muted)]">
             Stripe subscription
           </p>
 
-          <p className="mt-1 break-all font-mono text-xs text-slate-500">
+          <p className="mt-1 break-all font-mono text-xs text-[var(--text-muted)]">
             {
               subscription
                 .providerSubscriptionId
@@ -1041,18 +1041,18 @@ function SubscriptionManagementCard({
     BillingSubscription;
 }) {
   return (
-    <section className="min-w-0 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+    <section className="min-w-0 rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface-default)] p-5 shadow-sm sm:p-6">
       <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-muted)] text-[var(--text-secondary)]">
           <ReceiptText className="h-5 w-5" />
         </div>
 
         <div className="min-w-0">
-          <p className="text-sm font-black text-slate-950">
+          <p className="text-sm font-black text-[var(--text-primary)]">
             Manage subscription
           </p>
 
-          <p className="mt-1 text-sm leading-6 text-slate-500">
+          <p className="mt-1 text-sm leading-6 text-[var(--text-muted)]">
             Control whether your
             current CASE Budget
             subscription renews at
@@ -1080,18 +1080,18 @@ function SubscriptionManagementCard({
 
 function SecureBillingCard() {
   return (
-    <section className="min-w-0 rounded-3xl border border-slate-200 bg-slate-50 p-5 sm:p-6">
+    <section className="min-w-0 rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-5 sm:p-6">
       <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-emerald-700 shadow-sm">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-default)] text-emerald-700 shadow-sm">
           <LockKeyhole className="h-5 w-5" />
         </div>
 
         <div className="min-w-0">
-          <p className="text-sm font-black text-slate-950">
+          <p className="text-sm font-black text-[var(--text-primary)]">
             Secure billing
           </p>
 
-          <p className="mt-1 text-sm leading-6 text-slate-500">
+          <p className="mt-1 text-sm leading-6 text-[var(--text-muted)]">
             Payments are securely
             processed by Stripe.
             CASE Budget does not
@@ -1129,13 +1129,13 @@ function SecureBillingCard() {
 
 function PlanComparison() {
   return (
-    <section className="min-w-0 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-      <div className="border-b border-slate-100 p-5 sm:p-6">
+    <section className="min-w-0 overflow-hidden rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface-default)] shadow-sm">
+      <div className="border-b border-[var(--border-subtle)] p-5 sm:p-6">
         <p className="text-xs font-black uppercase tracking-[0.14em] text-violet-600">
           Compare access
         </p>
 
-        <h2 className="mt-2 text-xl font-black text-slate-950">
+        <h2 className="mt-2 text-xl font-black text-[var(--text-primary)]">
           What each plan unlocks
         </h2>
       </div>
@@ -1143,16 +1143,16 @@ function PlanComparison() {
       <div className="w-full overflow-x-auto">
         <table className="w-full min-w-[760px] border-collapse">
           <thead>
-            <tr className="border-b border-slate-100">
-              <th className="px-6 py-4 text-left text-xs font-black uppercase tracking-[0.08em] text-slate-400">
+            <tr className="border-b border-[var(--border-subtle)]">
+              <th className="px-6 py-4 text-left text-xs font-black uppercase tracking-[0.08em] text-[var(--text-muted)]">
                 Feature
               </th>
 
-              <th className="px-5 py-4 text-center text-sm font-black text-slate-900">
+              <th className="px-5 py-4 text-center text-sm font-black text-[var(--text-primary)]">
                 Free
               </th>
 
-              <th className="px-5 py-4 text-center text-sm font-black text-slate-900">
+              <th className="px-5 py-4 text-center text-sm font-black text-[var(--text-primary)]">
                 Plus
               </th>
 
@@ -1266,8 +1266,8 @@ function ComparisonRow({
     boolean;
 }) {
   return (
-    <tr className="border-b border-slate-100 last:border-b-0">
-      <td className="px-6 py-4 text-sm font-semibold text-slate-700">
+    <tr className="border-b border-[var(--border-subtle)] last:border-b-0">
+      <td className="px-6 py-4 text-sm font-semibold text-[var(--text-secondary)]">
         {label}
       </td>
 
@@ -1301,11 +1301,11 @@ function ComparisonCell({
   return (
     <td className="px-5 py-4 text-center">
       {enabled ? (
-        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--primary)_10%,var(--surface-default))] text-emerald-600">
           <Check className="h-4 w-4" />
         </span>
       ) : (
-        <span className="text-slate-300">
+        <span className="text-[var(--text-muted)]">
           —
         </span>
       )}
@@ -1321,11 +1321,11 @@ function PlanFeature({
 }) {
   return (
     <li className="flex items-start gap-3">
-      <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+      <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--primary)_10%,var(--surface-default))] text-emerald-600">
         <Check className="h-3.5 w-3.5" />
       </span>
 
-      <span className="min-w-0 text-sm font-medium leading-6 text-slate-700">
+      <span className="min-w-0 text-sm font-medium leading-6 text-[var(--text-secondary)]">
         {label}
       </span>
     </li>
@@ -1374,18 +1374,18 @@ function SubscriptionDetail({
     typeof CalendarDays;
 }) {
   return (
-    <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4">
+    <div className="min-w-0 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-default)] p-4">
       <div className="flex min-w-0 gap-3">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-muted)] text-[var(--text-secondary)]">
           <Icon className="h-4 w-4" />
         </div>
 
         <div className="min-w-0">
-          <p className="text-xs font-bold uppercase tracking-[0.06em] text-slate-400">
+          <p className="text-xs font-bold uppercase tracking-[0.06em] text-[var(--text-muted)]">
             {label}
           </p>
 
-          <p className="mt-1 break-words text-sm font-bold text-slate-900">
+          <p className="mt-1 break-words text-sm font-bold text-[var(--text-primary)]">
             {value}
           </p>
         </div>
@@ -1406,11 +1406,11 @@ function SummaryRow({
 }) {
   return (
     <div className="flex min-w-0 items-start justify-between gap-4">
-      <span className="shrink-0 text-sm text-slate-500">
+      <span className="shrink-0 text-sm text-[var(--text-muted)]">
         {label}
       </span>
 
-      <span className="min-w-0 break-words text-right text-sm font-bold text-slate-900">
+      <span className="min-w-0 break-words text-right text-sm font-bold text-[var(--text-primary)]">
         {value}
       </span>
     </div>
@@ -1428,7 +1428,7 @@ function SecurityRow({
     string;
 }) {
   return (
-    <div className="flex items-start gap-3 text-sm text-slate-600">
+    <div className="flex items-start gap-3 text-sm text-[var(--text-secondary)]">
       <Icon className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
 
       <span className="min-w-0">
@@ -1845,7 +1845,7 @@ function getStatusStyles(
     status
   ) {
     case "active":
-      return "bg-emerald-100 text-emerald-800";
+      return "bg-[color-mix(in_srgb,var(--primary)_14%,var(--surface-default))] text-emerald-800";
 
     case "trialing":
       return "bg-blue-100 text-blue-800";
@@ -1860,11 +1860,11 @@ function getStatusStyles(
       return "bg-rose-100 text-rose-800";
 
     case "paused":
-      return "bg-slate-200 text-slate-700";
+      return "bg-slate-200 text-[var(--text-secondary)]";
 
     case "none":
     default:
-      return "bg-slate-100 text-slate-600";
+      return "bg-[var(--surface-muted)] text-[var(--text-secondary)]";
   }
 }
 

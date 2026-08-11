@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+
+import CaseBudgetLogo from "@/components/branding/CaseBudgetLogo";
 import {
   useActionState,
 } from "react";
@@ -410,16 +412,19 @@ function BrandMark({
           : "text-white focus-visible:ring-white",
       ].join(" ")}
     >
-      <span
-        className={[
-          "flex items-center justify-center rounded-xl font-black",
+      <CaseBudgetLogo
+        variant={
           compact
-            ? "h-11 w-11 bg-[var(--primary)] text-white"
-            : "h-12 w-12 bg-white text-[var(--primary)]",
-        ].join(" ")}
-      >
-        CB
-      </span>
+            ? "auto"
+            : "light"
+        }
+        size={
+          compact
+            ? "sm"
+            : "md"
+        }
+        alt="CASE Budget"
+      />
 
       <span>
         <span className="block text-lg font-black tracking-tight">
@@ -445,14 +450,14 @@ function AuthFooter() {
   return (
     <footer className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-[var(--text-muted)]">
       <Link
-        href="/privacy"
+        href="/legal/privacy"
         className="outline-none transition hover:text-[var(--text-primary)] focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
       >
         Privacy
       </Link>
 
       <Link
-        href="/terms"
+        href="/legal/terms"
         className="outline-none transition hover:text-[var(--text-primary)] focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
       >
         Terms

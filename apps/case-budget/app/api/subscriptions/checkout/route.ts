@@ -38,6 +38,10 @@ type UnknownRecord =
     unknown
   >;
 
+type CheckoutTheme =
+  | "light"
+  | "dark";
+
 type CheckoutRequestBody = {
   plan:
     Exclude<
@@ -47,6 +51,9 @@ type CheckoutRequestBody = {
 
   interval:
     CaseBudgetBillingInterval;
+
+  theme:
+    CheckoutTheme;
 };
 
 type ExistingSubscriptionRow = {
@@ -193,6 +200,7 @@ export async function POST(
     const {
       plan,
       interval,
+      theme,
     } =
       validatedRequest.value;
 
@@ -293,6 +301,8 @@ export async function POST(
         plan,
 
         interval,
+
+        theme,
 
         returnUrl,
       });
@@ -478,9 +488,9 @@ async function findExistingManagedSubscription(
   }
 
   return mapExistingSubscriptionRow(
-      data,
-    );
-    }
+    data,
+  );
+}
 
 function mapExistingSubscriptionRow(
   row:
@@ -683,6 +693,26 @@ function validateCheckoutRequest(
     };
   }
 
+  const themeValue =
+    getString(
+      record.theme,
+    );
+
+  if (
+    themeValue !==
+      "light" &&
+    themeValue !==
+      "dark"
+  ) {
+    return {
+      success:
+        false,
+
+      error:
+        "Invalid CASE Budget checkout theme.",
+    };
+  }
+
   return {
     success:
       true,
@@ -693,6 +723,9 @@ function validateCheckoutRequest(
 
       interval:
         intervalValue,
+
+      theme:
+        themeValue,
     },
   };
 }

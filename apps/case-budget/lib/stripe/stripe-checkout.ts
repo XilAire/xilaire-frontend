@@ -19,6 +19,10 @@ type PaidCaseBudgetPlan =
     "free"
   >;
 
+export type CheckoutTheme =
+  | "light"
+  | "dark";
+
 export type CreateEmbeddedCheckoutInput = {
   userId:
     string;
@@ -34,6 +38,9 @@ export type CreateEmbeddedCheckoutInput = {
 
   interval:
     CaseBudgetBillingInterval;
+
+  theme:
+    CheckoutTheme;
 
   returnUrl:
     string;
@@ -62,6 +69,7 @@ export async function createEmbeddedCheckoutSession({
   workspaceId,
   plan,
   interval,
+  theme,
   returnUrl,
 }: CreateEmbeddedCheckoutInput): Promise<EmbeddedCheckoutSessionResult> {
   const normalizedUserId =
@@ -85,6 +93,11 @@ export async function createEmbeddedCheckoutSession({
       returnUrl,
     );
 
+  const normalizedTheme =
+    normalizeCheckoutTheme(
+      theme,
+    );
+
   const stripe =
     getStripeServer();
 
@@ -93,6 +106,11 @@ export async function createEmbeddedCheckoutSession({
       plan,
       interval,
     });
+
+  const brandingSettings =
+    getStripeBrandingSettings(
+      normalizedTheme,
+    );
 
   const session =
     await stripe.checkout.sessions.create({
@@ -125,6 +143,9 @@ export async function createEmbeddedCheckoutSession({
       billing_address_collection:
         "auto",
 
+      branding_settings:
+        brandingSettings,
+
       metadata: {
         app:
           "case-budget",
@@ -140,6 +161,9 @@ export async function createEmbeddedCheckoutSession({
 
         billing_interval:
           interval,
+
+        theme:
+          normalizedTheme,
       },
 
       subscription_data: {
@@ -186,6 +210,58 @@ export async function createEmbeddedCheckoutSession({
 
     priceId,
   };
+}
+
+function getStripeBrandingSettings(
+  theme:
+    CheckoutTheme,
+) {
+  if (
+    theme ===
+    "dark"
+  ) {
+    return {
+      background_color:
+        "#111827",
+
+      button_color:
+        "#10B981",
+
+      border_style:
+        "rounded" as const,
+
+      display_name:
+        "CASE Budget",
+    };
+  }
+
+  return {
+    background_color:
+      "#FFFFFF",
+
+    button_color:
+      "#10B981",
+
+    border_style:
+      "rounded" as const,
+
+    display_name:
+      "CASE Budget",
+  };
+}
+
+function normalizeCheckoutTheme(
+  value:
+    CheckoutTheme,
+): CheckoutTheme {
+  if (
+    value ===
+    "dark"
+  ) {
+    return "dark";
+  }
+
+  return "light";
 }
 
 function normalizeRequiredValue(

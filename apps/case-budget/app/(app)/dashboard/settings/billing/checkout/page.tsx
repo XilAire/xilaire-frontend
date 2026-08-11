@@ -115,7 +115,7 @@ export default async function BillingCheckoutPage({
       <div className="mb-5">
         <Link
           href="/dashboard/settings/billing"
-          className="inline-flex min-h-10 items-center gap-2 rounded-full px-2 text-sm font-semibold text-slate-600 transition hover:text-slate-950"
+          className="inline-flex min-h-10 items-center gap-2 rounded-full px-2 text-sm font-semibold text-[var(--text-secondary)] transition hover:text-[var(--text-primary)]"
         >
           <ArrowLeft className="h-4 w-4" />
 
@@ -125,13 +125,13 @@ export default async function BillingCheckoutPage({
 
       <div className="mb-8">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-3 py-1.5 text-xs font-bold text-violet-700">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-[color-mix(in_srgb,var(--pro)_30%,var(--border-subtle))] bg-[color-mix(in_srgb,var(--pro)_10%,var(--surface-default))] px-3 py-1.5 text-xs font-bold text-[var(--pro)]">
             <LockKeyhole className="h-3.5 w-3.5" />
 
             Secure checkout
           </span>
 
-          <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600">
+          <span className="inline-flex items-center rounded-full border border-[var(--border-subtle)] bg-[var(--surface-default)] px-3 py-1.5 text-xs font-bold text-[var(--text-secondary)]">
             {interval ===
             "annual"
               ? "Annual billing"
@@ -139,12 +139,12 @@ export default async function BillingCheckoutPage({
           </span>
         </div>
 
-        <h1 className="mt-4 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
+        <h1 className="mt-4 text-2xl font-black tracking-tight text-[var(--text-primary)] sm:text-3xl">
           Upgrade to CASE Budget{" "}
           {entitlements.name}
         </h1>
 
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500 sm:text-base">
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-muted)] sm:text-base">
           Complete your
           subscription without
           leaving CASE Budget.
@@ -182,11 +182,11 @@ export default async function BillingCheckoutPage({
 
         <section>
           <div className="mb-4">
-            <h2 className="text-lg font-black tracking-tight text-slate-950">
+            <h2 className="text-lg font-black tracking-tight text-[var(--text-primary)]">
               Payment information
             </h2>
 
-            <p className="mt-1 text-sm leading-6 text-slate-500">
+            <p className="mt-1 text-sm leading-6 text-[var(--text-muted)]">
               Enter your payment
               details below to
               activate CASE Budget{" "}
@@ -244,28 +244,28 @@ function PlanSummaryCard({
       : "CASE Budget Plus";
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-      <div className="border-b border-slate-100 bg-gradient-to-br from-violet-50 via-white to-white p-6">
+    <div className="overflow-hidden rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface-default)] shadow-sm">
+      <div className="border-b border-[var(--border-subtle)] bg-[color-mix(in_srgb,var(--pro)_6%,var(--surface-default))] p-6 transition-colors duration-200">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.14em] text-violet-600">
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--pro)]">
               Selected plan
             </p>
 
-            <h2 className="mt-2 text-xl font-black tracking-tight text-slate-950">
+            <h2 className="mt-2 text-xl font-black tracking-tight text-[var(--text-primary)]">
               {planName}
             </h2>
           </div>
 
           {plan ===
           "pro" ? (
-            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-violet-600 px-3 py-1.5 text-xs font-bold text-white">
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[var(--pro)] px-3 py-1.5 text-xs font-bold text-[var(--primary-foreground)]">
               <Sparkles className="h-3.5 w-3.5" />
 
               Pro
             </span>
           ) : (
-            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-slate-900 px-3 py-1.5 text-xs font-bold text-white">
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[var(--text-primary)] px-3 py-1.5 text-xs font-bold text-[var(--primary-foreground)]">
               <BadgeCheck className="h-3.5 w-3.5" />
 
               Plus
@@ -275,13 +275,13 @@ function PlanSummaryCard({
 
         <div className="mt-5">
           <div className="flex items-end gap-2">
-            <span className="text-4xl font-black tracking-tight text-slate-950">
+            <span className="text-4xl font-black tracking-tight text-[var(--text-primary)]">
               {formatCurrency(
                 price,
               )}
             </span>
 
-            <span className="pb-1 text-sm font-semibold text-slate-500">
+            <span className="pb-1 text-sm font-semibold text-[var(--text-muted)]">
               /
               {interval ===
               "annual"
@@ -293,7 +293,7 @@ function PlanSummaryCard({
           {interval ===
           "annual" ? (
             <div className="mt-2 space-y-1">
-              <p className="text-sm font-semibold text-slate-600">
+              <p className="text-sm font-semibold text-[var(--text-secondary)]">
                 About{" "}
                 {formatCurrency(
                   monthlyEquivalent,
@@ -303,7 +303,7 @@ function PlanSummaryCard({
 
               {annualSavings !==
               null ? (
-                <p className="text-sm font-bold text-emerald-700">
+                <p className="text-sm font-bold text-[var(--success)]">
                   Save{" "}
                   {formatCurrency(
                     annualSavings,
@@ -313,7 +313,7 @@ function PlanSummaryCard({
               ) : null}
             </div>
           ) : (
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-2 text-sm text-[var(--text-muted)]">
               Billed monthly. Cancel
               according to your
               subscription terms.
@@ -323,7 +323,7 @@ function PlanSummaryCard({
       </div>
 
       <div className="p-6">
-        <p className="text-sm font-black text-slate-900">
+        <p className="text-sm font-black text-[var(--text-primary)]">
           Included with this plan
         </p>
 
@@ -342,11 +342,11 @@ function PlanSummaryCard({
                   }
                   className="flex items-start gap-3"
                 >
-                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--success)_10%,var(--surface-default))] text-[var(--success)]">
                     <Icon className="h-3.5 w-3.5" />
                   </span>
 
-                  <span className="text-sm font-medium leading-6 text-slate-700">
+                  <span className="text-sm font-medium leading-6 text-[var(--text-secondary)]">
                     {feature.label}
                   </span>
                 </li>
@@ -361,19 +361,19 @@ function PlanSummaryCard({
 
 function SecurityCard() {
   return (
-    <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+    <div className="rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-5">
       <div className="flex gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-slate-700 shadow-sm">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-default)] text-[var(--text-secondary)] shadow-sm">
           <LockKeyhole className="h-5 w-5" />
         </div>
 
         <div>
-          <p className="text-sm font-black text-slate-900">
+          <p className="text-sm font-black text-[var(--text-primary)]">
             Secure payment
             processing
           </p>
 
-          <p className="mt-1 text-xs leading-5 text-slate-500">
+          <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
             Payment details are
             collected and processed
             securely by Stripe.
@@ -390,17 +390,17 @@ function SecurityCard() {
 function InvalidCheckoutSelection() {
   return (
     <main className="mx-auto flex min-h-[60vh] w-full max-w-3xl items-center justify-center px-4 py-12 sm:px-6">
-      <div className="w-full rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+      <div className="w-full rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface-default)] p-8 text-center shadow-sm">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--warning)_10%,var(--surface-default))] text-[var(--warning)]">
           <CreditCard className="h-6 w-6" />
         </div>
 
-        <h1 className="mt-5 text-2xl font-black tracking-tight text-slate-950">
+        <h1 className="mt-5 text-2xl font-black tracking-tight text-[var(--text-primary)]">
           Choose a subscription
           first
         </h1>
 
-        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
+        <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[var(--text-muted)]">
           CASE Budget needs a
           valid Plus or Pro plan
           and a monthly or annual
@@ -410,7 +410,7 @@ function InvalidCheckoutSelection() {
 
         <Link
           href="/dashboard/settings/billing"
-          className="mt-6 inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-violet-600 px-5 text-sm font-bold text-white transition hover:bg-violet-700"
+          className="mt-6 inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[var(--pro)] px-5 text-sm font-bold text-[var(--primary-foreground)] transition hover:opacity-90"
         >
           <ArrowLeft className="h-4 w-4" />
 
