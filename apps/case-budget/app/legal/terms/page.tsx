@@ -3,6 +3,8 @@ import type {
 } from "next";
 import Link from "next/link";
 
+import CaseBudgetLogo from "@/components/branding/CaseBudgetLogo";
+
 export const metadata: Metadata = {
   title:
     "Terms of Service | CASE Budget",
@@ -1506,9 +1508,11 @@ function BrandMark() {
       aria-label="CASE Budget home"
       className="inline-flex items-center gap-3 rounded-xl text-[var(--text-primary)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
     >
-      <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--primary)] text-sm font-black text-white">
-        CB
-      </span>
+      <CaseBudgetLogo
+        variant="auto"
+        size="sm"
+        alt="CASE Budget"
+      />
 
       <span>
         <span className="block text-lg font-black tracking-tight">

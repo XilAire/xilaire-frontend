@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+
+import CaseBudgetLogo from "@/components/branding/CaseBudgetLogo";
 import {
   useSearchParams,
 } from "next/navigation";
@@ -558,16 +560,19 @@ function BrandMark({
           : "text-white focus-visible:ring-white",
       ].join(" ")}
     >
-      <span
-        className={[
-          "flex items-center justify-center rounded-xl font-black",
+      <CaseBudgetLogo
+        variant={
           compact
-            ? "h-11 w-11 bg-[var(--primary)] text-white"
-            : "h-12 w-12 bg-white text-[var(--primary)]",
-        ].join(" ")}
-      >
-        CB
-      </span>
+            ? "auto"
+            : "light"
+        }
+        size={
+          compact
+            ? "sm"
+            : "md"
+        }
+        alt="CASE Budget"
+      />
 
       <span>
         <span className="block text-lg font-black tracking-tight">
