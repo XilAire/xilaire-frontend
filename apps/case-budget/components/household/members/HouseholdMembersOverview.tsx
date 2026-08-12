@@ -1,12 +1,25 @@
 "use client";
 
 import {
+  useCallback,
+  useEffect,
   useMemo,
+  useState,
 } from "react";
+
+import InviteMemberModal from "@/components/household/members/InviteMemberModal";
 
 import {
   useApp,
 } from "@/components/providers/AppProvider";
+
+import {
+  getHouseholdMembers,
+} from "@/actions/household/get-household-members";
+
+import type {
+  HouseholdMemberRecord,
+} from "@/actions/household/get-household-members";
 
 type MemberRole =
   | "Owner"
@@ -35,11 +48,138 @@ type HouseholdMember = {
 };
 
 export default function HouseholdMembersOverview() {
+  const [
+    isInviteMemberModalOpen,
+    setIsInviteMemberModalOpen,
+  ] =
+    useState(
+      false,
+    );
+
+  const [
+    databaseMembers,
+    setDatabaseMembers,
+  ] =
+    useState<
+      HouseholdMemberRecord[]
+    >(
+      [],
+    );
+
+  const [
+    isLoadingMembers,
+    setIsLoadingMembers,
+  ] =
+    useState(
+      true,
+    );
+
+  const [
+    membersError,
+    setMembersError,
+  ] =
+    useState<
+      string | null
+    >(
+      null,
+    );
+
   const {
     currentUser,
     activeWorkspace,
   } =
     useApp();
+
+  const workspaceId =
+    activeWorkspace?.id ??
+    null;
+
+  const loadMembers =
+    useCallback(
+      async () => {
+        if (
+          !workspaceId
+        ) {
+          setDatabaseMembers(
+            [],
+          );
+
+          setMembersError(
+            null,
+          );
+
+          setIsLoadingMembers(
+            false,
+          );
+
+          return;
+        }
+
+        setIsLoadingMembers(
+          true,
+        );
+
+        setMembersError(
+          null,
+        );
+
+        try {
+          const result =
+            await getHouseholdMembers(
+              workspaceId,
+            );
+
+          if (
+            !result.success
+          ) {
+            setDatabaseMembers(
+              [],
+            );
+
+            setMembersError(
+              result.error,
+            );
+
+            return;
+          }
+
+          setDatabaseMembers(
+            result.members,
+          );
+        } catch (
+          error
+        ) {
+          console.error(
+            "[CASE Budget Household] Failed to load household members.",
+            error,
+          );
+
+          setDatabaseMembers(
+            [],
+          );
+
+          setMembersError(
+            "Unable to load household members.",
+          );
+        } finally {
+          setIsLoadingMembers(
+            false,
+          );
+        }
+      },
+      [
+        workspaceId,
+      ],
+    );
+
+  useEffect(
+    () => {
+      void loadMembers();
+    },
+    [
+      loadMembers,
+    ],
+  );
 
   const members =
     useMemo<
@@ -47,6 +187,51 @@ export default function HouseholdMembersOverview() {
     >(
       () => {
         if (
+          databaseMembers.length >
+          0
+        ) {
+          return databaseMembers
+            .filter(
+              (
+                member,
+              ) =>
+                member.status ===
+                  "active" ||
+                member.status ===
+                  "invited",
+            )
+            .map(
+              (
+                member,
+              ) => ({
+                id:
+                  member.id,
+
+                name:
+                  member.name,
+
+                email:
+                  member.email,
+
+                role:
+                  formatMemberRole(
+                    member.role,
+                  ),
+
+                status:
+                  member.status ===
+                    "invited"
+                    ? "invited"
+                    : "active",
+
+                isCurrentUser:
+                  member.isCurrentUser,
+              }),
+            );
+        }
+
+        if (
+          isLoadingMembers ||
           !currentUser
         ) {
           return [];
@@ -79,6 +264,8 @@ export default function HouseholdMembersOverview() {
       [
         activeWorkspace?.isOwner,
         currentUser,
+        databaseMembers,
+        isLoadingMembers,
       ],
     );
 
@@ -109,39 +296,90 @@ export default function HouseholdMembersOverview() {
       activeWorkspace?.type,
     );
 
-  return (
-  <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-      <PageHeader />
+  function handleOpenInviteMemberModal() {
+    setIsInviteMemberModalOpen(
+      true,
+    );
+  }
 
-      <HouseholdSummary
+  function handleCloseInviteMemberModal() {
+    setIsInviteMemberModalOpen(
+      false,
+    );
+  }
+
+  function handleInvitationSent() {
+    void loadMembers();
+  }
+
+  return (
+    <>
+      <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <PageHeader
+          onInviteMember={
+            handleOpenInviteMemberModal
+          }
+        />
+
+        <HouseholdSummary
+          workspaceName={
+            workspaceName
+          }
+          workspaceType={
+            workspaceType
+          }
+          memberCount={
+            activeMemberCount
+          }
+          pendingInviteCount={
+            pendingInviteCount
+          }
+        />
+
+        <MembersSection
+          members={
+            members
+          }
+          isLoading={
+            isLoadingMembers
+          }
+          error={
+            membersError
+          }
+          onRetry={
+            loadMembers
+          }
+        />
+
+        <HouseholdAccessSection />
+
+        <HouseholdUpgradeNotice />
+      </div>
+
+      <InviteMemberModal
+        open={
+          isInviteMemberModalOpen
+        }
         workspaceName={
           workspaceName
         }
-        workspaceType={
-          workspaceType
+        onClose={
+          handleCloseInviteMemberModal
         }
-        memberCount={
-          activeMemberCount
-        }
-        pendingInviteCount={
-          pendingInviteCount
+        onInvitationSent={
+          handleInvitationSent
         }
       />
-
-      <MembersSection
-        members={
-          members
-        }
-      />
-
-      <HouseholdAccessSection />
-
-      <HouseholdUpgradeNotice />
-    </div>
+    </>
   );
 }
 
-function PageHeader() {
+function PageHeader({
+  onInviteMember,
+}: {
+  onInviteMember:
+    () => void;
+}) {
   return (
     <header className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
       <div className="min-w-0">
@@ -161,6 +399,9 @@ function PageHeader() {
 
       <button
         type="button"
+        onClick={
+          onInviteMember
+        }
         className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-4 text-sm font-bold text-[var(--primary-foreground)] shadow-sm outline-none transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
       >
         <PlusIcon />
@@ -279,9 +520,21 @@ function SummaryMetric({
 
 function MembersSection({
   members,
+  isLoading,
+  error,
+  onRetry,
 }: {
   members:
     HouseholdMember[];
+
+  isLoading:
+    boolean;
+
+  error:
+    string | null;
+
+  onRetry:
+    () => void | Promise<void>;
 }) {
   return (
     <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-default)]">
@@ -296,17 +549,32 @@ function MembersSection({
           </p>
         </div>
 
-        <span className="text-xs font-semibold text-[var(--text-muted)]">
-          {members.length}{" "}
-          {members.length ===
-          1
-            ? "member"
-            : "members"}
-        </span>
+        {!isLoading ? (
+          <span className="text-xs font-semibold text-[var(--text-muted)]">
+            {members.length}{" "}
+            {members.length ===
+            1
+              ? "member"
+              : "members"}
+          </span>
+        ) : null}
       </div>
 
-      {members.length >
-      0 ? (
+      {isLoading ? (
+        <MembersLoadingState />
+      ) : error &&
+        members.length ===
+          0 ? (
+        <MembersErrorState
+          message={
+            error
+          }
+          onRetry={
+            onRetry
+          }
+        />
+      ) : members.length >
+        0 ? (
         <div className="divide-y divide-[var(--border-subtle)]">
           {members.map(
             (
@@ -385,6 +653,77 @@ function MemberRow({
           <MoreIcon />
         </button>
       </div>
+    </div>
+  );
+}
+
+function MembersLoadingState() {
+  return (
+    <div className="divide-y divide-[var(--border-subtle)]">
+      {[
+        1,
+        2,
+      ].map(
+        (
+          item,
+        ) => (
+          <div
+            key={
+              item
+            }
+            className="flex animate-pulse items-center gap-4 p-5 sm:p-6"
+          >
+            <div className="h-11 w-11 shrink-0 rounded-full bg-[var(--surface-muted)]" />
+
+            <div className="min-w-0 flex-1">
+              <div className="h-4 w-40 rounded bg-[var(--surface-muted)]" />
+
+              <div className="mt-2 h-3 w-56 max-w-full rounded bg-[var(--surface-muted)]" />
+            </div>
+
+            <div className="hidden h-7 w-20 rounded-full bg-[var(--surface-muted)] sm:block" />
+          </div>
+        ),
+      )}
+    </div>
+  );
+}
+
+function MembersErrorState({
+  message,
+  onRetry,
+}: {
+  message:
+    string;
+
+  onRetry:
+    () => void | Promise<void>;
+}) {
+  return (
+    <div className="flex flex-col items-center px-5 py-12 text-center">
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[color-mix(in_srgb,var(--danger)_10%,transparent)] text-[var(--danger)]">
+        <WarningIcon />
+      </div>
+
+      <h3 className="mt-4 text-base font-bold text-[var(--text-primary)]">
+        Unable to load members
+      </h3>
+
+      <p className="mt-2 max-w-md text-sm leading-6 text-[var(--text-muted)]">
+        {message}
+      </p>
+
+      <button
+        type="button"
+        onClick={
+          () => {
+            void onRetry();
+          }
+        }
+        className="mt-5 inline-flex min-h-10 items-center justify-center rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-default)] px-4 text-sm font-bold text-[var(--text-primary)] outline-none transition hover:bg-[var(--surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+      >
+        Try again
+      </button>
     </div>
   );
 }
@@ -585,6 +924,28 @@ function EmptyMembersState() {
   );
 }
 
+function formatMemberRole(
+  role:
+    HouseholdMemberRecord["role"],
+): MemberRole {
+  switch (
+    role
+  ) {
+    case "owner":
+      return "Owner";
+
+    case "admin":
+      return "Admin";
+
+    case "viewer":
+      return "Viewer";
+
+    case "member":
+    default:
+      return "Member";
+  }
+}
+
 function formatWorkspaceType(
   value:
     string | undefined,
@@ -596,14 +957,18 @@ function formatWorkspaceType(
   }
 
   return `${value
-    .split("-")
+    .split(
+      "-",
+    )
     .map(
       (
         part,
       ) =>
-        part.charAt(
-          0,
-        ).toUpperCase() +
+        part
+          .charAt(
+            0,
+          )
+          .toUpperCase() +
         part.slice(
           1,
         ),
@@ -640,8 +1005,10 @@ function getInitials(
       )
       .toUpperCase();
 
-  return initials ||
-    "CB";
+  return (
+    initials ||
+    "CB"
+  );
 }
 
 function PlusIcon() {
@@ -700,6 +1067,7 @@ function UsersIcon() {
         cy="8"
         r="4"
       />
+
       <path d="M2 21a7 7 0 0 1 14 0" />
       <path d="M16 3.5a4 4 0 0 1 0 8" />
       <path d="M18 15a6 6 0 0 1 4 6" />
@@ -725,6 +1093,7 @@ function UserIcon() {
         cy="8"
         r="4"
       />
+
       <path d="M4 21a8 8 0 0 1 16 0" />
     </svg>
   );
@@ -781,6 +1150,7 @@ function EyeIcon() {
       aria-hidden="true"
     >
       <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
+
       <circle
         cx="12"
         cy="12"
@@ -822,16 +1192,38 @@ function MoreIcon() {
         cy="12"
         r="1.4"
       />
+
       <circle
         cx="12"
         cy="12"
         r="1.4"
       />
+
       <circle
         cx="19"
         cy="12"
         r="1.4"
       />
+    </svg>
+  );
+}
+
+function WarningIcon() {
+  return (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M10.3 3.7 2.5 17.2A2 2 0 0 0 4.2 20h15.6a2 2 0 0 0 1.7-2.8L13.7 3.7a2 2 0 0 0-3.4 0Z" />
+      <path d="M12 9v4" />
+      <path d="M12 17h.01" />
     </svg>
   );
 }
