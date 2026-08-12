@@ -46,7 +46,7 @@ export default function InviteMemberModal({
       null,
     );
 
-  const emailInputRef =
+  const displayNameInputRef =
     useRef<HTMLInputElement | null>(
       null,
     );
@@ -91,7 +91,7 @@ export default function InviteMemberModal({
       const timeoutId =
         window.setTimeout(
           () => {
-            emailInputRef.current?.focus();
+            displayNameInputRef.current?.focus();
           },
           50,
         );
@@ -182,6 +182,9 @@ export default function InviteMemberModal({
   ) {
     return null;
   }
+
+  const displayNameError =
+    state.fieldErrors.displayName;
 
   const emailError =
     state.fieldErrors.email;
@@ -291,6 +294,70 @@ export default function InviteMemberModal({
 
           <div>
             <label
+              htmlFor="invite-member-display-name"
+              className="block text-sm font-bold text-[var(--text-primary)]"
+            >
+              Member name
+            </label>
+
+            <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
+              Enter the name this person should use in CASE Budget.
+            </p>
+
+            <div className="mt-3">
+              <input
+                ref={
+                  displayNameInputRef
+                }
+                id="invite-member-display-name"
+                name="displayName"
+                type="text"
+                autoComplete="name"
+                maxLength={
+                  120
+                }
+                placeholder="Example: Jane Smith"
+                disabled={
+                  isPending
+                }
+                aria-invalid={
+                  Boolean(
+                    displayNameError,
+                  )
+                }
+                aria-describedby={
+                  displayNameError
+                    ? "invite-member-display-name-error"
+                    : undefined
+                }
+                className={[
+                  "min-h-12 w-full rounded-xl border bg-[var(--surface-subtle)] px-4 text-sm text-[var(--text-primary)] outline-none transition",
+                  "placeholder:text-[var(--text-muted)]",
+                  "focus:ring-2 focus:ring-[var(--focus-ring)]",
+                  "disabled:cursor-not-allowed disabled:opacity-60",
+                  displayNameError
+                    ? "border-[var(--danger)]"
+                    : "border-[var(--border-subtle)]",
+                ].join(
+                  " ",
+                )}
+              />
+            </div>
+
+            {displayNameError ? (
+              <p
+                id="invite-member-display-name-error"
+                className="mt-2 text-xs font-semibold text-[var(--danger)]"
+              >
+                {
+                  displayNameError
+                }
+              </p>
+            ) : null}
+          </div>
+
+          <div>
+            <label
               htmlFor="invite-member-email"
               className="block text-sm font-bold text-[var(--text-primary)]"
             >
@@ -303,9 +370,6 @@ export default function InviteMemberModal({
 
             <div className="mt-3">
               <input
-                ref={
-                  emailInputRef
-                }
                 id="invite-member-email"
                 name="email"
                 type="email"

@@ -225,6 +225,9 @@ const HOUSEHOLD_MEMBERS_PATH =
 const ACCEPT_INVITE_PATH =
   "/accept-invite";
 
+const DISPLAY_NAME_MAX_LENGTH =
+  120;
+
 const MEMBER_LABEL_MAX_LENGTH =
   80;
 
@@ -248,12 +251,49 @@ const DEFAULT_APP_URL =
  * - Invitations are represented by workspace_members rows with
  *   status = "invited".
  * - CASE Budget's existing branded Supabase invitation-email flow is reused.
+ * - The invitee's real display name is stored in Supabase Auth metadata.
  */
 export async function inviteHouseholdMember(
   input:
     InviteHouseholdMemberInput,
 ): Promise<InviteHouseholdMemberResult> {
   try {
+    const normalizedDisplayName =
+      normalizeOptionalText(
+        input.displayName,
+      );
+
+    if (
+      !normalizedDisplayName
+    ) {
+      return failure({
+        code:
+          "invalid-display-name",
+
+        message:
+          "Enter the member's name.",
+
+        field:
+          "displayName",
+      });
+    }
+
+    if (
+      normalizedDisplayName.length >
+        DISPLAY_NAME_MAX_LENGTH
+    ) {
+      return failure({
+        code:
+          "invalid-display-name",
+
+        message:
+          `Member name must be ${DISPLAY_NAME_MAX_LENGTH} characters or fewer.`,
+
+        field:
+          "displayName",
+      });
+    }
+
     const normalizedEmail =
       normalizeEmail(
         input.email,
@@ -499,8 +539,8 @@ export async function inviteHouseholdMember(
     }
 
     /**
-     * If this email already belongs to a Supabase Auth user, check the
-     * workspace membership before generating another invitation email.
+     * If this email already belongs to a Supabase Auth user, inspect the
+     * existing workspace membership before generating another invitation.
      */
     const existingAuthUserResult =
       await findAuthUserByEmail(
@@ -606,11 +646,11 @@ export async function inviteHouseholdMember(
       buildInvitationRedirectUrl();
 
     /**
-     * The existing CASE Budget auth-email service:
+     * Store the person's actual name in the Supabase Auth user metadata.
      *
-     * 1. Generates a Supabase "invite" link.
-     * 2. Returns the invited Auth user.
-     * 3. Sends the branded CASE Budget invitation email.
+     * Multiple conventional keys are intentionally populated because
+     * different parts of Supabase and CASE Budget may read different
+     * metadata conventions.
      */
     const invitationResult =
       await sendWorkspaceInvitationEmail({
@@ -630,6 +670,15 @@ export async function inviteHouseholdMember(
         metadata: {
           app:
             "case-budget",
+
+          display_name:
+            normalizedDisplayName,
+
+          full_name:
+            normalizedDisplayName,
+
+          name:
+            normalizedDisplayName,
 
           workspace_id:
             workspaceId,
@@ -702,6 +751,42 @@ export async function inviteHouseholdMember(
     }
 
     /**
+     * Ensure the invited Auth user's metadata contains the display name.
+     *
+     * This also covers invitation-service implementations where the
+     * generated invite user is returned before metadata is reflected in
+     * the Auth user record.
+     */
+    const authMetadataResult =
+      await updateInvitedUserMetadata({
+        userId:
+          invitedUserId,
+
+        displayName:
+          normalizedDisplayName,
+
+        workspaceId,
+
+        workspaceName:
+          workspace.name,
+
+        workspaceRole:
+          input.role,
+
+        invitedBy:
+          userId,
+      });
+
+    if (
+      authMetadataResult
+    ) {
+      console.error(
+        "[CASE Budget Household Invite] Failed to update invited Auth user metadata.",
+        authMetadataResult,
+      );
+    }
+
+    /**
      * If the invite link created a previously unknown Supabase Auth user,
      * inspect membership again now that we have its user ID.
      */
@@ -748,12 +833,18 @@ export async function inviteHouseholdMember(
       }
     }
 
+    /**
+     * member_label is a household relationship/description such as:
+     *
+     * Spouse
+     * Parent
+     * Advisor
+     *
+     * It is intentionally not populated from the user's workspace role.
+     */
     const memberLabel:
       string | null =
       normalizedMemberLabel ??
-      getDefaultMemberLabel(
-        input.role,
-      ) ??
       null;
 
     let membershipId:
@@ -953,6 +1044,9 @@ export async function inviteHouseholdMember(
 
         workspaceId,
 
+        displayName:
+          normalizedDisplayName,
+
         email:
           normalizedEmail,
 
@@ -1007,10 +1101,6 @@ export async function inviteHouseholdMember(
 
 /**
  * Form-action adapter for InviteMemberModal.
- *
- * This allows the modal to use React useActionState while the core
- * inviteHouseholdMember() function remains reusable from other server-side
- * flows.
  */
 export async function inviteHouseholdMemberAction(
   _previousState:
@@ -1020,6 +1110,13 @@ export async function inviteHouseholdMemberAction(
   formData:
     FormData,
 ): Promise<InviteHouseholdMemberActionState> {
+  const displayName =
+    normalizeFormDataText(
+      formData.get(
+        "displayName",
+      ),
+    );
+
   const email =
     normalizeFormDataText(
       formData.get(
@@ -1040,6 +1137,47 @@ export async function inviteHouseholdMemberAction(
         "memberLabel",
       ),
     );
+
+  if (
+    !displayName
+  ) {
+    return {
+      status:
+        "error",
+
+      message:
+        "Enter the name of the person you want to invite.",
+
+      fieldErrors: {
+        displayName:
+          "Member name is required.",
+      },
+
+      invitation:
+        null,
+    };
+  }
+
+  if (
+    displayName.length >
+    DISPLAY_NAME_MAX_LENGTH
+  ) {
+    return {
+      status:
+        "error",
+
+      message:
+        "Enter a shorter member name.",
+
+      fieldErrors: {
+        displayName:
+          `Member name must be ${DISPLAY_NAME_MAX_LENGTH} characters or fewer.`,
+      },
+
+      invitation:
+        null,
+    };
+  }
 
   if (
     !email
@@ -1085,6 +1223,8 @@ export async function inviteHouseholdMemberAction(
 
   const result =
     await inviteHouseholdMember({
+      displayName,
+
       email,
 
       role:
@@ -1130,7 +1270,7 @@ export async function inviteHouseholdMemberAction(
       "success",
 
     message:
-      `Invitation sent to ${result.data.email}.`,
+      `Invitation sent to ${result.data.displayName} at ${result.data.email}.`,
 
     fieldErrors: {},
 
@@ -1224,6 +1364,117 @@ async function getWorkspaceMembership({
   }
 }
 
+async function updateInvitedUserMetadata({
+  userId,
+  displayName,
+  workspaceId,
+  workspaceName,
+  workspaceRole,
+  invitedBy,
+}: {
+  userId:
+    string;
+
+  displayName:
+    string;
+
+  workspaceId:
+    string;
+
+  workspaceName:
+    string;
+
+  workspaceRole:
+    HouseholdInvitationRole;
+
+  invitedBy:
+    string;
+}): Promise<Error | null> {
+  try {
+    const admin =
+      createAdminClient();
+
+    const {
+      data:
+        currentUserResult,
+      error:
+        currentUserError,
+    } =
+      await admin.auth.admin.getUserById(
+        userId,
+      );
+
+    if (
+      currentUserError
+    ) {
+      return new Error(
+        currentUserError.message,
+      );
+    }
+
+    const existingMetadata =
+      currentUserResult.user
+        ?.user_metadata ??
+      {};
+
+    const {
+      error:
+        updateError,
+    } =
+      await admin.auth.admin.updateUserById(
+        userId,
+        {
+          user_metadata: {
+            ...existingMetadata,
+
+            app:
+              "case-budget",
+
+            display_name:
+              displayName,
+
+            full_name:
+              displayName,
+
+            name:
+              displayName,
+
+            workspace_id:
+              workspaceId,
+
+            workspace_name:
+              workspaceName,
+
+            workspace_role:
+              workspaceRole,
+
+            invited_by:
+              invitedBy,
+          },
+        },
+      );
+
+    if (
+      updateError
+    ) {
+      return new Error(
+        updateError.message,
+      );
+    }
+
+    return null;
+  } catch (
+    error
+  ) {
+    return error instanceof
+      Error
+      ? error
+      : new Error(
+          "Unknown Auth metadata update error.",
+        );
+  }
+}
+
 function getExistingMembershipFailure(
   membership:
     WorkspaceMembershipRow | null,
@@ -1285,11 +1536,6 @@ function getExistingMembershipFailure(
     });
   }
 
-  /**
-   * Removed memberships and expired invitations may be reused.
-   * Their existing workspace_members row will be reset to invited after
-   * a new secure invitation is generated.
-   */
   return null;
 }
 
@@ -1438,16 +1684,6 @@ function isInvitationExpired(
   );
 }
 
-/**
- * Builds the redirect used by Supabase for a household invitation.
- *
- * The invitee must first pass through CASE Budget's existing callback route.
- * The callback establishes the authenticated Supabase session.
- *
- * After authentication, the invitee is sent to /accept-invite instead of
- * directly into the dashboard. This ensures the invited user creates a
- * permanent password before the workspace membership becomes active.
- */
 function buildInvitationRedirectUrl() {
   const configuredAppUrl =
     normalizeOptionalText(
@@ -1484,6 +1720,17 @@ function getUserDisplayName(
     user.user_metadata ??
     {};
 
+  const displayName =
+    normalizeOptionalText(
+      metadata.display_name,
+    );
+
+  if (
+    displayName
+  ) {
+    return displayName;
+  }
+
   const fullName =
     normalizeOptionalText(
       metadata.full_name,
@@ -1493,6 +1740,17 @@ function getUserDisplayName(
     fullName
   ) {
     return fullName;
+  }
+
+  const name =
+    normalizeOptionalText(
+      metadata.name,
+    );
+
+  if (
+    name
+  ) {
+    return name;
   }
 
   const firstName =
@@ -1530,24 +1788,6 @@ function getUserDisplayName(
     ) ??
     "A CASE Budget member"
   );
-}
-
-function getDefaultMemberLabel(
-  role:
-    HouseholdInvitationRole,
-): string {
-  switch (
-    role
-  ) {
-    case "admin":
-      return "Administrator";
-
-    case "member":
-      return "Member";
-
-    case "viewer":
-      return "Viewer";
-  }
 }
 
 function normalizeEmail(

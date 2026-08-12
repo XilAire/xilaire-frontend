@@ -122,7 +122,7 @@ type WorkspaceMemberRow = {
 };
 
 type ProfileRow = {
-  user_id:
+  id:
     string;
 
   display_name:
@@ -380,7 +380,7 @@ export async function getHouseholdMembers(
           )
           .select(
             [
-              "user_id",
+              "id",
               "display_name",
               "email",
             ].join(
@@ -388,7 +388,7 @@ export async function getHouseholdMembers(
             ),
           )
           .in(
-            "user_id",
+            "id",
             userIds,
           );
 
@@ -413,7 +413,7 @@ export async function getHouseholdMembers(
           profileRows
         ) {
           profileMap.set(
-            profile.user_id,
+            profile.id,
             profile,
           );
         }

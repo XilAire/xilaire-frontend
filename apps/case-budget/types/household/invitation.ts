@@ -57,6 +57,9 @@ export type HouseholdInvitationMember = {
 };
 
 export type InviteHouseholdMemberInput = {
+  displayName:
+    string;
+
   email:
     string;
 
@@ -79,6 +82,9 @@ export type InviteHouseholdMemberSuccess = {
       string;
 
     workspaceId:
+      string;
+
+    displayName:
       string;
 
     email:
@@ -122,6 +128,7 @@ export type InviteHouseholdMemberResult =
   | InviteHouseholdMemberFailure;
 
 export type InviteHouseholdMemberErrorCode =
+  | "invalid-display-name"
   | "invalid-email"
   | "invalid-role"
   | "workspace-not-found"
@@ -138,6 +145,7 @@ export type InviteHouseholdMemberErrorCode =
   | "unexpected-error";
 
 export type InviteHouseholdMemberField =
+  | "displayName"
   | "email"
   | "role"
   | "memberLabel";
@@ -152,6 +160,9 @@ export type InviteHouseholdMemberActionState = {
     string;
 
   fieldErrors: {
+    displayName?:
+      string;
+
     email?:
       string;
 
