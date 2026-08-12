@@ -12,8 +12,11 @@ import {
 
 import {
   acceptHouseholdInviteAction,
-  initialAcceptHouseholdInviteActionState,
 } from "@/actions/household/accept-invite";
+
+import {
+  initialAcceptHouseholdInviteActionState,
+} from "@/types/household/accept-invite";
 
 export default function AcceptInviteForm() {
   const router =

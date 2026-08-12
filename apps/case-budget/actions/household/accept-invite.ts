@@ -12,33 +12,10 @@ import type {
   WorkspaceMembershipStatusDatabaseEnum,
 } from "@/types/database";
 
-export type AcceptHouseholdInviteActionState = {
-  success:
-    boolean;
-
-  message:
-    string | null;
-
-  error:
-    string | null;
-
-  workspaceId:
-    string | null;
-
-  workspaceName:
-    string | null;
-
-  redirectTo:
-    string | null;
-};
-
-export type AcceptHouseholdInviteInput = {
-  password:
-    string;
-
-  confirmPassword:
-    string;
-};
+import type {
+  AcceptHouseholdInviteActionState,
+  AcceptHouseholdInviteInput,
+} from "@/types/household/accept-invite";
 
 type WorkspaceMembershipRow = {
   id:
@@ -77,32 +54,12 @@ const MINIMUM_PASSWORD_LENGTH =
 const DEFAULT_REDIRECT_PATH =
   "/dashboard";
 
-export const initialAcceptHouseholdInviteActionState:
-  AcceptHouseholdInviteActionState = {
-    success:
-      false,
-
-    message:
-      null,
-
-    error:
-      null,
-
-    workspaceId:
-      null,
-
-    workspaceName:
-      null,
-
-    redirectTo:
-      null,
-  };
-
 /**
- * React useActionState adapter.
+ * React useActionState-compatible action.
  *
- * AcceptInviteForm submits FormData, while the core invitation acceptance
- * function accepts a strongly typed object.
+ * The client form submits FormData. This adapter extracts the password
+ * values and passes them into the strongly typed invitation acceptance
+ * function.
  */
 export async function acceptHouseholdInviteAction(
   _previousState:
@@ -173,20 +130,12 @@ export async function acceptHouseholdInvite(
       );
     }
 
-    /*
-     * requireCaseBudgetUser() verifies the authenticated Supabase session
-     * and returns both the authenticated user ID and the matching server-side
-     * Supabase client.
-     */
     const {
       userId,
       supabase,
     } =
       await requireCaseBudgetUser();
 
-    /*
-     * Locate the newest pending invitation for this authenticated user.
-     */
     const membershipResult =
       await supabase
         .from(
@@ -250,10 +199,6 @@ export async function acceptHouseholdInvite(
       );
     }
 
-    /*
-     * Explicit application-level ownership check in addition to the database
-     * query filter.
-     */
     if (
       membership.user_id !==
       userId
@@ -296,9 +241,6 @@ export async function acceptHouseholdInvite(
       );
     }
 
-    /*
-     * Verify that the destination workspace still exists and remains active.
-     */
     const workspaceResult =
       await supabase
         .from(
@@ -353,12 +295,6 @@ export async function acceptHouseholdInvite(
       );
     }
 
-    /*
-     * The Supabase invitation link authenticated the invitee.
-     *
-     * Establish a permanent password so they can later sign in normally
-     * using their invited email address and password.
-     */
     const updateUserResult =
       await supabase.auth.updateUser({
         password,
@@ -379,10 +315,6 @@ export async function acceptHouseholdInvite(
       );
     }
 
-    /*
-     * Ensure Supabase updated the same authenticated user that owns the
-     * pending invitation.
-     */
     const updatedUser =
       updateUserResult.data.user;
 
@@ -413,18 +345,6 @@ export async function acceptHouseholdInvite(
     const joinedAt =
       new Date().toISOString();
 
-    /*
-     * Activate only the exact verified membership.
-     *
-     * We match:
-     *
-     * - membership ID
-     * - authenticated user ID
-     * - workspace ID
-     * - invited status
-     *
-     * so a stale or unrelated membership cannot be activated.
-     */
     const membershipUpdateResult =
       await supabase
         .from(
@@ -490,10 +410,6 @@ export async function acceptHouseholdInvite(
       );
     }
 
-    /*
-     * Refresh areas of CASE Budget whose content depends on workspace
-     * membership.
-     */
     revalidatePath(
       "/dashboard",
     );
@@ -622,13 +538,6 @@ function normalizePassword(
   value:
     unknown,
 ): string {
-  /*
-   * Passwords intentionally are not trimmed.
-   *
-   * Leading or trailing spaces can legitimately be part of a password.
-   * Altering the supplied value would make the stored password differ from
-   * the value the user believes they created.
-   */
   return typeof value ===
     "string"
     ? value
