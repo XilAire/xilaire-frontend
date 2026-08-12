@@ -8,6 +8,10 @@ import {
   requireCaseBudgetUser,
 } from "@/lib/auth/server-auth";
 
+import {
+  createWorkspaceAdminClient,
+} from "@/lib/supabase/admin";
+
 import type {
   WorkspaceMembershipStatusDatabaseEnum,
 } from "@/types/database";
@@ -89,17 +93,15 @@ export async function acceptHouseholdInviteAction(
 /**
  * Completes an invited CASE Budget household member's account setup.
  *
- * Flow:
+ * Security model:
  *
- * - Verify password requirements.
- * - Verify the authenticated invitation user.
- * - Locate the pending workspace membership.
- * - Verify invitation expiration.
- * - Verify the workspace is active.
- * - Save a permanent Supabase Auth password.
- * - Change workspace membership from invited to active.
- * - Record joined_at.
- * - Return the dashboard destination.
+ * - requireCaseBudgetUser() verifies the authenticated Supabase user.
+ * - The authenticated session client is used to update that user's password.
+ * - A trusted server-side workspace admin client is used only for the
+ *   controlled invitation membership lookup and activation.
+ *
+ * This is important because normal workspace RLS may intentionally prevent
+ * an authenticated user from reading a membership whose status is "invited".
  */
 export async function acceptHouseholdInvite(
   input:
@@ -130,14 +132,41 @@ export async function acceptHouseholdInvite(
       );
     }
 
+    /**
+     * Authenticate the invitee through the normal CASE Budget session.
+     *
+     * This gives us:
+     *
+     * - the trusted authenticated user ID
+     * - the authenticated Supabase client required to update the user's
+     *   own Auth password
+     */
     const {
       userId,
       supabase,
     } =
       await requireCaseBudgetUser();
 
-    const membershipResult =
-      await supabase
+    /**
+     * Use the trusted server-side workspace client for invitation data.
+     *
+     * Do not use the normal authenticated client for the pending invitation
+     * query because workspace RLS may hide membership rows whose status is
+     * still "invited".
+     */
+    const workspaceAdmin =
+      createWorkspaceAdminClient();
+
+    /**
+     * Locate the newest pending invitation for this exact authenticated user.
+     */
+    const {
+      data:
+        membershipData,
+      error:
+        membershipError,
+    } =
+      await workspaceAdmin
         .from(
           "workspace_members",
         )
@@ -174,11 +203,16 @@ export async function acceptHouseholdInvite(
         .maybeSingle();
 
     if (
-      membershipResult.error
+      membershipError
     ) {
       console.error(
         "[CASE Budget Household Invite] Unable to load pending invitation.",
-        membershipResult.error,
+        {
+          userId,
+
+          error:
+            membershipError,
+        },
       );
 
       return createErrorState(
@@ -188,17 +222,30 @@ export async function acceptHouseholdInvite(
 
     const membership =
       parseMembershipRow(
-        membershipResult.data,
+        membershipData,
       );
 
     if (
       !membership
     ) {
+      console.error(
+        "[CASE Budget Household Invite] No pending invitation was found for authenticated user.",
+        {
+          userId,
+        },
+      );
+
       return createErrorState(
         "No pending household invitation was found for this account.",
       );
     }
 
+    /**
+     * Defense-in-depth check.
+     *
+     * The database query already requires user_id = authenticated userId,
+     * but we explicitly verify it before any Auth or membership state change.
+     */
     if (
       membership.user_id !==
       userId
@@ -214,6 +261,9 @@ export async function acceptHouseholdInvite(
 
           membershipId:
             membership.id,
+
+          workspaceId:
+            membership.workspace_id,
         },
       );
 
@@ -241,8 +291,19 @@ export async function acceptHouseholdInvite(
       );
     }
 
-    const workspaceResult =
-      await supabase
+    /**
+     * Load the destination workspace using the trusted workspace client.
+     *
+     * A newly invited user may not yet have RLS permission to read the
+     * workspace until their membership becomes active.
+     */
+    const {
+      data:
+        workspaceData,
+      error:
+        workspaceError,
+    } =
+      await workspaceAdmin
         .from(
           "workspaces",
         )
@@ -262,11 +323,19 @@ export async function acceptHouseholdInvite(
         .maybeSingle();
 
     if (
-      workspaceResult.error
+      workspaceError
     ) {
       console.error(
         "[CASE Budget Household Invite] Unable to load invited workspace.",
-        workspaceResult.error,
+        {
+          userId,
+
+          workspaceId:
+            membership.workspace_id,
+
+          error:
+            workspaceError,
+        },
       );
 
       return createErrorState(
@@ -276,7 +345,7 @@ export async function acceptHouseholdInvite(
 
     const workspace =
       parseWorkspaceRow(
-        workspaceResult.data,
+        workspaceData,
       );
 
     if (
@@ -295,6 +364,14 @@ export async function acceptHouseholdInvite(
       );
     }
 
+    /**
+     * Establish a permanent password through the authenticated user's
+     * Supabase Auth session.
+     *
+     * We deliberately do NOT use the admin client for this operation.
+     * The invitee should set their own password through their authenticated
+     * invite session.
+     */
     const updateUserResult =
       await supabase.auth.updateUser({
         password,
@@ -305,7 +382,12 @@ export async function acceptHouseholdInvite(
     ) {
       console.error(
         "[CASE Budget Household Invite] Unable to establish invitee password.",
-        updateUserResult.error,
+        {
+          userId,
+
+          error:
+            updateUserResult.error,
+        },
       );
 
       return createErrorState(
@@ -318,10 +400,27 @@ export async function acceptHouseholdInvite(
     const updatedUser =
       updateUserResult.data.user;
 
+    /**
+     * Verify Supabase updated the same user that owns the invitation.
+     */
     if (
-      updatedUser &&
+      !updatedUser
+    ) {
+      console.error(
+        "[CASE Budget Household Invite] Password update returned no authenticated user.",
+        {
+          userId,
+        },
+      );
+
+      return createErrorState(
+        "CASE Budget could not verify your account after creating your password. Please reopen the invitation and try again.",
+      );
+    }
+
+    if (
       updatedUser.id !==
-        userId
+      userId
     ) {
       console.error(
         "[CASE Budget Household Invite] Auth user changed during invitation acceptance.",
@@ -334,6 +433,9 @@ export async function acceptHouseholdInvite(
 
           membershipUserId:
             membership.user_id,
+
+          workspaceId:
+            membership.workspace_id,
         },
       );
 
@@ -345,8 +447,26 @@ export async function acceptHouseholdInvite(
     const joinedAt =
       new Date().toISOString();
 
-    const membershipUpdateResult =
-      await supabase
+    /**
+     * Activate only the exact invitation we already verified.
+     *
+     * We require:
+     *
+     * - membership ID
+     * - authenticated user ID
+     * - invited workspace ID
+     * - existing status = invited
+     *
+     * This prevents activating another membership or reusing a membership
+     * whose state changed while the request was in progress.
+     */
+    const {
+      data:
+        membershipUpdateData,
+      error:
+        membershipUpdateError,
+    } =
+      await workspaceAdmin
         .from(
           "workspace_members",
         )
@@ -390,11 +510,22 @@ export async function acceptHouseholdInvite(
         .maybeSingle();
 
     if (
-      membershipUpdateResult.error
+      membershipUpdateError
     ) {
       console.error(
         "[CASE Budget Household Invite] Unable to activate household membership.",
-        membershipUpdateResult.error,
+        {
+          userId,
+
+          membershipId:
+            membership.id,
+
+          workspaceId:
+            membership.workspace_id,
+
+          error:
+            membershipUpdateError,
+        },
       );
 
       return createErrorState(
@@ -403,10 +534,62 @@ export async function acceptHouseholdInvite(
     }
 
     if (
-      !membershipUpdateResult.data
+      !membershipUpdateData
     ) {
+      console.error(
+        "[CASE Budget Household Invite] Pending invitation disappeared before activation.",
+        {
+          userId,
+
+          membershipId:
+            membership.id,
+
+          workspaceId:
+            membership.workspace_id,
+        },
+      );
+
       return createErrorState(
         "Your invitation could not be activated because its status changed. Please refresh the page and try again.",
+      );
+    }
+
+    /**
+     * Verify the resulting membership state before returning success.
+     */
+    const activatedMembership =
+      getObjectRecord(
+        membershipUpdateData,
+      );
+
+    const activatedStatus =
+      getOptionalString(
+        activatedMembership
+          ?.status,
+      );
+
+    if (
+      activatedStatus !==
+      "active"
+    ) {
+      console.error(
+        "[CASE Budget Household Invite] Membership update did not produce active status.",
+        {
+          userId,
+
+          membershipId:
+            membership.id,
+
+          workspaceId:
+            membership.workspace_id,
+
+          resultingStatus:
+            activatedStatus,
+        },
+      );
+
+      return createErrorState(
+        "CASE Budget could not confirm that your household membership was activated.",
       );
     }
 
@@ -428,6 +611,10 @@ export async function acceptHouseholdInvite(
 
     revalidatePath(
       "/dashboard/settings",
+    );
+
+    revalidatePath(
+      "/dashboard/settings/workspaces",
     );
 
     return {
@@ -538,6 +725,13 @@ function normalizePassword(
   value:
     unknown,
 ): string {
+  /**
+   * Passwords are intentionally not trimmed.
+   *
+   * Leading or trailing spaces can legitimately be part of a user's
+   * password. Modifying the value here could cause the stored password
+   * to differ from the password the invitee believes they created.
+   */
   return typeof value ===
     "string"
     ? value
@@ -564,6 +758,12 @@ function isInvitationExpired(
       expiresAt,
     )
   ) {
+    /**
+     * The database should always contain a valid timestamp.
+     *
+     * A malformed value is logged by the caller's surrounding workflow, but
+     * we do not silently convert it into an expired invitation here.
+     */
     return false;
   }
 

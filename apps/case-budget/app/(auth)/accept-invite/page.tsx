@@ -8,19 +8,25 @@ import {
   requireCaseBudgetUser,
 } from "@/lib/auth/server-auth";
 
+export const dynamic =
+  "force-dynamic";
+
+export const revalidate =
+  0;
+
 export default async function AcceptInvitePage() {
-  /*
-   * The Supabase invitation link should establish an authenticated session
-   * before the user reaches this page.
-   *
-   * requireCaseBudgetUser() ensures that only an authenticated invitee can
-   * continue to the password creation step.
-   */
   try {
     await requireCaseBudgetUser();
-  } catch {
+  } catch (
+    error
+  ) {
+    console.error(
+      "[CASE Budget Accept Invite] Unable to verify invitation session.",
+      error,
+    );
+
     redirect(
-      "/sign-in",
+      "/sign-in?reason=invite-session-required",
     );
   }
 
