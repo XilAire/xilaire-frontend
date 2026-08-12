@@ -201,7 +201,7 @@ const DEFAULT_APP_URL =
   "http://localhost:3004";
 
 const AUTH_CALLBACK_PATH =
-  "/auth/callback";
+  "/callback";
 
 /**
  * Creates a Supabase signup user and secure confirmation token,
@@ -1178,7 +1178,7 @@ async function generateAndSendEmailChangeLink({
  *
  * Supabase's generated action URL contains a one-time token hash
  * and verification type. CASE Budget extracts those values and
- * places them on /auth/callback.
+ * places them on /callback.
  *
  * This keeps the authentication workflow server-side and ensures
  * that users see a CASE Budget URL when hovering over or opening
@@ -1329,10 +1329,10 @@ function resolveApplicationOrigin(
  *
  * Examples:
  *
- * https://casebudgets.com/auth/callback
+ * https://casebudgets.com/callback
  *     -> no next parameter
  *
- * https://casebudgets.com/auth/callback?next=/update-password
+ * https://casebudgets.com/callback?next=/update-password
  *     -> /update-password
  *
  * https://casebudgets.com/dashboard

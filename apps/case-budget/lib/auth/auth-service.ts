@@ -115,16 +115,6 @@ export type UserProvisioningResult = {
   provisionedAt: string;
 };
 
-export type FinalizeAuthenticatedUserInput = {
-  user?: User;
-  sendWelcomeEmail?: boolean;
-};
-
-export type FinalizeAuthenticatedUserResult = {
-  user: User;
-  provisioning: UserProvisioningResult;
-};
-
 type ProvisioningRpcResponse = {
   user_id?: unknown;
   profile_id?: unknown;
@@ -191,7 +181,7 @@ export async function signUp(
     const emailRedirectTo =
       input.emailRedirectTo ??
       buildAppUrl(
-        "/auth/callback",
+        "/callback",
       );
 
     const emailResult =
@@ -318,27 +308,35 @@ export async function signIn(
       });
     }
 
-    const finalizeResult =
-      await finalizeAuthenticatedUser({
-        user:
-          data.user,
-        sendWelcomeEmail:
-          true,
-      });
+    const provisioningResult =
+      await provisionUser(
+        data.user.id,
+      );
 
     if (
-      !finalizeResult.success
+      !provisioningResult.success
     ) {
       await supabase.auth.signOut();
 
       return failure(
-        finalizeResult.error,
+        provisioningResult.error,
       );
     }
 
-    return success({
+    await synchronizeProfileFromAuth(
+      data.user.id,
+    );
+
+    await sendWelcomeEmailAfterProvisioning({
       user:
-        finalizeResult.data.user,
+        data.user,
+
+      provisioning:
+        provisioningResult.data,
+    });
+
+    return success({
+      user: data.user,
       session:
         data.session,
     });
@@ -406,7 +404,7 @@ export async function requestPasswordReset(
     const redirectTo =
       input.redirectTo ??
       buildAppUrl(
-        "/auth/callback?next=/update-password",
+        "/callback?next=/update-password",
       );
 
     const emailResult =
@@ -517,8 +515,7 @@ export async function updatePassword(
     }
 
     return success({
-      user:
-        data.user,
+      user: data.user,
     });
   } catch (error) {
     return failure(
@@ -764,84 +761,6 @@ export async function provisionCurrentUser(): Promise<
   return provisionUser(
     currentUserResult.data.id,
   );
-}
-
-export async function finalizeAuthenticatedUser({
-  user,
-  sendWelcomeEmail:
-    shouldSendWelcome = true,
-}: FinalizeAuthenticatedUserInput = {}): Promise<
-  AuthServiceResult<FinalizeAuthenticatedUserResult>
-> {
-  try {
-    const authenticatedUserResult =
-      user
-        ? success(
-            user,
-          )
-        : await getCurrentUser();
-
-    if (
-      !authenticatedUserResult.success
-    ) {
-      return failure(
-        authenticatedUserResult.error,
-      );
-    }
-
-    const authenticatedUser =
-      authenticatedUserResult.data;
-
-    const provisioningResult =
-      await provisionUser(
-        authenticatedUser.id,
-      );
-
-    if (
-      !provisioningResult.success
-    ) {
-      return failure(
-        provisioningResult.error,
-      );
-    }
-
-    const syncResult =
-      await synchronizeProfileFromAuth(
-        authenticatedUser.id,
-      );
-
-    if (
-      !syncResult.success
-    ) {
-      return failure(
-        syncResult.error,
-      );
-    }
-
-    if (
-      shouldSendWelcome
-    ) {
-      await sendWelcomeEmailAfterProvisioning({
-        user:
-          authenticatedUser,
-        provisioning:
-          provisioningResult.data,
-      });
-    }
-
-    return success({
-      user:
-        authenticatedUser,
-      provisioning:
-        provisioningResult.data,
-    });
-  } catch (error) {
-    return failure(
-      mapUnknownError(
-        error,
-      ),
-    );
-  }
 }
 
 export async function provisionUser(
@@ -1102,7 +1021,7 @@ function normalizeOptionalMetadataText(
 ) {
   if (
     typeof value !==
-      "string"
+    "string"
   ) {
     return undefined;
   }
@@ -1550,6 +1469,7 @@ function mapAuthError(
   };
 }
 
+
 function mapAuthEmailServiceError(
   error: {
     code:
@@ -1755,7 +1675,7 @@ function getRequiredString(
 ) {
   if (
     typeof value !==
-      "string"
+    "string"
   ) {
     return null;
   }

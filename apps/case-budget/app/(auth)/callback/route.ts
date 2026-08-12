@@ -5,11 +5,17 @@ import {
 
 import type {
   EmailOtpType,
+  User,
 } from "@supabase/supabase-js";
 
 import {
-  finalizeAuthenticatedUser,
+  provisionUser,
+  synchronizeProfileFromAuth,
 } from "@/lib/auth/auth-service";
+import {
+  sendWelcomeEmail,
+} from "@/lib/email";
+
 import {
   createClient,
 } from "@/lib/supabase/server";
@@ -133,6 +139,7 @@ export async function GET(
         user:
           authenticatedUser,
         otpType,
+        request,
       });
 
     if (
@@ -190,6 +197,7 @@ export async function GET(
         user:
           authenticatedUser,
         otpType,
+        request,
       });
 
     if (
@@ -222,14 +230,13 @@ export async function GET(
 
 type FinalizeCallbackLifecycleInput = {
   user:
-    Awaited<
-      ReturnType<
-        typeof getCallbackUserPlaceholder
-      >
-    >;
+    User | null;
 
   otpType:
     EmailOtpType | null;
+
+  request:
+    NextRequest;
 };
 
 type FinalizeCallbackLifecycleResult =
@@ -257,6 +264,7 @@ type FinalizeCallbackLifecycleResult =
 async function finalizeCallbackLifecycle({
   user,
   otpType,
+  request,
 }: FinalizeCallbackLifecycleInput):
   Promise<FinalizeCallbackLifecycleResult> {
   if (
@@ -290,26 +298,86 @@ async function finalizeCallbackLifecycle({
     };
   }
 
-  const result =
-    await finalizeAuthenticatedUser({
-      user,
-      sendWelcomeEmail:
-        true,
-    });
+  const provisioningResult =
+    await provisionUser(
+      user.id,
+    );
 
   if (
-    !result.success
+    !provisioningResult.success
   ) {
     return {
       success:
         false,
 
       errorCode:
-        result.error.code,
+        provisioningResult.error.code,
 
       errorDescription:
-        result.error.message,
+        provisioningResult.error.message,
     };
+  }
+
+  const profileSyncResult =
+    await synchronizeProfileFromAuth(
+      user.id,
+    );
+
+  if (
+    !profileSyncResult.success
+  ) {
+    return {
+      success:
+        false,
+
+      errorCode:
+        profileSyncResult.error.code,
+
+      errorDescription:
+        profileSyncResult.error.message,
+    };
+  }
+
+  if (
+    shouldSendWelcomeEmail(
+      provisioningResult.data,
+    ) &&
+    user.email
+  ) {
+    const welcomeEmailResult =
+      await sendWelcomeEmail({
+        to:
+          user.email
+            .trim()
+            .toLowerCase(),
+
+        firstName:
+          getUserMetadataString(
+            user.user_metadata,
+            "first_name",
+          ),
+
+        workspaceName:
+          getUserMetadataString(
+            user.user_metadata,
+            "workspace_name",
+          ),
+
+        dashboardUrl:
+          createApplicationUrl({
+            request,
+            pathname:
+              DEFAULT_AUTHENTICATED_PATH,
+          }).toString(),
+      });
+
+    if (
+      !welcomeEmailResult.success
+    ) {
+      console.error(
+        "[CASE Budget Callback] Account provisioning succeeded, but the welcome email could not be sent.",
+      );
+    }
   }
 
   return {
@@ -322,6 +390,54 @@ async function finalizeCallbackLifecycle({
     errorDescription:
       null,
   };
+}
+
+function shouldSendWelcomeEmail(
+  provisioning: {
+    profileCreated:
+      boolean;
+
+    workspaceCreated:
+      boolean;
+
+    membershipCreated:
+      boolean;
+  },
+) {
+  return (
+    provisioning.profileCreated ||
+    provisioning.workspaceCreated ||
+    provisioning.membershipCreated
+  );
+}
+
+function getUserMetadataString(
+  metadata:
+    Record<
+      string,
+      unknown
+    > | undefined,
+  key:
+    string,
+) {
+  const value =
+    metadata?.[
+      key
+    ];
+
+  if (
+    typeof value !==
+    "string"
+  ) {
+    return undefined;
+  }
+
+  const normalizedValue =
+    value.trim();
+
+  return normalizedValue
+    ? normalizedValue
+    : undefined;
 }
 
 type SuccessRedirectInput = {
@@ -535,7 +651,7 @@ function getSafeNextPath(
       parsedUrl.pathname ===
         "/forgot-password" ||
       parsedUrl.pathname ===
-        "/auth/callback"
+        "/callback"
     ) {
       return null;
     }
