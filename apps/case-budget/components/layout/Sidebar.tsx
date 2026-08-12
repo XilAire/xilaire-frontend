@@ -200,7 +200,6 @@ const navigationSections: SidebarNavigationSection[] = [
         href: "/dashboard/ai-coach",
         feature: "ai-coach",
         icon: "coach",
-        badge: "Pro",
       },
     ],
   },
@@ -900,7 +899,10 @@ export default function Sidebar({
   ) => {
     if (
       item.feature ===
-      "ai-coach"
+        "ai-coach" &&
+      !canAccessNavigationItem(
+        item,
+      )
     ) {
       return "Pro";
     }
