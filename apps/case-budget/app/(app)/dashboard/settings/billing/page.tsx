@@ -1120,7 +1120,7 @@ function SecureBillingCard() {
           icon={
             CreditCard
           }
-          text="One paid subscription per member"
+          text="One paid subscription per workspace"
         />
       </div>
     </section>
