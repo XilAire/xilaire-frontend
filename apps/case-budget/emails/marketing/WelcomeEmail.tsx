@@ -161,10 +161,11 @@ export default function WelcomeEmail({
           }}
         >
           Your CASE Budget account is ready.
-          You now have a dedicated financial
-          workspace designed to help you plan every
-          dollar, stay ahead of bills, and make
-          steady progress toward your financial
+          You now have a dedicated financial 
+          workspace designed to help you build 
+          a clear spending plan, stay ahead of 
+          bills, manage your money with confidence, 
+          and make steady progress toward your financial 
           goals.
         </Text>
 

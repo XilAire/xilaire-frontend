@@ -7,7 +7,7 @@ export const caseBudgetEmailTheme = {
       "XilAire Technologies",
 
     tagline:
-      "Take control of every dollar. Build wealth with confidence.",
+      "Take control of your finances. Build wealth with confidence.",
 
     supportEmail:
       "support@casebudgets.com",
