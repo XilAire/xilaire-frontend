@@ -10,6 +10,10 @@ import {
   useState,
 } from "react";
 
+import {
+  useRouter,
+} from "next/navigation";
+
 import AccountsProvider from "@/components/providers/AccountsProvider";
 import BillsProvider from "@/components/providers/BillsProvider";
 import BudgetProvider from "@/components/providers/BudgetProvider";
@@ -121,17 +125,50 @@ type AppContextValue = {
   ) => void;
 };
 
+type SwitchWorkspaceApiSuccessResponse = {
+  success: true;
+
+  data: {
+    activeWorkspaceId: string;
+
+    workspace: {
+      id: string;
+      name: string;
+      workspaceType: string;
+      description: string | null;
+      logoUrl: string | null;
+      isActive: boolean;
+      isOwner: boolean;
+      role: string;
+      membershipStatus: string;
+      createdAt: string;
+      updatedAt: string;
+    };
+  };
+
+  error: null;
+};
+
+type SwitchWorkspaceApiErrorResponse = {
+  success: false;
+
+  data: null;
+
+  error: {
+    code: string;
+    message: string;
+  };
+};
+
+type SwitchWorkspaceApiResponse =
+  | SwitchWorkspaceApiSuccessResponse
+  | SwitchWorkspaceApiErrorResponse;
+
 const ACTIVE_WORKSPACE_STORAGE_KEY =
   "case-budget:active-workspace:v1";
 
 const LEGACY_WORKSPACES_STORAGE_KEY =
   "case-budget:workspaces:v1";
-
-const ACTIVE_WORKSPACE_COOKIE_NAME =
-  "case-budget-active-workspace-id";
-
-const ACTIVE_WORKSPACE_COOKIE_MAX_AGE_SECONDS =
-  60 * 60 * 24 * 365;
 
 const AppContext =
   createContext<
@@ -159,6 +196,9 @@ export default function AppProvider({
   initialWorkspaceId = "",
   initialWorkspaces = [],
 }: AppProviderProps) {
+  const router =
+    useRouter();
+
   const [
     activeOverlay,
     setActiveOverlay,
@@ -187,37 +227,56 @@ export default function AppProvider({
       }),
   );
 
+  const [
+    isWorkspaceSwitchPending,
+    setIsWorkspaceSwitchPending,
+  ] = useState(
+    false,
+  );
+
+  /**
+   * The server-provided workspace is authoritative.
+   *
+   * initialWorkspaceId is resolved from the HttpOnly
+   * case-budget-active-workspace-id cookie by the server.
+   *
+   * localStorage is retained only as a non-authoritative client-side
+   * convenience value. It must never override a workspace that the
+   * server has already resolved.
+   */
   useEffect(
     () => {
-      setWorkspaces(
+      const nextWorkspaces =
         cloneWorkspaces(
           initialWorkspaces,
-        ),
+        );
+
+      setWorkspaces(
+        nextWorkspaces,
       );
-
-      const storedWorkspaceId =
-        loadStoredActiveWorkspaceId();
-
-      const cookieWorkspaceId =
-        readActiveWorkspaceCookie();
-
-      const candidateWorkspaceId =
-        storedWorkspaceId ??
-        cookieWorkspaceId ??
-        initialWorkspaceId;
 
       const nextWorkspaceId =
         resolveAvailableWorkspaceId({
           requestedWorkspaceId:
-            candidateWorkspaceId,
+            initialWorkspaceId,
 
           workspaces:
-            initialWorkspaces,
+            nextWorkspaces,
         });
 
       setActiveWorkspaceId(
         nextWorkspaceId,
       );
+
+      if (
+        nextWorkspaceId
+      ) {
+        writeStoredActiveWorkspaceId(
+          nextWorkspaceId,
+        );
+      } else {
+        clearStoredActiveWorkspaceId();
+      }
 
       clearLegacyWorkspaceStorage();
     },
@@ -227,13 +286,20 @@ export default function AppProvider({
     ],
   );
 
+  /**
+   * Keep localStorage synchronized with the workspace currently
+   * represented by client state.
+   *
+   * This does NOT control server authorization. The HttpOnly cookie
+   * managed by /api/workspaces/current is the authoritative workspace
+   * selection for server requests.
+   */
   useEffect(
     () => {
       if (
         !activeWorkspaceId
       ) {
         clearStoredActiveWorkspaceId();
-        clearActiveWorkspaceCookie();
 
         return;
       }
@@ -262,10 +328,6 @@ export default function AppProvider({
       }
 
       writeStoredActiveWorkspaceId(
-        activeWorkspaceId,
-      );
-
-      writeActiveWorkspaceCookie(
         activeWorkspaceId,
       );
     },
@@ -458,6 +520,25 @@ export default function AppProvider({
       [],
     );
 
+  /**
+   * Changes the authoritative active workspace.
+   *
+   * The browser does not write the CASE Budget active-workspace
+   * cookie directly.
+   *
+   * Instead:
+   *
+   * 1. POST the requested workspace to the server.
+   * 2. The server authenticates the user.
+   * 3. The server verifies active membership.
+   * 4. The server writes the HttpOnly workspace cookie.
+   * 5. Client state is updated only after server confirmation.
+   * 6. router.refresh() rebuilds the Server Component tree using
+   *    the newly selected workspace.
+   *
+   * This keeps subscription entitlements, workspace data, and the
+   * visible workspace selection aligned.
+   */
   const setActiveWorkspace =
     useCallback(
       (
@@ -466,6 +547,12 @@ export default function AppProvider({
       ) => {
         const normalizedWorkspaceId =
           workspaceId.trim();
+
+        if (
+          !normalizedWorkspaceId
+        ) {
+          return;
+        }
 
         const workspaceExists =
           workspaces.some(
@@ -482,15 +569,75 @@ export default function AppProvider({
           return;
         }
 
-        setActiveWorkspaceId(
-          normalizedWorkspaceId,
-        );
+        if (
+          isWorkspaceSwitchPending
+        ) {
+          return;
+        }
 
-        setActiveOverlay(
-          null,
-        );
+        if (
+          activeWorkspaceId ===
+          normalizedWorkspaceId
+        ) {
+          setActiveOverlay(
+            null,
+          );
+
+          return;
+        }
+
+        void switchActiveWorkspace({
+          workspaceId:
+            normalizedWorkspaceId,
+
+          onStart:
+            () => {
+              setIsWorkspaceSwitchPending(
+                true,
+              );
+            },
+
+          onSuccess:
+            (
+              confirmedWorkspaceId,
+            ) => {
+              writeStoredActiveWorkspaceId(
+                confirmedWorkspaceId,
+              );
+
+              setActiveWorkspaceId(
+                confirmedWorkspaceId,
+              );
+
+              setActiveOverlay(
+                null,
+              );
+
+              router.refresh();
+            },
+
+          onError:
+            (
+              error,
+            ) => {
+              console.error(
+                "[CASE Budget AppProvider] Workspace switch failed.",
+                error,
+              );
+            },
+
+          onFinish:
+            () => {
+              setIsWorkspaceSwitchPending(
+                false,
+              );
+            },
+        });
       },
       [
+        activeWorkspaceId,
+        isWorkspaceSwitchPending,
+        router,
         workspaces,
       ],
     );
@@ -586,9 +733,22 @@ export default function AppProvider({
               activeWorkspaceId ===
               workspaceId
             ) {
-              setActiveWorkspaceId(
+              const nextWorkspaceId =
                 nextWorkspaces[0]?.id ??
-                "",
+                "";
+
+              if (
+                nextWorkspaceId
+              ) {
+                writeStoredActiveWorkspaceId(
+                  nextWorkspaceId,
+                );
+              } else {
+                clearStoredActiveWorkspaceId();
+              }
+
+              setActiveWorkspaceId(
+                nextWorkspaceId,
               );
             }
 
@@ -714,6 +874,205 @@ export default function AppProvider({
   );
 }
 
+async function switchActiveWorkspace({
+  workspaceId,
+  onStart,
+  onSuccess,
+  onError,
+  onFinish,
+}: {
+  workspaceId:
+    string;
+
+  onStart:
+    () => void;
+
+  onSuccess:
+    (
+      workspaceId:
+        string,
+    ) => void;
+
+  onError:
+    (
+      error:
+        unknown,
+    ) => void;
+
+  onFinish:
+    () => void;
+}) {
+  onStart();
+
+  try {
+    const response =
+      await fetch(
+        "/api/workspaces/current",
+        {
+          method:
+            "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+
+          credentials:
+            "same-origin",
+
+          cache:
+            "no-store",
+
+          body:
+            JSON.stringify({
+              workspaceId,
+            }),
+        },
+      );
+
+    const responseBody =
+      await readSwitchWorkspaceResponse(
+        response,
+      );
+
+    if (
+      !response.ok
+    ) {
+      const message =
+        responseBody &&
+        !responseBody.success
+          ? responseBody.error.message
+          : "CASE Budget could not switch workspaces.";
+
+      throw new Error(
+        message,
+      );
+    }
+
+    if (
+      !responseBody ||
+      !responseBody.success
+    ) {
+      throw new Error(
+        "CASE Budget received an invalid workspace switch response.",
+      );
+    }
+
+    const confirmedWorkspaceId =
+      responseBody.data
+        .activeWorkspaceId
+        .trim();
+
+    if (
+      !confirmedWorkspaceId
+    ) {
+      throw new Error(
+        "CASE Budget did not receive a valid active workspace ID.",
+      );
+    }
+
+    if (
+      confirmedWorkspaceId !==
+      workspaceId
+    ) {
+      throw new Error(
+        "CASE Budget received an unexpected active workspace ID.",
+      );
+    }
+
+    onSuccess(
+      confirmedWorkspaceId,
+    );
+  } catch (
+    error
+  ) {
+    onError(
+      error,
+    );
+  } finally {
+    onFinish();
+  }
+}
+
+async function readSwitchWorkspaceResponse(
+  response:
+    Response,
+): Promise<
+  SwitchWorkspaceApiResponse | null
+> {
+  const contentType =
+    response.headers.get(
+      "content-type",
+    );
+
+  if (
+    !contentType
+      ?.toLowerCase()
+      .includes(
+        "application/json",
+      )
+  ) {
+    return null;
+  }
+
+  try {
+    const value:
+      unknown =
+      await response.json();
+
+    if (
+      !isRecord(
+        value,
+      )
+    ) {
+      return null;
+    }
+
+    if (
+      value.success ===
+      true
+    ) {
+      if (
+        !isRecord(
+          value.data,
+        ) ||
+        typeof value.data
+          .activeWorkspaceId !==
+          "string"
+      ) {
+        return null;
+      }
+
+      return value as
+        SwitchWorkspaceApiSuccessResponse;
+    }
+
+    if (
+      value.success ===
+      false
+    ) {
+      if (
+        !isRecord(
+          value.error,
+        ) ||
+        typeof value.error.code !==
+          "string" ||
+        typeof value.error.message !==
+          "string"
+      ) {
+        return null;
+      }
+
+      return value as
+        SwitchWorkspaceApiErrorResponse;
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 function cloneWorkspaces(
   workspaces:
     AppWorkspace[],
@@ -783,27 +1142,6 @@ function resolveAvailableWorkspaceId({
   );
 }
 
-function loadStoredActiveWorkspaceId() {
-  if (
-    typeof window ===
-    "undefined"
-  ) {
-    return null;
-  }
-
-  try {
-    return (
-      window.localStorage.getItem(
-        ACTIVE_WORKSPACE_STORAGE_KEY,
-      )
-        ?.trim() ||
-      null
-    );
-  } catch {
-    return null;
-  }
-}
-
 function writeStoredActiveWorkspaceId(
   workspaceId:
     string,
@@ -859,132 +1197,20 @@ function clearLegacyWorkspaceStorage() {
   }
 }
 
-function readActiveWorkspaceCookie() {
-  if (
-    typeof document ===
-    "undefined"
-  ) {
-    return null;
-  }
-
-  const cookiePrefix =
-    `${ACTIVE_WORKSPACE_COOKIE_NAME}=`;
-
-  const matchingCookie =
-    document.cookie
-      .split(
-        ";",
-      )
-      .map(
-        (
-          cookie,
-        ) =>
-          cookie.trim(),
-      )
-      .find(
-        (
-          cookie,
-        ) =>
-          cookie.startsWith(
-            cookiePrefix,
-          ),
-      );
-
-  if (
-    !matchingCookie
-  ) {
-    return null;
-  }
-
-  try {
-    return (
-      decodeURIComponent(
-        matchingCookie.slice(
-          cookiePrefix.length,
-        ),
-      )
-        .trim() ||
-      null
-    );
-  } catch {
-    return null;
-  }
-}
-
-function writeActiveWorkspaceCookie(
-  workspaceId:
-    string,
-) {
-  if (
-    typeof document ===
-    "undefined"
-  ) {
-    return;
-  }
-
-  const normalizedWorkspaceId =
-    workspaceId.trim();
-
-  if (
-    !normalizedWorkspaceId
-  ) {
-    clearActiveWorkspaceCookie();
-
-    return;
-  }
-
-  const secureAttribute =
-    window.location.protocol ===
-    "https:"
-      ? "; Secure"
-      : "";
-
-  document.cookie = [
-    `${ACTIVE_WORKSPACE_COOKIE_NAME}=${encodeURIComponent(
-      normalizedWorkspaceId,
-    )}`,
-
-    "Path=/",
-
-    `Max-Age=${ACTIVE_WORKSPACE_COOKIE_MAX_AGE_SECONDS}`,
-
-    "SameSite=Lax",
-
-    secureAttribute,
-  ]
-    .filter(
-      Boolean,
+function isRecord(
+  value:
+    unknown,
+): value is Record<
+  string,
+  unknown
+> {
+  return (
+    typeof value ===
+      "object" &&
+    value !==
+      null &&
+    !Array.isArray(
+      value,
     )
-    .join(
-      "; ",
-    );
-}
-
-function clearActiveWorkspaceCookie() {
-  if (
-    typeof document ===
-    "undefined"
-  ) {
-    return;
-  }
-
-  const secureAttribute =
-    window.location.protocol ===
-    "https:"
-      ? "; Secure"
-      : "";
-
-  document.cookie = [
-    `${ACTIVE_WORKSPACE_COOKIE_NAME}=`,
-    "Path=/",
-    "Max-Age=0",
-    "SameSite=Lax",
-    secureAttribute,
-  ]
-    .filter(
-      Boolean,
-    )
-    .join(
-      "; ",
-    );
+  );
 }

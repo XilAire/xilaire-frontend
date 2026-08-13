@@ -48,6 +48,14 @@ export type CaseBudgetAiEntitlement = {
     number | null;
 };
 
+export type CaseBudgetWorkspaceEntitlement = {
+  includedWorkspaceLimit:
+    number;
+
+  allowsAdditionalWorkspacePurchases:
+    boolean;
+};
+
 export type CaseBudgetPlanEntitlements = {
   plan:
     CaseBudgetPlan;
@@ -69,6 +77,9 @@ export type CaseBudgetPlanEntitlements = {
 
   ai:
     CaseBudgetAiEntitlement;
+
+  workspaces:
+    CaseBudgetWorkspaceEntitlement;
 };
 
 export const CASE_BUDGET_PLAN_ENTITLEMENTS: Record<
@@ -153,6 +164,14 @@ export const CASE_BUDGET_PLAN_ENTITLEMENTS: Record<
       additionalQuestionPackPrice:
         null,
     },
+
+    workspaces: {
+      includedWorkspaceLimit:
+        1,
+
+      allowsAdditionalWorkspacePurchases:
+        false,
+    },
   },
 
   plus: {
@@ -232,6 +251,14 @@ export const CASE_BUDGET_PLAN_ENTITLEMENTS: Record<
 
       additionalQuestionPackPrice:
         null,
+    },
+
+    workspaces: {
+      includedWorkspaceLimit:
+        2,
+
+      allowsAdditionalWorkspacePurchases:
+        false,
     },
   },
 
@@ -320,6 +347,21 @@ export const CASE_BUDGET_PLAN_ENTITLEMENTS: Record<
       additionalQuestionPackPrice:
         null,
     },
+
+    workspaces: {
+      includedWorkspaceLimit:
+        5,
+
+      /*
+       * Pro includes up to five workspaces.
+       *
+       * Purchased workspace capacity is stored separately from this static
+       * plan definition so billing can increase capacity without changing
+       * what the base Pro plan includes.
+       */
+      allowsAdditionalWorkspacePurchases:
+        true,
+    },
   },
 };
 
@@ -375,6 +417,58 @@ export function hasCaseBudgetFeature(
   ).features[
     feature
   ];
+}
+
+export function getCaseBudgetIncludedWorkspaceLimit(
+  plan:
+    CaseBudgetPlan,
+) {
+  return getCaseBudgetPlanEntitlements(
+    plan,
+  ).workspaces.includedWorkspaceLimit;
+}
+
+export function canPurchaseAdditionalCaseBudgetWorkspaces(
+  plan:
+    CaseBudgetPlan,
+) {
+  return getCaseBudgetPlanEntitlements(
+    plan,
+  ).workspaces.allowsAdditionalWorkspacePurchases;
+}
+
+export function getCaseBudgetEffectiveWorkspaceLimit({
+  plan,
+  additionalWorkspaceCount =
+    0,
+}: {
+  plan:
+    CaseBudgetPlan;
+
+  additionalWorkspaceCount?:
+    number;
+}) {
+  const includedWorkspaceLimit =
+    getCaseBudgetIncludedWorkspaceLimit(
+      plan,
+    );
+
+  const normalizedAdditionalWorkspaceCount =
+    canPurchaseAdditionalCaseBudgetWorkspaces(
+      plan,
+    )
+      ? Math.max(
+          0,
+          Math.floor(
+            additionalWorkspaceCount,
+          ),
+        )
+      : 0;
+
+  return (
+    includedWorkspaceLimit +
+    normalizedAdditionalWorkspaceCount
+  );
 }
 
 export function hasAiCoachAccess(

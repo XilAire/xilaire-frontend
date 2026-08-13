@@ -17,6 +17,12 @@ import {
 import {
   createWorkspaceAdminClient,
 } from "@/lib/supabase/admin";
+import {
+  resolveCaseBudgetSubscriptionAccess,
+} from "@/lib/subscriptions/subscription-service";
+import {
+  getSupabaseSubscriptionRepository,
+} from "@/lib/subscriptions/supabase-subscription-repository";
 
 export const runtime =
   "nodejs";
@@ -212,11 +218,30 @@ const ACTIVE_WORKSPACE_COOKIE_MAX_AGE_SECONDS =
  *
  * Creates a new CASE Budget workspace for the authenticated user.
  *
+ * Workspace limits are enforced against workspaces OWNED by the user.
+ * Memberships in workspaces owned by somebody else do not consume the
+ * user's workspace allowance.
+ *
+ * Included workspace limits:
+ *
+ * Free:
+ * - 1 owned workspace.
+ *
+ * Plus:
+ * - Up to 2 owned workspaces.
+ *
+ * Pro:
+ * - Up to 5 owned workspaces.
+ * - Additional paid workspace capacity may be added later.
+ *
  * Creation includes:
  *
- * 1. A workspaces row.
- * 2. An active owner workspace_members row.
- * 3. Optionally making the new workspace the active workspace.
+ * 1. Resolving the authenticated user's effective subscription.
+ * 2. Counting the user's active owned workspaces.
+ * 3. Enforcing the effective workspace entitlement.
+ * 4. Creating a workspaces row.
+ * 5. Creating an active owner workspace_members row.
+ * 6. Optionally making the new workspace active.
  *
  * The authenticated user ID is always resolved on the server.
  */
@@ -292,6 +317,138 @@ export async function POST(
     const makeActive =
       requestBody.makeActive !==
       false;
+
+    const admin =
+      createWorkspaceAdminClient();
+
+    /*
+     * Resolve the subscription owned by this user.
+     *
+     * The subscription repository can resolve either:
+     *
+     * - a direct/personal subscription, or
+     * - the latest workspace-scoped subscription billed to this user.
+     *
+     * This is important because CASE Budget currently stores paid
+     * subscriptions against workspaces while we are transitioning toward
+     * an owner/account-level workspace allowance.
+     */
+    const subscriptionRepository =
+      getSupabaseSubscriptionRepository();
+
+    const persistedSubscription =
+      await subscriptionRepository.findSubscription({
+        userId,
+      });
+
+    const entitlementState =
+      resolveCaseBudgetSubscriptionAccess({
+        subscription:
+          persistedSubscription,
+
+        aiUsagePeriod:
+          null,
+      });
+
+    const workspaceLimit =
+      entitlementState
+        .workspaces
+        .workspaceLimit;
+
+    const includedWorkspaceLimit =
+      entitlementState
+        .workspaces
+        .includedWorkspaceLimit;
+
+    const additionalWorkspaceLimit =
+      entitlementState
+        .workspaces
+        .additionalWorkspaceLimit;
+
+    const allowsAdditionalWorkspacePurchases =
+      entitlementState
+        .workspaces
+        .allowsAdditionalWorkspacePurchases;
+
+    /*
+     * Count only workspaces OWNED by this user.
+     *
+     * A membership in somebody else's household/business workspace does
+     * not consume the user's own workspace allowance.
+     */
+    const {
+      count:
+        ownedWorkspaceCount,
+      error:
+        ownedWorkspaceCountError,
+    } =
+      await admin
+        .from(
+          "workspaces",
+        )
+        .select(
+          "id",
+          {
+            count:
+              "exact",
+
+            head:
+              true,
+          },
+        )
+        .eq(
+          "owner_user_id",
+          userId,
+        )
+        .eq(
+          "is_active",
+          true,
+        );
+
+    if (
+      ownedWorkspaceCountError
+    ) {
+      return createDatabaseErrorResponse({
+        code:
+          "workspace-limit-count-failed",
+
+        message:
+          "CASE Budget could not determine your current workspace usage.",
+
+        detail:
+          ownedWorkspaceCountError.message,
+      });
+    }
+
+    const currentOwnedWorkspaceCount =
+      Math.max(
+        0,
+        ownedWorkspaceCount ??
+          0,
+      );
+
+    if (
+      currentOwnedWorkspaceCount >=
+      workspaceLimit
+    ) {
+      return createWorkspaceLimitResponse({
+        plan:
+          entitlementState
+            .subscription
+            .plan,
+
+        currentWorkspaceCount:
+          currentOwnedWorkspaceCount,
+
+        includedWorkspaceLimit,
+
+        additionalWorkspaceLimit,
+
+        workspaceLimit,
+
+        allowsAdditionalWorkspacePurchases,
+      });
+    }
 
     const now =
       new Date().toISOString();
@@ -397,9 +554,6 @@ export async function POST(
       updated_at:
         now,
     };
-
-    const admin =
-      createWorkspaceAdminClient();
 
     const {
       error:
@@ -510,6 +664,29 @@ export async function POST(
 
         activeWorkspaceId:
           string | null;
+
+        workspaceUsage: {
+          plan:
+            string;
+
+          currentWorkspaceCount:
+            number;
+
+          includedWorkspaceLimit:
+            number;
+
+          additionalWorkspaceLimit:
+            number;
+
+          workspaceLimit:
+            number;
+
+          remainingWorkspaceCount:
+            number;
+
+          allowsAdditionalWorkspacePurchases:
+            boolean;
+        };
       }>
     >(
       {
@@ -524,6 +701,35 @@ export async function POST(
             makeActive
               ? workspaceId
               : null,
+
+          workspaceUsage: {
+            plan:
+              entitlementState
+                .subscription
+                .plan,
+
+            currentWorkspaceCount:
+              currentOwnedWorkspaceCount +
+              1,
+
+            includedWorkspaceLimit,
+
+            additionalWorkspaceLimit,
+
+            workspaceLimit,
+
+            remainingWorkspaceCount:
+              Math.max(
+                0,
+                workspaceLimit -
+                  (
+                    currentOwnedWorkspaceCount +
+                    1
+                  ),
+              ),
+
+            allowsAdditionalWorkspacePurchases,
+          },
         },
 
         error:
@@ -609,8 +815,14 @@ async function setActiveWorkspaceCookie(
     CASE_BUDGET_ACTIVE_WORKSPACE_COOKIE,
     workspaceId,
     {
+      /*
+       * Workspace authorization is server-controlled.
+       *
+       * Client components switch workspaces through the server API rather
+       * than directly writing this cookie.
+       */
       httpOnly:
-        false,
+        true,
 
       secure:
         process.env.NODE_ENV ===
@@ -838,6 +1050,101 @@ function createValidationErrorResponse(
     {
       status:
         400,
+
+      headers: {
+        "Cache-Control":
+          "no-store",
+      },
+    },
+  );
+}
+
+function createWorkspaceLimitResponse({
+  plan,
+  currentWorkspaceCount,
+  includedWorkspaceLimit,
+  additionalWorkspaceLimit,
+  workspaceLimit,
+  allowsAdditionalWorkspacePurchases,
+}: {
+  plan:
+    string;
+
+  currentWorkspaceCount:
+    number;
+
+  includedWorkspaceLimit:
+    number;
+
+  additionalWorkspaceLimit:
+    number;
+
+  workspaceLimit:
+    number;
+
+  allowsAdditionalWorkspacePurchases:
+    boolean;
+}) {
+  const normalizedPlan =
+    plan.trim().toLowerCase();
+
+  let message:
+    string;
+
+  if (
+    normalizedPlan ===
+      "pro" &&
+    allowsAdditionalWorkspacePurchases
+  ) {
+    message =
+      `Your Pro plan currently supports ${workspaceLimit} workspace${workspaceLimit === 1 ? "" : "s"}. ` +
+      "Additional workspace capacity can be purchased when workspace add-ons are enabled.";
+  } else if (
+    normalizedPlan ===
+      "plus"
+  ) {
+    message =
+      `Your Plus plan includes up to ${workspaceLimit} workspaces. Upgrade to Pro to create additional workspaces.`;
+  } else {
+    message =
+      `Your Free plan includes ${workspaceLimit} workspace. Upgrade your plan to create additional workspaces.`;
+  }
+
+  return NextResponse.json(
+    {
+      success:
+        false,
+
+      data:
+        null,
+
+      error: {
+        code:
+          "workspace-limit-reached",
+
+        message,
+
+        details: {
+          plan,
+
+          currentWorkspaceCount,
+
+          includedWorkspaceLimit,
+
+          additionalWorkspaceLimit,
+
+          workspaceLimit,
+
+          remainingWorkspaceCount:
+            0,
+
+          allowsAdditionalWorkspacePurchases,
+        },
+      },
+    },
+    {
+      status:
+        409,
 
       headers: {
         "Cache-Control":

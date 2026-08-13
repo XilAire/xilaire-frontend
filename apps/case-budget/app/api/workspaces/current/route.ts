@@ -70,6 +70,11 @@ type WorkspaceSettingsData = {
     string;
 };
 
+type SwitchWorkspaceRequest = {
+  workspaceId:
+    string;
+};
+
 type UpdateWorkspaceRequest = {
   name:
     string;
@@ -261,6 +266,216 @@ export async function GET() {
           userId,
         }),
     });
+  } catch (
+    error
+  ) {
+    return createWorkspaceApiErrorResponse(
+      error,
+    );
+  }
+}
+
+/**
+ * POST /api/workspaces/current
+ *
+ * Changes the authenticated user's active CASE Budget workspace.
+ *
+ * The server is the authority for workspace selection.
+ *
+ * Safeguards:
+ *
+ * - The request must contain a valid workspace ID.
+ * - The workspace must exist.
+ * - The workspace must be active.
+ * - The authenticated user must have an active membership.
+ * - The active-workspace cookie is written only after all validation
+ *   succeeds.
+ *
+ * This endpoint intentionally does not rely on the current active
+ * workspace returned by requireCaseBudgetServerAuth(), because the
+ * purpose of this request is to replace that workspace selection.
+ */
+export async function POST(
+  request:
+    NextRequest,
+) {
+  try {
+    const {
+      userId,
+    } =
+      await requireCaseBudgetServerAuth();
+
+    const requestBody =
+      await readJsonRequestBody(
+        request,
+      );
+
+    if (
+      !isSwitchWorkspaceRequest(
+        requestBody,
+      )
+    ) {
+      return createValidationErrorResponse(
+        "A valid workspace ID is required.",
+      );
+    }
+
+    const requestedWorkspaceId =
+      normalizeRequiredText(
+        requestBody.workspaceId,
+      );
+
+    if (
+      !requestedWorkspaceId
+    ) {
+      return createValidationErrorResponse(
+        "A valid workspace ID is required.",
+      );
+    }
+
+    const admin =
+      createWorkspaceAdminClient();
+
+    const {
+      data:
+        workspace,
+      error:
+        workspaceError,
+    } =
+      await admin
+        .from(
+          "workspaces",
+        )
+        .select(
+          WORKSPACE_SELECT,
+        )
+        .eq(
+          "id",
+          requestedWorkspaceId,
+        )
+        .maybeSingle();
+
+    if (
+      workspaceError
+    ) {
+      return createDatabaseErrorResponse({
+        code:
+          "workspace-switch-load-failed",
+
+        message:
+          "CASE Budget could not load the requested workspace.",
+
+        detail:
+          workspaceError.message,
+      });
+    }
+
+    if (
+      !workspace
+    ) {
+      return createNotFoundResponse(
+        "The requested CASE Budget workspace could not be found.",
+      );
+    }
+
+    if (
+      !workspace.is_active
+    ) {
+      return createForbiddenResponse(
+        "The requested CASE Budget workspace is not active.",
+      );
+    }
+
+    const {
+      data:
+        membership,
+      error:
+        membershipError,
+    } =
+      await admin
+        .from(
+          "workspace_members",
+        )
+        .select(
+          MEMBERSHIP_SELECT,
+        )
+        .eq(
+          "workspace_id",
+          requestedWorkspaceId,
+        )
+        .eq(
+          "user_id",
+          userId,
+        )
+        .maybeSingle();
+
+    if (
+      membershipError
+    ) {
+      return createDatabaseErrorResponse({
+        code:
+          "workspace-switch-membership-load-failed",
+
+        message:
+          "CASE Budget could not verify your access to the requested workspace.",
+
+        detail:
+          membershipError.message,
+      });
+    }
+
+    if (
+      !membership ||
+      membership.status !==
+        "active"
+    ) {
+      return createForbiddenResponse(
+        "You do not have active access to the requested CASE Budget workspace.",
+      );
+    }
+
+    await setActiveWorkspaceCookie(
+      requestedWorkspaceId,
+    );
+
+    return NextResponse.json<
+      ApiResponse<{
+        activeWorkspaceId:
+          string;
+
+        workspace:
+          WorkspaceSettingsData;
+      }>
+    >(
+      {
+        success:
+          true,
+
+        data: {
+          activeWorkspaceId:
+            requestedWorkspaceId,
+
+          workspace:
+            mapWorkspaceSettingsData({
+              workspace,
+              membership,
+              userId,
+            }),
+        },
+
+        error:
+          null,
+      },
+      {
+        status:
+          200,
+
+        headers: {
+          "Cache-Control":
+            "no-store",
+        },
+      },
+    );
   } catch (
     error
   ) {
@@ -531,7 +746,6 @@ export async function PUT(
     );
   }
 }
-
 
 /**
  * DELETE /api/workspaces/current
@@ -947,6 +1161,14 @@ export async function DELETE(
   }
 }
 
+/**
+ * Persists the authoritative CASE Budget workspace selection.
+ *
+ * The cookie is HttpOnly because workspace authorization must be
+ * controlled by the server. Client components should switch
+ * workspaces through POST /api/workspaces/current rather than writing
+ * this cookie directly.
+ */
 async function setActiveWorkspaceCookie(
   workspaceId:
     string,
@@ -959,7 +1181,7 @@ async function setActiveWorkspaceCookie(
     workspaceId,
     {
       httpOnly:
-        false,
+        true,
 
       secure:
         process.env.NODE_ENV ===
@@ -974,6 +1196,26 @@ async function setActiveWorkspaceCookie(
       maxAge:
         ACTIVE_WORKSPACE_COOKIE_MAX_AGE_SECONDS,
     },
+  );
+}
+
+function isSwitchWorkspaceRequest(
+  value:
+    unknown,
+): value is SwitchWorkspaceRequest {
+  if (
+    !isRecord(
+      value,
+    )
+  ) {
+    return false;
+  }
+
+  return (
+    typeof value.workspaceId ===
+      "string" &&
+    value.workspaceId.trim().length >
+      0
   );
 }
 
@@ -1302,7 +1544,10 @@ function createForbiddenResponse(
   );
 }
 
-function createNotFoundResponse() {
+function createNotFoundResponse(
+  message =
+    "The active CASE Budget workspace could not be found.",
+) {
   return NextResponse.json<
     ApiErrorResponse
   >(
@@ -1317,8 +1562,7 @@ function createNotFoundResponse() {
         code:
           "workspace-not-found",
 
-        message:
-          "The active CASE Budget workspace could not be found.",
+        message,
       },
     },
     {

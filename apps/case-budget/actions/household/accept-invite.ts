@@ -5,6 +5,11 @@ import {
 } from "next/cache";
 
 import {
+  cookies,
+} from "next/headers";
+
+import {
+  CASE_BUDGET_ACTIVE_WORKSPACE_COOKIE,
   requireCaseBudgetUser,
 } from "@/lib/auth/server-auth";
 
@@ -57,6 +62,9 @@ const MINIMUM_PASSWORD_LENGTH =
 
 const DEFAULT_REDIRECT_PATH =
   "/dashboard";
+
+const ACTIVE_WORKSPACE_COOKIE_MAX_AGE_SECONDS =
+  60 * 60 * 24 * 365;
 
 /**
  * React useActionState-compatible action.
@@ -592,6 +600,35 @@ export async function acceptHouseholdInvite(
         "CASE Budget could not confirm that your household membership was activated.",
       );
     }
+
+    /**
+     * Make the invited workspace the user's active workspace immediately
+     * after the invitation membership has been activated and verified.
+     */
+    const cookieStore =
+      await cookies();
+
+    cookieStore.set(
+      CASE_BUDGET_ACTIVE_WORKSPACE_COOKIE,
+      workspace.id,
+      {
+        httpOnly:
+          true,
+
+        sameSite:
+          "lax",
+
+        secure:
+          process.env.NODE_ENV ===
+          "production",
+
+        path:
+          "/",
+
+        maxAge:
+          ACTIVE_WORKSPACE_COOKIE_MAX_AGE_SECONDS,
+      },
+    );
 
     revalidatePath(
       "/dashboard",

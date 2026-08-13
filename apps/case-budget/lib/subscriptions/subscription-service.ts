@@ -2,9 +2,12 @@ import "server-only";
 
 import {
   CASE_BUDGET_DEFAULT_PLAN,
+  canPurchaseAdditionalCaseBudgetWorkspaces,
   getAiCoachMonthlyQuestionLimit,
   getAiCoachQuestionsRemaining,
   getAiCoachUsagePercentage,
+  getCaseBudgetEffectiveWorkspaceLimit,
+  getCaseBudgetIncludedWorkspaceLimit,
   getCaseBudgetPlanEntitlements,
   hasAiCoachAccess,
   hasCaseBudgetFeature,
@@ -117,12 +120,52 @@ export function resolveCaseBudgetSubscriptionAccess({
         null,
     });
 
+  const includedWorkspaceLimit =
+    getCaseBudgetIncludedWorkspaceLimit(
+      effectivePlan,
+    );
+
+  /*
+   * Purchased workspace capacity is intentionally zero until the
+   * workspace add-on billing/persistence layer is implemented.
+   *
+   * Keeping this value separate from the static plan entitlement lets
+   * Stripe increase Pro workspace capacity later without changing the
+   * five workspaces included with the base Pro plan.
+   */
+  const additionalWorkspaceLimit =
+    0;
+
+  const workspaceLimit =
+    getCaseBudgetEffectiveWorkspaceLimit({
+      plan:
+        effectivePlan,
+
+      additionalWorkspaceCount:
+        additionalWorkspaceLimit,
+    });
+
+  const allowsAdditionalWorkspacePurchases =
+    canPurchaseAdditionalCaseBudgetWorkspaces(
+      effectivePlan,
+    );
+
   return {
     subscription:
       subscriptionSummary,
 
     ai:
       aiSummary,
+
+    workspaces: {
+      includedWorkspaceLimit,
+
+      additionalWorkspaceLimit,
+
+      workspaceLimit,
+
+      allowsAdditionalWorkspacePurchases,
+    },
   };
 }
 

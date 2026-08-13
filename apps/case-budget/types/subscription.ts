@@ -267,12 +267,59 @@ export type CaseBudgetAiUsageSummary = {
     number;
 };
 
+/**
+ * Workspace-capacity entitlement for the subscription/account.
+ *
+ * includedWorkspaceLimit
+ * ----------------------
+ * Capacity included with the base plan:
+ *
+ * Free  -> 1
+ * Plus  -> 2
+ * Pro   -> 5
+ *
+ * additionalWorkspaceLimit
+ * ------------------------
+ * Additional workspace capacity purchased separately.
+ *
+ * This starts at zero and is intentionally separate from the static
+ * plan entitlement so Pro workspace add-ons can later be managed by
+ * Stripe without changing what the base Pro plan includes.
+ *
+ * workspaceLimit
+ * --------------
+ * Effective workspace capacity:
+ *
+ * includedWorkspaceLimit + additionalWorkspaceLimit
+ *
+ * allowsAdditionalWorkspacePurchases
+ * -----------------------------------
+ * Indicates whether the plan may purchase additional workspace
+ * capacity. Initially only Pro supports workspace add-ons.
+ */
+export type CaseBudgetWorkspaceEntitlementSummary = {
+  includedWorkspaceLimit:
+    number;
+
+  additionalWorkspaceLimit:
+    number;
+
+  workspaceLimit:
+    number;
+
+  allowsAdditionalWorkspacePurchases:
+    boolean;
+};
+
 export type CaseBudgetSubscriptionEntitlementState = {
   subscription:
     CaseBudgetSubscriptionSummary;
 
   ai:
     CaseBudgetAiUsageSummary;
+
+  workspaces:
+    CaseBudgetWorkspaceEntitlementSummary;
 };
 
 export type CaseBudgetSubscriptionCheckoutSelection = {
@@ -368,7 +415,7 @@ export function getCaseBudgetSubscriptionAccessPlan(
 ): CaseBudgetPlan {
   if (
     subscription.plan ===
-    "free"
+      "free"
   ) {
     return "free";
   }
