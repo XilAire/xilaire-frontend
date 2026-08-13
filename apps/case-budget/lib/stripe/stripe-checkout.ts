@@ -1,6 +1,10 @@
 import "server-only";
 
 import {
+  resolveStripeCustomerForUser,
+} from "@/lib/stripe/stripe-customer";
+
+import {
   getStripePriceId,
 } from "@/lib/stripe/stripe-prices";
 
@@ -112,6 +116,54 @@ export async function createEmbeddedCheckoutSession({
       normalizedTheme,
     );
 
+  /*
+   * Stripe Customer identity belongs to the billing user rather than
+   * to an individual CASE Budget workspace.
+   *
+   * If this user has previously purchased a CASE Budget subscription,
+   * reuse the Stripe Customer created for that user.
+   *
+   * This allows one person to own multiple independently billed
+   * workspaces without creating duplicate Stripe Customer records.
+   */
+  const {
+    customerId,
+  } =
+    await resolveStripeCustomerForUser({
+      userId:
+        normalizedUserId,
+    });
+
+  /*
+   * Stripe Checkout should receive either:
+   *
+   *   customer
+   *
+   * OR:
+   *
+   *   customer_email
+   *
+   * We intentionally do not send both.
+   *
+   * Existing billing user:
+   *   Reuse the existing Stripe Customer.
+   *
+   * First checkout:
+   *   Supply the authenticated user's email and allow Stripe Checkout
+   *   to create the initial Stripe Customer.
+   */
+  const customerConfiguration =
+    customerId
+      ? {
+          customer:
+            customerId,
+        }
+      : {
+          customer_email:
+            normalizedEmail ??
+            undefined,
+        };
+
   const session =
     await stripe.checkout.sessions.create({
       mode:
@@ -133,9 +185,7 @@ export async function createEmbeddedCheckoutSession({
       return_url:
         normalizedReturnUrl,
 
-      customer_email:
-        normalizedEmail ??
-        undefined,
+      ...customerConfiguration,
 
       allow_promotion_codes:
         true,
