@@ -7,10 +7,12 @@ import {
 import type {
   FindAiUsagePeriodInput,
   FindSubscriptionInput,
+  FindWorkspaceAiUsageAggregateInput,
   SaveAiRequestInput,
   SaveAiUsagePeriodInput,
   SaveSubscriptionInput,
   SubscriptionRepository,
+  WorkspaceAiUsageAggregate,
 } from "@/lib/subscriptions/subscription-repository";
 
 import type {
@@ -19,7 +21,43 @@ import type {
   CaseBudgetSubscription,
 } from "@/types/subscription";
 
-type UnknownRecord = Record<string, unknown>;
+type UnknownRecord =
+  Record<
+    string,
+    unknown
+  >;
+
+type WorkspaceAiUsagePeriodRow = {
+  workspace_id:
+    string | null;
+
+  subscription_id:
+    string | null;
+
+  period_start:
+    string;
+
+  period_end:
+    string;
+
+  successful_questions_used:
+    number;
+
+  input_tokens:
+    number;
+
+  cached_input_tokens:
+    number;
+
+  output_tokens:
+    number;
+
+  total_tokens:
+    number;
+
+  estimated_cost_usd:
+    number | string;
+};
 
 const SUBSCRIPTIONS_TABLE =
   "case_budget_subscriptions";
@@ -34,18 +72,28 @@ let repositoryInstance:
   SubscriptionRepository | null =
   null;
 
-export function createSupabaseSubscriptionRepository(): SubscriptionRepository {
+export function createSupabaseSubscriptionRepository():
+  SubscriptionRepository {
   return {
     findSubscription,
+
     findAiUsagePeriod,
+
+    findWorkspaceAiUsageAggregate,
+
     saveSubscription,
+
     saveAiUsagePeriod,
+
     saveAiRequest,
   };
 }
 
-export function getSupabaseSubscriptionRepository(): SubscriptionRepository {
-  if (!repositoryInstance) {
+export function getSupabaseSubscriptionRepository():
+  SubscriptionRepository {
+  if (
+    !repositoryInstance
+  ) {
     repositoryInstance =
       createSupabaseSubscriptionRepository();
   }
@@ -54,8 +102,11 @@ export function getSupabaseSubscriptionRepository(): SubscriptionRepository {
 }
 
 async function findSubscription(
-  input: FindSubscriptionInput,
-): Promise<CaseBudgetSubscription | null> {
+  input:
+    FindSubscriptionInput,
+): Promise<
+  CaseBudgetSubscription | null
+> {
   const userId =
     normalizeRequiredString(
       input.userId,
@@ -68,93 +119,123 @@ async function findSubscription(
     );
 
   /*
-   * Prefer a workspace-specific subscription when one exists.
-   * If none exists, fall back to the member-level subscription where
-   * workspace_id IS NULL. This is important because CASE Budget paid
-   * subscriptions can legitimately belong directly to a member.
+   * Workspace subscription entitlement model
+   * ----------------------------------------
+   *
+   * If a workspace ID is supplied, entitlement resolution is based first on
+   * the subscription assigned to that workspace.
+   *
+   * The subscription row's user_id identifies the billing owner, but active
+   * members of the workspace inherit the workspace subscription.
+   *
+   * Workspace membership authorization is performed by subscription-access.ts
+   * before this repository is called.
+   *
+   * If no workspace subscription exists, fall back to a personal subscription
+   * belonging directly to the authenticated user.
    */
-  if (workspaceId) {
+  if (
+    workspaceId
+  ) {
     const workspaceRow =
-      await findLatestSubscriptionRow({
-        userId,
+      await findLatestWorkspaceSubscriptionRow({
         workspaceId,
       });
 
-    if (workspaceRow) {
-      return mapRow<CaseBudgetSubscription>(
+    if (
+      workspaceRow
+    ) {
+      return mapRow<
+        CaseBudgetSubscription
+      >(
         workspaceRow,
       );
     }
 
-    const memberRow =
-      await findLatestSubscriptionRow({
+    const personalRow =
+      await findLatestPersonalSubscriptionRow({
         userId,
-        workspaceId:
-          null,
       });
 
-    return memberRow
-      ? mapRow<CaseBudgetSubscription>(
-          memberRow,
+    return personalRow
+      ? mapRow<
+          CaseBudgetSubscription
+        >(
+          personalRow,
         )
       : null;
   }
 
-  const latestRow =
-    await findLatestSubscriptionRow({
+  /*
+   * No workspace context means the lookup stays user-scoped.
+   *
+   * Prefer the user's personal subscription where workspace_id IS NULL.
+   */
+  const personalRow =
+    await findLatestPersonalSubscriptionRow({
       userId,
-      workspaceId:
-        undefined,
     });
 
-  return latestRow
-    ? mapRow<CaseBudgetSubscription>(
-        latestRow,
+  if (
+    personalRow
+  ) {
+    return mapRow<
+      CaseBudgetSubscription
+    >(
+      personalRow,
+    );
+  }
+
+  /*
+   * Preserve compatibility for callers that do not provide a workspace but
+   * where the authenticated user may still own a workspace subscription.
+   */
+  const userOwnedRow =
+    await findLatestUserOwnedSubscriptionRow({
+      userId,
+    });
+
+  return userOwnedRow
+    ? mapRow<
+        CaseBudgetSubscription
+      >(
+        userOwnedRow,
       )
     : null;
 }
 
-async function findLatestSubscriptionRow({
-  userId,
+async function findLatestWorkspaceSubscriptionRow({
   workspaceId,
 }: {
-  userId: string;
   workspaceId:
-    string | null | undefined;
-}): Promise<UnknownRecord | null> {
+    string;
+}): Promise<
+  UnknownRecord | null
+> {
+  const normalizedWorkspaceId =
+    normalizeRequiredString(
+      workspaceId,
+      "workspaceId",
+    );
+
   const supabase =
     createAdminClient();
-
-  let query =
-    supabase
-      .from(
-        SUBSCRIPTIONS_TABLE,
-      )
-      .select("*")
-      .eq(
-        "user_id",
-        userId,
-      );
-
-  if (workspaceId === null) {
-    query =
-      query.is(
-        "workspace_id",
-        null,
-      );
-  } else if (workspaceId) {
-    query =
-      query.eq(
-        "workspace_id",
-        workspaceId,
-      );
-  }
 
   const {
     data,
     error,
   } =
-    await query
+    await supabase
+      .from(
+        SUBSCRIPTIONS_TABLE,
+      )
+      .select(
+        "*",
+      )
+      .eq(
+        "workspace_id",
+        normalizedWorkspaceId,
+      )
       .order(
         "updated_at",
         {
@@ -169,24 +250,171 @@ async function findLatestSubscriptionRow({
             false,
         },
       )
-      .limit(1)
+      .limit(
+        1,
+      )
       .maybeSingle();
 
-  if (error) {
+  if (
+    error
+  ) {
     throwRepositoryError(
-      "find subscription",
+      "find workspace subscription",
       error,
     );
   }
 
   return data
-    ? asRecord(data)
+    ? asRecord(
+        data,
+      )
+    : null;
+}
+
+async function findLatestPersonalSubscriptionRow({
+  userId,
+}: {
+  userId:
+    string;
+}): Promise<
+  UnknownRecord | null
+> {
+  const normalizedUserId =
+    normalizeRequiredString(
+      userId,
+      "userId",
+    );
+
+  const supabase =
+    createAdminClient();
+
+  const {
+    data,
+    error,
+  } =
+    await supabase
+      .from(
+        SUBSCRIPTIONS_TABLE,
+      )
+      .select(
+        "*",
+      )
+      .eq(
+        "user_id",
+        normalizedUserId,
+      )
+      .is(
+        "workspace_id",
+        null,
+      )
+      .order(
+        "updated_at",
+        {
+          ascending:
+            false,
+        },
+      )
+      .order(
+        "created_at",
+        {
+          ascending:
+            false,
+        },
+      )
+      .limit(
+        1,
+      )
+      .maybeSingle();
+
+  if (
+    error
+  ) {
+    throwRepositoryError(
+      "find personal subscription",
+      error,
+    );
+  }
+
+  return data
+    ? asRecord(
+        data,
+      )
+    : null;
+}
+
+async function findLatestUserOwnedSubscriptionRow({
+  userId,
+}: {
+  userId:
+    string;
+}): Promise<
+  UnknownRecord | null
+> {
+  const normalizedUserId =
+    normalizeRequiredString(
+      userId,
+      "userId",
+    );
+
+  const supabase =
+    createAdminClient();
+
+  const {
+    data,
+    error,
+  } =
+    await supabase
+      .from(
+        SUBSCRIPTIONS_TABLE,
+      )
+      .select(
+        "*",
+      )
+      .eq(
+        "user_id",
+        normalizedUserId,
+      )
+      .order(
+        "updated_at",
+        {
+          ascending:
+            false,
+        },
+      )
+      .order(
+        "created_at",
+        {
+          ascending:
+            false,
+        },
+      )
+      .limit(
+        1,
+      )
+      .maybeSingle();
+
+  if (
+    error
+  ) {
+    throwRepositoryError(
+      "find user subscription",
+      error,
+    );
+  }
+
+  return data
+    ? asRecord(
+        data,
+      )
     : null;
 }
 
 async function findAiUsagePeriod(
-  input: FindAiUsagePeriodInput,
-): Promise<CaseBudgetAiUsagePeriod | null> {
+  input:
+    FindAiUsagePeriodInput,
+): Promise<
+  CaseBudgetAiUsagePeriod | null
+> {
   const userId =
     normalizeRequiredString(
       input.userId,
@@ -204,13 +432,13 @@ async function findAiUsagePeriod(
     );
 
   const periodStart =
-    normalizeRequiredString(
+    normalizeRequiredTimestamp(
       input.periodStart,
       "periodStart",
     );
 
   const periodEnd =
-    normalizeRequiredString(
+    normalizeRequiredTimestamp(
       input.periodEnd,
       "periodEnd",
     );
@@ -223,7 +451,9 @@ async function findAiUsagePeriod(
       .from(
         AI_USAGE_PERIODS_TABLE,
       )
-      .select("*")
+      .select(
+        "*",
+      )
       .eq(
         "user_id",
         userId,
@@ -248,11 +478,19 @@ async function findAiUsagePeriod(
           null,
         );
 
-  if (subscriptionId) {
+  if (
+    subscriptionId
+  ) {
     query =
       query.eq(
         "subscription_id",
         subscriptionId,
+      );
+  } else {
+    query =
+      query.is(
+        "subscription_id",
+        null,
       );
   }
 
@@ -268,10 +506,14 @@ async function findAiUsagePeriod(
             false,
         },
       )
-      .limit(1)
+      .limit(
+        1,
+      )
       .maybeSingle();
 
-  if (error) {
+  if (
+    error
+  ) {
     throwRepositoryError(
       "find AI usage period",
       error,
@@ -279,16 +521,216 @@ async function findAiUsagePeriod(
   }
 
   return data
-    ? mapRow<CaseBudgetAiUsagePeriod>(
-        asRecord(data),
+    ? mapRow<
+        CaseBudgetAiUsagePeriod
+      >(
+        asRecord(
+          data,
+        ),
       )
     : null;
 }
 
+/**
+ * Returns the workspace-wide AI usage total for one subscription and one
+ * usage period.
+ *
+ * Individual usage rows remain user-scoped so CASE Budget can audit who used
+ * AI Coach, while this aggregate is used to enforce the shared Pro allowance.
+ */
+async function findWorkspaceAiUsageAggregate(
+  input:
+    FindWorkspaceAiUsageAggregateInput,
+): Promise<
+  WorkspaceAiUsageAggregate
+> {
+  const workspaceId =
+    normalizeRequiredString(
+      input.workspaceId,
+      "workspaceId",
+    );
+
+  const subscriptionId =
+    normalizeRequiredString(
+      input.subscriptionId,
+      "subscriptionId",
+    );
+
+  const periodStart =
+    normalizeRequiredTimestamp(
+      input.periodStart,
+      "periodStart",
+    );
+
+  const periodEnd =
+    normalizeRequiredTimestamp(
+      input.periodEnd,
+      "periodEnd",
+    );
+
+  const supabase =
+    createAdminClient();
+
+  const {
+    data,
+    error,
+  } =
+    await supabase
+      .from(
+        AI_USAGE_PERIODS_TABLE,
+      )
+      .select(
+        [
+          "workspace_id",
+          "subscription_id",
+          "period_start",
+          "period_end",
+          "successful_questions_used",
+          "input_tokens",
+          "cached_input_tokens",
+          "output_tokens",
+          "total_tokens",
+          "estimated_cost_usd",
+        ].join(
+          ",",
+        ),
+      )
+      .eq(
+        "workspace_id",
+        workspaceId,
+      )
+      .eq(
+        "subscription_id",
+        subscriptionId,
+      )
+      .eq(
+        "period_start",
+        periodStart,
+      )
+      .eq(
+        "period_end",
+        periodEnd,
+      );
+
+  if (
+    error
+  ) {
+    throwRepositoryError(
+      "find workspace AI usage aggregate",
+      error,
+    );
+  }
+
+  const rows =
+    (
+      data ??
+      []
+    ) as unknown as
+      WorkspaceAiUsagePeriodRow[];
+
+  let successfulQuestionsUsed =
+    0;
+
+  let inputTokens =
+    0;
+
+  let cachedInputTokens =
+    0;
+
+  let outputTokens =
+    0;
+
+  let totalTokens =
+    0;
+
+  let estimatedCostUsd =
+    0;
+
+  for (
+    const row
+    of rows
+  ) {
+    successfulQuestionsUsed +=
+      normalizeNonNegativeInteger(
+        row.successful_questions_used,
+      );
+
+    inputTokens +=
+      normalizeNonNegativeInteger(
+        row.input_tokens,
+      );
+
+    cachedInputTokens +=
+      normalizeNonNegativeInteger(
+        row.cached_input_tokens,
+      );
+
+    outputTokens +=
+      normalizeNonNegativeInteger(
+        row.output_tokens,
+      );
+
+    totalTokens +=
+      normalizeNonNegativeInteger(
+        row.total_tokens,
+      );
+
+    estimatedCostUsd +=
+      normalizeMoney(
+        row.estimated_cost_usd,
+      );
+  }
+
+  return {
+    workspaceId,
+
+    subscriptionId,
+
+    periodStart,
+
+    periodEnd,
+
+    successfulQuestionsUsed:
+      normalizeNonNegativeInteger(
+        successfulQuestionsUsed,
+      ),
+
+    inputTokens:
+      normalizeNonNegativeInteger(
+        inputTokens,
+      ),
+
+    cachedInputTokens:
+      normalizeNonNegativeInteger(
+        cachedInputTokens,
+      ),
+
+    outputTokens:
+      normalizeNonNegativeInteger(
+        outputTokens,
+      ),
+
+    totalTokens:
+      normalizeNonNegativeInteger(
+        totalTokens,
+      ),
+
+    estimatedCostUsd:
+      normalizeMoney(
+        estimatedCostUsd,
+      ),
+  };
+}
+
 async function saveSubscription(
-  input: SaveSubscriptionInput,
-): Promise<CaseBudgetSubscription> {
-  return upsertModel<CaseBudgetSubscription>(
+  input:
+    SaveSubscriptionInput,
+): Promise<
+  CaseBudgetSubscription
+> {
+  return upsertModel<
+    CaseBudgetSubscription
+  >(
     SUBSCRIPTIONS_TABLE,
     input.subscription,
     "save subscription",
@@ -296,9 +738,14 @@ async function saveSubscription(
 }
 
 async function saveAiUsagePeriod(
-  input: SaveAiUsagePeriodInput,
-): Promise<CaseBudgetAiUsagePeriod> {
-  return upsertModel<CaseBudgetAiUsagePeriod>(
+  input:
+    SaveAiUsagePeriodInput,
+): Promise<
+  CaseBudgetAiUsagePeriod
+> {
+  return upsertModel<
+    CaseBudgetAiUsagePeriod
+  >(
     AI_USAGE_PERIODS_TABLE,
     input.usagePeriod,
     "save AI usage period",
@@ -306,23 +753,34 @@ async function saveAiUsagePeriod(
 }
 
 async function saveAiRequest(
-  input: SaveAiRequestInput,
-): Promise<CaseBudgetAiRequest> {
-  return upsertModel<CaseBudgetAiRequest>(
+  input:
+    SaveAiRequestInput,
+): Promise<
+  CaseBudgetAiRequest
+> {
+  return upsertModel<
+    CaseBudgetAiRequest
+  >(
     AI_REQUESTS_TABLE,
     input.request,
     "save AI request",
   );
 }
 
-async function upsertModel<Model>(
+async function upsertModel<
+  Model
+>(
   table:
     string,
+
   model:
     unknown,
+
   operation:
     string,
-): Promise<Model> {
+): Promise<
+  Model
+> {
   const payload =
     mapModelToRow(
       model,
@@ -330,10 +788,14 @@ async function upsertModel<Model>(
 
   const id =
     normalizeOptionalString(
-      asRecord(model).id,
+      asRecord(
+        model,
+      ).id,
     );
 
-  if (!id) {
+  if (
+    !id
+  ) {
     throw new Error(
       `CASE Budget ${operation} requires an id.`,
     );
@@ -347,7 +809,9 @@ async function upsertModel<Model>(
     error,
   } =
     await supabase
-      .from(table)
+      .from(
+        table,
+      )
       .upsert(
         payload,
         {
@@ -355,18 +819,26 @@ async function upsertModel<Model>(
             "id",
         },
       )
-      .select("*")
+      .select(
+        "*",
+      )
       .single();
 
-  if (error) {
+  if (
+    error
+  ) {
     throwRepositoryError(
       operation,
       error,
     );
   }
 
-  return mapRow<Model>(
-    asRecord(data),
+  return mapRow<
+    Model
+  >(
+    asRecord(
+      data,
+    ),
   );
 }
 
@@ -375,8 +847,11 @@ async function upsertModel<Model>(
  * Mapping every top-level key here keeps the repository compatible with
  * the shared subscription types without duplicating those definitions.
  */
-function mapRow<Model>(
-  row: UnknownRecord,
+function mapRow<
+  Model
+>(
+  row:
+    UnknownRecord,
 ): Model {
   const result:
     UnknownRecord = {};
@@ -385,10 +860,15 @@ function mapRow<Model>(
     const [
       key,
       value,
-    ] of Object.entries(row)
+    ]
+    of Object.entries(
+      row,
+    )
   ) {
     result[
-      snakeToCamel(key)
+      snakeToCamel(
+        key,
+      )
     ] =
       value;
   }
@@ -398,10 +878,13 @@ function mapRow<Model>(
 }
 
 function mapModelToRow(
-  model: unknown,
+  model:
+    unknown,
 ): UnknownRecord {
   const source =
-    asRecord(model);
+    asRecord(
+      model,
+    );
 
   const result:
     UnknownRecord = {};
@@ -410,14 +893,22 @@ function mapModelToRow(
     const [
       key,
       value,
-    ] of Object.entries(source)
+    ]
+    of Object.entries(
+      source,
+    )
   ) {
-    if (value === undefined) {
+    if (
+      value ===
+      undefined
+    ) {
       continue;
     }
 
     result[
-      camelToSnake(key)
+      camelToSnake(
+        key,
+      )
     ] =
       value;
   }
@@ -426,20 +917,23 @@ function mapModelToRow(
 }
 
 function snakeToCamel(
-  value: string,
+  value:
+    string,
 ) {
   return value.replace(
     /_([a-z0-9])/g,
     (
       _match,
-      character: string,
+      character:
+        string,
     ) =>
       character.toUpperCase(),
   );
 }
 
 function camelToSnake(
-  value: string,
+  value:
+    string,
 ) {
   return value
     .replace(
@@ -454,13 +948,17 @@ function camelToSnake(
 }
 
 function asRecord(
-  value: unknown,
+  value:
+    unknown,
 ): UnknownRecord {
   if (
     typeof value !==
       "object" ||
-    value === null ||
-    Array.isArray(value)
+    value ===
+      null ||
+    Array.isArray(
+      value,
+    )
   ) {
     return {};
   }
@@ -470,15 +968,20 @@ function asRecord(
 }
 
 function normalizeRequiredString(
-  value: unknown,
-  fieldName: string,
+  value:
+    unknown,
+
+  fieldName:
+    string,
 ) {
   const normalized =
     normalizeOptionalString(
       value,
     );
 
-  if (!normalized) {
+  if (
+    !normalized
+  ) {
     throw new Error(
       `${fieldName} is required.`,
     );
@@ -488,7 +991,8 @@ function normalizeRequiredString(
 }
 
 function normalizeOptionalString(
-  value: unknown,
+  value:
+    unknown,
 ) {
   if (
     typeof value !==
@@ -500,13 +1004,109 @@ function normalizeOptionalString(
   const normalized =
     value.trim();
 
-  return normalized ||
-    null;
+  return (
+    normalized ||
+    null
+  );
+}
+
+function normalizeRequiredTimestamp(
+  value:
+    unknown,
+
+  fieldName:
+    string,
+) {
+  const normalized =
+    normalizeRequiredString(
+      value,
+      fieldName,
+    );
+
+  const date =
+    new Date(
+      normalized,
+    );
+
+  if (
+    Number.isNaN(
+      date.getTime(),
+    )
+  ) {
+    throw new Error(
+      `${fieldName} must contain a valid timestamp.`,
+    );
+  }
+
+  return date.toISOString();
+}
+
+function normalizeNonNegativeInteger(
+  value:
+    unknown,
+) {
+  const normalizedValue =
+    typeof value ===
+      "number"
+      ? value
+      : Number(
+          value,
+        );
+
+  if (
+    !Number.isFinite(
+      normalizedValue,
+    )
+  ) {
+    return 0;
+  }
+
+  return Math.max(
+    0,
+    Math.floor(
+      normalizedValue,
+    ),
+  );
+}
+
+function normalizeMoney(
+  value:
+    unknown,
+) {
+  const normalizedValue =
+    typeof value ===
+      "number"
+      ? value
+      : Number(
+          value,
+        );
+
+  if (
+    !Number.isFinite(
+      normalizedValue,
+    )
+  ) {
+    return 0;
+  }
+
+  return (
+    Math.round(
+      Math.max(
+        0,
+        normalizedValue,
+      ) *
+        1_000_000,
+    ) /
+    1_000_000
+  );
 }
 
 function throwRepositoryError(
-  operation: string,
-  error: unknown,
+  operation:
+    string,
+
+  error:
+    unknown,
 ): never {
   const details =
     getErrorDetails(
@@ -524,27 +1124,39 @@ function throwRepositoryError(
 }
 
 function getErrorDetails(
-  error: unknown,
+  error:
+    unknown,
 ) {
   if (
     typeof error !==
       "object" ||
-    error === null
+    error ===
+      null
   ) {
     return {
       code:
         null,
+
       message:
-        String(error),
+        String(
+          error,
+        ),
     };
   }
 
   const value =
     error as {
-      code?: unknown;
-      message?: unknown;
-      details?: unknown;
-      hint?: unknown;
+      code?:
+        unknown;
+
+      message?:
+        unknown;
+
+      details?:
+        unknown;
+
+      hint?:
+        unknown;
     };
 
   return {

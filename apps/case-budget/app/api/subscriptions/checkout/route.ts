@@ -101,8 +101,11 @@ type ExistingManagedSubscription = {
   id:
     string;
 
+  userId:
+    string;
+
   workspaceId:
-    string | null;
+    string;
 
   plan:
     Exclude<
@@ -132,6 +135,68 @@ type ExistingManagedSubscription = {
     boolean;
 };
 
+type WorkspaceBillingAuthorization =
+  | {
+      allowed:
+        true;
+
+      workspaceId:
+        string;
+
+      workspaceName:
+        string;
+
+      ownerUserId:
+        string;
+    }
+  | {
+      allowed:
+        false;
+
+      status:
+        number;
+
+      code:
+        | "WORKSPACE_NOT_FOUND"
+        | "WORKSPACE_INACTIVE"
+        | "WORKSPACE_ACCESS_DENIED"
+        | "WORKSPACE_BILLING_OWNER_REQUIRED";
+
+      message:
+        string;
+    };
+
+type WorkspaceRow = {
+  id:
+    string;
+
+  name:
+    string;
+
+  owner_user_id:
+    string;
+
+  is_active:
+    boolean;
+};
+
+type WorkspaceMembershipRow = {
+  id:
+    string;
+
+  workspace_id:
+    string;
+
+  user_id:
+    string;
+
+  role:
+    string;
+
+  status:
+    string;
+};
+
 const SUBSCRIPTION_STATUSES_REQUIRING_MANAGEMENT:
   CaseBudgetSubscriptionStatus[] =
   [
@@ -150,6 +215,47 @@ export async function POST(
   try {
     const auth =
       await requireCaseBudgetServerAuth();
+
+    /*
+     * Billing authorization is workspace-scoped.
+     *
+     * A user may belong to many CASE Budget workspaces, but only the owner
+     * of the currently active workspace may create or manage that
+     * workspace's paid subscription.
+     *
+     * Admins, members, and viewers inherit the workspace entitlement but
+     * cannot establish a second subscription against someone else's
+     * workspace.
+     */
+    const billingAuthorization =
+      await authorizeWorkspaceBilling({
+        userId:
+          auth.userId,
+
+        workspaceId:
+          auth.workspaceId,
+      });
+
+    if (
+      !billingAuthorization.allowed
+    ) {
+      return NextResponse.json(
+        {
+          success:
+            false,
+
+          code:
+            billingAuthorization.code,
+
+          error:
+            billingAuthorization.message,
+        },
+        {
+          status:
+            billingAuthorization.status,
+        },
+      );
+    }
 
     const rawBody =
       await readJsonBody(
@@ -205,16 +311,25 @@ export async function POST(
       validatedRequest.value;
 
     /*
-     * CASE Budget allows one managed paid subscription per member.
+     * CASE Budget allows one managed paid subscription per workspace.
      *
-     * This lookup intentionally operates at the USER level instead
-     * of the workspace level. A member changing active workspaces
-     * must never be able to create another Stripe subscription.
+     * This is intentionally workspace-scoped instead of user-scoped.
+     *
+     * A single CASE Budget user may own multiple independent workspaces:
+     *
+     *   Personal Budget -> Pro
+     *   Business Budget -> Plus
+     *
+     * and may simultaneously be an invited member of another paid
+     * household workspace.
+     *
+     * The active workspace is therefore the billing boundary.
      */
     const existingSubscription =
-      await findExistingManagedSubscription(
-        auth.userId,
-      );
+      await findExistingManagedSubscription({
+        workspaceId:
+          billingAuthorization.workspaceId,
+      });
 
     if (
       existingSubscription
@@ -231,12 +346,12 @@ export async function POST(
             false,
 
           code:
-            "ACTIVE_SUBSCRIPTION_EXISTS",
+            "ACTIVE_WORKSPACE_SUBSCRIPTION_EXISTS",
 
           error:
             sameSelection
-              ? "You already have this CASE Budget subscription. Manage your existing subscription instead of creating another one."
-              : "You already have a CASE Budget subscription. Use Billing to change your existing plan or billing interval.",
+              ? "This workspace already has this CASE Budget subscription. Manage the existing workspace subscription instead of creating another one."
+              : "This workspace already has a CASE Budget subscription. Use Billing to change its existing plan or billing interval.",
 
           existingSubscription: {
             id:
@@ -253,6 +368,9 @@ export async function POST(
 
             workspaceId:
               existingSubscription.workspaceId,
+
+            billingOwnerUserId:
+              existingSubscription.userId,
 
             providerSubscriptionId:
               existingSubscription.providerSubscriptionId,
@@ -282,9 +400,16 @@ export async function POST(
         interval,
 
         workspaceId:
-          auth.workspaceId,
+          billingAuthorization.workspaceId,
       });
 
+    /*
+     * The authenticated workspace owner becomes the billing relationship
+     * owner for this new subscription.
+     *
+     * Stripe metadata and the subsequent webhook synchronization attach the
+     * paid plan to the workspace ID.
+     */
     const checkout =
       await createEmbeddedCheckoutSession({
         userId:
@@ -296,7 +421,7 @@ export async function POST(
           ),
 
         workspaceId:
-          auth.workspaceId,
+          billingAuthorization.workspaceId,
 
         plan,
 
@@ -326,6 +451,17 @@ export async function POST(
 
         priceId:
           checkout.priceId,
+
+        workspace: {
+          id:
+            billingAuthorization.workspaceId,
+
+          name:
+            billingAuthorization.workspaceName,
+
+          ownerUserId:
+            billingAuthorization.ownerUserId,
+        },
       },
     );
   } catch (
@@ -384,14 +520,296 @@ export async function POST(
   }
 }
 
-async function findExistingManagedSubscription(
+async function authorizeWorkspaceBilling({
+  userId,
+  workspaceId,
+}: {
   userId:
-    string,
-): Promise<ExistingManagedSubscription | null> {
+    string;
+
+  workspaceId:
+    string;
+}): Promise<WorkspaceBillingAuthorization> {
   const normalizedUserId =
     normalizeRequiredString(
       userId,
       "userId",
+    );
+
+  const normalizedWorkspaceId =
+    normalizeRequiredString(
+      workspaceId,
+      "workspaceId",
+    );
+
+  const supabase =
+    createAdminClient();
+
+  const {
+    data:
+      workspaceData,
+    error:
+      workspaceError,
+  } =
+    await supabase
+      .from(
+        "workspaces",
+      )
+      .select(
+        `
+          id,
+          name,
+          owner_user_id,
+          is_active
+        `,
+      )
+      .eq(
+        "id",
+        normalizedWorkspaceId,
+      )
+      .maybeSingle();
+
+  if (
+    workspaceError
+  ) {
+    console.error(
+      "[CASE Budget Stripe Checkout] Workspace lookup failed.",
+      {
+        userId:
+          normalizedUserId,
+
+        workspaceId:
+          normalizedWorkspaceId,
+
+        code:
+          getSupabaseErrorCode(
+            workspaceError,
+          ),
+
+        message:
+          getErrorMessage(
+            workspaceError,
+          ),
+      },
+    );
+
+    throw new Error(
+      "CASE Budget could not verify the workspace billing owner.",
+    );
+  }
+
+  if (
+    !workspaceData
+  ) {
+    return {
+      allowed:
+        false,
+
+      status:
+        404,
+
+      code:
+        "WORKSPACE_NOT_FOUND",
+
+      message:
+        "The active CASE Budget workspace could not be found.",
+    };
+  }
+
+  const workspace =
+    mapWorkspaceRow(
+      workspaceData,
+    );
+
+  if (
+    !workspace.is_active
+  ) {
+    return {
+      allowed:
+        false,
+
+      status:
+        409,
+
+      code:
+        "WORKSPACE_INACTIVE",
+
+      message:
+        "Billing cannot be changed for an inactive workspace.",
+    };
+  }
+
+  /*
+   * Verify that the authenticated user has an active membership in this
+   * workspace.
+   *
+   * We intentionally perform this check even for owner_user_id because it
+   * keeps workspace billing consistent with the rest of CASE Budget's
+   * membership model.
+   */
+  const {
+    data:
+      membershipData,
+    error:
+      membershipError,
+  } =
+    await supabase
+      .from(
+        "workspace_members",
+      )
+      .select(
+        `
+          id,
+          workspace_id,
+          user_id,
+          role,
+          status
+        `,
+      )
+      .eq(
+        "workspace_id",
+        normalizedWorkspaceId,
+      )
+      .eq(
+        "user_id",
+        normalizedUserId,
+      )
+      .maybeSingle();
+
+  if (
+    membershipError
+  ) {
+    console.error(
+      "[CASE Budget Stripe Checkout] Workspace membership lookup failed.",
+      {
+        userId:
+          normalizedUserId,
+
+        workspaceId:
+          normalizedWorkspaceId,
+
+        code:
+          getSupabaseErrorCode(
+            membershipError,
+          ),
+
+        message:
+          getErrorMessage(
+            membershipError,
+          ),
+      },
+    );
+
+    throw new Error(
+      "CASE Budget could not verify workspace billing permissions.",
+    );
+  }
+
+  if (
+    !membershipData
+  ) {
+    return {
+      allowed:
+        false,
+
+      status:
+        403,
+
+      code:
+        "WORKSPACE_ACCESS_DENIED",
+
+      message:
+        "You do not have access to this CASE Budget workspace.",
+    };
+  }
+
+  const membership =
+    mapWorkspaceMembershipRow(
+      membershipData,
+    );
+
+  if (
+    membership.status !==
+    "active"
+  ) {
+    return {
+      allowed:
+        false,
+
+      status:
+        403,
+
+      code:
+        "WORKSPACE_ACCESS_DENIED",
+
+      message:
+        "Only active workspace members can access workspace billing.",
+    };
+  }
+
+  /*
+   * Only the workspace owner controls billing.
+   *
+   * We require both:
+   *
+   *   workspaces.owner_user_id = authenticated user
+   *
+   * and:
+   *
+   *   workspace_members.role = owner
+   *
+   * This prevents an administrator, member, or viewer from creating a
+   * subscription against the workspace they were invited into.
+   */
+  const isWorkspaceOwner =
+    workspace.owner_user_id ===
+      normalizedUserId &&
+    membership.role ===
+      "owner";
+
+  if (
+    !isWorkspaceOwner
+  ) {
+    return {
+      allowed:
+        false,
+
+      status:
+        403,
+
+      code:
+        "WORKSPACE_BILLING_OWNER_REQUIRED",
+
+      message:
+        "This workspace's subscription is managed by the workspace owner. Switch to a workspace you own to purchase or manage your own CASE Budget subscription.",
+    };
+  }
+
+  return {
+    allowed:
+      true,
+
+    workspaceId:
+      workspace.id,
+
+    workspaceName:
+      workspace.name,
+
+    ownerUserId:
+      workspace.owner_user_id,
+  };
+}
+
+async function findExistingManagedSubscription({
+  workspaceId,
+}: {
+  workspaceId:
+    string;
+}): Promise<ExistingManagedSubscription | null> {
+  const normalizedWorkspaceId =
+    normalizeRequiredString(
+      workspaceId,
+      "workspaceId",
     );
 
   const supabase =
@@ -423,8 +841,8 @@ async function findExistingManagedSubscription(
         `,
       )
       .eq(
-        "user_id",
-        normalizedUserId,
+        "workspace_id",
+        normalizedWorkspaceId,
       )
       .eq(
         "billing_provider",
@@ -459,10 +877,10 @@ async function findExistingManagedSubscription(
     error
   ) {
     console.error(
-      "[CASE Budget Stripe Checkout] Existing subscription lookup failed.",
+      "[CASE Budget Stripe Checkout] Existing workspace subscription lookup failed.",
       {
-        userId:
-          normalizedUserId,
+        workspaceId:
+          normalizedWorkspaceId,
 
         code:
           getSupabaseErrorCode(
@@ -477,7 +895,7 @@ async function findExistingManagedSubscription(
     );
 
     throw new Error(
-      "CASE Budget could not verify whether an existing subscription is already active.",
+      "CASE Budget could not verify whether this workspace already has an active subscription.",
     );
   }
 
@@ -496,6 +914,32 @@ function mapExistingSubscriptionRow(
   row:
     ExistingSubscriptionRow,
 ): ExistingManagedSubscription {
+  const workspaceId =
+    normalizeOptionalString(
+      row.workspace_id,
+    );
+
+  if (
+    !workspaceId
+  ) {
+    throw new Error(
+      "CASE Budget found a workspace subscription without a workspace ID.",
+    );
+  }
+
+  const userId =
+    normalizeOptionalString(
+      row.user_id,
+    );
+
+  if (
+    !userId
+  ) {
+    throw new Error(
+      "CASE Budget found a workspace subscription without a billing owner user ID.",
+    );
+  }
+
   const plan =
     parsePaidPlan(
       row.plan,
@@ -539,10 +983,9 @@ function mapExistingSubscriptionRow(
     id:
       row.id,
 
-    workspaceId:
-      normalizeOptionalString(
-        row.workspace_id,
-      ),
+    userId,
+
+    workspaceId,
 
     plan,
 
@@ -574,6 +1017,131 @@ function mapExistingSubscriptionRow(
       Boolean(
         row.cancel_at_period_end,
       ),
+  };
+}
+
+function mapWorkspaceRow(
+  value:
+    unknown,
+): WorkspaceRow {
+  const record =
+    asRecord(
+      value,
+    );
+
+  if (
+    !record
+  ) {
+    throw new Error(
+      "CASE Budget received an invalid workspace record.",
+    );
+  }
+
+  const id =
+    normalizeOptionalString(
+      record.id,
+    );
+
+  const name =
+    normalizeOptionalString(
+      record.name,
+    );
+
+  const ownerUserId =
+    normalizeOptionalString(
+      record.owner_user_id,
+    );
+
+  if (
+    !id ||
+    !name ||
+    !ownerUserId
+  ) {
+    throw new Error(
+      "CASE Budget received an incomplete workspace record.",
+    );
+  }
+
+  return {
+    id,
+
+    name,
+
+    owner_user_id:
+      ownerUserId,
+
+    is_active:
+      record.is_active ===
+      true,
+  };
+}
+
+function mapWorkspaceMembershipRow(
+  value:
+    unknown,
+): WorkspaceMembershipRow {
+  const record =
+    asRecord(
+      value,
+    );
+
+  if (
+    !record
+  ) {
+    throw new Error(
+      "CASE Budget received an invalid workspace membership record.",
+    );
+  }
+
+  const id =
+    normalizeOptionalString(
+      record.id,
+    );
+
+  const workspaceId =
+    normalizeOptionalString(
+      record.workspace_id,
+    );
+
+  const userId =
+    normalizeOptionalString(
+      record.user_id,
+    );
+
+  const role =
+    normalizeOptionalString(
+      record.role,
+    );
+
+  const status =
+    normalizeOptionalString(
+      record.status,
+    );
+
+  if (
+    !id ||
+    !workspaceId ||
+    !userId ||
+    !role ||
+    !status
+  ) {
+    throw new Error(
+      "CASE Budget received an incomplete workspace membership record.",
+    );
+  }
+
+  return {
+    id,
+
+    workspace_id:
+      workspaceId,
+
+    user_id:
+      userId,
+
+    role,
+
+    status,
   };
 }
 
@@ -944,7 +1512,7 @@ function normalizeOptionalString(
 ) {
   if (
     typeof value !==
-      "string"
+    "string"
   ) {
     return null;
   }

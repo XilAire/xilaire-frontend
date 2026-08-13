@@ -26,6 +26,12 @@ export const runtime =
 export const dynamic =
   "force-dynamic";
 
+type UnknownRecord =
+  Record<
+    string,
+    unknown
+  >;
+
 type SubscriptionRow = {
   id:
     string;
@@ -71,8 +77,11 @@ type ManagedSubscription = {
   id:
     string;
 
+  userId:
+    string;
+
   workspaceId:
-    string | null;
+    string;
 
   plan:
     string;
@@ -99,6 +108,68 @@ type ManagedSubscription = {
     boolean;
 };
 
+type WorkspaceRow = {
+  id:
+    string;
+
+  name:
+    string;
+
+  owner_user_id:
+    string;
+
+  is_active:
+    boolean;
+};
+
+type WorkspaceMembershipRow = {
+  id:
+    string;
+
+  workspace_id:
+    string;
+
+  user_id:
+    string;
+
+  role:
+    string;
+
+  status:
+    string;
+};
+
+type WorkspaceBillingAuthorization =
+  | {
+      allowed:
+        true;
+
+      workspaceId:
+        string;
+
+      workspaceName:
+        string;
+
+      ownerUserId:
+        string;
+    }
+  | {
+      allowed:
+        false;
+
+      status:
+        number;
+
+      code:
+        | "WORKSPACE_NOT_FOUND"
+        | "WORKSPACE_INACTIVE"
+        | "WORKSPACE_ACCESS_DENIED"
+        | "WORKSPACE_BILLING_OWNER_REQUIRED";
+
+      message:
+        string;
+    };
+
 const CANCELABLE_STATUSES:
   CaseBudgetSubscriptionStatus[] =
   [
@@ -115,10 +186,57 @@ export async function POST() {
     const auth =
       await requireCaseBudgetServerAuth();
 
-    const subscription =
-      await findCancelableSubscription(
-        auth.userId,
+    /*
+     * Billing belongs to the active workspace.
+     *
+     * An invited member can receive the paid entitlements of the
+     * workspace they joined, but that does not make them the billing
+     * owner of that workspace.
+     *
+     * Only the workspace owner may cancel the workspace subscription.
+     */
+    const billingAuthorization =
+      await authorizeWorkspaceBilling({
+        userId:
+          auth.userId,
+
+        workspaceId:
+          auth.workspaceId,
+      });
+
+    if (
+      !billingAuthorization.allowed
+    ) {
+      return NextResponse.json(
+        {
+          success:
+            false,
+
+          code:
+            billingAuthorization.code,
+
+          error:
+            billingAuthorization.message,
+        },
+        {
+          status:
+            billingAuthorization.status,
+        },
       );
+    }
+
+    /*
+     * Find the subscription for the active workspace rather than simply
+     * finding the newest subscription owned by the authenticated user.
+     *
+     * This allows one user to own multiple independent workspaces and
+     * prevents cancellation of the wrong Stripe subscription.
+     */
+    const subscription =
+      await findCancelableSubscription({
+        workspaceId:
+          billingAuthorization.workspaceId,
+      });
 
     if (
       !subscription
@@ -132,11 +250,58 @@ export async function POST() {
             "NO_ACTIVE_SUBSCRIPTION",
 
           error:
-            "No active CASE Budget subscription was found to cancel.",
+            "No active CASE Budget subscription was found for this workspace.",
         },
         {
           status:
             404,
+        },
+      );
+    }
+
+    /*
+     * The subscription's billing owner should always be the workspace
+     * owner. Protect against malformed or legacy records before making
+     * any Stripe mutation.
+     */
+    if (
+      subscription.userId !==
+      billingAuthorization.ownerUserId
+    ) {
+      console.error(
+        "[CASE Budget Stripe Subscription Cancel] Workspace subscription billing owner mismatch.",
+        {
+          workspaceId:
+            billingAuthorization.workspaceId,
+
+          workspaceOwnerUserId:
+            billingAuthorization.ownerUserId,
+
+          subscriptionBillingOwnerUserId:
+            subscription.userId,
+
+          subscriptionRecordId:
+            subscription.id,
+
+          providerSubscriptionId:
+            subscription.providerSubscriptionId,
+        },
+      );
+
+      return NextResponse.json(
+        {
+          success:
+            false,
+
+          code:
+            "WORKSPACE_SUBSCRIPTION_OWNER_MISMATCH",
+
+          error:
+            "CASE Budget could not verify the billing owner for this workspace subscription.",
+        },
+        {
+          status:
+            409,
         },
       );
     }
@@ -164,6 +329,17 @@ export async function POST() {
           currentPeriodEnd:
             subscription.currentPeriodEnd,
 
+          workspace: {
+            id:
+              billingAuthorization.workspaceId,
+
+            name:
+              billingAuthorization.workspaceName,
+
+            ownerUserId:
+              billingAuthorization.ownerUserId,
+          },
+
           message:
             getAlreadyScheduledMessage(
               subscription.currentPeriodEnd,
@@ -178,7 +354,7 @@ export async function POST() {
           subscription.providerSubscriptionId,
 
         userId:
-          auth.userId,
+          billingAuthorization.ownerUserId,
       });
 
     return NextResponse.json(
@@ -203,6 +379,17 @@ export async function POST() {
 
         currentPeriodEnd:
           result.currentPeriodEnd,
+
+        workspace: {
+          id:
+            billingAuthorization.workspaceId,
+
+          name:
+            billingAuthorization.workspaceName,
+
+          ownerUserId:
+            billingAuthorization.ownerUserId,
+        },
 
         message:
           getCancellationScheduledMessage(
@@ -266,14 +453,274 @@ export async function POST() {
   }
 }
 
-async function findCancelableSubscription(
+async function authorizeWorkspaceBilling({
+  userId,
+  workspaceId,
+}: {
   userId:
-    string,
-): Promise<ManagedSubscription | null> {
+    string;
+
+  workspaceId:
+    string;
+}): Promise<WorkspaceBillingAuthorization> {
   const normalizedUserId =
     normalizeRequiredString(
       userId,
       "userId",
+    );
+
+  const normalizedWorkspaceId =
+    normalizeRequiredString(
+      workspaceId,
+      "workspaceId",
+    );
+
+  const supabase =
+    createAdminClient();
+
+  const {
+    data:
+      workspaceData,
+    error:
+      workspaceError,
+  } =
+    await supabase
+      .from(
+        "workspaces",
+      )
+      .select(
+        `
+          id,
+          name,
+          owner_user_id,
+          is_active
+        `,
+      )
+      .eq(
+        "id",
+        normalizedWorkspaceId,
+      )
+      .maybeSingle();
+
+  if (
+    workspaceError
+  ) {
+    console.error(
+      "[CASE Budget Stripe Subscription Cancel] Workspace lookup failed.",
+      {
+        userId:
+          normalizedUserId,
+
+        workspaceId:
+          normalizedWorkspaceId,
+
+        code:
+          getSupabaseErrorCode(
+            workspaceError,
+          ),
+
+        message:
+          getErrorMessage(
+            workspaceError,
+          ),
+      },
+    );
+
+    throw new Error(
+      "CASE Budget could not verify the workspace billing owner.",
+    );
+  }
+
+  if (
+    !workspaceData
+  ) {
+    return {
+      allowed:
+        false,
+
+      status:
+        404,
+
+      code:
+        "WORKSPACE_NOT_FOUND",
+
+      message:
+        "The active CASE Budget workspace could not be found.",
+    };
+  }
+
+  const workspace =
+    mapWorkspaceRow(
+      workspaceData,
+    );
+
+  if (
+    !workspace.is_active
+  ) {
+    return {
+      allowed:
+        false,
+
+      status:
+        409,
+
+      code:
+        "WORKSPACE_INACTIVE",
+
+      message:
+        "Billing cannot be changed for an inactive workspace.",
+    };
+  }
+
+  const {
+    data:
+      membershipData,
+    error:
+      membershipError,
+  } =
+    await supabase
+      .from(
+        "workspace_members",
+      )
+      .select(
+        `
+          id,
+          workspace_id,
+          user_id,
+          role,
+          status
+        `,
+      )
+      .eq(
+        "workspace_id",
+        normalizedWorkspaceId,
+      )
+      .eq(
+        "user_id",
+        normalizedUserId,
+      )
+      .maybeSingle();
+
+  if (
+    membershipError
+  ) {
+    console.error(
+      "[CASE Budget Stripe Subscription Cancel] Workspace membership lookup failed.",
+      {
+        userId:
+          normalizedUserId,
+
+        workspaceId:
+          normalizedWorkspaceId,
+
+        code:
+          getSupabaseErrorCode(
+            membershipError,
+          ),
+
+        message:
+          getErrorMessage(
+            membershipError,
+          ),
+      },
+    );
+
+    throw new Error(
+      "CASE Budget could not verify workspace billing permissions.",
+    );
+  }
+
+  if (
+    !membershipData
+  ) {
+    return {
+      allowed:
+        false,
+
+      status:
+        403,
+
+      code:
+        "WORKSPACE_ACCESS_DENIED",
+
+      message:
+        "You do not have access to this CASE Budget workspace.",
+    };
+  }
+
+  const membership =
+    mapWorkspaceMembershipRow(
+      membershipData,
+    );
+
+  if (
+    membership.status !==
+    "active"
+  ) {
+    return {
+      allowed:
+        false,
+
+      status:
+        403,
+
+      code:
+        "WORKSPACE_ACCESS_DENIED",
+
+      message:
+        "Only active workspace members can access workspace billing.",
+    };
+  }
+
+  const isWorkspaceOwner =
+    workspace.owner_user_id ===
+      normalizedUserId &&
+    membership.role ===
+      "owner";
+
+  if (
+    !isWorkspaceOwner
+  ) {
+    return {
+      allowed:
+        false,
+
+      status:
+        403,
+
+      code:
+        "WORKSPACE_BILLING_OWNER_REQUIRED",
+
+      message:
+        "This workspace's subscription is managed by the workspace owner. Switch to a workspace you own to manage your own CASE Budget subscription.",
+    };
+  }
+
+  return {
+    allowed:
+      true,
+
+    workspaceId:
+      workspace.id,
+
+    workspaceName:
+      workspace.name,
+
+    ownerUserId:
+      workspace.owner_user_id,
+  };
+}
+
+async function findCancelableSubscription({
+  workspaceId,
+}: {
+  workspaceId:
+    string;
+}): Promise<ManagedSubscription | null> {
+  const normalizedWorkspaceId =
+    normalizeRequiredString(
+      workspaceId,
+      "workspaceId",
     );
 
   const supabase =
@@ -305,8 +752,8 @@ async function findCancelableSubscription(
         `,
       )
       .eq(
-        "user_id",
-        normalizedUserId,
+        "workspace_id",
+        normalizedWorkspaceId,
       )
       .eq(
         "billing_provider",
@@ -341,10 +788,10 @@ async function findCancelableSubscription(
     error
   ) {
     console.error(
-      "[CASE Budget Stripe Subscription Cancel] Subscription lookup failed.",
+      "[CASE Budget Stripe Subscription Cancel] Workspace subscription lookup failed.",
       {
-        userId:
-          normalizedUserId,
+        workspaceId:
+          normalizedWorkspaceId,
 
         code:
           getSupabaseErrorCode(
@@ -359,7 +806,7 @@ async function findCancelableSubscription(
     );
 
     throw new Error(
-      "CASE Budget could not load the existing subscription.",
+      "CASE Budget could not load the existing workspace subscription.",
     );
   }
 
@@ -370,7 +817,8 @@ async function findCancelableSubscription(
   }
 
   return mapSubscriptionRow(
-    data,
+    data as
+      SubscriptionRow,
   );
 }
 
@@ -378,6 +826,32 @@ function mapSubscriptionRow(
   row:
     SubscriptionRow,
 ): ManagedSubscription {
+  const userId =
+    normalizeOptionalString(
+      row.user_id,
+    );
+
+  if (
+    !userId
+  ) {
+    throw new Error(
+      "CASE Budget subscription is missing its billing owner user ID.",
+    );
+  }
+
+  const workspaceId =
+    normalizeOptionalString(
+      row.workspace_id,
+    );
+
+  if (
+    !workspaceId
+  ) {
+    throw new Error(
+      "CASE Budget subscription is missing its workspace ID.",
+    );
+  }
+
   const status =
     parseSubscriptionStatus(
       row.status,
@@ -408,10 +882,9 @@ function mapSubscriptionRow(
     id:
       row.id,
 
-    workspaceId:
-      normalizeOptionalString(
-        row.workspace_id,
-      ),
+    userId,
+
+    workspaceId,
 
     plan:
       row.plan,
@@ -444,6 +917,131 @@ function mapSubscriptionRow(
       Boolean(
         row.cancel_at_period_end,
       ),
+  };
+}
+
+function mapWorkspaceRow(
+  value:
+    unknown,
+): WorkspaceRow {
+  const record =
+    asRecord(
+      value,
+    );
+
+  if (
+    !record
+  ) {
+    throw new Error(
+      "CASE Budget received an invalid workspace record.",
+    );
+  }
+
+  const id =
+    normalizeOptionalString(
+      record.id,
+    );
+
+  const name =
+    normalizeOptionalString(
+      record.name,
+    );
+
+  const ownerUserId =
+    normalizeOptionalString(
+      record.owner_user_id,
+    );
+
+  if (
+    !id ||
+    !name ||
+    !ownerUserId
+  ) {
+    throw new Error(
+      "CASE Budget received an incomplete workspace record.",
+    );
+  }
+
+  return {
+    id,
+
+    name,
+
+    owner_user_id:
+      ownerUserId,
+
+    is_active:
+      record.is_active ===
+      true,
+  };
+}
+
+function mapWorkspaceMembershipRow(
+  value:
+    unknown,
+): WorkspaceMembershipRow {
+  const record =
+    asRecord(
+      value,
+    );
+
+  if (
+    !record
+  ) {
+    throw new Error(
+      "CASE Budget received an invalid workspace membership record.",
+    );
+  }
+
+  const id =
+    normalizeOptionalString(
+      record.id,
+    );
+
+  const workspaceId =
+    normalizeOptionalString(
+      record.workspace_id,
+    );
+
+  const userId =
+    normalizeOptionalString(
+      record.user_id,
+    );
+
+  const role =
+    normalizeOptionalString(
+      record.role,
+    );
+
+  const status =
+    normalizeOptionalString(
+      record.status,
+    );
+
+  if (
+    !id ||
+    !workspaceId ||
+    !userId ||
+    !role ||
+    !status
+  ) {
+    throw new Error(
+      "CASE Budget received an incomplete workspace membership record.",
+    );
+  }
+
+  return {
+    id,
+
+    workspace_id:
+      workspaceId,
+
+    user_id:
+      userId,
+
+    role,
+
+    status,
   };
 }
 
@@ -551,6 +1149,26 @@ function formatDate(
   ).format(
     date,
   );
+}
+
+function asRecord(
+  value:
+    unknown,
+): UnknownRecord | null {
+  if (
+    typeof value !==
+      "object" ||
+    value ===
+      null ||
+    Array.isArray(
+      value,
+    )
+  ) {
+    return null;
+  }
+
+  return value as
+    UnknownRecord;
 }
 
 function normalizeRequiredString(

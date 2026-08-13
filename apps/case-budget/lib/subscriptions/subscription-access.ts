@@ -5,6 +5,14 @@ import {
 } from "@/lib/supabase/server";
 
 import {
+  createWorkspaceAdminClient,
+} from "@/lib/supabase/admin";
+
+import {
+  getAiCoachMonthlyQuestionLimit,
+} from "@/lib/subscriptions/plan-entitlements";
+
+import {
   getAiUsagePeriodBounds,
   getEffectivePlan,
   resolveCaseBudgetSubscriptionAccess,
@@ -35,6 +43,7 @@ import {
 
 export type SubscriptionAccessErrorCode =
   | "UNAUTHENTICATED"
+  | "WORKSPACE_ACCESS_DENIED"
   | "SUBSCRIPTION_LOOKUP_FAILED"
   | "AI_USAGE_LOOKUP_FAILED";
 
@@ -168,6 +177,18 @@ export async function resolveAuthenticatedSubscriptionAccess({
       workspaceId,
     );
 
+  if (
+    normalizedWorkspaceId
+  ) {
+    await requireActiveWorkspaceMembership({
+      userId:
+        identity.userId,
+
+      workspaceId:
+        normalizedWorkspaceId,
+    });
+  }
+
   const repository =
     getSupabaseSubscriptionRepository();
 
@@ -212,21 +233,25 @@ export async function resolveAuthenticatedSubscriptionAccess({
   }
 
   /*
-   * A missing subscription row always resolves to Free.
+   * Subscription resolution order:
    *
-   * We intentionally do not automatically insert a Free row here.
-   * Access resolution should remain safe and read-only.
+   * 1. Active workspace subscription.
+   * 2. Authenticated user's personal subscription.
+   * 3. Temporary Free subscription.
    *
-   * Stripe checkout/webhooks or explicit account initialization can
-   * persist the real subscription record separately.
+   * The repository handles the first two cases.
    */
   const subscription =
     persistedSubscription ??
     getDefaultFreeSubscription({
       id:
-        createTemporaryFreeSubscriptionId(
-          identity.userId,
-        ),
+        createTemporaryFreeSubscriptionId({
+          userId:
+            identity.userId,
+
+          workspaceId:
+            normalizedWorkspaceId,
+        }),
 
       userId:
         identity.userId,
@@ -243,8 +268,15 @@ export async function resolveAuthenticatedSubscriptionAccess({
       subscription,
     );
 
+  /*
+   * AI usage enforcement is workspace-shared for workspace subscriptions.
+   *
+   * Per-user usage rows are still stored so CASE Budget can track who used
+   * the AI Coach, but the allowance is enforced against the sum of all
+   * active users in the workspace.
+   */
   const aiUsagePeriod =
-    await findCurrentAiUsagePeriod({
+    await resolveAiUsagePeriodForAccess({
       userId:
         identity.userId,
 
@@ -253,6 +285,8 @@ export async function resolveAuthenticatedSubscriptionAccess({
 
       subscription:
         persistedSubscription,
+
+      effectivePlan,
 
       now,
     });
@@ -426,10 +460,89 @@ export async function requireAuthenticatedSubscriptionIdentity(): Promise<Authen
   };
 }
 
-async function findCurrentAiUsagePeriod({
+async function requireActiveWorkspaceMembership({
+  userId,
+  workspaceId,
+}: {
+  userId:
+    string;
+
+  workspaceId:
+    string;
+}) {
+  const workspaceAdmin =
+    createWorkspaceAdminClient();
+
+  const {
+    data,
+    error,
+  } =
+    await workspaceAdmin
+      .from(
+        "workspace_members",
+      )
+      .select(
+        "id,status",
+      )
+      .eq(
+        "workspace_id",
+        workspaceId,
+      )
+      .eq(
+        "user_id",
+        userId,
+      )
+      .eq(
+        "status",
+        "active",
+      )
+      .maybeSingle();
+
+  if (
+    error
+  ) {
+    console.error(
+      "[CASE Budget Subscription Access] Workspace membership verification failed.",
+      {
+        userId,
+        workspaceId,
+        error,
+      },
+    );
+
+    throw new SubscriptionAccessError({
+      code:
+        "WORKSPACE_ACCESS_DENIED",
+
+      message:
+        "CASE Budget could not verify your access to this workspace.",
+
+      status:
+        403,
+    });
+  }
+
+  if (
+    !data
+  ) {
+    throw new SubscriptionAccessError({
+      code:
+        "WORKSPACE_ACCESS_DENIED",
+
+      message:
+        "You do not have access to this workspace.",
+
+      status:
+        403,
+    });
+  }
+}
+
+async function resolveAiUsagePeriodForAccess({
   userId,
   workspaceId,
   subscription,
+  effectivePlan,
   now,
 }: {
   userId:
@@ -441,16 +554,18 @@ async function findCurrentAiUsagePeriod({
   subscription:
     CaseBudgetSubscription | null;
 
+  effectivePlan:
+    CaseBudgetPlan;
+
   now:
     Date;
-}) {
+}): Promise<CaseBudgetAiUsagePeriod | null> {
   /*
-   * Free users and users without a persisted subscription cannot have
-   * legitimate billable AI usage yet.
+   * Only persisted Pro subscriptions can have billable AI usage.
    */
   if (
     !subscription ||
-    subscription.plan !==
+    effectivePlan !==
       "pro"
   ) {
     return null;
@@ -465,6 +580,240 @@ async function findCurrentAiUsagePeriod({
         now,
     });
 
+  /*
+   * Workspace-scoped Pro subscriptions share one 200-question allowance
+   * across every active member of that workspace.
+   */
+  if (
+    workspaceId &&
+    subscription.workspaceId ===
+      workspaceId
+  ) {
+    return findWorkspaceAiUsagePeriod({
+      userId,
+
+      workspaceId,
+
+      subscription,
+
+      periodStart:
+        start,
+
+      periodEnd:
+        end,
+
+      now,
+    });
+  }
+
+  /*
+   * Personal subscriptions continue to use the authenticated user's own
+   * usage period.
+   */
+  return findCurrentUserAiUsagePeriod({
+    userId,
+
+    workspaceId,
+
+    subscription,
+
+    periodStart:
+      start,
+
+    periodEnd:
+      end,
+  });
+}
+
+async function findWorkspaceAiUsagePeriod({
+  userId,
+  workspaceId,
+  subscription,
+  periodStart,
+  periodEnd,
+  now,
+}: {
+  userId:
+    string;
+
+  workspaceId:
+    string;
+
+  subscription:
+    CaseBudgetSubscription;
+
+  periodStart:
+    string;
+
+  periodEnd:
+    string;
+
+  now:
+    Date;
+}): Promise<CaseBudgetAiUsagePeriod> {
+  const repository =
+    getSupabaseSubscriptionRepository();
+
+  try {
+    const aggregate =
+      await repository
+        .findWorkspaceAiUsageAggregate({
+          workspaceId,
+
+          subscriptionId:
+            subscription.id,
+
+          periodStart,
+
+          periodEnd,
+        });
+
+    const monthlyQuestionLimit =
+      getAiCoachMonthlyQuestionLimit(
+        "pro",
+      );
+
+    const successfulQuestionsUsed =
+      normalizeUsageCount(
+        aggregate.successfulQuestionsUsed,
+      );
+
+    return {
+      /*
+       * This is a synthetic aggregate access model.
+       *
+       * It is not persisted back into case_budget_ai_usage_periods.
+       * Individual member usage rows remain the source of truth.
+       */
+      id:
+        createWorkspaceAggregateUsagePeriodId({
+          workspaceId,
+
+          subscriptionId:
+            subscription.id,
+
+          periodStart,
+        }),
+
+      /*
+       * CaseBudgetAiUsagePeriod currently requires userId.
+       *
+       * We retain the requesting user's ID here only because the shared
+       * type requires it. Usage totals themselves come from every user in
+       * the workspace.
+       */
+      userId,
+
+      workspaceId,
+
+      subscriptionId:
+        subscription.id,
+
+      plan:
+        "pro",
+
+      periodStart,
+
+      periodEnd,
+
+      monthlyQuestionLimit,
+
+      successfulQuestionsUsed,
+
+      successfulQuestionsRemaining:
+        Math.max(
+          0,
+          monthlyQuestionLimit -
+            successfulQuestionsUsed,
+        ),
+
+      inputTokens:
+        normalizeUsageCount(
+          aggregate.inputTokens,
+        ),
+
+      cachedInputTokens:
+        normalizeUsageCount(
+          aggregate.cachedInputTokens,
+        ),
+
+      outputTokens:
+        normalizeUsageCount(
+          aggregate.outputTokens,
+        ),
+
+      totalTokens:
+        normalizeUsageCount(
+          aggregate.totalTokens,
+        ),
+
+      estimatedCostUsd:
+        normalizeMoney(
+          aggregate.estimatedCostUsd,
+        ),
+
+      createdAt:
+        periodStart,
+
+      updatedAt:
+        now.toISOString(),
+    };
+  } catch (
+    error
+  ) {
+    console.error(
+      "[CASE Budget Subscription Access] Workspace AI usage lookup failed.",
+      {
+        userId,
+
+        workspaceId,
+
+        subscriptionId:
+          subscription.id,
+
+        periodStart,
+
+        periodEnd,
+
+        error,
+      },
+    );
+
+    throw new SubscriptionAccessError({
+      code:
+        "AI_USAGE_LOOKUP_FAILED",
+
+      message:
+        "CASE Budget could not determine the workspace AI Coach usage.",
+
+      status:
+        500,
+    });
+  }
+}
+
+async function findCurrentUserAiUsagePeriod({
+  userId,
+  workspaceId,
+  subscription,
+  periodStart,
+  periodEnd,
+}: {
+  userId:
+    string;
+
+  workspaceId:
+    string | null;
+
+  subscription:
+    CaseBudgetSubscription;
+
+  periodStart:
+    string;
+
+  periodEnd:
+    string;
+}) {
   const repository =
     getSupabaseSubscriptionRepository();
 
@@ -477,11 +826,9 @@ async function findCurrentAiUsagePeriod({
       subscriptionId:
         subscription.id,
 
-      periodStart:
-        start,
+      periodStart,
 
-      periodEnd:
-        end,
+      periodEnd,
     });
   } catch (
     error
@@ -496,11 +843,9 @@ async function findCurrentAiUsagePeriod({
         subscriptionId:
           subscription.id,
 
-        periodStart:
-          start,
+        periodStart,
 
-        periodEnd:
-          end,
+        periodEnd,
 
         error,
       },
@@ -557,11 +902,91 @@ export function getSubscriptionAccessErrorMessage(
   return "CASE Budget could not determine subscription access.";
 }
 
-function createTemporaryFreeSubscriptionId(
+function createTemporaryFreeSubscriptionId({
+  userId,
+  workspaceId,
+}: {
   userId:
-    string,
-) {
+    string;
+
+  workspaceId:
+    string | null;
+}) {
+  if (
+    workspaceId
+  ) {
+    return `free:${userId}:${workspaceId}`;
+  }
+
   return `free:${userId}`;
+}
+
+function createWorkspaceAggregateUsagePeriodId({
+  workspaceId,
+  subscriptionId,
+  periodStart,
+}: {
+  workspaceId:
+    string;
+
+  subscriptionId:
+    string;
+
+  periodStart:
+    string;
+}) {
+  return [
+    "workspace-ai",
+    workspaceId,
+    subscriptionId,
+    periodStart,
+  ].join(
+    ":",
+  );
+}
+
+function normalizeUsageCount(
+  value:
+    number,
+) {
+  if (
+    !Number.isFinite(
+      value,
+    )
+  ) {
+    return 0;
+  }
+
+  return Math.max(
+    0,
+    Math.floor(
+      value,
+    ),
+  );
+}
+
+function normalizeMoney(
+  value:
+    number,
+) {
+  if (
+    !Number.isFinite(
+      value,
+    )
+  ) {
+    return 0;
+  }
+
+  return (
+    Math.round(
+      Math.max(
+        0,
+        value,
+      ) *
+        1_000_000,
+    ) /
+    1_000_000
+  );
 }
 
 function normalizeRequiredId(

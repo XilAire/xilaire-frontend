@@ -8,10 +8,12 @@ import {
   configureSubscriptionRepository,
   type FindAiUsagePeriodInput,
   type FindSubscriptionInput,
+  type FindWorkspaceAiUsageAggregateInput,
   type SaveAiRequestInput,
   type SaveAiUsagePeriodInput,
   type SaveSubscriptionInput,
   type SubscriptionRepository,
+  type WorkspaceAiUsageAggregate,
 } from "@/lib/subscriptions/subscription-repository";
 
 import type {
@@ -235,6 +237,15 @@ const subscriptionRepository:
     );
   },
 
+  async findWorkspaceAiUsageAggregate(
+    input:
+      FindWorkspaceAiUsageAggregateInput,
+  ) {
+    return findWorkspaceAiUsageAggregate(
+      input,
+    );
+  },
+
   async saveSubscription(
     input:
       SaveSubscriptionInput,
@@ -290,9 +301,6 @@ async function findSubscription({
   userId,
   workspaceId,
 }: FindSubscriptionInput) {
-  const supabase =
-    createAdminClient();
-
   const normalizedUserId =
     normalizeRequiredId(
       userId,
@@ -304,8 +312,49 @@ async function findSubscription({
       workspaceId,
     );
 
-  let query =
-    supabase
+  if (
+    normalizedWorkspaceId
+  ) {
+    const workspaceSubscription =
+      await findLatestWorkspaceSubscription({
+        workspaceId:
+          normalizedWorkspaceId,
+      });
+
+    if (
+      workspaceSubscription
+    ) {
+      return workspaceSubscription;
+    }
+
+    return findLatestPersonalSubscription({
+      userId:
+        normalizedUserId,
+    });
+  }
+
+  return findLatestPersonalSubscription({
+    userId:
+      normalizedUserId,
+  });
+}
+
+async function findLatestWorkspaceSubscription({
+  workspaceId,
+}: {
+  workspaceId:
+    string;
+}): Promise<
+  CaseBudgetSubscription | null
+> {
+  const supabase =
+    createAdminClient();
+
+  const {
+    data,
+    error,
+  } =
+    await supabase
       .from(
         "case_budget_subscriptions",
       )
@@ -313,33 +362,18 @@ async function findSubscription({
         "*",
       )
       .eq(
-        "user_id",
-        normalizedUserId,
-      );
-
-  if (
-    normalizedWorkspaceId
-  ) {
-    query =
-      query.eq(
         "workspace_id",
-        normalizedWorkspaceId,
-      );
-  } else {
-    query =
-      query.is(
-        "workspace_id",
-        null,
-      );
-  }
-
-  const {
-    data,
-    error,
-  } =
-    await query
+        workspaceId,
+      )
       .order(
         "updated_at",
+        {
+          ascending:
+            false,
+        },
+      )
+      .order(
+        "created_at",
         {
           ascending:
             false,
@@ -355,7 +389,79 @@ async function findSubscription({
   ) {
     throw createStorageError({
       operation:
-        "find subscription",
+        "find workspace subscription",
+
+      error,
+    });
+  }
+
+  if (
+    !data
+  ) {
+    return null;
+  }
+
+  return mapSubscriptionRow(
+    data as
+      SubscriptionRow,
+  );
+}
+
+async function findLatestPersonalSubscription({
+  userId,
+}: {
+  userId:
+    string;
+}): Promise<
+  CaseBudgetSubscription | null
+> {
+  const supabase =
+    createAdminClient();
+
+  const {
+    data,
+    error,
+  } =
+    await supabase
+      .from(
+        "case_budget_subscriptions",
+      )
+      .select(
+        "*",
+      )
+      .eq(
+        "user_id",
+        userId,
+      )
+      .is(
+        "workspace_id",
+        null,
+      )
+      .order(
+        "updated_at",
+        {
+          ascending:
+            false,
+        },
+      )
+      .order(
+        "created_at",
+        {
+          ascending:
+            false,
+        },
+      )
+      .limit(
+        1,
+      )
+      .maybeSingle();
+
+  if (
+    error
+  ) {
+    throw createStorageError({
+      operation:
+        "find personal subscription",
 
       error,
     });
@@ -502,6 +608,196 @@ async function findAiUsagePeriod({
     data as
       AiUsagePeriodRow,
   );
+}
+
+async function findWorkspaceAiUsageAggregate({
+  workspaceId,
+  subscriptionId,
+  periodStart,
+  periodEnd,
+}: FindWorkspaceAiUsageAggregateInput): Promise<WorkspaceAiUsageAggregate> {
+  const normalizedWorkspaceId =
+    normalizeRequiredId(
+      workspaceId,
+      "workspaceId",
+    );
+
+  const normalizedSubscriptionId =
+    normalizeRequiredId(
+      subscriptionId,
+      "subscriptionId",
+    );
+
+  const normalizedPeriodStart =
+    normalizeRequiredTimestamp(
+      periodStart,
+      "periodStart",
+    );
+
+  const normalizedPeriodEnd =
+    normalizeRequiredTimestamp(
+      periodEnd,
+      "periodEnd",
+    );
+
+  const supabase =
+    createAdminClient();
+
+  const {
+    data,
+    error,
+  } =
+    await supabase
+      .from(
+        "case_budget_ai_usage_periods",
+      )
+      .select(
+        [
+          "workspace_id",
+          "subscription_id",
+          "period_start",
+          "period_end",
+          "successful_questions_used",
+          "input_tokens",
+          "cached_input_tokens",
+          "output_tokens",
+          "total_tokens",
+          "estimated_cost_usd",
+        ].join(
+          ",",
+        ),
+      )
+      .eq(
+        "workspace_id",
+        normalizedWorkspaceId,
+      )
+      .eq(
+        "subscription_id",
+        normalizedSubscriptionId,
+      )
+      .eq(
+        "period_start",
+        normalizedPeriodStart,
+      )
+      .eq(
+        "period_end",
+        normalizedPeriodEnd,
+      );
+
+  if (
+    error
+  ) {
+    throw createStorageError({
+      operation:
+        "find workspace AI usage aggregate",
+
+      error,
+    });
+  }
+
+  const rows =
+    (
+      data ??
+      []
+    ) as unknown as
+      AiUsagePeriodRow[];
+
+  let successfulQuestionsUsed =
+    0;
+
+  let inputTokens =
+    0;
+
+  let cachedInputTokens =
+    0;
+
+  let outputTokens =
+    0;
+
+  let totalTokens =
+    0;
+
+  let estimatedCostUsd =
+    0;
+
+  for (
+    const row
+    of rows
+  ) {
+    successfulQuestionsUsed +=
+      normalizeNonNegativeInteger(
+        row.successful_questions_used,
+      );
+
+    inputTokens +=
+      normalizeNonNegativeInteger(
+        row.input_tokens,
+      );
+
+    cachedInputTokens +=
+      normalizeNonNegativeInteger(
+        row.cached_input_tokens,
+      );
+
+    outputTokens +=
+      normalizeNonNegativeInteger(
+        row.output_tokens,
+      );
+
+    totalTokens +=
+      normalizeNonNegativeInteger(
+        row.total_tokens,
+      );
+
+    estimatedCostUsd +=
+      normalizeMoney(
+        row.estimated_cost_usd,
+      );
+  }
+
+  return {
+    workspaceId:
+      normalizedWorkspaceId,
+
+    subscriptionId:
+      normalizedSubscriptionId,
+
+    periodStart:
+      normalizedPeriodStart,
+
+    periodEnd:
+      normalizedPeriodEnd,
+
+    successfulQuestionsUsed:
+      normalizeNonNegativeInteger(
+        successfulQuestionsUsed,
+      ),
+
+    inputTokens:
+      normalizeNonNegativeInteger(
+        inputTokens,
+      ),
+
+    cachedInputTokens:
+      normalizeNonNegativeInteger(
+        cachedInputTokens,
+      ),
+
+    outputTokens:
+      normalizeNonNegativeInteger(
+        outputTokens,
+      ),
+
+    totalTokens:
+      normalizeNonNegativeInteger(
+        totalTokens,
+      ),
+
+    estimatedCostUsd:
+      normalizeMoney(
+        estimatedCostUsd,
+      ),
+  };
 }
 
 async function saveSubscription({

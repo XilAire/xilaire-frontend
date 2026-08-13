@@ -29,6 +29,52 @@ export type FindAiUsagePeriodInput =
       string;
   };
 
+export type FindWorkspaceAiUsageAggregateInput = {
+  workspaceId:
+    string;
+
+  subscriptionId:
+    string;
+
+  periodStart:
+    string;
+
+  periodEnd:
+    string;
+};
+
+export type WorkspaceAiUsageAggregate = {
+  workspaceId:
+    string;
+
+  subscriptionId:
+    string;
+
+  periodStart:
+    string;
+
+  periodEnd:
+    string;
+
+  successfulQuestionsUsed:
+    number;
+
+  inputTokens:
+    number;
+
+  cachedInputTokens:
+    number;
+
+  outputTokens:
+    number;
+
+  totalTokens:
+    number;
+
+  estimatedCostUsd:
+    number;
+};
+
 export type SaveSubscriptionInput = {
   subscription:
     CaseBudgetSubscription;
@@ -61,6 +107,15 @@ export type SubscriptionRepository = {
     ) =>
       Promise<
         CaseBudgetAiUsagePeriod | null
+      >;
+
+  findWorkspaceAiUsageAggregate:
+    (
+      input:
+        FindWorkspaceAiUsageAggregateInput,
+    ) =>
+      Promise<
+        WorkspaceAiUsageAggregate
       >;
 
   saveSubscription:
