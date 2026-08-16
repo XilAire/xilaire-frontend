@@ -14,6 +14,7 @@ export type CaseBudgetFeature =
   | "calendar"
   | "goals"
   | "debts"
+  | "pay-cycles"
   | "reports"
   | "manual-accounts"
   | "net-worth"
@@ -123,6 +124,9 @@ export const CASE_BUDGET_PLAN_ENTITLEMENTS: Record<
       debts:
         false,
 
+      "pay-cycles":
+        false,
+
       reports:
         false,
 
@@ -211,6 +215,9 @@ export const CASE_BUDGET_PLAN_ENTITLEMENTS: Record<
       debts:
         true,
 
+      "pay-cycles":
+        true,
+
       reports:
         true,
 
@@ -297,6 +304,9 @@ export const CASE_BUDGET_PLAN_ENTITLEMENTS: Record<
         true,
 
       debts:
+        true,
+
+      "pay-cycles":
         true,
 
       reports:

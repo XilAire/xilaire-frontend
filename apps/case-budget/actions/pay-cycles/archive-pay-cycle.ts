@@ -15,6 +15,10 @@ import {
   createClient,
 } from "@/lib/supabase/server";
 
+import {
+  resolveAuthenticatedFeatureAccess,
+} from "@/lib/subscriptions/subscription-access";
+
 import type {
   PayCycleData,
 } from "@/types/pay-cycle";
@@ -154,6 +158,39 @@ export async function archivePayCycle(
 
         error:
           "The requested workspace is not available.",
+      };
+    }
+
+    const featureAccess =
+      await resolveAuthenticatedFeatureAccess({
+        feature:
+          "pay-cycles",
+
+        workspaceId:
+          workspace.id,
+      });
+
+    if (
+      !featureAccess.access.allowed
+    ) {
+      return {
+        success:
+          false,
+
+        workspaceId:
+          workspace.id,
+
+        payCycle:
+          null,
+
+        error:
+          getPayCyclesFeatureAccessMessage({
+            reason:
+              featureAccess.access.reason,
+
+            requiredPlan:
+              featureAccess.access.requiredPlan,
+          }),
       };
     }
 
@@ -441,6 +478,55 @@ export async function archivePayCycle(
           "Unable to archive the pay cycle.",
         ),
     };
+  }
+}
+
+function getPayCyclesFeatureAccessMessage({
+  reason,
+  requiredPlan,
+}: {
+  reason:
+    | "allowed"
+    | "requires-plus"
+    | "requires-pro"
+    | "inactive-subscription";
+
+  requiredPlan:
+    | "free"
+    | "plus"
+    | "pro"
+    | null;
+}) {
+  switch (
+    reason
+  ) {
+    case "inactive-subscription":
+      return "Pay Cycles are unavailable because this workspace subscription is inactive. Please reactivate the subscription to continue.";
+
+    case "requires-pro":
+      return "Pay Cycles require the CASE Budget Pro plan for this workspace.";
+
+    case "requires-plus":
+      return "Pay Cycles require the CASE Budget Plus plan or higher for this workspace.";
+
+    case "allowed":
+    default: {
+      if (
+        requiredPlan ===
+        "pro"
+      ) {
+        return "Pay Cycles require the CASE Budget Pro plan for this workspace.";
+      }
+
+      if (
+        requiredPlan ===
+        "plus"
+      ) {
+        return "Pay Cycles require the CASE Budget Plus plan or higher for this workspace.";
+      }
+
+      return "Pay Cycles are not available for the current workspace subscription.";
+    }
   }
 }
 
