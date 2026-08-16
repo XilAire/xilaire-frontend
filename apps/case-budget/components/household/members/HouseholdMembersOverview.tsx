@@ -163,9 +163,7 @@ export default function HouseholdMembersOverview() {
 
         try {
           const result =
-            await getHouseholdMembers(
-              workspaceId,
-            );
+            await getHouseholdMembers();
 
           if (
             !result.success

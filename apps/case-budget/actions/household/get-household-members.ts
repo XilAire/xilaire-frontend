@@ -1,7 +1,7 @@
 "use server";
 
 import {
-  requireCaseBudgetUser,
+  requireCaseBudgetServerAuth,
 } from "@/lib/auth/server-auth";
 
 import {
@@ -150,51 +150,14 @@ type ProfileRow = {
     string | null;
 };
 
-export async function getHouseholdMembers(
-  workspaceId:
-    string,
-): Promise<GetHouseholdMembersResult> {
+export async function getHouseholdMembers():
+  Promise<GetHouseholdMembersResult> {
   try {
-    const normalizedWorkspaceId =
-      normalizeRequiredText(
-        workspaceId,
-      );
-
-    if (
-      !normalizedWorkspaceId
-    ) {
-      return {
-        success:
-          false,
-
-        members: [],
-
-        error:
-          "A workspace is required.",
-      };
-    }
-
-    const currentUser =
-      await requireCaseBudgetUser();
-
-    const currentUserId =
-      getCurrentUserId(
-        currentUser,
-      );
-
-    if (
-      !currentUserId
-    ) {
-      return {
-        success:
-          false,
-
-        members: [],
-
-        error:
-          "Unable to determine the current user.",
-      };
-    }
+    const {
+      userId,
+      workspaceId,
+    } =
+      await requireCaseBudgetServerAuth();
 
     const admin =
       createAdminClient();
@@ -222,11 +185,11 @@ export async function getHouseholdMembers(
         )
         .eq(
           "workspace_id",
-          normalizedWorkspaceId,
+          workspaceId,
         )
         .eq(
           "user_id",
-          currentUserId,
+          userId,
         )
         .eq(
           "status",
@@ -312,7 +275,7 @@ export async function getHouseholdMembers(
         )
         .eq(
           "workspace_id",
-          normalizedWorkspaceId,
+          workspaceId,
         )
         .in(
           "status",
@@ -509,7 +472,7 @@ export async function getHouseholdMembers(
 
             isCurrentUser:
               membership.user_id ===
-              currentUserId,
+              userId,
 
             invitedBy:
               membership.invited_by,
@@ -658,34 +621,6 @@ function getMembershipStatusSortOrder(
   }
 }
 
-function getCurrentUserId(
-  user:
-    unknown,
-): string | null {
-  const record =
-    getObjectRecord(
-      user,
-    );
-
-  if (
-    !record
-  ) {
-    return null;
-  }
-
-  return (
-    normalizeOptionalText(
-      record.id,
-    ) ??
-    normalizeOptionalText(
-      record.userId,
-    ) ??
-    normalizeOptionalText(
-      record.user_id,
-    )
-  );
-}
-
 function getFallbackEmail(
   membership:
     WorkspaceMemberRow,
@@ -808,29 +743,4 @@ function normalizeOptionalText(
   return normalized
     ? normalized
     : null;
-}
-
-function getObjectRecord(
-  value:
-    unknown,
-): Record<
-  string,
-  unknown
-> | null {
-  if (
-    typeof value !==
-      "object" ||
-    value ===
-      null ||
-    Array.isArray(
-      value,
-    )
-  ) {
-    return null;
-  }
-
-  return value as Record<
-    string,
-    unknown
-  >;
 }
