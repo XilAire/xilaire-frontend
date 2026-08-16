@@ -198,25 +198,6 @@ function SearchIcon() {
   );
 }
 
-function BellIcon() {
-  return (
-    <svg
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
-      <path d="M10 21h4" />
-    </svg>
-  );
-}
-
 function CheckIcon() {
   return (
     <svg
@@ -424,8 +405,6 @@ export default function AppOverlays() {
   const isOpen =
     activeOverlay ===
       "search" ||
-    activeOverlay ===
-      "notifications" ||
     activeOverlay ===
       "quick-add" ||
     activeOverlay ===
@@ -684,69 +663,6 @@ export default function AppOverlays() {
           </div>
         </section>
       ) : null}
-
-      {activeOverlay ===
-      "notifications" ? (
-        <section
-          role="dialog"
-          aria-modal="true"
-          aria-label="Notifications"
-          className="absolute inset-y-0 right-0 flex w-full max-w-md flex-col border-l border-[var(--border-default)] bg-[var(--surface-default)] text-[var(--text-primary)] shadow-[var(--shadow-xl)]"
-        >
-          <div className="flex min-h-20 items-center justify-between gap-4 border-b border-[var(--border-default)] px-5">
-            <div>
-              <h2 className="text-lg font-bold text-[var(--text-primary)]">
-                Notifications
-              </h2>
-
-              <p className="text-sm text-[var(--text-muted)]">
-                Updates that need your
-                attention.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={
-                closeOverlay
-              }
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[var(--text-muted)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
-              aria-label="Close notifications"
-            >
-              <CloseIcon />
-            </button>
-          </div>
-
-          <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-12 text-center">
-            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--primary-soft)] text-[var(--primary)]">
-              <BellIcon />
-            </span>
-
-            <h3 className="mt-4 text-base font-semibold text-[var(--text-primary)]">
-              You&apos;re all caught up
-            </h3>
-
-            <p className="mt-2 max-w-xs text-sm leading-6 text-[var(--text-muted)]">
-              There are no notifications
-              requiring your attention
-              right now.
-            </p>
-          </div>
-
-          <div className="border-t border-[var(--border-default)] p-4">
-            <Link
-              href="/dashboard/notifications"
-              onClick={
-                closeOverlay
-              }
-              className="flex h-11 w-full items-center justify-center rounded-xl border border-[var(--border-default)] bg-[var(--surface-default)] text-sm font-semibold text-[var(--text-primary)] transition hover:bg-[var(--surface-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
-            >
-              View all notifications
-            </Link>
-          </div>
-        </section>
-      ) : null}
-
       {activeOverlay ===
       "quick-add" ? (
         <section

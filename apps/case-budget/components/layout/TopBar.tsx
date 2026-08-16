@@ -4,6 +4,8 @@ import type {
   ReactNode,
 } from "react";
 
+import NotificationCenter from "@/components/notifications/NotificationCenter";
+
 import {
   useApp,
 } from "@/components/providers/AppProvider";
@@ -13,13 +15,11 @@ type TopBarProps = {
   description?: string;
   workspaceName?: string;
   actions?: ReactNode;
-  notificationCount?: number;
   showSearch?: boolean;
   showNotifications?: boolean;
   showQuickAdd?: boolean;
   showWorkspaceName?: boolean;
   onOpenMobileNavigation?: () => void;
-  onOpenNotifications?: () => void;
   onOpenQuickAdd?: () => void;
   onOpenWorkspaceSwitcher?: () => void;
   onSearch?: () => void;
@@ -69,25 +69,6 @@ function SearchIcon() {
   );
 }
 
-function BellIcon() {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
-      <path d="M10 21h4" />
-    </svg>
-  );
-}
-
 function PlusIcon() {
   return (
     <svg
@@ -133,13 +114,11 @@ export default function TopBar({
   description = "Your complete financial overview.",
   workspaceName,
   actions,
-  notificationCount = 0,
   showSearch = true,
   showNotifications = true,
   showQuickAdd = true,
   showWorkspaceName = true,
   onOpenMobileNavigation,
-  onOpenNotifications,
   onOpenQuickAdd,
   onOpenWorkspaceSwitcher,
   onSearch,
@@ -147,7 +126,6 @@ export default function TopBar({
   const {
     activeWorkspace,
     openMobileNavigation,
-    openNotifications,
     openQuickAdd,
     openSearch,
     openWorkspaceSwitcher,
@@ -186,18 +164,6 @@ export default function TopBar({
     }
 
     openSearch();
-  }
-
-  function handleOpenNotifications() {
-    if (
-      onOpenNotifications
-    ) {
-      onOpenNotifications();
-
-      return;
-    }
-
-    openNotifications();
   }
 
   function handleOpenQuickAdd() {
@@ -317,32 +283,7 @@ export default function TopBar({
           ) : null}
 
           {showNotifications ? (
-            <button
-              type="button"
-              onClick={
-                handleOpenNotifications
-              }
-              className={`pointer-events-auto relative flex h-11 w-11 items-center justify-center rounded-xl ${controlClassName}`}
-              aria-label={
-                notificationCount >
-                0
-                  ? `Open notifications. ${notificationCount} unread`
-                  : "Open notifications"
-              }
-              aria-haspopup="dialog"
-            >
-              <BellIcon />
-
-              {notificationCount >
-              0 ? (
-                <span className="pointer-events-none absolute right-1.5 top-1.5 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-[var(--danger)] px-1 text-[9px] font-bold leading-none text-[var(--danger-foreground)] ring-2 ring-[var(--surface-default)]">
-                  {notificationCount >
-                  9
-                    ? "9+"
-                    : notificationCount}
-                </span>
-              ) : null}
-            </button>
+            <NotificationCenter />
           ) : null}
 
           {actions

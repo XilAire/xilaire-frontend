@@ -31,15 +31,12 @@ type CaseBudgetThemeContextValue = {
 type CaseBudgetThemeProviderProps = {
   children: ReactNode;
   defaultTheme?: CaseBudgetTheme;
-  storageKey?: string;
   showGlobalToggle?: boolean;
 };
 
 const DEFAULT_THEME: CaseBudgetTheme =
   "system";
 
-const DEFAULT_STORAGE_KEY =
-  "case-budget-theme";
 
 const CaseBudgetThemeContext =
   createContext<
@@ -68,16 +65,6 @@ function resolveTheme(
   }
 
   return theme;
-}
-
-function isValidTheme(
-  value: string | null,
-): value is CaseBudgetTheme {
-  return (
-    value === "light" ||
-    value === "dark" ||
-    value === "system"
-  );
 }
 
 function applyThemeToDocument(
@@ -124,7 +111,6 @@ export function useCaseBudgetTheme() {
 export default function CaseBudgetThemeProvider({
   children,
   defaultTheme = DEFAULT_THEME,
-  storageKey = DEFAULT_STORAGE_KEY,
   showGlobalToggle = true,
 }: CaseBudgetThemeProviderProps) {
   const [
@@ -172,6 +158,65 @@ export default function CaseBudgetThemeProvider({
       [],
     );
 
+  const persistThemePreference =
+    useCallback(
+      async (
+        nextTheme:
+          CaseBudgetTheme,
+      ) => {
+        try {
+          const response =
+            await fetch(
+              "/api/preferences",
+              {
+                method:
+                  "PATCH",
+
+                credentials:
+                  "include",
+
+                cache:
+                  "no-store",
+
+                headers: {
+                  Accept:
+                    "application/json",
+
+                  "Content-Type":
+                    "application/json",
+                },
+
+                body:
+                  JSON.stringify({
+                    theme:
+                      nextTheme,
+                  }),
+              },
+            );
+
+          if (
+            !response.ok
+          ) {
+            console.error(
+              "[CASE Budget Theme] Could not persist theme preference.",
+              {
+                status:
+                  response.status,
+              },
+            );
+          }
+        } catch (
+          error
+        ) {
+          console.error(
+            "[CASE Budget Theme] Could not persist theme preference.",
+            error,
+          );
+        }
+      },
+      [],
+    );
+
   const setTheme =
     useCallback(
       (
@@ -182,17 +227,16 @@ export default function CaseBudgetThemeProvider({
           nextTheme,
         );
 
-        window.localStorage.setItem(
-          storageKey,
+        updateResolvedTheme(
           nextTheme,
         );
 
-        updateResolvedTheme(
+        void persistThemePreference(
           nextTheme,
         );
       },
       [
-        storageKey,
+        persistThemePreference,
         updateResolvedTheme,
       ],
     );
@@ -214,31 +258,20 @@ export default function CaseBudgetThemeProvider({
 
   useEffect(
     () => {
-      const storedTheme =
-        window.localStorage.getItem(
-          storageKey,
-        );
-
-      const initialTheme =
-        isValidTheme(
-          storedTheme,
-        )
-          ? storedTheme
-          : defaultTheme;
-
       setThemeState(
-        initialTheme,
+        defaultTheme,
       );
 
       updateResolvedTheme(
-        initialTheme,
+        defaultTheme,
       );
 
-      setIsMounted(true);
+      setIsMounted(
+        true,
+      );
     },
     [
       defaultTheme,
-      storageKey,
       updateResolvedTheme,
     ],
   );

@@ -37,8 +37,6 @@ type SignOutState =
 const ACTIVE_WORKSPACE_COOKIE_NAME =
   "case-budget-active-workspace-id";
 
-const ACTIVE_WORKSPACE_STORAGE_KEY =
-  "case-budget:active-workspace:v1";
 
 const SUPABASE_URL_ENV_NAME =
   "NEXT_PUBLIC_SUPABASE_URL_CASE_BUDGET";
@@ -211,7 +209,7 @@ export default function UserProfileMenu({
             throw error;
           }
 
-          clearCaseBudgetWorkspaceState();
+          clearCaseBudgetWorkspaceCookie();
 
           onSignedOut?.();
 
@@ -716,15 +714,7 @@ function createCaseBudgetBrowserClient() {
   );
 }
 
-function clearCaseBudgetWorkspaceState() {
-  try {
-    window.localStorage.removeItem(
-      ACTIVE_WORKSPACE_STORAGE_KEY,
-    );
-  } catch {
-    // Local storage can be unavailable in restricted browser contexts.
-  }
-
+function clearCaseBudgetWorkspaceCookie() {
   const secureAttribute =
     window.location.protocol ===
     "https:"

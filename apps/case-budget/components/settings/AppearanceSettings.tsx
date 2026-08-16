@@ -1,10 +1,13 @@
 "use client";
 
 import {
-  useEffect,
   useMemo,
-  useState,
 } from "react";
+
+import {
+  useCaseBudgetTheme,
+} from "@/components/providers/CaseBudgetThemeProvider";
+
 
 type ThemePreference =
   | "light"
@@ -14,9 +17,6 @@ type ThemePreference =
 type ResolvedTheme =
   | "light"
   | "dark";
-
-const THEME_STORAGE_KEY =
-  "case-budget-theme";
 
 const themeOptions: {
   id:
@@ -73,108 +73,15 @@ const themeOptions: {
 ];
 
 export default function AppearanceSettings() {
-  const [
-    selectedTheme,
-    setSelectedTheme,
-  ] =
-    useState<ThemePreference>(
-      "system",
-    );
-
-  const [
-    resolvedTheme,
-    setResolvedTheme,
-  ] =
-    useState<ResolvedTheme>(
-      "light",
-    );
-
-  const [
-    isReady,
-    setIsReady,
-  ] =
-    useState(
-      false,
-    );
-
-  useEffect(
-    () => {
-      const storedTheme =
-        readStoredTheme();
-
-      const initialTheme =
-        storedTheme ??
-        readDocumentThemePreference() ??
-        "system";
-
-      setSelectedTheme(
-        initialTheme,
-      );
-
-      setResolvedTheme(
-        resolveTheme(
-          initialTheme,
-        ),
-      );
-
-      setIsReady(
-        true,
-      );
-    },
-    [],
-  );
-
-  useEffect(
-    () => {
-      if (
-        !isReady ||
-        selectedTheme !==
-        "system"
-      ) {
-        return;
-      }
-
-      const mediaQuery =
-        window.matchMedia(
-          "(prefers-color-scheme: dark)",
-        );
-
-      function handleSystemThemeChange() {
-        const nextResolvedTheme =
-          mediaQuery.matches
-            ? "dark"
-            : "light";
-
-        setResolvedTheme(
-          nextResolvedTheme,
-        );
-
-        applyThemeToDocument({
-          preference:
-            "system",
-
-          resolvedTheme:
-            nextResolvedTheme,
-        });
-      }
-
-      mediaQuery.addEventListener(
-        "change",
-        handleSystemThemeChange,
-      );
-
-      return () => {
-        mediaQuery.removeEventListener(
-          "change",
-          handleSystemThemeChange,
-        );
-      };
-    },
-    [
-      isReady,
+  const {
+    theme:
       selectedTheme,
-    ],
-  );
+
+    resolvedTheme,
+
+    setTheme,
+  } =
+    useCaseBudgetTheme();
 
   const selectedThemeLabel =
     useMemo(
@@ -196,30 +103,9 @@ export default function AppearanceSettings() {
     theme:
       ThemePreference,
   ) {
-    const nextResolvedTheme =
-      resolveTheme(
-        theme,
-      );
-
-    setSelectedTheme(
+    setTheme(
       theme,
     );
-
-    setResolvedTheme(
-      nextResolvedTheme,
-    );
-
-    writeStoredTheme(
-      theme,
-    );
-
-    applyThemeToDocument({
-      preference:
-        theme,
-
-      resolvedTheme:
-        nextResolvedTheme,
-    });
   }
 
   return (
@@ -411,140 +297,6 @@ function PreviewIcon({
 
   return (
     <SunIcon />
-  );
-}
-
-function readStoredTheme():
-  ThemePreference | null {
-  try {
-    const storedTheme =
-      window.localStorage.getItem(
-        THEME_STORAGE_KEY,
-      );
-
-    if (
-      storedTheme ===
-        "light" ||
-      storedTheme ===
-        "dark" ||
-      storedTheme ===
-        "system"
-    ) {
-      return storedTheme;
-    }
-  } catch {
-    /*
-     * Local storage may be unavailable in restricted
-     * browser environments.
-     */
-  }
-
-  return null;
-}
-
-function readDocumentThemePreference():
-  ThemePreference | null {
-  const preference =
-    document.documentElement
-      .dataset
-      .themePreference;
-
-  if (
-    preference ===
-      "light" ||
-    preference ===
-      "dark" ||
-    preference ===
-      "system"
-  ) {
-    return preference;
-  }
-
-  return null;
-}
-
-function writeStoredTheme(
-  theme:
-    ThemePreference,
-) {
-  try {
-    window.localStorage.setItem(
-      THEME_STORAGE_KEY,
-      theme,
-    );
-  } catch {
-    /*
-     * The theme still applies to the current page even
-     * when local storage cannot persist the preference.
-     */
-  }
-}
-
-function resolveTheme(
-  preference:
-    ThemePreference,
-): ResolvedTheme {
-  if (
-    preference ===
-      "light" ||
-    preference ===
-      "dark"
-  ) {
-    return preference;
-  }
-
-  return window.matchMedia(
-    "(prefers-color-scheme: dark)",
-  ).matches
-    ? "dark"
-    : "light";
-}
-
-function applyThemeToDocument({
-  preference,
-  resolvedTheme,
-}: {
-  preference:
-    ThemePreference;
-
-  resolvedTheme:
-    ResolvedTheme;
-}) {
-  const root =
-    document.documentElement;
-
-  root.classList.remove(
-    "light",
-    "dark",
-  );
-
-  root.classList.add(
-    resolvedTheme,
-  );
-
-  root.dataset.theme =
-    resolvedTheme;
-
-  root.dataset.themePreference =
-    preference;
-
-  root.style.colorScheme =
-    resolvedTheme;
-
-  /*
-   * Notify any other CASE Budget client components that
-   * the theme preference changed.
-   */
-  window.dispatchEvent(
-    new CustomEvent(
-      "case-budget-theme-change",
-      {
-        detail: {
-          preference,
-          resolvedTheme,
-        },
-      },
-    ),
   );
 }
 

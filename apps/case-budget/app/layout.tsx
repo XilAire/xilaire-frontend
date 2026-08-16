@@ -10,6 +10,14 @@ import {
 
 import CaseBudgetThemeProvider from "@/components/providers/CaseBudgetThemeProvider";
 
+import {
+  getCurrentUserPreferences,
+} from "@/lib/preferences/user-preference-service";
+
+import type {
+  CaseBudgetUserPreferenceTheme,
+} from "@/types/database";
+
 import "./globals.css";
 
 const geistSans =
@@ -32,12 +40,6 @@ const geistMono =
     ],
   });
 
-const CASE_BUDGET_APP_NAME =
-  "CASE Budget";
-
-const CASE_BUDGET_APP_TITLE =
-  "CASE Budget | Take Control of Every Dollar";
-
 const CASE_BUDGET_APP_DESCRIPTION =
   "CASE Budget is a personal financial management platform for budgeting, bills, transactions, savings goals, debt payoff, net worth, investments, financial insights, and more.";
 
@@ -56,17 +58,6 @@ export const metadata:
 {
   metadataBase:
     CASE_BUDGET_METADATA_BASE,
-
-  applicationName:
-    CASE_BUDGET_APP_NAME,
-
-  title: {
-    default:
-      CASE_BUDGET_APP_TITLE,
-
-    template:
-      "%s | CASE Budget",
-  },
 
   description:
     CASE_BUDGET_APP_DESCRIPTION,
@@ -178,15 +169,6 @@ export const metadata:
     locale:
       "en_US",
 
-    url:
-      CASE_BUDGET_APP_URL,
-
-    siteName:
-      CASE_BUDGET_APP_NAME,
-
-    title:
-      CASE_BUDGET_APP_TITLE,
-
     description:
       CASE_BUDGET_APP_DESCRIPTION,
 
@@ -210,9 +192,6 @@ export const metadata:
   twitter: {
     card:
       "summary",
-
-    title:
-      CASE_BUDGET_APP_TITLE,
 
     description:
       CASE_BUDGET_APP_DESCRIPTION,
@@ -245,11 +224,6 @@ export const metadata:
       "max-video-preview":
         -1,
     },
-  },
-
-  alternates: {
-    canonical:
-      CASE_BUDGET_APP_URL,
   },
 };
 
@@ -290,80 +264,67 @@ export const viewport:
     "light dark",
 };
 
-const themeInitializationScript = `
+function createThemeInitializationScript(
+  selectedTheme:
+    CaseBudgetUserPreferenceTheme,
+) {
+  return `
 (function () {
-  try {
-    var storageKey =
-      "case-budget-theme";
+  var selectedTheme =
+    ${JSON.stringify(selectedTheme)};
 
-    var storedTheme =
-      window.localStorage.getItem(
-        storageKey
-      );
+  var prefersDark =
+    window.matchMedia(
+      "(prefers-color-scheme: dark)"
+    ).matches;
 
-    var selectedTheme =
-      storedTheme === "light" ||
-      storedTheme === "dark" ||
-      storedTheme === "system"
-        ? storedTheme
-        : "system";
+  var resolvedTheme =
+    selectedTheme === "system"
+      ? prefersDark
+        ? "dark"
+        : "light"
+      : selectedTheme;
 
-    var prefersDark =
-      window.matchMedia(
-        "(prefers-color-scheme: dark)"
-      ).matches;
+  var root =
+    document.documentElement;
 
-    var resolvedTheme =
-      selectedTheme === "system"
-        ? prefersDark
-          ? "dark"
-          : "light"
-        : selectedTheme;
+  root.classList.remove(
+    "light",
+    "dark"
+  );
 
-    var root =
-      document.documentElement;
+  root.classList.add(
+    resolvedTheme
+  );
 
-    root.classList.remove(
-      "light",
-      "dark"
-    );
+  root.dataset.theme =
+    resolvedTheme;
 
-    root.classList.add(
-      resolvedTheme
-    );
+  root.dataset.themePreference =
+    selectedTheme;
 
-    root.dataset.theme =
-      resolvedTheme;
-
-    root.dataset.themePreference =
-      selectedTheme;
-
-    root.style.colorScheme =
-      resolvedTheme;
-  } catch (error) {
-    var root =
-      document.documentElement;
-
-    root.classList.remove(
-      "light",
-      "dark"
-    );
-
-    root.classList.add(
-      "light"
-    );
-
-    root.dataset.theme =
-      "light";
-
-    root.dataset.themePreference =
-      "system";
-
-    root.style.colorScheme =
-      "light";
-  }
+  root.style.colorScheme =
+    resolvedTheme;
 })();
 `;
+}
+
+async function resolveInitialTheme():
+  Promise<CaseBudgetUserPreferenceTheme> {
+  try {
+    const preferences =
+      await getCurrentUserPreferences();
+
+    return preferences.theme;
+  } catch {
+    /**
+     * RootLayout also renders public/authentication pages where an authenticated
+     * CASE Budget user may not exist. In that case, use the non-persistent
+     * system preference. Authenticated pages will use the stored database value.
+     */
+    return "system";
+  }
+}
 
 type RootLayoutProps =
   Readonly<{
@@ -371,9 +332,17 @@ type RootLayoutProps =
       React.ReactNode;
   }>;
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: RootLayoutProps) {
+  const initialTheme =
+    await resolveInitialTheme();
+
+  const themeInitializationScript =
+    createThemeInitializationScript(
+      initialTheme,
+    );
+
   return (
     <html
       lang="en"
@@ -390,7 +359,11 @@ export default function RootLayout({
       </head>
 
       <body className="flex min-h-full flex-col bg-[var(--background)] font-sans text-[var(--text-primary)] antialiased transition-colors duration-300">
-        <CaseBudgetThemeProvider>
+        <CaseBudgetThemeProvider
+          defaultTheme={
+            initialTheme
+          }
+        >
           {children}
         </CaseBudgetThemeProvider>
       </body>

@@ -519,6 +519,1694 @@ export type WorkspaceMemberDatabaseTable =
     WorkspaceMemberDatabaseUpdate
   >;
 
+
+/**
+ * Confirmed PostgreSQL enum:
+ *
+ * public.case_budget_account_type
+ */
+export type CaseBudgetAccountTypeDatabaseEnum =
+  | "checking"
+  | "savings"
+  | "credit-card"
+  | "cash"
+  | "loan"
+  | "investment"
+  | "other";
+
+/**
+ * Confirmed PostgreSQL enum:
+ *
+ * public.case_budget_account_source
+ */
+export type CaseBudgetAccountSourceDatabaseEnum =
+  | "manual"
+  | "plaid"
+  | "system";
+
+/**
+ * public.case_budget_accounts
+ *
+ * Canonical workspace-scoped financial account table.
+ */
+export type CaseBudgetAccountDatabaseRow = {
+  id: string;
+  workspace_id: string;
+  created_by_user_id: string;
+  updated_by_user_id: string;
+  name: string;
+  account_type: CaseBudgetAccountTypeDatabaseEnum;
+  account_subtype: string | null;
+  institution_name: string | null;
+  mask: string | null;
+  source: CaseBudgetAccountSourceDatabaseEnum;
+  provider: string | null;
+  provider_record_id: string | null;
+  provider_account_id: string | null;
+  current_balance: number;
+  available_balance: number | null;
+  credit_limit: number | null;
+  currency_code: string;
+  include_in_net_worth: boolean;
+  is_active: boolean;
+  is_archived: boolean;
+  archived_at: string | null;
+  archived_by_user_id: string | null;
+  sort_order: number;
+  note: string | null;
+  balance_last_synced_at: string | null;
+  provider_last_synced_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CaseBudgetAccountDatabaseInsert = {
+  id?: string;
+  workspace_id: string;
+  created_by_user_id: string;
+  updated_by_user_id: string;
+  name: string;
+  account_type: CaseBudgetAccountTypeDatabaseEnum;
+  account_subtype?: string | null;
+  institution_name?: string | null;
+  mask?: string | null;
+  source?: CaseBudgetAccountSourceDatabaseEnum;
+  provider?: string | null;
+  provider_record_id?: string | null;
+  provider_account_id?: string | null;
+  current_balance?: number;
+  available_balance?: number | null;
+  credit_limit?: number | null;
+  currency_code?: string;
+  include_in_net_worth?: boolean;
+  is_active?: boolean;
+  is_archived?: boolean;
+  archived_at?: string | null;
+  archived_by_user_id?: string | null;
+  sort_order?: number;
+  note?: string | null;
+  balance_last_synced_at?: string | null;
+  provider_last_synced_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type CaseBudgetAccountDatabaseUpdate =
+  Partial<CaseBudgetAccountDatabaseInsert>;
+
+export type CaseBudgetAccountDatabaseTable =
+  SupabaseTableDefinition<
+    CaseBudgetAccountDatabaseRow,
+    CaseBudgetAccountDatabaseInsert,
+    CaseBudgetAccountDatabaseUpdate
+  >;
+
+/**
+ * public.case_budget_budget_months
+ *
+ * Workspace-scoped monthly zero-based budgets.
+ */
+export type CaseBudgetBudgetMonthDatabaseRow = {
+  id: string;
+  workspace_id: string;
+  created_by_user_id: string;
+  updated_by_user_id: string;
+  budget_month: string;
+  name: string | null;
+  planned_income: number;
+  actual_income: number;
+  starting_balance: number;
+  is_closed: boolean;
+  closed_at: string | null;
+  closed_by_user_id: string | null;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CaseBudgetBudgetMonthDatabaseInsert = {
+  id?: string;
+  workspace_id: string;
+  created_by_user_id: string;
+  updated_by_user_id: string;
+  budget_month: string;
+  name?: string | null;
+  planned_income?: number;
+  actual_income?: number;
+  starting_balance?: number;
+  is_closed?: boolean;
+  closed_at?: string | null;
+  closed_by_user_id?: string | null;
+  note?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type CaseBudgetBudgetMonthDatabaseUpdate =
+  Partial<CaseBudgetBudgetMonthDatabaseInsert>;
+
+export type CaseBudgetBudgetMonthDatabaseTable =
+  SupabaseTableDefinition<
+    CaseBudgetBudgetMonthDatabaseRow,
+    CaseBudgetBudgetMonthDatabaseInsert,
+    CaseBudgetBudgetMonthDatabaseUpdate
+  >;
+
+/**
+ * public.case_budget_budget_income_sources
+ */
+export type CaseBudgetBudgetIncomeSourceDatabaseRow = {
+  id: string;
+  workspace_id: string;
+  budget_month_id: string;
+  created_by_user_id: string;
+  updated_by_user_id: string;
+  name: string;
+  planned_amount: number;
+  received_amount: number;
+  sort_order: number;
+  is_archived: boolean;
+  archived_at: string | null;
+  archived_by_user_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CaseBudgetBudgetIncomeSourceDatabaseInsert = {
+  id?: string;
+  workspace_id: string;
+  budget_month_id: string;
+  created_by_user_id: string;
+  updated_by_user_id: string;
+  name: string;
+  planned_amount?: number;
+  received_amount?: number;
+  sort_order?: number;
+  is_archived?: boolean;
+  archived_at?: string | null;
+  archived_by_user_id?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type CaseBudgetBudgetIncomeSourceDatabaseUpdate =
+  Partial<CaseBudgetBudgetIncomeSourceDatabaseInsert>;
+
+export type CaseBudgetBudgetIncomeSourceDatabaseTable =
+  SupabaseTableDefinition<
+    CaseBudgetBudgetIncomeSourceDatabaseRow,
+    CaseBudgetBudgetIncomeSourceDatabaseInsert,
+    CaseBudgetBudgetIncomeSourceDatabaseUpdate
+  >;
+
+/**
+ * public.case_budget_budget_groups
+ */
+export type CaseBudgetBudgetGroupDatabaseRow = {
+  id: string;
+  workspace_id: string;
+  budget_month_id: string;
+  created_by_user_id: string;
+  updated_by_user_id: string;
+  name: string;
+  description: string | null;
+  sort_order: number;
+  is_collapsed: boolean;
+  is_archived: boolean;
+  archived_at: string | null;
+  archived_by_user_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CaseBudgetBudgetGroupDatabaseInsert = {
+  id?: string;
+  workspace_id: string;
+  budget_month_id: string;
+  created_by_user_id: string;
+  updated_by_user_id: string;
+  name: string;
+  description?: string | null;
+  sort_order?: number;
+  is_collapsed?: boolean;
+  is_archived?: boolean;
+  archived_at?: string | null;
+  archived_by_user_id?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type CaseBudgetBudgetGroupDatabaseUpdate =
+  Partial<CaseBudgetBudgetGroupDatabaseInsert>;
+
+export type CaseBudgetBudgetGroupDatabaseTable =
+  SupabaseTableDefinition<
+    CaseBudgetBudgetGroupDatabaseRow,
+    CaseBudgetBudgetGroupDatabaseInsert,
+    CaseBudgetBudgetGroupDatabaseUpdate
+  >;
+
+/**
+ * public.case_budget_budget_items
+ */
+export type CaseBudgetBudgetItemDatabaseRow = {
+  id: string;
+  workspace_id: string;
+  budget_month_id: string;
+  budget_group_id: string;
+  created_by_user_id: string;
+  updated_by_user_id: string;
+  name: string;
+  description: string | null;
+  planned_amount: number;
+  activity_amount: number;
+  available_amount: number;
+  rollover_amount: number;
+  rollover_enabled: boolean;
+  target_amount: number | null;
+  target_date: string | null;
+  is_recurring: boolean;
+  sort_order: number;
+  is_archived: boolean;
+  archived_at: string | null;
+  archived_by_user_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CaseBudgetBudgetItemDatabaseInsert = {
+  id?: string;
+  workspace_id: string;
+  budget_month_id: string;
+  budget_group_id: string;
+  created_by_user_id: string;
+  updated_by_user_id: string;
+  name: string;
+  description?: string | null;
+  planned_amount?: number;
+  activity_amount?: number;
+  available_amount?: number;
+  rollover_amount?: number;
+  rollover_enabled?: boolean;
+  target_amount?: number | null;
+  target_date?: string | null;
+  is_recurring?: boolean;
+  sort_order?: number;
+  is_archived?: boolean;
+  archived_at?: string | null;
+  archived_by_user_id?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type CaseBudgetBudgetItemDatabaseUpdate =
+  Partial<CaseBudgetBudgetItemDatabaseInsert>;
+
+export type CaseBudgetBudgetItemDatabaseTable =
+  SupabaseTableDefinition<
+    CaseBudgetBudgetItemDatabaseRow,
+    CaseBudgetBudgetItemDatabaseInsert,
+    CaseBudgetBudgetItemDatabaseUpdate
+  >;
+
+/**
+ * Confirmed PostgreSQL enum:
+ *
+ * public.case_budget_transaction_type
+ */
+export type CaseBudgetTransactionTypeDatabaseEnum =
+  | "expense"
+  | "income"
+  | "transfer";
+
+/**
+ * Confirmed PostgreSQL enum:
+ *
+ * public.case_budget_transaction_status
+ */
+export type CaseBudgetTransactionStatusDatabaseEnum =
+  | "pending"
+  | "cleared";
+
+/**
+ * Confirmed PostgreSQL enum:
+ *
+ * public.case_budget_transaction_source
+ */
+export type CaseBudgetTransactionSourceDatabaseEnum =
+  | "manual"
+  | "plaid"
+  | "system";
+
+/**
+ * public.case_budget_transactions
+ */
+export type CaseBudgetTransactionDatabaseRow = {
+  id: string;
+  workspace_id: string;
+  created_by_user_id: string;
+  updated_by_user_id: string;
+  account_id: string;
+  transfer_account_id: string | null;
+  budget_item_id: string | null;
+  transaction_type: CaseBudgetTransactionTypeDatabaseEnum;
+  status: CaseBudgetTransactionStatusDatabaseEnum;
+  source: CaseBudgetTransactionSourceDatabaseEnum;
+  transaction_date: string;
+  merchant: string | null;
+  description: string | null;
+  note: string | null;
+  amount: number;
+  currency_code: string;
+  provider: string | null;
+  provider_transaction_id: string | null;
+  provider_account_id: string | null;
+  provider_pending_transaction_id: string | null;
+  is_deleted: boolean;
+  deleted_at: string | null;
+  deleted_by_user_id: string | null;
+  reconciled_at: string | null;
+  reconciled_by_user_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CaseBudgetTransactionDatabaseInsert = {
+  id?: string;
+  workspace_id: string;
+  created_by_user_id: string;
+  updated_by_user_id: string;
+  account_id: string;
+  transfer_account_id?: string | null;
+  budget_item_id?: string | null;
+  transaction_type: CaseBudgetTransactionTypeDatabaseEnum;
+  status?: CaseBudgetTransactionStatusDatabaseEnum;
+  source?: CaseBudgetTransactionSourceDatabaseEnum;
+  transaction_date: string;
+  merchant?: string | null;
+  description?: string | null;
+  note?: string | null;
+  amount: number;
+  currency_code?: string;
+  provider?: string | null;
+  provider_transaction_id?: string | null;
+  provider_account_id?: string | null;
+  provider_pending_transaction_id?: string | null;
+  is_deleted?: boolean;
+  deleted_at?: string | null;
+  deleted_by_user_id?: string | null;
+  reconciled_at?: string | null;
+  reconciled_by_user_id?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type CaseBudgetTransactionDatabaseUpdate =
+  Partial<CaseBudgetTransactionDatabaseInsert>;
+
+export type CaseBudgetTransactionDatabaseTable =
+  SupabaseTableDefinition<
+    CaseBudgetTransactionDatabaseRow,
+    CaseBudgetTransactionDatabaseInsert,
+    CaseBudgetTransactionDatabaseUpdate
+  >;
+
+/**
+ * public.case_budget_pay_cycles
+ */
+export type CaseBudgetPayCycleDatabaseRow = {
+  id: string;
+  workspace_id: string;
+  created_by_user_id: string;
+  updated_by_user_id: string;
+  name: string;
+  frequency: string;
+  expected_amount: number;
+  first_pay_date: string;
+  second_pay_date: string | null;
+  account_id: string | null;
+  status: string;
+  include_in_bill_planning: boolean;
+  created_at: string;
+  updated_at: string;
+  employer_name: string | null;
+  income_type: string;
+  amount_type: string;
+  minimum_expected_amount: number | null;
+  maximum_expected_amount: number | null;
+  start_date: string;
+  next_pay_date: string;
+  last_pay_date: string | null;
+  end_date: string | null;
+  semimonthly_first_day: number | null;
+  semimonthly_second_day: number | null;
+  custom_interval_count: number | null;
+  custom_interval_unit: string | null;
+  day_adjustment: string;
+  include_in_budget_income: boolean;
+  notes: string | null;
+};
+
+export type CaseBudgetPayCycleDatabaseInsert = {
+  id?: string;
+  workspace_id: string;
+  created_by_user_id: string;
+  updated_by_user_id: string;
+  name: string;
+  frequency: string;
+  expected_amount?: number;
+  first_pay_date: string;
+  second_pay_date?: string | null;
+  account_id?: string | null;
+  status?: string;
+  include_in_bill_planning?: boolean;
+  created_at?: string;
+  updated_at?: string;
+  employer_name?: string | null;
+  income_type?: string;
+  amount_type?: string;
+  minimum_expected_amount?: number | null;
+  maximum_expected_amount?: number | null;
+  start_date: string;
+  next_pay_date: string;
+  last_pay_date?: string | null;
+  end_date?: string | null;
+  semimonthly_first_day?: number | null;
+  semimonthly_second_day?: number | null;
+  custom_interval_count?: number | null;
+  custom_interval_unit?: string | null;
+  day_adjustment?: string;
+  include_in_budget_income?: boolean;
+  notes?: string | null;
+};
+
+export type CaseBudgetPayCycleDatabaseUpdate =
+  Partial<CaseBudgetPayCycleDatabaseInsert>;
+
+export type CaseBudgetPayCycleDatabaseTable =
+  SupabaseTableDefinition<
+    CaseBudgetPayCycleDatabaseRow,
+    CaseBudgetPayCycleDatabaseInsert,
+    CaseBudgetPayCycleDatabaseUpdate
+  >;
+
+/**
+ * public.case_budget_pay_cycle_preferences
+ */
+export type CaseBudgetPayCyclePreferenceDatabaseRow = {
+  id: string;
+  workspace_id: string;
+  created_by_user_id: string;
+  updated_by_user_id: string;
+  strategy: string;
+  minimum_cash_reserve: number;
+  extra_debt_payment: number;
+  created_at: string;
+  updated_at: string;
+  allow_partial_bill_funding: boolean;
+  prioritize_past_due_bills: boolean;
+  prioritize_autopay_bills: boolean;
+  prioritize_minimum_debt_payments: boolean;
+  prioritize_critical_services: boolean;
+  critical_bills_override_priority: boolean;
+  use_current_account_balance: boolean;
+  include_pending_income: boolean;
+  look_ahead_pay_periods: number;
+  planning_window_days: number;
+  extra_cash_debt_percentage: number;
+  extra_cash_savings_percentage: number;
+  critical_bill_ids: string[];
+  low_priority_bill_ids: string[];
+};
+
+export type CaseBudgetPayCyclePreferenceDatabaseInsert = {
+  id?: string;
+  workspace_id: string;
+  created_by_user_id: string;
+  updated_by_user_id: string;
+  strategy: string;
+  minimum_cash_reserve?: number;
+  extra_debt_payment?: number;
+  created_at?: string;
+  updated_at?: string;
+  allow_partial_bill_funding?: boolean;
+  prioritize_past_due_bills?: boolean;
+  prioritize_autopay_bills?: boolean;
+  prioritize_minimum_debt_payments?: boolean;
+  prioritize_critical_services?: boolean;
+  critical_bills_override_priority?: boolean;
+  use_current_account_balance?: boolean;
+  include_pending_income?: boolean;
+  look_ahead_pay_periods?: number;
+  planning_window_days?: number;
+  extra_cash_debt_percentage?: number;
+  extra_cash_savings_percentage?: number;
+  critical_bill_ids?: string[];
+  low_priority_bill_ids?: string[];
+};
+
+export type CaseBudgetPayCyclePreferenceDatabaseUpdate =
+  Partial<CaseBudgetPayCyclePreferenceDatabaseInsert>;
+
+export type CaseBudgetPayCyclePreferenceDatabaseTable =
+  SupabaseTableDefinition<
+    CaseBudgetPayCyclePreferenceDatabaseRow,
+    CaseBudgetPayCyclePreferenceDatabaseInsert,
+    CaseBudgetPayCyclePreferenceDatabaseUpdate
+  >;
+
+/**
+ * public.case_budget_debts
+ *
+ * Canonical workspace-scoped debt records.
+ *
+ * Includes the production soft-archive fields added on 2026-08-15.
+ */
+export type CaseBudgetDebtDatabaseRow = {
+  id: string;
+  workspace_id: string;
+  created_by_user_id: string;
+  updated_by_user_id: string;
+  name: string;
+  lender: string | null;
+  debt_type: string;
+  original_balance: number;
+  current_balance: number;
+  interest_rate: number;
+  minimum_payment: number;
+  due_day: number | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  is_archived: boolean;
+  archived_at: string | null;
+  archived_by_user_id: string | null;
+};
+
+export type CaseBudgetDebtDatabaseInsert = {
+  id?: string;
+  workspace_id: string;
+  created_by_user_id: string;
+  updated_by_user_id: string;
+  name: string;
+  lender?: string | null;
+  debt_type: string;
+  original_balance?: number;
+  current_balance?: number;
+  interest_rate?: number;
+  minimum_payment?: number;
+  due_day?: number | null;
+  status?: string;
+  created_at?: string;
+  updated_at?: string;
+  is_archived?: boolean;
+  archived_at?: string | null;
+  archived_by_user_id?: string | null;
+};
+
+export type CaseBudgetDebtDatabaseUpdate =
+  Partial<CaseBudgetDebtDatabaseInsert>;
+
+export type CaseBudgetDebtDatabaseTable =
+  SupabaseTableDefinition<
+    CaseBudgetDebtDatabaseRow,
+    CaseBudgetDebtDatabaseInsert,
+    CaseBudgetDebtDatabaseUpdate
+  >;
+
+/**
+ * public.case_budget_debt_payments
+ */
+export type CaseBudgetDebtPaymentDatabaseRow = {
+  id: string;
+  workspace_id: string;
+  debt_id: string;
+  created_by_user_id: string;
+  amount: number;
+  balance_before: number;
+  balance_after: number;
+  payment_date: string;
+  notes: string | null;
+  created_at: string;
+};
+
+export type CaseBudgetDebtPaymentDatabaseInsert = {
+  id?: string;
+  workspace_id: string;
+  debt_id: string;
+  created_by_user_id: string;
+  amount: number;
+  balance_before: number;
+  balance_after: number;
+  payment_date?: string;
+  notes?: string | null;
+  created_at?: string;
+};
+
+export type CaseBudgetDebtPaymentDatabaseUpdate =
+  Partial<CaseBudgetDebtPaymentDatabaseInsert>;
+
+export type CaseBudgetDebtPaymentDatabaseTable =
+  SupabaseTableDefinition<
+    CaseBudgetDebtPaymentDatabaseRow,
+    CaseBudgetDebtPaymentDatabaseInsert,
+    CaseBudgetDebtPaymentDatabaseUpdate
+  >;
+
+
+/**
+ * public.case_budget_goals
+ *
+ * Canonical workspace-scoped savings goal records.
+ *
+ * Confirmed production columns:
+ *
+ * id
+ * workspace_id
+ * created_by_user_id
+ * updated_by_user_id
+ * name
+ * current_amount
+ * target_amount
+ * target_date
+ * status
+ * notes
+ * is_archived
+ * archived_at
+ * archived_by_user_id
+ * created_at
+ * updated_at
+ */
+export type CaseBudgetGoalDatabaseRow = {
+  id:
+    string;
+
+  workspace_id:
+    string;
+
+  created_by_user_id:
+    string;
+
+  updated_by_user_id:
+    string;
+
+  name:
+    string;
+
+  current_amount:
+    number;
+
+  target_amount:
+    number;
+
+  target_date:
+    string | null;
+
+  status:
+    string;
+
+  notes:
+    string | null;
+
+  is_archived:
+    boolean;
+
+  archived_at:
+    string | null;
+
+  archived_by_user_id:
+    string | null;
+
+  created_at:
+    string;
+
+  updated_at:
+    string;
+};
+
+export type CaseBudgetGoalDatabaseInsert = {
+  id?:
+    string;
+
+  workspace_id:
+    string;
+
+  created_by_user_id:
+    string;
+
+  updated_by_user_id:
+    string;
+
+  name:
+    string;
+
+  current_amount?:
+    number;
+
+  target_amount:
+    number;
+
+  target_date?:
+    string | null;
+
+  status?:
+    string;
+
+  notes?:
+    string | null;
+
+  is_archived?:
+    boolean;
+
+  archived_at?:
+    string | null;
+
+  archived_by_user_id?:
+    string | null;
+
+  created_at?:
+    string;
+
+  updated_at?:
+    string;
+};
+
+export type CaseBudgetGoalDatabaseUpdate =
+  Partial<
+    CaseBudgetGoalDatabaseInsert
+  >;
+
+export type CaseBudgetGoalDatabaseTable =
+  SupabaseTableDefinition<
+    CaseBudgetGoalDatabaseRow,
+    CaseBudgetGoalDatabaseInsert,
+    CaseBudgetGoalDatabaseUpdate
+  >;
+
+
+/**
+ * public.case_budget_calendar_events
+ *
+ * Canonical workspace-scoped manual financial calendar events.
+ *
+ * Confirmed production columns:
+ *
+ * id
+ * workspace_id
+ * created_by_user_id
+ * updated_by_user_id
+ * title
+ * description
+ * notes
+ * event_type
+ * status
+ * priority
+ * event_date
+ * start_time
+ * end_time
+ * is_all_day
+ * amount
+ * account_id
+ * category_id
+ * recurrence
+ * reminders
+ * is_archived
+ * archived_at
+ * archived_by_user_id
+ * created_at
+ * updated_at
+ */
+export type CaseBudgetCalendarEventDatabaseRow = {
+  id:
+    string;
+
+  workspace_id:
+    string;
+
+  created_by_user_id:
+    string;
+
+  updated_by_user_id:
+    string;
+
+  title:
+    string;
+
+  description:
+    string | null;
+
+  notes:
+    string | null;
+
+  event_type:
+    string;
+
+  status:
+    string;
+
+  priority:
+    string;
+
+  event_date:
+    string;
+
+  start_time:
+    string | null;
+
+  end_time:
+    string | null;
+
+  is_all_day:
+    boolean;
+
+  amount:
+    number | null;
+
+  account_id:
+    string | null;
+
+  category_id:
+    string | null;
+
+  recurrence:
+    Json | null;
+
+  reminders:
+    Json;
+
+  is_archived:
+    boolean;
+
+  archived_at:
+    string | null;
+
+  archived_by_user_id:
+    string | null;
+
+  created_at:
+    string;
+
+  updated_at:
+    string;
+};
+
+export type CaseBudgetCalendarEventDatabaseInsert = {
+  id?:
+    string;
+
+  workspace_id:
+    string;
+
+  created_by_user_id:
+    string;
+
+  updated_by_user_id:
+    string;
+
+  title:
+    string;
+
+  description?:
+    string | null;
+
+  notes?:
+    string | null;
+
+  event_type:
+    string;
+
+  status?:
+    string;
+
+  priority?:
+    string;
+
+  event_date:
+    string;
+
+  start_time?:
+    string | null;
+
+  end_time?:
+    string | null;
+
+  is_all_day?:
+    boolean;
+
+  amount?:
+    number | null;
+
+  account_id?:
+    string | null;
+
+  category_id?:
+    string | null;
+
+  recurrence?:
+    Json | null;
+
+  reminders?:
+    Json;
+
+  is_archived?:
+    boolean;
+
+  archived_at?:
+    string | null;
+
+  archived_by_user_id?:
+    string | null;
+
+  created_at?:
+    string;
+
+  updated_at?:
+    string;
+};
+
+export type CaseBudgetCalendarEventDatabaseUpdate =
+  Partial<
+    CaseBudgetCalendarEventDatabaseInsert
+  >;
+
+export type CaseBudgetCalendarEventDatabaseTable =
+  SupabaseTableDefinition<
+    CaseBudgetCalendarEventDatabaseRow,
+    CaseBudgetCalendarEventDatabaseInsert,
+    CaseBudgetCalendarEventDatabaseUpdate
+  >;
+
+/**
+ * public.case_budget_calendar_preferences
+ *
+ * Canonical per-user, per-workspace calendar preferences.
+ *
+ * Confirmed production columns:
+ *
+ * id
+ * workspace_id
+ * user_id
+ * default_view
+ * week_starts_on
+ * show_weekends
+ * enable_conflict_detection
+ * selected_date
+ * filters
+ * created_at
+ * updated_at
+ */
+export type CaseBudgetCalendarPreferenceDatabaseRow = {
+  id:
+    string;
+
+  workspace_id:
+    string;
+
+  user_id:
+    string;
+
+  default_view:
+    string;
+
+  week_starts_on:
+    number;
+
+  show_weekends:
+    boolean;
+
+  enable_conflict_detection:
+    boolean;
+
+  selected_date:
+    string | null;
+
+  filters:
+    Json;
+
+  created_at:
+    string;
+
+  updated_at:
+    string;
+};
+
+export type CaseBudgetCalendarPreferenceDatabaseInsert = {
+  id?:
+    string;
+
+  workspace_id:
+    string;
+
+  user_id:
+    string;
+
+  default_view?:
+    string;
+
+  week_starts_on?:
+    number;
+
+  show_weekends?:
+    boolean;
+
+  enable_conflict_detection?:
+    boolean;
+
+  selected_date?:
+    string | null;
+
+  filters?:
+    Json;
+
+  created_at?:
+    string;
+
+  updated_at?:
+    string;
+};
+
+export type CaseBudgetCalendarPreferenceDatabaseUpdate =
+  Partial<
+    CaseBudgetCalendarPreferenceDatabaseInsert
+  >;
+
+export type CaseBudgetCalendarPreferenceDatabaseTable =
+  SupabaseTableDefinition<
+    CaseBudgetCalendarPreferenceDatabaseRow,
+    CaseBudgetCalendarPreferenceDatabaseInsert,
+    CaseBudgetCalendarPreferenceDatabaseUpdate
+  >;
+
+
+/**
+ * public.case_budget_user_preferences
+ *
+ * Canonical persistent per-user CASE Budget UI/application preferences.
+ *
+ * Confirmed production columns:
+ *
+ * user_id
+ * theme
+ * sidebar_open_section
+ * created_at
+ * updated_at
+ */
+export type CaseBudgetUserPreferenceTheme =
+  | "light"
+  | "dark"
+  | "system";
+
+export type CaseBudgetUserPreferenceSidebarSection =
+  | "home"
+  | "budget"
+  | "wealth"
+  | "insights"
+  | "household"
+  | "settings";
+
+export type CaseBudgetUserPreferenceDatabaseRow = {
+  user_id:
+    string;
+
+  theme:
+    CaseBudgetUserPreferenceTheme;
+
+  sidebar_open_section:
+    CaseBudgetUserPreferenceSidebarSection | null;
+
+  created_at:
+    string;
+
+  updated_at:
+    string;
+};
+
+export type CaseBudgetUserPreferenceDatabaseInsert = {
+  user_id:
+    string;
+
+  theme?:
+    CaseBudgetUserPreferenceTheme;
+
+  sidebar_open_section?:
+    CaseBudgetUserPreferenceSidebarSection | null;
+
+  created_at?:
+    string;
+
+  updated_at?:
+    string;
+};
+
+export type CaseBudgetUserPreferenceDatabaseUpdate =
+  Partial<
+    Omit<
+      CaseBudgetUserPreferenceDatabaseInsert,
+      "user_id"
+    >
+  >;
+
+export type CaseBudgetUserPreferenceDatabaseTable =
+  SupabaseTableDefinition<
+    CaseBudgetUserPreferenceDatabaseRow,
+    CaseBudgetUserPreferenceDatabaseInsert,
+    CaseBudgetUserPreferenceDatabaseUpdate
+  >;
+
+
+/**
+ * Confirmed PostgreSQL enum:
+ *
+ * public.case_budget_notification_category
+ */
+export type CaseBudgetNotificationCategoryDatabaseEnum =
+  | "budget"
+  | "transactions"
+  | "bills"
+  | "goals"
+  | "debts"
+  | "accounts"
+  | "workspace"
+  | "security"
+  | "system";
+
+/**
+ * Confirmed PostgreSQL enum:
+ *
+ * public.case_budget_notification_priority
+ */
+export type CaseBudgetNotificationPriorityDatabaseEnum =
+  | "low"
+  | "medium"
+  | "high"
+  | "critical";
+
+/**
+ * public.case_budget_notifications
+ *
+ * Canonical persistent per-user, per-workspace notification table.
+ *
+ * Confirmed production columns:
+ *
+ * id
+ * workspace_id
+ * user_id
+ * category
+ * priority
+ * notification_key
+ * title
+ * message
+ * action_url
+ * source_type
+ * source_id
+ * metadata
+ * is_read
+ * read_at
+ * is_dismissed
+ * dismissed_at
+ * expires_at
+ * created_at
+ * updated_at
+ */
+export type CaseBudgetNotificationDatabaseRow = {
+  id:
+    string;
+
+  workspace_id:
+    string;
+
+  user_id:
+    string;
+
+  category:
+    CaseBudgetNotificationCategoryDatabaseEnum;
+
+  priority:
+    CaseBudgetNotificationPriorityDatabaseEnum;
+
+  notification_key:
+    string;
+
+  title:
+    string;
+
+  message:
+    string;
+
+  action_url:
+    string | null;
+
+  source_type:
+    string | null;
+
+  source_id:
+    string | null;
+
+  metadata:
+    Json;
+
+  is_read:
+    boolean;
+
+  read_at:
+    string | null;
+
+  is_dismissed:
+    boolean;
+
+  dismissed_at:
+    string | null;
+
+  expires_at:
+    string | null;
+
+  created_at:
+    string;
+
+  updated_at:
+    string;
+};
+
+export type CaseBudgetNotificationDatabaseInsert = {
+  id?:
+    string;
+
+  workspace_id:
+    string;
+
+  user_id:
+    string;
+
+  category:
+    CaseBudgetNotificationCategoryDatabaseEnum;
+
+  priority?:
+    CaseBudgetNotificationPriorityDatabaseEnum;
+
+  notification_key:
+    string;
+
+  title:
+    string;
+
+  message:
+    string;
+
+  action_url?:
+    string | null;
+
+  source_type?:
+    string | null;
+
+  source_id?:
+    string | null;
+
+  metadata?:
+    Json;
+
+  is_read?:
+    boolean;
+
+  read_at?:
+    string | null;
+
+  is_dismissed?:
+    boolean;
+
+  dismissed_at?:
+    string | null;
+
+  expires_at?:
+    string | null;
+
+  created_at?:
+    string;
+
+  updated_at?:
+    string;
+};
+
+export type CaseBudgetNotificationDatabaseUpdate =
+  Partial<
+    CaseBudgetNotificationDatabaseInsert
+  >;
+
+export type CaseBudgetNotificationDatabaseTable =
+  SupabaseTableDefinition<
+    CaseBudgetNotificationDatabaseRow,
+    CaseBudgetNotificationDatabaseInsert,
+    CaseBudgetNotificationDatabaseUpdate
+  >;
+
+/**
+ * Household approval database enums and tables.
+ */
+export type HouseholdApprovalStatusDatabaseEnum =
+  | "pending" | "approved" | "rejected" | "cancelled";
+
+export type HouseholdApprovalTypeDatabaseEnum =
+  | "transaction" | "budget" | "bill" | "goal"
+  | "account" | "member" | "security" | "other";
+
+export type HouseholdApprovalPolicyTypeDatabaseEnum =
+  | "transaction-threshold" | "budget-change" | "bill-change"
+  | "goal-change" | "account-change" | "member-change"
+  | "security-change";
+
+export type HouseholdApprovalDatabaseRow = {
+  id: string;
+  workspace_id: string;
+  approval_type: HouseholdApprovalTypeDatabaseEnum;
+  status: HouseholdApprovalStatusDatabaseEnum;
+  title: string;
+  description: string;
+  amount: number | null;
+  requested_by_user_id: string;
+  requested_by_role: WorkspaceRoleDatabaseEnum | null;
+  requested_at: string;
+  target_entity_type: string | null;
+  target_entity_id: string | null;
+  payload: Json | null;
+  decision_by_user_id: string | null;
+  decision_by_role: WorkspaceRoleDatabaseEnum | null;
+  decision: "approve" | "reject" | null;
+  decision_reason: string | null;
+  decided_at: string | null;
+  cancelled_by_user_id: string | null;
+  cancelled_at: string | null;
+  cancellation_reason: string | null;
+  expires_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type HouseholdApprovalDatabaseInsert = {
+  id?: string;
+  workspace_id: string;
+  approval_type: HouseholdApprovalTypeDatabaseEnum;
+  status?: HouseholdApprovalStatusDatabaseEnum;
+  title: string;
+  description: string;
+  amount?: number | null;
+  requested_by_user_id: string;
+  requested_by_role?: WorkspaceRoleDatabaseEnum | null;
+  requested_at?: string;
+  target_entity_type?: string | null;
+  target_entity_id?: string | null;
+  payload?: Json | null;
+  decision_by_user_id?: string | null;
+  decision_by_role?: WorkspaceRoleDatabaseEnum | null;
+  decision?: "approve" | "reject" | null;
+  decision_reason?: string | null;
+  decided_at?: string | null;
+  cancelled_by_user_id?: string | null;
+  cancelled_at?: string | null;
+  cancellation_reason?: string | null;
+  expires_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type HouseholdApprovalDatabaseUpdate =
+  Partial<HouseholdApprovalDatabaseInsert>;
+
+export type HouseholdApprovalDatabaseTable =
+  SupabaseTableDefinition<
+    HouseholdApprovalDatabaseRow,
+    HouseholdApprovalDatabaseInsert,
+    HouseholdApprovalDatabaseUpdate
+  >;
+
+export type HouseholdApprovalPolicyDatabaseRow = {
+  id: string;
+  workspace_id: string;
+  policy_type: HouseholdApprovalPolicyTypeDatabaseEnum;
+  enabled: boolean;
+  threshold_amount: number | null;
+  approver_roles: WorkspaceRoleDatabaseEnum[];
+  created_by_user_id: string;
+  updated_by_user_id: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type HouseholdApprovalPolicyDatabaseInsert = {
+  id?: string;
+  workspace_id: string;
+  policy_type: HouseholdApprovalPolicyTypeDatabaseEnum;
+  enabled?: boolean;
+  threshold_amount?: number | null;
+  approver_roles?: WorkspaceRoleDatabaseEnum[];
+  created_by_user_id: string;
+  updated_by_user_id: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type HouseholdApprovalPolicyDatabaseUpdate =
+  Partial<HouseholdApprovalPolicyDatabaseInsert>;
+
+export type HouseholdApprovalPolicyDatabaseTable =
+  SupabaseTableDefinition<
+    HouseholdApprovalPolicyDatabaseRow,
+    HouseholdApprovalPolicyDatabaseInsert,
+    HouseholdApprovalPolicyDatabaseUpdate
+  >;
+
+
+/**
+ * public.investment_accounts
+ *
+ * Canonical workspace-scoped investment account records.
+ *
+ * Confirmed production columns:
+ *
+ * id
+ * workspace_id
+ * name
+ * institution
+ * type
+ * cash_balance
+ * created_by
+ * created_at
+ * updated_at
+ * linked_account_id
+ * currency
+ * is_included_in_net_worth
+ * connection_status
+ * last_synced_at
+ * notes
+ */
+export type InvestmentAccountDatabaseRow = {
+  id: string;
+  workspace_id: string;
+  name: string;
+  institution: string | null;
+  type: string;
+  cash_balance: number;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  linked_account_id: string | null;
+  currency: string;
+  is_included_in_net_worth: boolean;
+  connection_status: string;
+  last_synced_at: string | null;
+  notes: string | null;
+};
+
+export type InvestmentAccountDatabaseInsert = {
+  id?: string;
+  workspace_id: string;
+  name: string;
+  institution?: string | null;
+  type: string;
+  cash_balance?: number;
+  created_by?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  linked_account_id?: string | null;
+  currency?: string;
+  is_included_in_net_worth?: boolean;
+  connection_status?: string;
+  last_synced_at?: string | null;
+  notes?: string | null;
+};
+
+export type InvestmentAccountDatabaseUpdate =
+  Partial<InvestmentAccountDatabaseInsert>;
+
+export type InvestmentAccountDatabaseTable =
+  SupabaseTableDefinition<
+    InvestmentAccountDatabaseRow,
+    InvestmentAccountDatabaseInsert,
+    InvestmentAccountDatabaseUpdate
+  >;
+
+/**
+ * public.investment_holdings
+ *
+ * Canonical workspace-scoped investment holding records.
+ */
+export type InvestmentHoldingDatabaseRow = {
+  id: string;
+  workspace_id: string;
+  investment_account_id: string;
+  symbol: string | null;
+  name: string;
+  type: string;
+  quantity: number;
+  average_cost: number;
+  current_price: number;
+  market_value: number;
+  cost_basis: number;
+  unrealized_gain: number;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  unrealized_gain_percentage: number;
+  annual_dividend_income: number | null;
+  last_price_updated_at: string | null;
+  notes: string | null;
+};
+
+export type InvestmentHoldingDatabaseInsert = {
+  id?: string;
+  workspace_id: string;
+  investment_account_id: string;
+  symbol?: string | null;
+  name: string;
+  type: string;
+  quantity?: number;
+  average_cost?: number;
+  current_price?: number;
+  market_value?: number;
+  cost_basis?: number;
+  unrealized_gain?: number;
+  created_by?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  unrealized_gain_percentage?: number;
+  annual_dividend_income?: number | null;
+  last_price_updated_at?: string | null;
+  notes?: string | null;
+};
+
+export type InvestmentHoldingDatabaseUpdate =
+  Partial<InvestmentHoldingDatabaseInsert>;
+
+export type InvestmentHoldingDatabaseTable =
+  SupabaseTableDefinition<
+    InvestmentHoldingDatabaseRow,
+    InvestmentHoldingDatabaseInsert,
+    InvestmentHoldingDatabaseUpdate
+  >;
+
+/**
+ * public.investment_activities
+ *
+ * Canonical workspace-scoped investment activity records.
+ */
+export type InvestmentActivityDatabaseRow = {
+  id: string;
+  workspace_id: string;
+  investment_account_id: string;
+  holding_id: string | null;
+  type: string;
+  date: string;
+  description: string | null;
+  quantity: number | null;
+  price_per_unit: number | null;
+  amount: number;
+  fees: number;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type InvestmentActivityDatabaseInsert = {
+  id?: string;
+  workspace_id: string;
+  investment_account_id: string;
+  holding_id?: string | null;
+  type: string;
+  date: string;
+  description?: string | null;
+  quantity?: number | null;
+  price_per_unit?: number | null;
+  amount?: number;
+  fees?: number;
+  created_by?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type InvestmentActivityDatabaseUpdate =
+  Partial<InvestmentActivityDatabaseInsert>;
+
+export type InvestmentActivityDatabaseTable =
+  SupabaseTableDefinition<
+    InvestmentActivityDatabaseRow,
+    InvestmentActivityDatabaseInsert,
+    InvestmentActivityDatabaseUpdate
+  >;
+
+
+/**
+ * public.investment_performance_snapshots
+ *
+ * Canonical workspace-scoped daily investment portfolio snapshots.
+ *
+ * Confirmed production columns:
+ *
+ * id
+ * workspace_id
+ * snapshot_date
+ * portfolio_value
+ * cost_basis
+ * cash_value
+ * created_by
+ * created_at
+ * updated_at
+ *
+ * One row per workspace/date is enforced by the database unique constraint.
+ * Daily gain and daily gain percentage are intentionally derived in the
+ * application layer rather than persisted redundantly.
+ */
+export type InvestmentPerformanceSnapshotDatabaseRow = {
+  id: string;
+  workspace_id: string;
+  snapshot_date: string;
+  portfolio_value: number;
+  cost_basis: number;
+  cash_value: number;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type InvestmentPerformanceSnapshotDatabaseInsert = {
+  id?: string;
+  workspace_id: string;
+  snapshot_date?: string;
+  portfolio_value?: number;
+  cost_basis?: number;
+  cash_value?: number;
+  created_by?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type InvestmentPerformanceSnapshotDatabaseUpdate =
+  Partial<InvestmentPerformanceSnapshotDatabaseInsert>;
+
+export type InvestmentPerformanceSnapshotDatabaseTable =
+  SupabaseTableDefinition<
+    InvestmentPerformanceSnapshotDatabaseRow,
+    InvestmentPerformanceSnapshotDatabaseInsert,
+    InvestmentPerformanceSnapshotDatabaseUpdate
+  >;
+
 /**
  * Known provisioning RPC result currently used by CASE Budget.
  *
@@ -578,6 +2266,69 @@ export type Database = {
       workspace_members:
         WorkspaceMemberDatabaseTable;
 
+      case_budget_accounts:
+        CaseBudgetAccountDatabaseTable;
+
+      case_budget_budget_months:
+        CaseBudgetBudgetMonthDatabaseTable;
+
+      case_budget_budget_income_sources:
+        CaseBudgetBudgetIncomeSourceDatabaseTable;
+
+      case_budget_budget_groups:
+        CaseBudgetBudgetGroupDatabaseTable;
+
+      case_budget_budget_items:
+        CaseBudgetBudgetItemDatabaseTable;
+
+      case_budget_transactions:
+        CaseBudgetTransactionDatabaseTable;
+
+      case_budget_pay_cycles:
+        CaseBudgetPayCycleDatabaseTable;
+
+      case_budget_pay_cycle_preferences:
+        CaseBudgetPayCyclePreferenceDatabaseTable;
+
+      case_budget_debts:
+        CaseBudgetDebtDatabaseTable;
+
+      case_budget_debt_payments:
+        CaseBudgetDebtPaymentDatabaseTable;
+
+      case_budget_goals:
+        CaseBudgetGoalDatabaseTable;
+
+      case_budget_calendar_events:
+        CaseBudgetCalendarEventDatabaseTable;
+
+      case_budget_calendar_preferences:
+        CaseBudgetCalendarPreferenceDatabaseTable;
+
+      case_budget_user_preferences:
+        CaseBudgetUserPreferenceDatabaseTable;
+
+      case_budget_notifications:
+        CaseBudgetNotificationDatabaseTable;
+
+      case_budget_household_approvals:
+        HouseholdApprovalDatabaseTable;
+
+      case_budget_household_approval_policies:
+        HouseholdApprovalPolicyDatabaseTable;
+
+      investment_accounts:
+        InvestmentAccountDatabaseTable;
+
+      investment_holdings:
+        InvestmentHoldingDatabaseTable;
+
+      investment_activities:
+        InvestmentActivityDatabaseTable;
+
+      investment_performance_snapshots:
+        InvestmentPerformanceSnapshotDatabaseTable;
+
       [tableName: string]:
         GenericDatabaseTable;
     };
@@ -629,6 +2380,36 @@ export type Database = {
       workspace_membership_status:
         WorkspaceMembershipStatusDatabaseEnum;
 
+      case_budget_account_type:
+        CaseBudgetAccountTypeDatabaseEnum;
+
+      case_budget_account_source:
+        CaseBudgetAccountSourceDatabaseEnum;
+
+      case_budget_transaction_type:
+        CaseBudgetTransactionTypeDatabaseEnum;
+
+      case_budget_transaction_status:
+        CaseBudgetTransactionStatusDatabaseEnum;
+
+      case_budget_transaction_source:
+        CaseBudgetTransactionSourceDatabaseEnum;
+
+      case_budget_notification_category:
+        CaseBudgetNotificationCategoryDatabaseEnum;
+
+      case_budget_notification_priority:
+        CaseBudgetNotificationPriorityDatabaseEnum;
+
+      case_budget_household_approval_status:
+        HouseholdApprovalStatusDatabaseEnum;
+
+      case_budget_household_approval_type:
+        HouseholdApprovalTypeDatabaseEnum;
+
+      case_budget_household_approval_policy_type:
+        HouseholdApprovalPolicyTypeDatabaseEnum;
+
       [enumName: string]:
         string;
     };
@@ -653,6 +2434,26 @@ export type Database = {
  *
  * - public.workspaces
  * - public.workspace_members
+ * - public.case_budget_accounts
+ * - public.case_budget_budget_months
+ * - public.case_budget_budget_income_sources
+ * - public.case_budget_budget_groups
+ * - public.case_budget_budget_items
+ * - public.case_budget_transactions
+ * - public.case_budget_pay_cycles
+ * - public.case_budget_pay_cycle_preferences
+ * - public.case_budget_debts
+ * - public.case_budget_debt_payments
+ * - public.case_budget_goals
+ * - public.case_budget_calendar_events
+ * - public.case_budget_calendar_preferences
+ * - public.case_budget_notifications
+ * - public.case_budget_household_approvals
+ * - public.case_budget_household_approval_policies
+ * - public.investment_accounts
+ * - public.investment_holdings
+ * - public.investment_activities
+ * - public.investment_performance_snapshots
  *
  * This provides strict Insert / Update / Row typing for the Create
  * Workspace flow without forcing the rest of CASE Budget onto an
@@ -666,6 +2467,66 @@ export type WorkspaceDatabase = {
 
       workspace_members:
         WorkspaceMemberDatabaseTable;
+
+      case_budget_accounts:
+        CaseBudgetAccountDatabaseTable;
+
+      case_budget_budget_months:
+        CaseBudgetBudgetMonthDatabaseTable;
+
+      case_budget_budget_income_sources:
+        CaseBudgetBudgetIncomeSourceDatabaseTable;
+
+      case_budget_budget_groups:
+        CaseBudgetBudgetGroupDatabaseTable;
+
+      case_budget_budget_items:
+        CaseBudgetBudgetItemDatabaseTable;
+
+      case_budget_transactions:
+        CaseBudgetTransactionDatabaseTable;
+
+      case_budget_pay_cycles:
+        CaseBudgetPayCycleDatabaseTable;
+
+      case_budget_pay_cycle_preferences:
+        CaseBudgetPayCyclePreferenceDatabaseTable;
+
+      case_budget_debts:
+        CaseBudgetDebtDatabaseTable;
+
+      case_budget_debt_payments:
+        CaseBudgetDebtPaymentDatabaseTable;
+
+      case_budget_goals:
+        CaseBudgetGoalDatabaseTable;
+
+      case_budget_calendar_events:
+        CaseBudgetCalendarEventDatabaseTable;
+
+      case_budget_calendar_preferences:
+        CaseBudgetCalendarPreferenceDatabaseTable;
+
+      case_budget_notifications:
+        CaseBudgetNotificationDatabaseTable;
+
+      case_budget_household_approvals:
+        HouseholdApprovalDatabaseTable;
+
+      case_budget_household_approval_policies:
+        HouseholdApprovalPolicyDatabaseTable;
+
+      investment_accounts:
+        InvestmentAccountDatabaseTable;
+
+      investment_holdings:
+        InvestmentHoldingDatabaseTable;
+
+      investment_activities:
+        InvestmentActivityDatabaseTable;
+
+      investment_performance_snapshots:
+        InvestmentPerformanceSnapshotDatabaseTable;
     };
 
     Views: Record<
@@ -687,6 +2548,36 @@ export type WorkspaceDatabase = {
 
       workspace_membership_status:
         WorkspaceMembershipStatusDatabaseEnum;
+
+      case_budget_account_type:
+        CaseBudgetAccountTypeDatabaseEnum;
+
+      case_budget_account_source:
+        CaseBudgetAccountSourceDatabaseEnum;
+
+      case_budget_transaction_type:
+        CaseBudgetTransactionTypeDatabaseEnum;
+
+      case_budget_transaction_status:
+        CaseBudgetTransactionStatusDatabaseEnum;
+
+      case_budget_transaction_source:
+        CaseBudgetTransactionSourceDatabaseEnum;
+
+      case_budget_notification_category:
+        CaseBudgetNotificationCategoryDatabaseEnum;
+
+      case_budget_notification_priority:
+        CaseBudgetNotificationPriorityDatabaseEnum;
+
+      case_budget_household_approval_status:
+        HouseholdApprovalStatusDatabaseEnum;
+
+      case_budget_household_approval_type:
+        HouseholdApprovalTypeDatabaseEnum;
+
+      case_budget_household_approval_policy_type:
+        HouseholdApprovalPolicyTypeDatabaseEnum;
     };
 
     CompositeTypes: Record<

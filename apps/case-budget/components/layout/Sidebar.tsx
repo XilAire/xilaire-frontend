@@ -13,6 +13,7 @@ import WorkspaceManagerModal, {
   type WorkspaceManagerInitialView,
   type WorkspaceManagerWorkspace,
 } from "@/components/workspaces/WorkspaceManagerModal";
+import WorkspaceUsageCard from "@/components/workspaces/WorkspaceUsageCard";
 
 import {
   useApp,
@@ -90,8 +91,28 @@ type SidebarProps = {
   subscriptionEntitlements?: CaseBudgetSubscriptionEntitlementState | null;
 };
 
-const SIDEBAR_OPEN_SECTION_STORAGE_KEY =
-  "case-budget:sidebar-open-section:v2";
+type SidebarPreferencesResponse = {
+  success:
+    boolean;
+
+  data:
+    | {
+        sidebarOpenSection:
+          SidebarNavigationSectionId | null;
+      }
+    | null;
+
+  error:
+    | {
+        code:
+          string;
+
+        message:
+          string;
+      }
+    | null;
+};
+
 
 const navigationSections: SidebarNavigationSection[] = [
   {
@@ -267,48 +288,69 @@ function isSidebarNavigationSectionId(
   );
 }
 
-function readStoredOpenSectionId():
-  SidebarNavigationSectionId | null {
-  if (
-    typeof window ===
-    "undefined"
-  ) {
-    return null;
-  }
-
+async function persistSidebarOpenSection(
+  sectionId:
+    SidebarNavigationSectionId,
+) {
   try {
-    const storedValue =
-      window.localStorage.getItem(
-        SIDEBAR_OPEN_SECTION_STORAGE_KEY,
+    const response =
+      await fetch(
+        "/api/preferences",
+        {
+          method:
+            "PATCH",
+
+          credentials:
+            "include",
+
+          cache:
+            "no-store",
+
+          headers: {
+            Accept:
+              "application/json",
+
+            "Content-Type":
+              "application/json",
+          },
+
+          body:
+            JSON.stringify({
+              sidebarOpenSection:
+                sectionId,
+            }),
+        },
       );
 
-    return isSidebarNavigationSectionId(
-      storedValue,
-    )
-      ? storedValue
-      : null;
-  } catch {
-    return null;
+    if (
+      !response.ok
+    ) {
+      console.error(
+        "[CASE Budget Sidebar] Could not persist sidebar preference.",
+        {
+          status:
+            response.status,
+        },
+      );
+    }
+  } catch (
+    error
+  ) {
+    console.error(
+      "[CASE Budget Sidebar] Could not persist sidebar preference.",
+      error,
+    );
   }
 }
 
-function writeStoredOpenSectionId(
-  sectionId: SidebarNavigationSectionId,
-) {
-  if (
-    typeof window ===
-    "undefined"
-  ) {
-    return;
-  }
-
+async function readSidebarPreferencesResponse(
+  response:
+    Response,
+): Promise<SidebarPreferencesResponse | null> {
   try {
-    window.localStorage.setItem(
-      SIDEBAR_OPEN_SECTION_STORAGE_KEY,
-      sectionId,
-    );
+    return await response.json() as SidebarPreferencesResponse;
   } catch {
-    // The accordion still works for the current page session.
+    return null;
   }
 }
 
@@ -728,7 +770,7 @@ export default function Sidebar({
   userName,
   userEmail,
   subscriptionPlan = "free",
-  subscriptionEntitlements: _subscriptionEntitlements,
+  subscriptionEntitlements,
 }: SidebarProps) {
   const [
     isWorkspaceManagerOpen,
@@ -744,11 +786,17 @@ export default function Sidebar({
     "manage",
   );
 
+  const activeSectionId =
+    getActiveNavigationSectionId(
+      activePath,
+    );
+
   const [
     openSectionId,
     setOpenSectionId,
   ] = useState<SidebarNavigationSectionId>(
-    "home",
+    activeSectionId ??
+      "home",
   );
 
   const {
@@ -759,11 +807,6 @@ export default function Sidebar({
     openWorkspaceSwitcher,
   } = useApp();
 
-  const activeSectionId =
-    getActiveNavigationSectionId(
-      activePath,
-    );
-
   useEffect(
     () => {
       if (
@@ -773,37 +816,88 @@ export default function Sidebar({
           activeSectionId,
         );
 
-        writeStoredOpenSectionId(
+        void persistSidebarOpenSection(
           activeSectionId,
         );
 
         return;
       }
 
-      const storedSectionId =
-        readStoredOpenSectionId();
+      let cancelled =
+        false;
 
-      if (
-        storedSectionId
-      ) {
-        setOpenSectionId(
-          storedSectionId,
-        );
+      async function loadSidebarPreference() {
+        try {
+          const response =
+            await fetch(
+              "/api/preferences",
+              {
+                method:
+                  "GET",
+
+                credentials:
+                  "include",
+
+                cache:
+                  "no-store",
+
+                headers: {
+                  Accept:
+                    "application/json",
+                },
+              },
+            );
+
+          const payload =
+            await readSidebarPreferencesResponse(
+              response,
+            );
+
+          if (
+            cancelled ||
+            !response.ok ||
+            !payload?.success ||
+            !payload.data
+          ) {
+            return;
+          }
+
+          const storedSectionId =
+            payload.data.sidebarOpenSection;
+
+          if (
+            storedSectionId &&
+            isSidebarNavigationSectionId(
+              storedSectionId,
+            )
+          ) {
+            setOpenSectionId(
+              storedSectionId,
+            );
+          }
+        } catch (
+          error
+        ) {
+          if (
+            !cancelled
+          ) {
+            console.error(
+              "[CASE Budget Sidebar] Could not load sidebar preference.",
+              error,
+            );
+          }
+        }
       }
+
+      void loadSidebarPreference();
+
+      return () => {
+        cancelled =
+          true;
+      };
     },
     [
       activeSectionId,
-    ],
-  );
-
-  useEffect(
-    () => {
-      writeStoredOpenSectionId(
-        openSectionId,
-      );
-    },
-    [
-      openSectionId,
     ],
   );
 
@@ -817,6 +911,32 @@ export default function Sidebar({
     ) ??
     workspaces[0] ??
     null;
+
+  const ownedWorkspaceCount =
+    workspaces.filter(
+      (
+        workspace,
+      ) =>
+        workspace.isOwner ===
+        true,
+    ).length;
+
+  const workspaceUsagePlan =
+    activeWorkspace?.isOwner
+      ? subscriptionEntitlements?.subscription.plan ??
+        subscriptionPlan
+      : "free";
+
+  /*
+   * Additional paid workspace capacity is intentionally zero for now.
+   *
+   * The current subscription entitlement state does not yet expose
+   * purchased workspace capacity. Once the Stripe add-on/quantity model
+   * is implemented, replace this with the persisted additional capacity
+   * value returned by the entitlement layer.
+   */
+  const additionalWorkspaceCount =
+    0;
 
   const workspaceManagerWorkspace:
     WorkspaceManagerWorkspace | null =
@@ -865,6 +985,10 @@ export default function Sidebar({
       SidebarNavigationSectionId,
   ) {
     setOpenSectionId(
+      sectionId,
+    );
+
+    void persistSidebarOpenSection(
       sectionId,
     );
   }
@@ -971,6 +1095,21 @@ export default function Sidebar({
             );
           }}
         />
+
+        <div className="mt-3">
+          <WorkspaceUsageCard
+            plan={
+              workspaceUsagePlan
+            }
+            ownedWorkspaceCount={
+              ownedWorkspaceCount
+            }
+            additionalWorkspaceCount={
+              additionalWorkspaceCount
+            }
+            compact
+          />
+        </div>
       </div>
 
       <nav

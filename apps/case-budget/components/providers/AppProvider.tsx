@@ -24,10 +24,13 @@ import NetWorthProvider from "@/components/providers/NetWorthProvider";
 import PayCyclesProvider from "@/components/providers/PayCyclesProvider";
 import TransactionsProvider from "@/components/providers/TransactionsProvider";
 
+import type {
+  InvestmentsData,
+} from "@/lib/investments/investments-service";
+
 export type AppOverlay =
   | "mobile-navigation"
   | "search"
-  | "notifications"
   | "quick-add"
   | "workspace"
   | null;
@@ -66,6 +69,8 @@ type AppProviderProps = {
   initialWorkspaceId?: string;
 
   initialWorkspaces?: AppWorkspace[];
+
+  initialInvestments?: InvestmentsData;
 };
 
 type AppContextValue = {
@@ -75,7 +80,6 @@ type AppContextValue = {
 
   isMobileNavigationOpen: boolean;
   isSearchOpen: boolean;
-  isNotificationsOpen: boolean;
   isQuickAddOpen: boolean;
   isWorkspaceSwitcherOpen: boolean;
 
@@ -97,9 +101,6 @@ type AppContextValue = {
 
   openSearch: () => void;
   closeSearch: () => void;
-
-  openNotifications: () => void;
-  closeNotifications: () => void;
 
   openQuickAdd: () => void;
   closeQuickAdd: () => void;
@@ -164,11 +165,6 @@ type SwitchWorkspaceApiResponse =
   | SwitchWorkspaceApiSuccessResponse
   | SwitchWorkspaceApiErrorResponse;
 
-const ACTIVE_WORKSPACE_STORAGE_KEY =
-  "case-budget:active-workspace:v1";
-
-const LEGACY_WORKSPACES_STORAGE_KEY =
-  "case-budget:workspaces:v1";
 
 const AppContext =
   createContext<
@@ -195,6 +191,12 @@ export default function AppProvider({
   initialUser = null,
   initialWorkspaceId = "",
   initialWorkspaces = [],
+  initialInvestments = {
+    investmentAccounts: [],
+    holdings: [],
+    activities: [],
+    performanceSnapshots: [],
+  },
 }: AppProviderProps) {
   const router =
     useRouter();
@@ -240,9 +242,9 @@ export default function AppProvider({
    * initialWorkspaceId is resolved from the HttpOnly
    * case-budget-active-workspace-id cookie by the server.
    *
-   * localStorage is retained only as a non-authoritative client-side
-   * convenience value. It must never override a workspace that the
-   * server has already resolved.
+   * CASE Budget does not persist workspace selection in browser storage.
+   * The server cookie and database-backed workspace membership are the
+   * canonical source of truth.
    */
   useEffect(
     () => {
@@ -267,18 +269,6 @@ export default function AppProvider({
       setActiveWorkspaceId(
         nextWorkspaceId,
       );
-
-      if (
-        nextWorkspaceId
-      ) {
-        writeStoredActiveWorkspaceId(
-          nextWorkspaceId,
-        );
-      } else {
-        clearStoredActiveWorkspaceId();
-      }
-
-      clearLegacyWorkspaceStorage();
     },
     [
       initialWorkspaceId,
@@ -287,20 +277,16 @@ export default function AppProvider({
   );
 
   /**
-   * Keep localStorage synchronized with the workspace currently
-   * represented by client state.
+   * Keep client state valid when the available workspace collection changes.
    *
-   * This does NOT control server authorization. The HttpOnly cookie
-   * managed by /api/workspaces/current is the authoritative workspace
-   * selection for server requests.
+   * This does not persist anything in the browser. The authoritative active
+   * workspace remains the HttpOnly cookie managed by /api/workspaces/current.
    */
   useEffect(
     () => {
       if (
         !activeWorkspaceId
       ) {
-        clearStoredActiveWorkspaceId();
-
         return;
       }
 
@@ -314,21 +300,17 @@ export default function AppProvider({
         );
 
       if (
-        !workspaceExists
+        workspaceExists
       ) {
-        const fallbackWorkspaceId =
-          workspaces[0]?.id ??
-          "";
-
-        setActiveWorkspaceId(
-          fallbackWorkspaceId,
-        );
-
         return;
       }
 
-      writeStoredActiveWorkspaceId(
-        activeWorkspaceId,
+      const fallbackWorkspaceId =
+        workspaces[0]?.id ??
+        "";
+
+      setActiveWorkspaceId(
+        fallbackWorkspaceId,
       );
     },
     [
@@ -429,34 +411,6 @@ export default function AppProvider({
           ) =>
             currentOverlay ===
             "search"
-              ? null
-              : currentOverlay,
-        );
-      },
-      [],
-    );
-
-  const openNotifications =
-    useCallback(
-      () => {
-        openOverlay(
-          "notifications",
-        );
-      },
-      [
-        openOverlay,
-      ],
-    );
-
-  const closeNotifications =
-    useCallback(
-      () => {
-        setActiveOverlay(
-          (
-            currentOverlay,
-          ) =>
-            currentOverlay ===
-            "notifications"
               ? null
               : currentOverlay,
         );
@@ -601,10 +555,6 @@ export default function AppProvider({
             (
               confirmedWorkspaceId,
             ) => {
-              writeStoredActiveWorkspaceId(
-                confirmedWorkspaceId,
-              );
-
               setActiveWorkspaceId(
                 confirmedWorkspaceId,
               );
@@ -737,16 +687,6 @@ export default function AppProvider({
                 nextWorkspaces[0]?.id ??
                 "";
 
-              if (
-                nextWorkspaceId
-              ) {
-                writeStoredActiveWorkspaceId(
-                  nextWorkspaceId,
-                );
-              } else {
-                clearStoredActiveWorkspaceId();
-              }
-
               setActiveWorkspaceId(
                 nextWorkspaceId,
               );
@@ -781,9 +721,6 @@ export default function AppProvider({
           activeOverlay ===
           "search",
 
-        isNotificationsOpen:
-          activeOverlay ===
-          "notifications",
 
         isQuickAddOpen:
           activeOverlay ===
@@ -806,9 +743,6 @@ export default function AppProvider({
         openSearch,
         closeSearch,
 
-        openNotifications,
-        closeNotifications,
-
         openQuickAdd,
         closeQuickAdd,
 
@@ -826,14 +760,12 @@ export default function AppProvider({
         activeWorkspaceId,
         addWorkspace,
         closeMobileNavigation,
-        closeNotifications,
         closeOverlay,
         closeQuickAdd,
         closeSearch,
         closeWorkspaceSwitcher,
         initialUser,
         openMobileNavigation,
-        openNotifications,
         openOverlay,
         openQuickAdd,
         openSearch,
@@ -851,9 +783,26 @@ export default function AppProvider({
         contextValue
       }
     >
-      <BudgetProvider>
+      <BudgetProvider
+        activeWorkspaceId={
+          activeWorkspaceId
+        }
+      >
         <AccountsProvider>
-          <InvestmentsProvider>
+          <InvestmentsProvider
+            initialInvestmentAccounts={
+              initialInvestments.investmentAccounts
+            }
+            initialHoldings={
+              initialInvestments.holdings
+            }
+            initialActivities={
+              initialInvestments.activities
+            }
+            initialPerformanceHistory={
+              initialInvestments.performanceSnapshots
+            }
+          >
             <NetWorthProvider>
               <GoalsProvider>
                 <DebtsProvider>
@@ -1140,61 +1089,6 @@ function resolveAvailableWorkspaceId({
     workspaces[0]?.id ??
     ""
   );
-}
-
-function writeStoredActiveWorkspaceId(
-  workspaceId:
-    string,
-) {
-  if (
-    typeof window ===
-    "undefined"
-  ) {
-    return;
-  }
-
-  try {
-    window.localStorage.setItem(
-      ACTIVE_WORKSPACE_STORAGE_KEY,
-      workspaceId,
-    );
-  } catch {
-    // Local storage may be unavailable or full.
-  }
-}
-
-function clearStoredActiveWorkspaceId() {
-  if (
-    typeof window ===
-    "undefined"
-  ) {
-    return;
-  }
-
-  try {
-    window.localStorage.removeItem(
-      ACTIVE_WORKSPACE_STORAGE_KEY,
-    );
-  } catch {
-    // Local storage may be unavailable.
-  }
-}
-
-function clearLegacyWorkspaceStorage() {
-  if (
-    typeof window ===
-    "undefined"
-  ) {
-    return;
-  }
-
-  try {
-    window.localStorage.removeItem(
-      LEGACY_WORKSPACES_STORAGE_KEY,
-    );
-  } catch {
-    // Local storage may be unavailable.
-  }
 }
 
 function isRecord(
