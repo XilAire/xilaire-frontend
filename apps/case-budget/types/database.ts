@@ -1608,6 +1608,8 @@ export type CaseBudgetCalendarPreferenceDatabaseTable =
  * user_id
  * theme
  * sidebar_open_section
+ * floating_control_x
+ * floating_control_y
  * created_at
  * updated_at
  */
@@ -1634,6 +1636,12 @@ export type CaseBudgetUserPreferenceDatabaseRow = {
   sidebar_open_section:
     CaseBudgetUserPreferenceSidebarSection | null;
 
+  floating_control_x:
+    number | null;
+
+  floating_control_y:
+    number | null;
+
   created_at:
     string;
 
@@ -1650,6 +1658,12 @@ export type CaseBudgetUserPreferenceDatabaseInsert = {
 
   sidebar_open_section?:
     CaseBudgetUserPreferenceSidebarSection | null;
+
+  floating_control_x?:
+    number | null;
+
+  floating_control_y?:
+    number | null;
 
   created_at?:
     string;

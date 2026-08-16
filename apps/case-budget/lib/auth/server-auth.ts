@@ -226,6 +226,48 @@ export async function requireCaseBudgetUser() {
 }
 
 /**
+ * Returns the current CASE Budget user when a valid Supabase session exists.
+ *
+ * Unlike requireCaseBudgetUser(), this helper intentionally treats a missing
+ * authentication session as a normal anonymous state and returns null.
+ *
+ * Use this only from public-safe server rendering flows that may legitimately
+ * execute before sign-in, such as resolving a default theme preference for
+ * the root layout.
+ *
+ * Configuration problems, expired/invalid sessions, refresh-token failures,
+ * and other genuine authentication failures still throw a
+ * CaseBudgetServerAuthError.
+ */
+export async function getOptionalCaseBudgetUser() {
+  const supabase =
+    await createCaseBudgetSupabaseServerClient();
+
+  const user =
+    await resolveOptionalAuthenticatedUser({
+      supabase,
+
+      operation:
+        "getOptionalCaseBudgetUser",
+    });
+
+  if (
+    !user
+  ) {
+    return null;
+  }
+
+  return {
+    user,
+
+    userId:
+      user.id,
+
+    supabase,
+  };
+}
+
+/**
  * Creates the cookie-aware Supabase client used by Server Components,
  * Server Actions, and Route Handlers.
  */
@@ -1163,6 +1205,147 @@ export function getCaseBudgetServerAuthErrorResponse(
   };
 }
 
+async function resolveOptionalAuthenticatedUser({
+  supabase,
+  operation,
+}: {
+  supabase:
+    SupabaseClient;
+
+  operation:
+    string;
+}): Promise<User | null> {
+  try {
+    const {
+      data,
+      error,
+    } =
+      await supabase.auth.getUser();
+
+    if (
+      error
+    ) {
+      if (
+        isMissingAuthSessionError(
+          error,
+        )
+      ) {
+        logServerAuthDiagnostics({
+          operation,
+
+          message:
+            "No Supabase authentication session is present. Continuing as an anonymous request.",
+
+          details: {
+            status:
+              error.status,
+
+            code:
+              readAuthErrorCode(
+                error,
+              ),
+          },
+        });
+
+        return null;
+      }
+
+      logSupabaseAuthError({
+        operation,
+        error,
+      });
+
+      throw new CaseBudgetServerAuthError({
+        message:
+          getSafeSessionErrorMessage(
+            error,
+          ),
+
+        code:
+          "session-error",
+
+        status:
+          401,
+
+        cause:
+          error,
+      });
+    }
+
+    if (
+      !data.user
+    ) {
+      logServerAuthDiagnostics({
+        operation,
+
+        message:
+          "Supabase returned no authenticated user. Continuing as an anonymous request.",
+      });
+
+      return null;
+    }
+
+    logServerAuthDiagnostics({
+      operation,
+
+      message:
+        "Supabase authenticated the optional CASE Budget user successfully.",
+
+      details: {
+        userId:
+          data.user.id,
+
+        email:
+          data.user.email ??
+          null,
+
+        authenticatedAt:
+          data.user.last_sign_in_at ??
+          null,
+      },
+    });
+
+    return data.user;
+  } catch (
+    error
+  ) {
+    if (
+      error instanceof
+      CaseBudgetServerAuthError
+    ) {
+      throw error;
+    }
+
+    logServerAuthError({
+      operation,
+
+      message:
+        "Unexpected error while optionally verifying the Supabase session.",
+
+      details: {
+        error:
+          serializeUnknownError(
+            error,
+          ),
+      },
+    });
+
+    throw new CaseBudgetServerAuthError({
+      message:
+        "CASE Budget could not verify the authenticated session.",
+
+      code:
+        "session-error",
+
+      status:
+        401,
+
+      cause:
+        error,
+    });
+  }
+}
+
 async function resolveAuthenticatedUser({
   supabase,
   operation,
@@ -1183,10 +1366,33 @@ async function resolveAuthenticatedUser({
     if (
       error
     ) {
-      logSupabaseAuthError({
-        operation,
-        error,
-      });
+      if (
+        isMissingAuthSessionError(
+          error,
+        )
+      ) {
+        logServerAuthDiagnostics({
+          operation,
+
+          message:
+            "No Supabase authentication session is present.",
+
+          details: {
+            status:
+              error.status,
+
+            code:
+              readAuthErrorCode(
+                error,
+              ),
+          },
+        });
+      } else {
+        logSupabaseAuthError({
+          operation,
+          error,
+        });
+      }
 
       throw new CaseBudgetServerAuthError({
         message:
@@ -1195,7 +1401,11 @@ async function resolveAuthenticatedUser({
           ),
 
         code:
-          "session-error",
+          isMissingAuthSessionError(
+            error,
+          )
+            ? "unauthenticated"
+            : "session-error",
 
         status:
           401,
@@ -1291,6 +1501,31 @@ async function resolveAuthenticatedUser({
         error,
     });
   }
+}
+
+function isMissingAuthSessionError(
+  error:
+    AuthError,
+) {
+  const normalizedMessage =
+    error.message.toLowerCase();
+
+  const normalizedCode =
+    readAuthErrorCode(
+      error,
+    )?.toLowerCase() ??
+    "";
+
+  return (
+    normalizedMessage.includes(
+      "session missing",
+    ) ||
+    normalizedMessage.includes(
+      "auth session missing",
+    ) ||
+    normalizedCode ===
+      "session_not_found"
+  );
 }
 
 function getSafeSessionErrorMessage(

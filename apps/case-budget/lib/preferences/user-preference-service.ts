@@ -5,6 +5,7 @@ import type {
 } from "@supabase/supabase-js";
 
 import {
+  getOptionalCaseBudgetUser,
   requireCaseBudgetUser,
 } from "@/lib/auth/server-auth";
 
@@ -13,6 +14,14 @@ import type {
   CaseBudgetUserPreferenceSidebarSection,
   CaseBudgetUserPreferenceTheme,
 } from "@/types/database";
+
+export type CaseBudgetFloatingControlPosition = {
+  x:
+    number;
+
+  y:
+    number;
+};
 
 export type CaseBudgetUserPreferences = {
   userId:
@@ -23,6 +32,12 @@ export type CaseBudgetUserPreferences = {
 
   sidebarOpenSection:
     CaseBudgetUserPreferenceSidebarSection | null;
+
+  floatingControlX:
+    number | null;
+
+  floatingControlY:
+    number | null;
 
   createdAt:
     string | null;
@@ -37,6 +52,12 @@ export type UpdateCaseBudgetUserPreferencesInput = {
 
   sidebarOpenSection?:
     CaseBudgetUserPreferenceSidebarSection | null;
+
+  floatingControlX?:
+    number | null;
+
+  floatingControlY?:
+    number | null;
 };
 
 export type UserPreferenceServiceErrorCode =
@@ -109,6 +130,23 @@ const DEFAULT_SIDEBAR_OPEN_SECTION:
   CaseBudgetUserPreferenceSidebarSection | null =
     null;
 
+const DEFAULT_FLOATING_CONTROL_X:
+  number | null =
+    null;
+
+const DEFAULT_FLOATING_CONTROL_Y:
+  number | null =
+    null;
+
+const MIN_NORMALIZED_FLOATING_CONTROL_POSITION =
+  0;
+
+const MAX_NORMALIZED_FLOATING_CONTROL_POSITION =
+  1;
+
+const CASE_BUDGET_USER_PREFERENCE_SELECT =
+  "user_id,theme,sidebar_open_section,floating_control_x,floating_control_y,created_at,updated_at";
+
 /**
  * Loads the authenticated CASE Budget user's persistent UI/application
  * preferences.
@@ -130,15 +168,24 @@ export async function getCurrentUserPreferences():
     "getCurrentUserPreferences";
 
   try {
-    const {
-      userId,
-      supabase,
-    } =
-      await requireCaseBudgetUser();
+    const auth =
+      await getOptionalCaseBudgetUser();
+
+    if (
+      !auth
+    ) {
+      return createDefaultPreferences(
+        "",
+      );
+    }
 
     return await loadUserPreferences({
-      userId,
-      supabase,
+      userId:
+        auth.userId,
+
+      supabase:
+        auth.supabase,
+
       operation,
     });
   } catch (
@@ -204,6 +251,18 @@ export async function updateCurrentUserPreferences(
         ? updates.sidebarOpenSection
         : currentPreferences.sidebarOpenSection;
 
+    const nextFloatingControlX =
+      updates.floatingControlX !==
+      undefined
+        ? updates.floatingControlX
+        : currentPreferences.floatingControlX;
+
+    const nextFloatingControlY =
+      updates.floatingControlY !==
+      undefined
+        ? updates.floatingControlY
+        : currentPreferences.floatingControlY;
+
     const {
       data,
       error,
@@ -222,6 +281,12 @@ export async function updateCurrentUserPreferences(
 
             sidebar_open_section:
               nextSidebarOpenSection,
+
+            floating_control_x:
+              nextFloatingControlX,
+
+            floating_control_y:
+              nextFloatingControlY,
           },
           {
             onConflict:
@@ -229,7 +294,7 @@ export async function updateCurrentUserPreferences(
           },
         )
         .select(
-          "user_id,theme,sidebar_open_section,created_at,updated_at",
+          CASE_BUDGET_USER_PREFERENCE_SELECT,
         )
         .single();
 
@@ -290,6 +355,49 @@ export async function updateCurrentUserSidebarOpenSection(
   });
 }
 
+/**
+ * Persists the authenticated user's floating appearance-control position.
+ *
+ * Coordinates are normalized from 0 to 1 so the same saved preference can be
+ * restored sensibly across different viewport sizes.
+ */
+export async function updateCurrentUserFloatingControlPosition(
+  position:
+    CaseBudgetFloatingControlPosition,
+): Promise<CaseBudgetUserPreferences> {
+  const operation =
+    "updateCurrentUserFloatingControlPosition";
+
+  const normalizedPosition =
+    normalizeFloatingControlPosition({
+      position,
+      operation,
+    });
+
+  return updateCurrentUserPreferences({
+    floatingControlX:
+      normalizedPosition.x,
+
+    floatingControlY:
+      normalizedPosition.y,
+  });
+}
+
+/**
+ * Clears the user's stored floating-control position so the client can return
+ * to the normal default placement.
+ */
+export async function resetCurrentUserFloatingControlPosition():
+  Promise<CaseBudgetUserPreferences> {
+  return updateCurrentUserPreferences({
+    floatingControlX:
+      null,
+
+    floatingControlY:
+      null,
+  });
+}
+
 async function loadUserPreferences({
   userId,
   supabase,
@@ -319,7 +427,7 @@ async function loadUserPreferences({
         CASE_BUDGET_USER_PREFERENCES_TABLE,
       )
       .select(
-        "user_id,theme,sidebar_open_section,created_at,updated_at",
+        CASE_BUDGET_USER_PREFERENCE_SELECT,
       )
       .eq(
         "user_id",
@@ -367,6 +475,12 @@ function createDefaultPreferences(
     sidebarOpenSection:
       DEFAULT_SIDEBAR_OPEN_SECTION,
 
+    floatingControlX:
+      DEFAULT_FLOATING_CONTROL_X,
+
+    floatingControlY:
+      DEFAULT_FLOATING_CONTROL_Y,
+
     createdAt:
       null,
 
@@ -391,6 +505,16 @@ function mapPreferenceRow(
     sidebarOpenSection:
       normalizeSidebarOpenSection(
         row.sidebar_open_section,
+      ),
+
+    floatingControlX:
+      normalizeStoredFloatingControlCoordinate(
+        row.floating_control_x,
+      ),
+
+    floatingControlY:
+      normalizeStoredFloatingControlCoordinate(
+        row.floating_control_y,
       ),
 
     createdAt:
@@ -439,6 +563,12 @@ function normalizePreferenceUpdates({
 
   let sidebarOpenSection:
     CaseBudgetUserPreferenceSidebarSection | null | undefined;
+
+  let floatingControlX:
+    number | null | undefined;
+
+  let floatingControlY:
+    number | null | undefined;
 
   if (
     Object.prototype.hasOwnProperty.call(
@@ -494,17 +624,222 @@ function normalizePreferenceUpdates({
       input.sidebarOpenSection;
   }
 
+  const hasFloatingControlX =
+    Object.prototype.hasOwnProperty.call(
+      input,
+      "floatingControlX",
+    );
+
+  const hasFloatingControlY =
+    Object.prototype.hasOwnProperty.call(
+      input,
+      "floatingControlY",
+    );
+
+  if (
+    hasFloatingControlX !==
+    hasFloatingControlY
+  ) {
+    throw new UserPreferenceServiceError({
+      message:
+        "Both CASE Budget floating-control coordinates must be provided together.",
+
+      code:
+        "invalid-input",
+
+      operation,
+    });
+  }
+
+  if (
+    hasFloatingControlX &&
+    hasFloatingControlY
+  ) {
+    const inputX =
+      input.floatingControlX;
+
+    const inputY =
+      input.floatingControlY;
+
+    const bothNull =
+      inputX ===
+        null &&
+      inputY ===
+        null;
+
+    const bothCoordinates =
+      isNormalizedFloatingControlCoordinate(
+        inputX,
+      ) &&
+      isNormalizedFloatingControlCoordinate(
+        inputY,
+      );
+
+    if (
+      !bothNull &&
+      !bothCoordinates
+    ) {
+      throw new UserPreferenceServiceError({
+        message:
+          "CASE Budget floating-control coordinates must both be numbers between 0 and 1, or both be null.",
+
+        code:
+          "invalid-input",
+
+        operation,
+      });
+    }
+
+    floatingControlX =
+      inputX ===
+        null
+        ? null
+        : normalizeCoordinatePrecision(
+            inputX as number,
+          );
+
+    floatingControlY =
+      inputY ===
+        null
+        ? null
+        : normalizeCoordinatePrecision(
+            inputY as number,
+          );
+  }
+
   return {
     theme,
 
     sidebarOpenSection,
 
+    floatingControlX,
+
+    floatingControlY,
+
     hasChanges:
       theme !==
         undefined ||
       sidebarOpenSection !==
+        undefined ||
+      floatingControlX !==
+        undefined ||
+      floatingControlY !==
         undefined,
   };
+}
+
+function normalizeFloatingControlPosition({
+  position,
+  operation,
+}: {
+  position:
+    CaseBudgetFloatingControlPosition;
+
+  operation:
+    string;
+}): CaseBudgetFloatingControlPosition {
+  if (
+    !position ||
+    typeof position !==
+      "object" ||
+    Array.isArray(
+      position,
+    ) ||
+    !isNormalizedFloatingControlCoordinate(
+      position.x,
+    ) ||
+    !isNormalizedFloatingControlCoordinate(
+      position.y,
+    )
+  ) {
+    throw new UserPreferenceServiceError({
+      message:
+        "A valid CASE Budget floating-control position is required.",
+
+      code:
+        "invalid-input",
+
+      operation,
+    });
+  }
+
+  return {
+    x:
+      normalizeCoordinatePrecision(
+        position.x,
+      ),
+
+    y:
+      normalizeCoordinatePrecision(
+        position.y,
+      ),
+  };
+}
+
+function normalizeStoredFloatingControlCoordinate(
+  value:
+    unknown,
+): number | null {
+  if (
+    value ===
+      null ||
+    value ===
+      undefined
+  ) {
+    return null;
+  }
+
+  const numericValue =
+    typeof value ===
+      "number"
+      ? value
+      : typeof value ===
+          "string" &&
+        value.trim()
+        ? Number(
+            value,
+          )
+        : Number.NaN;
+
+  if (
+    !isNormalizedFloatingControlCoordinate(
+      numericValue,
+    )
+  ) {
+    return null;
+  }
+
+  return normalizeCoordinatePrecision(
+    numericValue,
+  );
+}
+
+function isNormalizedFloatingControlCoordinate(
+  value:
+    unknown,
+): value is number {
+  return (
+    typeof value ===
+      "number" &&
+    Number.isFinite(
+      value,
+    ) &&
+    value >=
+      MIN_NORMALIZED_FLOATING_CONTROL_POSITION &&
+    value <=
+      MAX_NORMALIZED_FLOATING_CONTROL_POSITION
+  );
+}
+
+function normalizeCoordinatePrecision(
+  value:
+    number,
+) {
+  return Number(
+    value.toFixed(
+      6,
+    ),
+  );
 }
 
 function normalizeUserId({

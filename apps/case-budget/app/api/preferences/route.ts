@@ -39,6 +39,12 @@ type PreferencesResponseData = {
   sidebarOpenSection:
     CaseBudgetUserPreferenceSidebarSection | null;
 
+  floatingControlX:
+    number | null;
+
+  floatingControlY:
+    number | null;
+
   createdAt:
     string | null;
 
@@ -83,6 +89,12 @@ type PreferencesPatchRequest = {
 
   sidebarOpenSection?:
     CaseBudgetUserPreferenceSidebarSection | null;
+
+  floatingControlX?:
+    number | null;
+
+  floatingControlY?:
+    number | null;
 };
 
 /**
@@ -130,8 +142,13 @@ export async function GET() {
  *     "insights" |
  *     "household" |
  *     "settings" |
- *     null
+ *     null,
+ *   "floatingControlX": 0..1 | null,
+ *   "floatingControlY": 0..1 | null
  * }
+ *
+ * Floating-control coordinates are normalized viewport coordinates. They must
+ * always be supplied together. Use null/null to reset to the default position.
  *
  * The browser never supplies a user ID. The authenticated user is resolved
  * server-side and ownership is additionally enforced by Supabase RLS.
@@ -243,6 +260,8 @@ function validatePatchRequest(
     new Set([
       "theme",
       "sidebarOpenSection",
+      "floatingControlX",
+      "floatingControlY",
     ]);
 
   const unknownKeys =
@@ -285,9 +304,23 @@ function validatePatchRequest(
       "sidebarOpenSection",
     );
 
+  const hasFloatingControlX =
+    Object.prototype.hasOwnProperty.call(
+      value,
+      "floatingControlX",
+    );
+
+  const hasFloatingControlY =
+    Object.prototype.hasOwnProperty.call(
+      value,
+      "floatingControlY",
+    );
+
   if (
     !hasTheme &&
-    !hasSidebarOpenSection
+    !hasSidebarOpenSection &&
+    !hasFloatingControlX &&
+    !hasFloatingControlY
   ) {
     return {
       success:
@@ -353,6 +386,69 @@ function validatePatchRequest(
 
     input.sidebarOpenSection =
       value.sidebarOpenSection;
+  }
+
+  if (
+    hasFloatingControlX !==
+    hasFloatingControlY
+  ) {
+    return {
+      success:
+        false,
+
+      code:
+        "invalid-floating-control-position",
+
+      message:
+        "Both floating-control coordinates must be provided together.",
+    };
+  }
+
+  if (
+    hasFloatingControlX &&
+    hasFloatingControlY
+  ) {
+    const x =
+      value.floatingControlX;
+
+    const y =
+      value.floatingControlY;
+
+    const bothNull =
+      x ===
+        null &&
+      y ===
+        null;
+
+    const bothCoordinates =
+      isNormalizedFloatingControlCoordinate(
+        x,
+      ) &&
+      isNormalizedFloatingControlCoordinate(
+        y,
+      );
+
+    if (
+      !bothNull &&
+      !bothCoordinates
+    ) {
+      return {
+        success:
+          false,
+
+        code:
+          "invalid-floating-control-position",
+
+        message:
+          "Floating-control coordinates must both be numbers between 0 and 1, or both be null.",
+      };
+    }
+
+    input.floatingControlX =
+      x as number | null;
+
+    input.floatingControlY =
+      y as number | null;
   }
 
   return {
@@ -601,6 +697,23 @@ function isSidebarOpenSection(
       "household" ||
     value ===
       "settings"
+  );
+}
+
+function isNormalizedFloatingControlCoordinate(
+  value:
+    unknown,
+): value is number {
+  return (
+    typeof value ===
+      "number" &&
+    Number.isFinite(
+      value,
+    ) &&
+    value >=
+      0 &&
+    value <=
+      1
   );
 }
 
