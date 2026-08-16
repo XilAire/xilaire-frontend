@@ -13,6 +13,11 @@ import {
   createInvestmentHolding as createInvestmentHoldingService,
 } from "@/lib/investments/investments-service";
 
+
+import {
+  resolveAuthenticatedFeatureAccess,
+} from "@/lib/subscriptions/subscription-access";
+
 import {
   createWorkspaceAdminClient,
 } from "@/lib/supabase/admin";
@@ -140,6 +145,32 @@ export async function createHolding(
       workspaceId,
     } =
       await requireCaseBudgetServerAuth();
+
+    const featureAccess =
+      await resolveAuthenticatedFeatureAccess({
+        feature:
+          "investments",
+
+        workspaceId,
+      });
+
+    if (
+      !featureAccess.access.allowed
+    ) {
+      return failure({
+        code:
+          "permission-denied",
+
+        message:
+          getInvestmentsFeatureAccessMessage({
+            reason:
+              featureAccess.access.reason,
+
+            requiredPlan:
+              featureAccess.access.requiredPlan,
+          }),
+      });
+    }
 
     const workspaceResult =
       await loadWorkspace({
@@ -540,6 +571,56 @@ function getFailureCode(
   }
 
   return "create-failed";
+}
+
+
+function getInvestmentsFeatureAccessMessage({
+  reason,
+  requiredPlan,
+}: {
+  reason:
+    | "allowed"
+    | "requires-plus"
+    | "requires-pro"
+    | "inactive-subscription";
+
+  requiredPlan:
+    | "free"
+    | "plus"
+    | "pro"
+    | null;
+}) {
+  switch (
+    reason
+  ) {
+    case "inactive-subscription":
+      return "Investments are unavailable because this workspace subscription is inactive. Please reactivate the subscription to continue.";
+
+    case "requires-pro":
+      return "Investments require the CASE Budget Pro plan for this workspace.";
+
+    case "requires-plus":
+      return "Investments require the CASE Budget Plus plan or higher for this workspace.";
+
+    case "allowed":
+    default: {
+      if (
+        requiredPlan ===
+        "pro"
+      ) {
+        return "Investments require the CASE Budget Pro plan for this workspace.";
+      }
+
+      if (
+        requiredPlan ===
+        "plus"
+      ) {
+        return "Investments require the CASE Budget Plus plan or higher for this workspace.";
+      }
+
+      return "Investments are not available for the current workspace subscription.";
+    }
+  }
 }
 
 function failure({
