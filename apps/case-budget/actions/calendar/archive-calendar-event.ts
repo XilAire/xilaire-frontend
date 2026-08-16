@@ -9,6 +9,11 @@ import {
   requireCaseBudgetServerAuth,
 } from "@/lib/auth/server-auth";
 
+
+import {
+  resolveAuthenticatedFeatureAccess,
+} from "@/lib/subscriptions/subscription-access";
+
 import {
   createWorkspaceAdminClient,
 } from "@/lib/supabase/admin";
@@ -116,6 +121,28 @@ export async function archiveCalendarEvent(
       workspaceId,
     } =
       await requireCaseBudgetServerAuth();
+
+    const featureAccess =
+      await resolveAuthenticatedFeatureAccess({
+        feature:
+          "calendar",
+
+        workspaceId,
+      });
+
+    if (
+      !featureAccess.access.allowed
+    ) {
+      return failure(
+        getCalendarFeatureAccessMessage({
+          reason:
+            featureAccess.access.reason,
+
+          requiredPlan:
+            featureAccess.access.requiredPlan,
+        }),
+      );
+    }
 
     const workspaceResult =
       await loadWorkspace({
@@ -1660,6 +1687,55 @@ function roundMoney(
       100,
   ) /
     100;
+}
+
+function getCalendarFeatureAccessMessage({
+  reason,
+  requiredPlan,
+}: {
+  reason:
+    | "allowed"
+    | "requires-plus"
+    | "requires-pro"
+    | "inactive-subscription";
+
+  requiredPlan:
+    | "free"
+    | "plus"
+    | "pro"
+    | null;
+}) {
+  switch (
+    reason
+  ) {
+    case "inactive-subscription":
+      return "Calendar is unavailable because this workspace subscription is inactive. Please reactivate the subscription to continue.";
+
+    case "requires-pro":
+      return "Calendar requires the CASE Budget Pro plan for this workspace.";
+
+    case "requires-plus":
+      return "Calendar requires the CASE Budget Plus plan or higher for this workspace.";
+
+    case "allowed":
+    default: {
+      if (
+        requiredPlan ===
+        "pro"
+      ) {
+        return "Calendar requires the CASE Budget Pro plan for this workspace.";
+      }
+
+      if (
+        requiredPlan ===
+        "plus"
+      ) {
+        return "Calendar requires the CASE Budget Plus plan or higher for this workspace.";
+      }
+
+      return "Calendar is not available for the current workspace subscription.";
+    }
+  }
 }
 
 function failure(
