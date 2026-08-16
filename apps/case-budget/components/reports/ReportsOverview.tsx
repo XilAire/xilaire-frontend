@@ -1,7 +1,10 @@
 "use client";
 
 import {
+  useCallback,
+  useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -15,21 +18,13 @@ import {
 } from "lucide-react";
 
 import {
-  useAccounts,
-} from "@/components/providers/AccountsProvider";
+  getReports,
+  type ReportNetWorthHistoryPoint,
+} from "@/actions/reports/get-reports";
 
 import {
   useApp,
 } from "@/components/providers/AppProvider";
-
-import {
-  type NetWorthHistoryPoint,
-  useNetWorth,
-} from "@/components/providers/NetWorthProvider";
-
-import {
-  useTransactions,
-} from "@/components/providers/TransactionsProvider";
 
 import CustomReportDateRangeModal from "@/components/reports/CustomReportDateRangeModal";
 
@@ -67,15 +62,14 @@ import {
 } from "@/lib/reports/reports-export";
 
 import {
-  buildReportSummary,
   calculateExpenseRatio,
   calculatePeriodChange,
   calculateSavingsRate,
   formatReportDateRange,
-  getPreviousDateRange,
   resolveReportDateRange,
   type ReportDateRange,
   type ReportPeriodPreset,
+  type ReportSummary,
 } from "@/lib/reports/reports-service";
 
 const moneyFormatter =
@@ -102,21 +96,9 @@ export default function ReportsOverview() {
   } =
     useApp();
 
-  const {
-    accounts,
-  } =
-    useAccounts();
-
-  const {
-    transactions,
-  } =
-    useTransactions();
-
-  const {
-    history:
-      netWorthHistory,
-  } =
-    useNetWorth();
+  const activeWorkspaceId =
+    activeWorkspace?.id ??
+    null;
 
   const [
     periodPreset,
@@ -154,7 +136,90 @@ export default function ReportsOverview() {
       false,
     );
 
-  const dateRange =
+  const [
+    report,
+    setReport,
+  ] =
+    useState<ReportSummary | null>(
+      null,
+    );
+
+  const [
+    previousReport,
+    setPreviousReport,
+  ] =
+    useState<ReportSummary | null>(
+      null,
+    );
+
+  const [
+    netWorthHistory,
+    setNetWorthHistory,
+  ] =
+    useState<
+      ReportNetWorthHistoryPoint[]
+    >(
+      [],
+    );
+
+  const [
+    resolvedWorkspaceName,
+    setResolvedWorkspaceName,
+  ] =
+    useState<
+      string | null
+    >(
+      null,
+    );
+
+  const [
+    resolvedDateRange,
+    setResolvedDateRange,
+  ] =
+    useState<ReportDateRange>(
+      () =>
+        resolveReportDateRange({
+          preset:
+            "this-month",
+        }),
+    );
+
+  const [
+    resolvedPreviousDateRange,
+    setResolvedPreviousDateRange,
+  ] =
+    useState<ReportDateRange>(
+      () =>
+        resolveReportDateRange({
+          preset:
+            "last-month",
+        }),
+    );
+
+  const [
+    isLoadingReports,
+    setIsLoadingReports,
+  ] =
+    useState(
+      true,
+    );
+
+  const [
+    reportsError,
+    setReportsError,
+  ] =
+    useState<
+      string | null
+    >(
+      null,
+    );
+
+  const requestSequenceRef =
+    useRef(
+      0,
+    );
+
+  const requestedDateRange =
     useMemo(
       () =>
         periodPreset ===
@@ -170,47 +235,197 @@ export default function ReportsOverview() {
       ],
     );
 
+  const clearReportData =
+    useCallback(
+      () => {
+        setReport(
+          null,
+        );
+
+        setPreviousReport(
+          null,
+        );
+
+        setNetWorthHistory(
+          [],
+        );
+
+        setResolvedWorkspaceName(
+          null,
+        );
+      },
+      [],
+    );
+
+  const loadReports =
+    useCallback(
+      async () => {
+        const requestSequence =
+          ++requestSequenceRef.current;
+
+        if (
+          !activeWorkspaceId
+        ) {
+          clearReportData();
+
+          setReportsError(
+            null,
+          );
+
+          setIsLoadingReports(
+            false,
+          );
+
+          return;
+        }
+
+        setIsLoadingReports(
+          true,
+        );
+
+        setReportsError(
+          null,
+        );
+
+        try {
+          const result =
+            await getReports({
+              periodPreset,
+
+              customDateRange:
+                periodPreset ===
+                "custom"
+                  ? customDateRange
+                  : null,
+            });
+
+          if (
+            requestSequence !==
+            requestSequenceRef.current
+          ) {
+            return;
+          }
+
+          if (
+            !result.success
+          ) {
+            clearReportData();
+
+            setResolvedDateRange(
+              result.dateRange,
+            );
+
+            setResolvedPreviousDateRange(
+              result.previousDateRange,
+            );
+
+            setReportsError(
+              result.error.message,
+            );
+
+            return;
+          }
+
+          if (
+            result.workspaceId !==
+            activeWorkspaceId
+          ) {
+            clearReportData();
+
+            setReportsError(
+              "CASE Budget switched workspaces while Reports was loading. Please try again.",
+            );
+
+            return;
+          }
+
+          setReport(
+            result.report,
+          );
+
+          setPreviousReport(
+            result.previousReport,
+          );
+
+          setNetWorthHistory(
+            result.netWorthHistory,
+          );
+
+          setResolvedWorkspaceName(
+            result.workspaceName,
+          );
+
+          setResolvedDateRange(
+            result.dateRange,
+          );
+
+          setResolvedPreviousDateRange(
+            result.previousDateRange,
+          );
+        } catch (
+          error
+        ) {
+          if (
+            requestSequence !==
+            requestSequenceRef.current
+          ) {
+            return;
+          }
+
+          console.error(
+            "[CASE Budget ReportsOverview] Failed to load Reports.",
+            error,
+          );
+
+          clearReportData();
+
+          setReportsError(
+            "CASE Budget could not load Reports. Please try again.",
+          );
+        } finally {
+          if (
+            requestSequence ===
+            requestSequenceRef.current
+          ) {
+            setIsLoadingReports(
+              false,
+            );
+          }
+        }
+      },
+      [
+        activeWorkspaceId,
+        clearReportData,
+        customDateRange,
+        periodPreset,
+      ],
+    );
+
+  useEffect(
+    () => {
+      ++requestSequenceRef.current;
+
+      clearReportData();
+
+      setResolvedDateRange(
+        requestedDateRange,
+      );
+
+      void loadReports();
+    },
+    [
+      activeWorkspaceId,
+      clearReportData,
+      loadReports,
+      requestedDateRange,
+    ],
+  );
+
+  const dateRange =
+    resolvedDateRange;
+
   const previousDateRange =
-    useMemo(
-      () =>
-        getPreviousDateRange(
-          dateRange,
-        ),
-      [
-        dateRange,
-      ],
-    );
-
-  const report =
-    useMemo(
-      () =>
-        buildReportSummary({
-          transactions,
-          accounts,
-          dateRange,
-        }),
-      [
-        accounts,
-        dateRange,
-        transactions,
-      ],
-    );
-
-  const previousReport =
-    useMemo(
-      () =>
-        buildReportSummary({
-          transactions,
-          accounts,
-          dateRange:
-            previousDateRange,
-        }),
-      [
-        accounts,
-        previousDateRange,
-        transactions,
-      ],
-    );
+    resolvedPreviousDateRange;
 
   const sortedNetWorthHistory =
     useMemo(
@@ -256,6 +471,97 @@ export default function ReportsOverview() {
         sortedNetWorthHistory,
       ],
     );
+
+  if (
+    isLoadingReports &&
+    (
+      !report ||
+      !previousReport
+    )
+  ) {
+    return (
+      <div className="min-h-full bg-slate-50/70">
+        <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-6 px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
+          <ReportsHeader
+            dateRangeLabel={
+              formatReportDateRange(
+                dateRange,
+              )
+            }
+            onExportCsv={() => {
+              // Export remains unavailable until the canonical report loads.
+            }}
+            onPrint={() => {
+              // Printing remains unavailable until the canonical report loads.
+            }}
+          />
+
+          <div
+            aria-live="polite"
+            className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm"
+          >
+            <p className="text-sm font-semibold text-slate-900">
+              Loading Reports
+            </p>
+
+            <p className="mt-2 text-sm text-slate-600">
+              CASE Budget is loading the canonical financial report for this workspace.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (
+    reportsError ||
+    !report ||
+    !previousReport
+  ) {
+    return (
+      <div className="min-h-full bg-slate-50/70">
+        <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-6 px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
+          <ReportsHeader
+            dateRangeLabel={
+              formatReportDateRange(
+                dateRange,
+              )
+            }
+            onExportCsv={() => {
+              // Export is unavailable while Reports is in an error state.
+            }}
+            onPrint={() => {
+              // Printing is unavailable while Reports is in an error state.
+            }}
+          />
+
+          <div
+            role="alert"
+            className="rounded-2xl border border-rose-200 bg-white p-8 shadow-sm"
+          >
+            <p className="text-sm font-semibold text-slate-900">
+              Reports unavailable
+            </p>
+
+            <p className="mt-2 text-sm text-slate-600">
+              {reportsError ??
+                "CASE Budget could not load Reports for this workspace."}
+            </p>
+
+            <button
+              type="button"
+              onClick={() => {
+                void loadReports();
+              }}
+              className="mt-5 inline-flex items-center justify-center rounded-lg bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const clearedIncome =
     report.transactionTotals
@@ -411,11 +717,16 @@ export default function ReportsOverview() {
   }
 
   function handleExportCsv() {
+    if (!report) {
+      return;
+    }
+
     const file =
       buildReportCsv({
         report,
 
         workspaceName:
+          resolvedWorkspaceName ??
           activeWorkspace?.name ??
           null,
 
@@ -742,7 +1053,7 @@ export default function ReportsOverview() {
 
 function getLatestSnapshotInRange(
   history:
-    NetWorthHistoryPoint[],
+    ReportNetWorthHistoryPoint[],
   dateRange:
     ReportDateRange,
 ) {
