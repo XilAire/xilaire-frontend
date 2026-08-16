@@ -10,6 +10,10 @@ import {
 } from "@/lib/auth/server-auth";
 
 import {
+  resolveAuthenticatedFeatureAccess,
+} from "@/lib/subscriptions/subscription-access";
+
+import {
   createWorkspaceAdminClient,
 } from "@/lib/supabase/admin";
 
@@ -152,6 +156,29 @@ export async function createGoal(
       workspaceId,
     } =
       await requireCaseBudgetServerAuth();
+
+
+    const featureAccess =
+      await resolveAuthenticatedFeatureAccess({
+        feature:
+          "goals",
+
+        workspaceId,
+      });
+
+    if (
+      !featureAccess.access.allowed
+    ) {
+      return failure(
+        getGoalsFeatureAccessMessage({
+          reason:
+            featureAccess.access.reason,
+
+          requiredPlan:
+            featureAccess.access.requiredPlan,
+        }),
+      );
+    }
 
     const workspaceResult =
       await loadWorkspace({
@@ -1015,6 +1042,55 @@ function roundMoney(
       100,
   ) /
     100;
+}
+
+function getGoalsFeatureAccessMessage({
+  reason,
+  requiredPlan,
+}: {
+  reason:
+    | "allowed"
+    | "requires-plus"
+    | "requires-pro"
+    | "inactive-subscription";
+
+  requiredPlan:
+    | "free"
+    | "plus"
+    | "pro"
+    | null;
+}) {
+  switch (
+    reason
+  ) {
+    case "inactive-subscription":
+      return "Goals are unavailable because this workspace subscription is inactive. Please reactivate the subscription to continue.";
+
+    case "requires-pro":
+      return "Goals require the CASE Budget Pro plan for this workspace.";
+
+    case "requires-plus":
+      return "Goals require the CASE Budget Plus plan or higher for this workspace.";
+
+    case "allowed":
+    default: {
+      if (
+        requiredPlan ===
+        "pro"
+      ) {
+        return "Goals require the CASE Budget Pro plan for this workspace.";
+      }
+
+      if (
+        requiredPlan ===
+        "plus"
+      ) {
+        return "Goals require the CASE Budget Plus plan or higher for this workspace.";
+      }
+
+      return "Goals are not available for the current workspace subscription.";
+    }
+  }
 }
 
 function failure(
