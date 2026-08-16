@@ -23,6 +23,14 @@ import {
   createAdminClient,
 } from "@/lib/supabase/admin";
 
+import {
+  canAccessCaseBudgetFeature,
+} from "@/lib/subscriptions/subscription-service";
+
+import {
+  getSupabaseSubscriptionRepository,
+} from "@/lib/subscriptions/subscription-storage";
+
 import type {
   BillData,
   BillReminderTiming,
@@ -32,6 +40,7 @@ export type BillReminderEmailProcessingStatus =
   | "sent"
   | "already-processed"
   | "not-due"
+  | "not-entitled"
   | "recipient-missing"
   | "failed";
 
@@ -90,6 +99,9 @@ export type BillReminderEmailBatchResult = {
     number;
 
   notDue:
+    number;
+
+  notEntitled:
     number;
 
   recipientMissing:
@@ -226,7 +238,9 @@ export async function processBillReminderEmails({
           result,
         ) =>
           result.status !==
-          "not-due",
+            "not-due" &&
+          result.status !==
+            "not-entitled",
       ).length,
 
     sent:
@@ -245,6 +259,12 @@ export async function processBillReminderEmails({
       countResultsByStatus(
         results,
         "not-due",
+      ),
+
+    notEntitled:
+      countResultsByStatus(
+        results,
+        "not-entitled",
       ),
 
     recipientMissing:
@@ -270,12 +290,13 @@ export async function processBillReminderEmails({
  *
  * 1. Ask the existing CASE Budget reminder engine whether a reminder
  *    currently qualifies.
- * 2. Resolve the recipient from the existing profiles table.
- * 3. Generate a deterministic delivery key.
- * 4. Atomically reserve the email delivery.
- * 5. Skip when another worker already reserved/sent the same reminder.
- * 6. Send through the existing CASE Budget Resend notification sender.
- * 7. Mark the delivery sent or failed.
+ * 2. Resolve the workspace subscription and enforce the Bills entitlement.
+ * 3. Resolve the recipient from the existing profiles table.
+ * 4. Generate a deterministic delivery key.
+ * 5. Atomically reserve the email delivery.
+ * 6. Skip when another worker already reserved/sent the same reminder.
+ * 7. Send through the existing CASE Budget Resend notification sender.
+ * 8. Mark the delivery sent or failed.
  */
 async function processSingleBillReminderEmail({
   candidate,
@@ -322,6 +343,83 @@ async function processSingleBillReminderEmail({
 
   const reminderType =
     reminder.type;
+
+  let subscription:
+    Awaited<
+      ReturnType<
+        ReturnType<
+          typeof getSupabaseSubscriptionRepository
+        >["findSubscription"]
+      >
+    >;
+
+  try {
+    const repository =
+      getSupabaseSubscriptionRepository();
+
+    subscription =
+      await repository.findSubscription({
+        userId,
+
+        workspaceId,
+      });
+  } catch (
+    error
+  ) {
+    return createProcessingResult({
+      billId:
+        bill.id,
+
+      userId,
+
+      workspaceId,
+
+      status:
+        "failed",
+
+      reminderType,
+
+      errorCode:
+        "subscription-lookup-failed",
+
+      errorMessage:
+        readUnknownErrorMessage(
+          error,
+        ),
+    });
+  }
+
+  const featureAccess =
+    canAccessCaseBudgetFeature({
+      subscription,
+
+      feature:
+        "bills",
+    });
+
+  if (
+    !featureAccess.allowed
+  ) {
+    return createProcessingResult({
+      billId:
+        bill.id,
+
+      userId,
+
+      workspaceId,
+
+      status:
+        "not-entitled",
+
+      reminderType,
+
+      errorCode:
+        featureAccess.reason,
+
+      errorMessage:
+        `CASE Budget skipped this bill reminder because the workspace does not currently have Bills access (${featureAccess.reason}).`,
+    });
+  }
 
   let recipient:
     ReminderRecipient | null =
