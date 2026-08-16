@@ -12,10 +12,16 @@ import {
 } from "react";
 
 import {
-  deleteNetWorthSnapshotAction,
-  loadNetWorthSnapshotsAction,
-  recordNetWorthSnapshotAction,
-} from "@/app/(app)/dashboard/net-worth/actions";
+  deleteNetWorthSnapshot,
+} from "@/actions/net-worth/delete-net-worth-snapshot";
+
+import {
+  getNetWorthSnapshots,
+} from "@/actions/net-worth/get-net-worth-snapshots";
+
+import {
+  recordNetWorthSnapshot,
+} from "@/actions/net-worth/record-net-worth-snapshot";
 
 import {
   useAccounts,
@@ -328,9 +334,7 @@ export default function NetWorthProvider({
 
         try {
           const result =
-            await loadNetWorthSnapshotsAction(
-              normalizedWorkspaceId,
-            );
+            await getNetWorthSnapshots();
 
           if (
             requestIdRef.current !==
@@ -347,7 +351,7 @@ export default function NetWorthProvider({
             );
 
             setHistoryError(
-              result.error ??
+              result.error?.message ??
                 "Unable to load net worth history.",
             );
 
@@ -466,10 +470,7 @@ export default function NetWorthProvider({
 
         try {
           const result =
-            await recordNetWorthSnapshotAction({
-              workspaceId:
-                normalizedWorkspaceId,
-
+            await recordNetWorthSnapshot({
               snapshotDate:
                 date,
 
@@ -485,7 +486,7 @@ export default function NetWorthProvider({
             !result.snapshot
           ) {
             setHistoryError(
-              result.error ??
+              result.error?.message ??
                 "Unable to record the net worth snapshot.",
             );
 
@@ -569,10 +570,7 @@ export default function NetWorthProvider({
 
         try {
           const result =
-            await deleteNetWorthSnapshotAction({
-              workspaceId:
-                normalizedWorkspaceId,
-
+            await deleteNetWorthSnapshot({
               snapshotId:
                 normalizedSnapshotId,
             });
@@ -581,7 +579,7 @@ export default function NetWorthProvider({
             !result.success
           ) {
             setHistoryError(
-              result.error ??
+              result.error?.message ??
                 "Unable to delete the net worth snapshot.",
             );
 

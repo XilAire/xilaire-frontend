@@ -10,8 +10,8 @@ import {
 } from "@/actions/transactions/get-transactions";
 
 import {
-  loadNetWorthSnapshotsAction,
-} from "@/app/(app)/dashboard/net-worth/actions";
+  getNetWorthSnapshots,
+} from "@/actions/net-worth/get-net-worth-snapshots";
 
 import {
   CaseBudgetServerAuthError,
@@ -151,7 +151,7 @@ const DEFAULT_PERIOD_PRESET:
  * - the browser never supplies workspaceId.
  * - the Reports plan entitlement is enforced before report data is loaded.
  * - accounts and transactions are loaded from their canonical server actions.
- * - net-worth history is loaded from the existing server-side snapshot flow.
+ * - net-worth history is loaded from the canonical centralized Net Worth action.
  * - report calculations are performed from canonical server-returned data.
  * - Supabase remains the persistent source of truth.
  * - no localStorage or sessionStorage is used.
@@ -233,9 +233,7 @@ export async function getReports({
       await Promise.all([
         getAccounts(),
         getTransactions(),
-        loadNetWorthSnapshotsAction(
-          workspaceId,
-        ),
+        getNetWorthSnapshots(),
       ]);
 
     if (
