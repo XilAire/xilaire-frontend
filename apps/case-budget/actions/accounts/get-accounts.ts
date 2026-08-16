@@ -6,6 +6,10 @@ import {
 } from "@/lib/auth/server-auth";
 
 import {
+  resolveAuthenticatedFeatureAccess,
+} from "@/lib/subscriptions/subscription-access";
+
+import {
   createWorkspaceAdminClient,
 } from "@/lib/supabase/admin";
 
@@ -53,6 +57,7 @@ export type GetCaseBudgetAccountsResult =
           | "workspace-not-found"
           | "workspace-inactive"
           | "permission-denied"
+          | "feature-not-available"
           | "account-load-failed"
           | "unexpected-error";
         message: string;
@@ -90,6 +95,32 @@ export async function getAccounts(): Promise<GetCaseBudgetAccountsResult> {
       userId,
       workspaceId,
     } = await requireCaseBudgetServerAuth();
+
+    const featureAccess =
+      await resolveAuthenticatedFeatureAccess({
+        feature:
+          "manual-accounts",
+
+        workspaceId,
+      });
+
+    if (
+      !featureAccess.access.allowed
+    ) {
+      return failure({
+        code:
+          "feature-not-available",
+
+        message:
+          getManualAccountFeatureAccessMessage({
+            reason:
+              featureAccess.access.reason,
+
+            requiredPlan:
+              featureAccess.access.requiredPlan,
+          }),
+      });
+    }
 
     const workspaceResult =
       await loadWorkspace({
@@ -986,6 +1017,55 @@ function roundCurrency(
       100,
   ) /
     100;
+}
+
+function getManualAccountFeatureAccessMessage({
+  reason,
+  requiredPlan,
+}: {
+  reason:
+    | "allowed"
+    | "requires-plus"
+    | "requires-pro"
+    | "inactive-subscription";
+
+  requiredPlan:
+    | "free"
+    | "plus"
+    | "pro"
+    | null;
+}) {
+  switch (
+    reason
+  ) {
+    case "inactive-subscription":
+      return "Manual accounts are unavailable because this workspace subscription is inactive. Please reactivate the subscription to continue.";
+
+    case "requires-pro":
+      return "Manual accounts require the CASE Budget Pro plan for this workspace.";
+
+    case "requires-plus":
+      return "Manual accounts require the CASE Budget Plus plan or higher for this workspace.";
+
+    case "allowed":
+    default: {
+      if (
+        requiredPlan ===
+        "pro"
+      ) {
+        return "Manual accounts require the CASE Budget Pro plan for this workspace.";
+      }
+
+      if (
+        requiredPlan ===
+        "plus"
+      ) {
+        return "Manual accounts require the CASE Budget Plus plan or higher for this workspace.";
+      }
+
+      return "Manual accounts are not available for the current workspace subscription.";
+    }
+  }
 }
 
 function failure({
