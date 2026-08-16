@@ -12,604 +12,248 @@ import {
 } from "react";
 
 import {
-  useAccounts,
-  type AccountData,
-} from "@/components/providers/AccountsProvider";
+  createTransaction as createTransactionAction,
+  type CreateCaseBudgetTransactionResult,
+} from "@/actions/transactions/create-transaction";
+
+import {
+  deleteTransaction as deleteTransactionAction,
+  type DeleteCaseBudgetTransactionResult,
+} from "@/actions/transactions/delete-transaction";
+
+import {
+  getTransactions,
+  type CaseBudgetTransactionRecord,
+} from "@/actions/transactions/get-transactions";
+
+import {
+  updateTransaction as updateTransactionAction,
+  type UpdateCaseBudgetTransactionResult,
+} from "@/actions/transactions/update-transaction";
+
+import {
+  useApp,
+} from "@/components/providers/AppProvider";
 
 import {
   useBudget,
 } from "@/components/providers/BudgetProvider";
 
-import {
-  applyTransactionToAccounts,
-  replaceTransactionInAccounts,
-  reverseTransactionFromAccounts,
-} from "@/lib/accounts/account-balance-utils";
-
 import type {
+  CreateTransactionData,
   TransactionData,
+  TransactionSummary,
+  UpdateTransactionData,
 } from "@/types/transaction";
 
+export type TransactionMutationResult =
+  | {
+      success:
+        true;
+
+      status:
+        "created" |
+        "updated" |
+        "deleted";
+
+      approvalRequired:
+        false;
+
+      approvalId:
+        null;
+
+      message:
+        string;
+    }
+  | {
+      success:
+        true;
+
+      status:
+        "approval-required";
+
+      approvalRequired:
+        true;
+
+      approvalId:
+        string;
+
+      message:
+        string;
+    }
+  | {
+      success:
+        false;
+
+      status:
+        "error";
+
+      approvalRequired:
+        false;
+
+      approvalId:
+        null;
+
+      message:
+        string;
+    };
+
+type TransactionServerMutationResult =
+  | CreateCaseBudgetTransactionResult
+  | UpdateCaseBudgetTransactionResult
+  | DeleteCaseBudgetTransactionResult;
+
 type TransactionsContextValue = {
-  transactions: TransactionData[];
+  transactions:
+    TransactionData[];
 
-  addTransaction: (
-    transaction: TransactionData,
-  ) => void;
+  summary:
+    TransactionSummary;
 
-  updateTransaction: (
-    transaction: TransactionData,
-  ) => void;
+  isLoading:
+    boolean;
 
-  deleteTransaction: (
-    transactionId: string,
-  ) => void;
+  isRefreshing:
+    boolean;
 
-  getTransactionById: (
-    transactionId: string,
-  ) => TransactionData | null;
+  isMutating:
+    boolean;
+
+  error:
+    string | null;
+
+  lastMutation:
+    TransactionMutationResult | null;
+
+  refreshTransactions:
+    () => Promise<void>;
+
+  addTransaction:
+    (
+      transaction:
+        TransactionData,
+    ) => Promise<TransactionMutationResult>;
+
+  createTransaction:
+    (
+      input:
+        CreateTransactionData,
+    ) => Promise<TransactionMutationResult>;
+
+  updateTransaction:
+    (
+      transaction:
+        TransactionData,
+    ) => Promise<TransactionMutationResult>;
+
+  updateTransactionData:
+    (
+      input:
+        UpdateTransactionData,
+    ) => Promise<TransactionMutationResult>;
+
+  deleteTransaction:
+    (
+      transactionId:
+        string,
+    ) => Promise<TransactionMutationResult>;
+
+  getTransactionById:
+    (
+      transactionId:
+        string,
+    ) => TransactionData | null;
+
+  clearTransactionError:
+    () => void;
+
+  clearLastMutation:
+    () => void;
 };
 
 export type TransactionsProviderProps = {
-  children: ReactNode;
-  initialTransactions?: TransactionData[];
+  children:
+    ReactNode;
+
+  /**
+   * Optional server-provided transaction data.
+   *
+   * This is treated only as initial render state. Supabase remains the
+   * canonical source of truth and the provider refreshes from the server
+   * whenever the active workspace changes.
+   */
+  initialTransactions?:
+    TransactionData[];
 };
 
-type ManagedTransactionEffects = {
-  budgetImpactIds: string[];
-  accountImpactIds: string[];
-};
+const EMPTY_SUMMARY:
+  TransactionSummary = {
+    totalIncome:
+      0,
 
-const TRANSACTIONS_STORAGE_KEY =
-  "case-budget:transactions:v2";
+    totalExpenses:
+      0,
 
-const TRANSACTION_EFFECTS_STORAGE_KEY =
-  "case-budget:transaction-effects:v2";
+    netAmount:
+      0,
 
-const LEGACY_TRANSACTIONS_STORAGE_KEY =
-  "case-budget:transactions:v1";
+    clearedIncome:
+      0,
 
-const LEGACY_TRANSACTION_EFFECTS_STORAGE_KEY =
-  "case-budget:transaction-effects:v1";
+    clearedExpenses:
+      0,
 
-const LEGACY_DEMO_TRANSACTION_IDS =
-  new Set([
-    "transaction-1",
-    "transaction-2",
-    "transaction-3",
-    "transaction-4",
-    "transaction-5",
-  ]);
+    netClearedAmount:
+      0,
 
-const defaultTransactions:
-  TransactionData[] = [];
+    pendingExpenseAmount:
+      0,
+
+    totalTransferAmount:
+      0,
+
+    pendingCount:
+      0,
+
+    clearedCount:
+      0,
+
+    transferCount:
+      0,
+
+    uncategorizedCount:
+      0,
+
+    totalCount:
+      0,
+  };
 
 const TransactionsContext =
   createContext<
     TransactionsContextValue | undefined
-  >(undefined);
-
-function cloneTransaction(
-  transaction: TransactionData,
-): TransactionData {
-  return {
-    ...transaction,
-    account: {
-      ...transaction.account,
-    },
-    category:
-      transaction.category
-        ? {
-            ...transaction.category,
-          }
-        : undefined,
-    transferAccountId:
-      transaction.transferAccountId,
-  };
-}
-
-function cloneTransactions(
-  transactions: TransactionData[],
-) {
-  return transactions.map(
-    cloneTransaction,
+  >(
+    undefined,
   );
-}
-
-function isClearedExpense(
-  transaction: TransactionData,
-) {
-  return (
-    transaction.type ===
-      "expense" &&
-    transaction.status ===
-      "cleared" &&
-    Boolean(
-      transaction.category?.id,
-    ) &&
-    Number.isFinite(
-      transaction.amount,
-    ) &&
-    transaction.amount > 0
-  );
-}
-
-function getTransactionBudgetItemId(
-  transaction: TransactionData,
-) {
-  if (
-    !isClearedExpense(
-      transaction,
-    )
-  ) {
-    return null;
-  }
-
-  return (
-    transaction.category?.id ??
-    null
-  );
-}
-
-function getTransactionBudgetImpact(
-  transaction: TransactionData,
-) {
-  if (
-    !isClearedExpense(
-      transaction,
-    )
-  ) {
-    return 0;
-  }
-
-  return transaction.amount;
-}
-
-function shouldApplyAccountImpact(
-  transaction: TransactionData,
-) {
-  return (
-    transaction.status ===
-      "cleared" &&
-    Number.isFinite(
-      transaction.amount,
-    ) &&
-    transaction.amount > 0 &&
-    Boolean(
-      transaction.account.id,
-    ) &&
-    (
-      transaction.type !==
-        "transfer" ||
-      Boolean(
-        transaction.transferAccountId,
-      )
-    )
-  );
-}
-
-function loadStoredTransactions():
-  | TransactionData[]
-  | null {
-  if (
-    typeof window ===
-    "undefined"
-  ) {
-    return null;
-  }
-
-  const currentTransactions =
-    readStoredTransactions(
-      TRANSACTIONS_STORAGE_KEY,
-    );
-
-  if (
-    currentTransactions
-  ) {
-    return currentTransactions;
-  }
-
-  const legacyTransactions =
-    readStoredTransactions(
-      LEGACY_TRANSACTIONS_STORAGE_KEY,
-    );
-
-  if (
-    !legacyTransactions
-  ) {
-    return null;
-  }
-
-  const migratedTransactions =
-    legacyTransactions.filter(
-      (
-        transaction,
-      ) =>
-        !isLegacyDemoTransaction(
-          transaction,
-        ),
-    );
-
-  try {
-    window.localStorage.setItem(
-      TRANSACTIONS_STORAGE_KEY,
-      JSON.stringify(
-        migratedTransactions,
-      ),
-    );
-
-    window.localStorage.removeItem(
-      LEGACY_TRANSACTIONS_STORAGE_KEY,
-    );
-  } catch {
-    // Local storage may be unavailable or full.
-  }
-
-  return migratedTransactions;
-}
-
-function readStoredTransactions(
-  storageKey: string,
-):
-  | TransactionData[]
-  | null {
-  try {
-    const raw =
-      window.localStorage.getItem(
-        storageKey,
-      );
-
-    if (!raw) {
-      return null;
-    }
-
-    const parsed:
-      unknown =
-      JSON.parse(
-        raw,
-      );
-
-    if (
-      !Array.isArray(
-        parsed,
-      )
-    ) {
-      window.localStorage.removeItem(
-        storageKey,
-      );
-
-      return null;
-    }
-
-    return parsed
-      .filter(
-        isTransactionData,
-      )
-      .map(
-        cloneTransaction,
-      );
-  } catch {
-    return null;
-  }
-}
-
-function isTransactionData(
-  value: unknown,
-): value is TransactionData {
-  if (
-    !value ||
-    typeof value !==
-      "object" ||
-    Array.isArray(
-      value,
-    )
-  ) {
-    return false;
-  }
-
-  const candidate =
-    value as Partial<TransactionData>;
-
-  return (
-    typeof candidate.id ===
-      "string" &&
-    typeof candidate.date ===
-      "string" &&
-    typeof candidate.merchant ===
-      "string" &&
-    typeof candidate.amount ===
-      "number" &&
-    Number.isFinite(
-      candidate.amount,
-    ) &&
-    (
-      candidate.type ===
-        "expense" ||
-      candidate.type ===
-        "income" ||
-      candidate.type ===
-        "transfer"
-    ) &&
-    (
-      candidate.status ===
-        "pending" ||
-      candidate.status ===
-        "cleared"
-    ) &&
-    Boolean(
-      candidate.account,
-    ) &&
-    typeof candidate.account ===
-      "object" &&
-    !Array.isArray(
-      candidate.account,
-    ) &&
-    typeof candidate.account.id ===
-      "string" &&
-    typeof candidate.account.name ===
-      "string" &&
-    typeof candidate.account.type ===
-      "string"
-  );
-}
-
-function isLegacyDemoTransaction(
-  transaction: TransactionData,
-) {
-  if (
-    !LEGACY_DEMO_TRANSACTION_IDS.has(
-      transaction.id,
-    )
-  ) {
-    return false;
-  }
-
-  switch (
-    transaction.id
-  ) {
-    case "transaction-1":
-      return (
-        transaction.merchant ===
-          "Publix" &&
-        transaction.date ===
-          "2026-07-29" &&
-        transaction.amount ===
-          152.41 &&
-        transaction.type ===
-          "expense"
-      );
-
-    case "transaction-2":
-      return (
-        transaction.merchant ===
-          "Payroll" &&
-        transaction.date ===
-          "2026-07-28" &&
-        transaction.amount ===
-          3200 &&
-        transaction.type ===
-          "income"
-      );
-
-    case "transaction-3":
-      return (
-        transaction.merchant ===
-          "Amazon" &&
-        transaction.date ===
-          "2026-07-27" &&
-        transaction.amount ===
-          89.73 &&
-        transaction.type ===
-          "expense"
-      );
-
-    case "transaction-4":
-      return (
-        transaction.merchant ===
-          "FPL" &&
-        transaction.date ===
-          "2026-07-26" &&
-        transaction.amount ===
-          184.62 &&
-        transaction.type ===
-          "expense"
-      );
-
-    case "transaction-5":
-      return (
-        transaction.merchant ===
-          "Checking to Savings" &&
-        transaction.date ===
-          "2026-07-25" &&
-        transaction.amount ===
-          500 &&
-        transaction.type ===
-          "transfer"
-      );
-
-    default:
-      return false;
-  }
-}
-
-function loadManagedTransactionEffects():
-  ManagedTransactionEffects {
-  const currentEffects =
-    readManagedTransactionEffects(
-      TRANSACTION_EFFECTS_STORAGE_KEY,
-    );
-
-  if (
-    currentEffects
-  ) {
-    return currentEffects;
-  }
-
-  const legacyEffects =
-    readManagedTransactionEffects(
-      LEGACY_TRANSACTION_EFFECTS_STORAGE_KEY,
-    );
-
-  if (
-    !legacyEffects
-  ) {
-    return createEmptyManagedEffects();
-  }
-
-  const migratedEffects:
-    ManagedTransactionEffects = {
-      budgetImpactIds:
-        legacyEffects.budgetImpactIds.filter(
-          (
-            transactionId,
-          ) =>
-            !LEGACY_DEMO_TRANSACTION_IDS.has(
-              transactionId,
-            ),
-        ),
-
-      accountImpactIds:
-        legacyEffects.accountImpactIds.filter(
-          (
-            transactionId,
-          ) =>
-            !LEGACY_DEMO_TRANSACTION_IDS.has(
-              transactionId,
-            ),
-        ),
-  };
-
-  try {
-    window.localStorage.setItem(
-      TRANSACTION_EFFECTS_STORAGE_KEY,
-      JSON.stringify(
-        migratedEffects,
-      ),
-    );
-
-    window.localStorage.removeItem(
-      LEGACY_TRANSACTION_EFFECTS_STORAGE_KEY,
-    );
-  } catch {
-    // Local storage may be unavailable or full.
-  }
-
-  return migratedEffects;
-}
-
-function readManagedTransactionEffects(
-  storageKey: string,
-):
-  | ManagedTransactionEffects
-  | null {
-  if (
-    typeof window ===
-    "undefined"
-  ) {
-    return null;
-  }
-
-  try {
-    const raw =
-      window.localStorage.getItem(
-        storageKey,
-      );
-
-    if (!raw) {
-      return null;
-    }
-
-    const parsed:
-      unknown =
-      JSON.parse(
-        raw,
-      );
-
-    if (
-      !parsed ||
-      typeof parsed !==
-        "object" ||
-      Array.isArray(
-        parsed,
-      )
-    ) {
-      window.localStorage.removeItem(
-        storageKey,
-      );
-
-      return null;
-    }
-
-    const candidate =
-      parsed as Partial<ManagedTransactionEffects>;
-
-    return {
-      budgetImpactIds:
-        Array.isArray(
-          candidate.budgetImpactIds,
-        )
-          ? candidate.budgetImpactIds.filter(
-              (
-                value,
-              ): value is string =>
-                typeof value ===
-                "string",
-            )
-          : [],
-
-      accountImpactIds:
-        Array.isArray(
-          candidate.accountImpactIds,
-        )
-          ? candidate.accountImpactIds.filter(
-              (
-                value,
-              ): value is string =>
-                typeof value ===
-                "string",
-            )
-          : [],
-    };
-  } catch {
-    return null;
-  }
-}
-
-function createEmptyManagedEffects():
-  ManagedTransactionEffects {
-  return {
-    budgetImpactIds: [],
-    accountImpactIds: [],
-  };
-}
-
-function haveAccountBalancesChanged(
-  previousAccount: AccountData,
-  nextAccount: AccountData,
-) {
-  return (
-    previousAccount.balance !==
-      nextAccount.balance ||
-    previousAccount.availableBalance !==
-      nextAccount.availableBalance
-  );
-}
 
 export default function TransactionsProvider({
   children,
-  initialTransactions =
-    defaultTransactions,
+  initialTransactions = [],
 }: TransactionsProviderProps) {
   const {
-    adjustBudgetItemSpentAmount,
-  } = useBudget();
+    activeWorkspace,
+  } =
+    useApp();
 
   const {
-    accounts,
-    updateAccountBalance,
-  } = useAccounts();
+    refreshBudget,
+  } =
+    useBudget();
 
-  const initialTransactionState =
+  const activeWorkspaceId =
+    activeWorkspace?.id ??
+    null;
+
+  const initialState =
     useMemo(
       () =>
         cloneTransactions(
@@ -620,676 +264,608 @@ export default function TransactionsProvider({
       ],
     );
 
-  const storedTransactionsRef =
-    useRef<
-      TransactionData[] | null
-    >(null);
-
-  if (
-    storedTransactionsRef.current ===
-      null
-  ) {
-    storedTransactionsRef.current =
-      loadStoredTransactions();
-  }
-
-  const initialManagedEffectsRef =
-    useRef<
-      ManagedTransactionEffects | null
-    >(null);
-
-  if (
-    initialManagedEffectsRef.current ===
-      null
-  ) {
-    initialManagedEffectsRef.current =
-      loadManagedTransactionEffects();
-  }
-
   const [
     transactions,
     setTransactions,
-  ] = useState<TransactionData[]>(
-    () =>
-      storedTransactionsRef.current ??
-      initialTransactionState,
-  );
+  ] =
+    useState<
+      TransactionData[]
+    >(
+      initialState,
+    );
+
+  const [
+    summary,
+    setSummary,
+  ] =
+    useState<
+      TransactionSummary
+    >(
+      () =>
+        buildTransactionSummary(
+          initialState,
+        ),
+    );
+
+  const [
+    isLoading,
+    setIsLoading,
+  ] =
+    useState(
+      true,
+    );
+
+  const [
+    isRefreshing,
+    setIsRefreshing,
+  ] =
+    useState(
+      false,
+    );
+
+  const [
+    isMutating,
+    setIsMutating,
+  ] =
+    useState(
+      false,
+    );
+
+  const [
+    error,
+    setError,
+  ] =
+    useState<
+      string | null
+    >(
+      null,
+    );
+
+  const [
+    lastMutation,
+    setLastMutation,
+  ] =
+    useState<
+      TransactionMutationResult | null
+    >(
+      null,
+    );
 
   const transactionsRef =
-    useRef<TransactionData[]>(
-      storedTransactionsRef.current ??
-        initialTransactionState,
+    useRef<
+      TransactionData[]
+    >(
+      initialState,
     );
 
-  const accountsRef =
-    useRef<AccountData[]>(
-      accounts,
+  const activeWorkspaceIdRef =
+    useRef<
+      string | null
+    >(
+      activeWorkspaceId,
     );
 
-  const managedBudgetImpactIdsRef =
-    useRef<Set<string>>(
-      new Set(
-        initialManagedEffectsRef.current
-          ?.budgetImpactIds ??
-          [],
-      ),
+  const loadSequenceRef =
+    useRef(
+      0,
     );
 
-  const managedAccountImpactIdsRef =
-    useRef<Set<string>>(
-      new Set(
-        initialManagedEffectsRef.current
-          ?.accountImpactIds ??
-          [],
-      ),
+  const mutationInFlightRef =
+    useRef(
+      false,
     );
 
   useEffect(
     () => {
-      accountsRef.current =
-        accounts;
+      activeWorkspaceIdRef.current =
+        activeWorkspaceId;
     },
     [
-      accounts,
+      activeWorkspaceId,
     ],
   );
-
-  useEffect(
-    () => {
-      try {
-        window.localStorage.setItem(
-          TRANSACTIONS_STORAGE_KEY,
-          JSON.stringify(
-            transactions,
-          ),
-        );
-      } catch {
-        // Local storage may be unavailable or full.
-      }
-    },
-    [
-      transactions,
-    ],
-  );
-
-  useEffect(
-    () => {
-      try {
-        window.localStorage.removeItem(
-          LEGACY_TRANSACTIONS_STORAGE_KEY,
-        );
-
-        window.localStorage.removeItem(
-          LEGACY_TRANSACTION_EFFECTS_STORAGE_KEY,
-        );
-      } catch {
-        // Local storage may be unavailable.
-      }
-    },
-    [],
-  );
-
-  const persistManagedEffects =
-    useCallback(
-      () => {
-        try {
-          const effects:
-            ManagedTransactionEffects = {
-              budgetImpactIds:
-                Array.from(
-                  managedBudgetImpactIdsRef.current,
-                ),
-              accountImpactIds:
-                Array.from(
-                  managedAccountImpactIdsRef.current,
-                ),
-            };
-
-          window.localStorage.setItem(
-            TRANSACTION_EFFECTS_STORAGE_KEY,
-            JSON.stringify(
-              effects,
-            ),
-          );
-        } catch {
-          // Local storage may be unavailable or full.
-        }
-      },
-      [],
-    );
 
   const replaceTransactions =
     useCallback(
-      (
+      ({
+        nextTransactions,
+        nextSummary,
+      }: {
         nextTransactions:
-          TransactionData[],
-      ) => {
+          TransactionData[];
+
+        nextSummary:
+          TransactionSummary;
+      }) => {
+        const cloned =
+          cloneTransactions(
+            nextTransactions,
+          );
+
         transactionsRef.current =
-          nextTransactions;
+          cloned;
 
         setTransactions(
-          nextTransactions,
+          cloned,
         );
+
+        setSummary({
+          ...nextSummary,
+        });
       },
       [],
     );
 
-  const applyBudgetImpact =
+  const clearTransactions =
     useCallback(
-      (
-        transaction:
-          TransactionData,
-        multiplier: 1 | -1,
-      ) => {
-        const budgetItemId =
-          getTransactionBudgetItemId(
-            transaction,
-          );
+      () => {
+        transactionsRef.current =
+          [];
 
-        const impact =
-          getTransactionBudgetImpact(
-            transaction,
-          );
-
-        if (
-          !budgetItemId ||
-          impact === 0
-        ) {
-          return false;
-        }
-
-        adjustBudgetItemSpentAmount(
-          budgetItemId,
-          impact * multiplier,
+        setTransactions(
+          [],
         );
 
-        return true;
+        setSummary({
+          ...EMPTY_SUMMARY,
+        });
       },
-      [
-        adjustBudgetItemSpentAmount,
-      ],
+      [],
     );
 
-  const commitAccountState =
+  const loadTransactions =
     useCallback(
-      (
-        nextAccounts:
-          AccountData[],
-      ) => {
-        const previousAccounts =
-          accountsRef.current;
+      async ({
+        initialLoad,
+      }: {
+        initialLoad:
+          boolean;
+      }) => {
+        const requestedWorkspaceId =
+          activeWorkspaceIdRef.current;
 
-        nextAccounts.forEach(
-          (
-            nextAccount,
-          ) => {
-            const previousAccount =
-              previousAccounts.find(
-                (
-                  account,
-                ) =>
-                  account.id ===
-                  nextAccount.id,
-              );
+        const sequence =
+          ++loadSequenceRef.current;
 
-            if (
-              !previousAccount ||
-              !haveAccountBalancesChanged(
-                previousAccount,
-                nextAccount,
-              )
-            ) {
-              return;
-            }
+        if (
+          !requestedWorkspaceId
+        ) {
+          clearTransactions();
 
-            updateAccountBalance(
-              nextAccount.id,
-              nextAccount.balance,
-              nextAccount.availableBalance,
-            );
-          },
+          setError(
+            null,
+          );
+
+          setIsLoading(
+            false,
+          );
+
+          setIsRefreshing(
+            false,
+          );
+
+          return;
+        }
+
+        if (
+          initialLoad
+        ) {
+          setIsLoading(
+            true,
+          );
+        } else {
+          setIsRefreshing(
+            true,
+          );
+        }
+
+        setError(
+          null,
         );
 
-        accountsRef.current =
-          nextAccounts;
-      },
-      [
-        updateAccountBalance,
-      ],
-    );
-
-  const applyAccountImpact =
-    useCallback(
-      (
-        transaction:
-          TransactionData,
-      ) => {
-        if (
-          !shouldApplyAccountImpact(
-            transaction,
-          )
-        ) {
-          return false;
-        }
-
-        const result =
-          applyTransactionToAccounts(
-            accountsRef.current,
-            transaction,
-            {
-              destinationAccountId:
-                transaction.transferAccountId,
-              updateAvailableBalance:
-                true,
-            },
-          );
-
-        if (
-          result.impact.deltas.length ===
-            0
-        ) {
-          return false;
-        }
-
-        commitAccountState(
-          result.accounts,
-        );
-
-        return true;
-      },
-      [
-        commitAccountState,
-      ],
-    );
-
-  const reverseAccountImpact =
-    useCallback(
-      (
-        transaction:
-          TransactionData,
-      ) => {
-        if (
-          !shouldApplyAccountImpact(
-            transaction,
-          )
-        ) {
-          return false;
-        }
-
-        const result =
-          reverseTransactionFromAccounts(
-            accountsRef.current,
-            transaction,
-            {
-              destinationAccountId:
-                transaction.transferAccountId,
-              updateAvailableBalance:
-                true,
-            },
-          );
-
-        if (
-          result.impact.deltas.length ===
-            0
-        ) {
-          return false;
-        }
-
-        commitAccountState(
-          result.accounts,
-        );
-
-        return true;
-      },
-      [
-        commitAccountState,
-      ],
-    );
-
-  const replaceAccountImpact =
-    useCallback(
-      (
-        previousTransaction:
-          TransactionData,
-        nextTransaction:
-          TransactionData,
-      ) => {
-        const previousShouldApply =
-          shouldApplyAccountImpact(
-            previousTransaction,
-          );
-
-        const nextShouldApply =
-          shouldApplyAccountImpact(
-            nextTransaction,
-          );
-
-        if (
-          previousShouldApply &&
-          nextShouldApply
-        ) {
+        try {
           const result =
-            replaceTransactionInAccounts(
-              accountsRef.current,
-              previousTransaction,
-              nextTransaction,
-              {
-                previousDestinationAccountId:
-                  previousTransaction.transferAccountId,
-                nextDestinationAccountId:
-                  nextTransaction.transferAccountId,
-                updateAvailableBalance:
-                  true,
-              },
-            );
+            await getTransactions();
 
           if (
-            result.impact.deltas.length ===
-              0
+            sequence !==
+            loadSequenceRef.current
           ) {
-            return false;
+            return;
           }
 
-          commitAccountState(
-            result.accounts,
-          );
+          if (
+            activeWorkspaceIdRef.current !==
+            requestedWorkspaceId
+          ) {
+            return;
+          }
 
-          return true;
-        }
+          if (
+            !result.success
+          ) {
+            clearTransactions();
 
-        if (
-          previousShouldApply
+            setError(
+              result.error.message,
+            );
+
+            return;
+          }
+
+          const mappedTransactions =
+            result.transactions
+              .map(
+                mapServerTransaction,
+              )
+              .filter(
+                (
+                  transaction,
+                ): transaction is TransactionData =>
+                  transaction !==
+                  null,
+              );
+
+          replaceTransactions({
+            nextTransactions:
+              mappedTransactions,
+
+            nextSummary:
+              result.summary,
+          });
+        } catch (
+          loadError
         ) {
-          reverseAccountImpact(
-            previousTransaction,
+          console.error(
+            "[CASE Budget TransactionsProvider] Failed to load transactions.",
+            loadError,
           );
-        }
 
-        if (
-          nextShouldApply
-        ) {
-          return applyAccountImpact(
-            nextTransaction,
-          );
-        }
+          if (
+            sequence ===
+              loadSequenceRef.current &&
+            activeWorkspaceIdRef.current ===
+              requestedWorkspaceId
+          ) {
+            clearTransactions();
 
-        return false;
+            setError(
+              "CASE Budget could not load transactions. Please try again.",
+            );
+          }
+        } finally {
+          if (
+            sequence ===
+            loadSequenceRef.current
+          ) {
+            setIsLoading(
+              false,
+            );
+
+            setIsRefreshing(
+              false,
+            );
+          }
+        }
       },
       [
-        applyAccountImpact,
-        commitAccountState,
-        reverseAccountImpact,
+        clearTransactions,
+        replaceTransactions,
+      ],
+    );
+
+  const refreshTransactions =
+    useCallback(
+      async () => {
+        await loadTransactions({
+          initialLoad:
+            false,
+        });
+      },
+      [
+        loadTransactions,
+      ],
+    );
+
+  useEffect(
+    () => {
+      /*
+       * Invalidate any outstanding request immediately when the workspace
+       * changes so data from the previous workspace can never be committed
+       * into the new workspace's client state.
+       */
+      ++loadSequenceRef.current;
+
+      clearTransactions();
+
+      setError(
+        null,
+      );
+
+      setLastMutation(
+        null,
+      );
+
+      if (
+        !activeWorkspaceId
+      ) {
+        setIsLoading(
+          false,
+        );
+
+        setIsRefreshing(
+          false,
+        );
+
+        return;
+      }
+
+      activeWorkspaceIdRef.current =
+        activeWorkspaceId;
+
+      void loadTransactions({
+        initialLoad:
+          true,
+      });
+    },
+    [
+      activeWorkspaceId,
+      clearTransactions,
+      loadTransactions,
+    ],
+  );
+
+  const runMutation =
+    useCallback(
+      async ({
+        execute,
+        mapResult,
+      }: {
+        execute:
+          () => Promise<
+            TransactionServerMutationResult
+          >;
+
+        mapResult:
+          (
+            result:
+              TransactionServerMutationResult,
+          ) => TransactionMutationResult;
+      }): Promise<TransactionMutationResult> => {
+        if (
+          mutationInFlightRef.current
+        ) {
+          const busyResult:
+            TransactionMutationResult = {
+              success:
+                false,
+
+              status:
+                "error",
+
+              approvalRequired:
+                false,
+
+              approvalId:
+                null,
+
+              message:
+                "Another transaction change is already being processed.",
+            };
+
+          setLastMutation(
+            busyResult,
+          );
+
+          return busyResult;
+        }
+
+        mutationInFlightRef.current =
+          true;
+
+        setIsMutating(
+          true,
+        );
+
+        setError(
+          null,
+        );
+
+        try {
+          const actionResult =
+            await execute();
+
+          const mutationResult =
+            mapResult(
+              actionResult,
+            );
+
+          setLastMutation(
+            mutationResult,
+          );
+
+          /*
+           * Always reload canonical transaction AND budget state after the
+           * server action returns, including failure responses.
+           *
+           * Transaction actions now recalculate budget activity server-side.
+           * The provider must therefore never apply a browser-side spending
+           * delta. It simply reloads both canonical projections from Supabase.
+           *
+           * This also matters for recovery paths: a transaction action may
+           * roll back a create/update/delete after a budget-sync failure.
+           * Reloading both providers prevents either client snapshot from
+           * assuming its pre-mutation state is still authoritative.
+           *
+           * Approval-required responses are safe here as well. The
+           * transaction and budget rows are normally unchanged, while the
+           * household approval state may have changed server-side.
+           */
+          await Promise.all([
+            loadTransactions({
+              initialLoad:
+                false,
+            }),
+
+            refreshBudget(),
+          ]);
+
+          if (
+            !mutationResult.success
+          ) {
+            setError(
+              mutationResult.message,
+            );
+          }
+
+          return mutationResult;
+        } catch (
+          mutationError
+        ) {
+          console.error(
+            "[CASE Budget TransactionsProvider] Transaction mutation failed.",
+            mutationError,
+          );
+
+          const failure:
+            TransactionMutationResult = {
+              success:
+                false,
+
+              status:
+                "error",
+
+              approvalRequired:
+                false,
+
+              approvalId:
+                null,
+
+              message:
+                "CASE Budget could not complete the transaction change. Please try again.",
+            };
+
+          setError(
+            failure.message,
+          );
+
+          setLastMutation(
+            failure,
+          );
+
+          return failure;
+        } finally {
+          mutationInFlightRef.current =
+            false;
+
+          setIsMutating(
+            false,
+          );
+        }
+      },
+      [
+        loadTransactions,
+        refreshBudget,
+      ],
+    );
+
+  const createTransaction =
+    useCallback(
+      async (
+        input:
+          CreateTransactionData,
+      ) => {
+        return runMutation({
+          execute:
+            () =>
+              createTransactionAction(
+                input,
+              ),
+
+          mapResult:
+            mapCreateResult,
+        });
+      },
+      [
+        runMutation,
       ],
     );
 
   const addTransaction =
     useCallback(
-      (
+      async (
         transaction:
           TransactionData,
       ) => {
-        const transactionExists =
-          transactionsRef.current.some(
-            (
-              currentTransaction,
-            ) =>
-              currentTransaction.id ===
-              transaction.id,
-          );
-
-        if (
-          transactionExists
-        ) {
-          return;
-        }
-
-        const storedTransaction =
-          cloneTransaction(
+        return createTransaction(
+          transactionDataToCreateInput(
             transaction,
-          );
-
-        replaceTransactions([
-          storedTransaction,
-          ...transactionsRef.current,
-        ]);
-
-        const budgetImpactApplied =
-          applyBudgetImpact(
-            storedTransaction,
-            1,
-          );
-
-        if (
-          budgetImpactApplied
-        ) {
-          managedBudgetImpactIdsRef.current.add(
-            storedTransaction.id,
-          );
-        }
-
-        const accountImpactApplied =
-          applyAccountImpact(
-            storedTransaction,
-          );
-
-        if (
-          accountImpactApplied
-        ) {
-          managedAccountImpactIdsRef.current.add(
-            storedTransaction.id,
-          );
-        }
-
-        persistManagedEffects();
+          ),
+        );
       },
       [
-        applyAccountImpact,
-        applyBudgetImpact,
-        persistManagedEffects,
-        replaceTransactions,
+        createTransaction,
+      ],
+    );
+
+  const updateTransactionData =
+    useCallback(
+      async (
+        input:
+          UpdateTransactionData,
+      ) => {
+        return runMutation({
+          execute:
+            () =>
+              updateTransactionAction(
+                input,
+              ),
+
+          mapResult:
+            mapUpdateResult,
+        });
+      },
+      [
+        runMutation,
       ],
     );
 
   const updateTransaction =
     useCallback(
-      (
-        updatedTransaction:
+      async (
+        transaction:
           TransactionData,
       ) => {
-        const previousTransaction =
-          transactionsRef.current.find(
-            (
-              transaction,
-            ) =>
-              transaction.id ===
-              updatedTransaction.id,
-          );
-
-        if (
-          !previousTransaction
-        ) {
-          return;
-        }
-
-        const storedTransaction =
-          cloneTransaction(
-            updatedTransaction,
-          );
-
-        const nextTransactions =
-          transactionsRef.current.map(
-            (
-              transaction,
-            ) =>
-              transaction.id ===
-              storedTransaction.id
-                ? storedTransaction
-                : transaction,
-          );
-
-        replaceTransactions(
-          nextTransactions,
+        return updateTransactionData(
+          transactionDataToUpdateInput(
+            transaction,
+          ),
         );
-
-        const previousBudgetImpactWasManaged =
-          managedBudgetImpactIdsRef.current.has(
-            previousTransaction.id,
-          );
-
-        if (
-          previousBudgetImpactWasManaged
-        ) {
-          applyBudgetImpact(
-            previousTransaction,
-            -1,
-          );
-
-          managedBudgetImpactIdsRef.current.delete(
-            previousTransaction.id,
-          );
-        }
-
-        const updatedBudgetImpactApplied =
-          applyBudgetImpact(
-            storedTransaction,
-            1,
-          );
-
-        if (
-          updatedBudgetImpactApplied
-        ) {
-          managedBudgetImpactIdsRef.current.add(
-            storedTransaction.id,
-          );
-        }
-
-        const previousAccountImpactWasManaged =
-          managedAccountImpactIdsRef.current.has(
-            previousTransaction.id,
-          );
-
-        if (
-          previousAccountImpactWasManaged
-        ) {
-          const updatedAccountImpactApplied =
-            replaceAccountImpact(
-              previousTransaction,
-              storedTransaction,
-            );
-
-          managedAccountImpactIdsRef.current.delete(
-            previousTransaction.id,
-          );
-
-          if (
-            updatedAccountImpactApplied
-          ) {
-            managedAccountImpactIdsRef.current.add(
-              storedTransaction.id,
-            );
-          }
-        } else {
-          const updatedAccountImpactApplied =
-            applyAccountImpact(
-              storedTransaction,
-            );
-
-          if (
-            updatedAccountImpactApplied
-          ) {
-            managedAccountImpactIdsRef.current.add(
-              storedTransaction.id,
-            );
-          }
-        }
-
-        persistManagedEffects();
       },
       [
-        applyAccountImpact,
-        applyBudgetImpact,
-        persistManagedEffects,
-        replaceAccountImpact,
-        replaceTransactions,
+        updateTransactionData,
       ],
     );
 
   const deleteTransaction =
     useCallback(
-      (
+      async (
         transactionId:
           string,
       ) => {
-        const deletedTransaction =
-          transactionsRef.current.find(
-            (
-              transaction,
-            ) =>
-              transaction.id ===
-              transactionId,
-          );
+        return runMutation({
+          execute:
+            () =>
+              deleteTransactionAction({
+                transactionId,
+              }),
 
-        if (
-          !deletedTransaction
-        ) {
-          return;
-        }
-
-        const nextTransactions =
-          transactionsRef.current.filter(
-            (
-              transaction,
-            ) =>
-              transaction.id !==
-              transactionId,
-          );
-
-        replaceTransactions(
-          nextTransactions,
-        );
-
-        const deletedBudgetImpactWasManaged =
-          managedBudgetImpactIdsRef.current.has(
-            transactionId,
-          );
-
-        if (
-          deletedBudgetImpactWasManaged
-        ) {
-          applyBudgetImpact(
-            deletedTransaction,
-            -1,
-          );
-
-          managedBudgetImpactIdsRef.current.delete(
-            transactionId,
-          );
-        }
-
-        const deletedAccountImpactWasManaged =
-          managedAccountImpactIdsRef.current.has(
-            transactionId,
-          );
-
-        if (
-          deletedAccountImpactWasManaged
-        ) {
-          reverseAccountImpact(
-            deletedTransaction,
-          );
-
-          managedAccountImpactIdsRef.current.delete(
-            transactionId,
-          );
-        }
-
-        persistManagedEffects();
+          mapResult:
+            mapDeleteResult,
+        });
       },
       [
-        applyBudgetImpact,
-        persistManagedEffects,
-        replaceTransactions,
-        reverseAccountImpact,
+        runMutation,
       ],
     );
 
@@ -1313,29 +889,88 @@ export default function TransactionsProvider({
       [],
     );
 
+  const clearTransactionError =
+    useCallback(
+      () => {
+        setError(
+          null,
+        );
+      },
+      [],
+    );
+
+  const clearLastMutation =
+    useCallback(
+      () => {
+        setLastMutation(
+          null,
+        );
+      },
+      [],
+    );
+
   const value =
     useMemo<
       TransactionsContextValue
     >(
       () => ({
         transactions,
+
+        summary,
+
+        isLoading,
+
+        isRefreshing,
+
+        isMutating,
+
+        error,
+
+        lastMutation,
+
+        refreshTransactions,
+
         addTransaction,
+
+        createTransaction,
+
         updateTransaction,
+
+        updateTransactionData,
+
         deleteTransaction,
+
         getTransactionById,
+
+        clearTransactionError,
+
+        clearLastMutation,
       }),
       [
         addTransaction,
+        clearLastMutation,
+        clearTransactionError,
+        createTransaction,
         deleteTransaction,
+        error,
         getTransactionById,
+        isLoading,
+        isMutating,
+        isRefreshing,
+        lastMutation,
+        refreshTransactions,
+        summary,
         transactions,
         updateTransaction,
+        updateTransactionData,
       ],
     );
 
   return (
     <TransactionsContext.Provider
-      value={value}
+      value={
+        value
+      }
     >
       {children}
     </TransactionsContext.Provider>
@@ -1348,11 +983,767 @@ export function useTransactions() {
       TransactionsContext,
     );
 
-  if (!context) {
+  if (
+    !context
+  ) {
     throw new Error(
       "useTransactions must be used within a TransactionsProvider.",
     );
   }
 
   return context;
+}
+
+function mapServerTransaction(
+  transaction:
+    CaseBudgetTransactionRecord,
+): TransactionData | null {
+  const accountId =
+    normalizeOptionalText(
+      transaction.account?.id,
+    );
+
+  const accountName =
+    normalizeOptionalText(
+      transaction.account?.name,
+    );
+
+  if (
+    !accountId ||
+    !accountName
+  ) {
+    console.error(
+      "[CASE Budget TransactionsProvider] Transaction is missing its canonical account reference.",
+      {
+        transactionId:
+          transaction.id,
+      },
+    );
+
+    return null;
+  }
+
+  const merchant =
+    normalizeOptionalText(
+      transaction.merchant,
+    ) ??
+    getFallbackMerchant(
+      transaction.type,
+    );
+
+  const note =
+    normalizeOptionalText(
+      transaction.note,
+    );
+
+  const category =
+    transaction.category
+      ? {
+          id:
+            transaction.category.id,
+
+          name:
+            transaction.category.name,
+
+          groupName:
+            transaction.category.groupName,
+        }
+      : undefined;
+
+  const transferAccountId =
+    normalizeOptionalText(
+      transaction.transferAccountId,
+    );
+
+  return {
+    id:
+      transaction.id,
+
+    date:
+      transaction.date,
+
+    merchant,
+
+    ...(note
+      ? {
+          note,
+        }
+      : {}),
+
+    amount:
+      transaction.amount,
+
+    type:
+      transaction.type,
+
+    status:
+      transaction.status,
+
+    account: {
+      id:
+        accountId,
+
+      name:
+        accountName,
+
+      type:
+        transaction.account.type,
+    },
+
+    ...(category
+      ? {
+          category,
+        }
+      : {}),
+
+    ...(transferAccountId
+      ? {
+          transferAccountId,
+        }
+      : {}),
+  };
+}
+
+function transactionDataToCreateInput(
+  transaction:
+    TransactionData,
+): CreateTransactionData {
+  return {
+    date:
+      transaction.date,
+
+    merchant:
+      transaction.merchant,
+
+    ...(normalizeOptionalText(
+      transaction.note,
+    )
+      ? {
+          note:
+            transaction.note,
+        }
+      : {}),
+
+    amount:
+      transaction.amount,
+
+    type:
+      transaction.type,
+
+    status:
+      transaction.status,
+
+    accountId:
+      transaction.account.id,
+
+    ...(transaction.category?.id
+      ? {
+          categoryId:
+            transaction.category.id,
+        }
+      : {}),
+
+    ...(transaction.transferAccountId
+      ? {
+          transferAccountId:
+            transaction.transferAccountId,
+        }
+      : {}),
+  };
+}
+
+function transactionDataToUpdateInput(
+  transaction:
+    TransactionData,
+): UpdateTransactionData {
+  return {
+    id:
+      transaction.id,
+
+    date:
+      transaction.date,
+
+    merchant:
+      transaction.merchant,
+
+    ...(normalizeOptionalText(
+      transaction.note,
+    )
+      ? {
+          note:
+            transaction.note,
+        }
+      : {}),
+
+    amount:
+      transaction.amount,
+
+    type:
+      transaction.type,
+
+    status:
+      transaction.status,
+
+    accountId:
+      transaction.account.id,
+
+    ...(transaction.category?.id
+      ? {
+          categoryId:
+            transaction.category.id,
+        }
+      : {}),
+
+    ...(transaction.transferAccountId
+      ? {
+          transferAccountId:
+            transaction.transferAccountId,
+        }
+      : {}),
+  };
+}
+
+function mapCreateResult(
+  result:
+    TransactionServerMutationResult,
+): TransactionMutationResult {
+  if (
+    !result.success
+  ) {
+    return {
+      success:
+        false,
+
+      status:
+        "error",
+
+      approvalRequired:
+        false,
+
+      approvalId:
+        null,
+
+      message:
+        result.error.message,
+    };
+  }
+
+  if (
+    result.approvalRequired
+  ) {
+    return {
+      success:
+        true,
+
+      status:
+        "approval-required",
+
+      approvalRequired:
+        true,
+
+      approvalId:
+        result.approval.id,
+
+      message:
+        "This transaction requires household approval before it can be created.",
+    };
+  }
+
+  if (
+    result.status !==
+    "created"
+  ) {
+    return {
+      success:
+        false,
+
+      status:
+        "error",
+
+      approvalRequired:
+        false,
+
+      approvalId:
+        null,
+
+      message:
+        "CASE Budget received an unexpected transaction-create response.",
+    };
+  }
+
+  return {
+    success:
+      true,
+
+    status:
+      "created",
+
+    approvalRequired:
+      false,
+
+    approvalId:
+      null,
+
+    message:
+      "Transaction created successfully.",
+  };
+}
+
+function mapUpdateResult(
+  result:
+    TransactionServerMutationResult,
+): TransactionMutationResult {
+  if (
+    !result.success
+  ) {
+    return {
+      success:
+        false,
+
+      status:
+        "error",
+
+      approvalRequired:
+        false,
+
+      approvalId:
+        null,
+
+      message:
+        result.error.message,
+    };
+  }
+
+  if (
+    result.approvalRequired
+  ) {
+    return {
+      success:
+        true,
+
+      status:
+        "approval-required",
+
+      approvalRequired:
+        true,
+
+      approvalId:
+        result.approval.id,
+
+      message:
+        "This transaction change requires household approval before it can be applied.",
+    };
+  }
+
+  if (
+    result.status !==
+    "updated"
+  ) {
+    return {
+      success:
+        false,
+
+      status:
+        "error",
+
+      approvalRequired:
+        false,
+
+      approvalId:
+        null,
+
+      message:
+        "CASE Budget received an unexpected transaction-update response.",
+    };
+  }
+
+  return {
+    success:
+      true,
+
+    status:
+      "updated",
+
+    approvalRequired:
+      false,
+
+    approvalId:
+      null,
+
+    message:
+      "Transaction updated successfully.",
+  };
+}
+
+function mapDeleteResult(
+  result:
+    TransactionServerMutationResult,
+): TransactionMutationResult {
+  if (
+    !result.success
+  ) {
+    return {
+      success:
+        false,
+
+      status:
+        "error",
+
+      approvalRequired:
+        false,
+
+      approvalId:
+        null,
+
+      message:
+        result.error.message,
+    };
+  }
+
+  if (
+    result.approvalRequired
+  ) {
+    return {
+      success:
+        true,
+
+      status:
+        "approval-required",
+
+      approvalRequired:
+        true,
+
+      approvalId:
+        result.approval.id,
+
+      message:
+        "Deleting this transaction requires household approval before it can be applied.",
+    };
+  }
+
+  if (
+    result.status !==
+    "deleted"
+  ) {
+    return {
+      success:
+        false,
+
+      status:
+        "error",
+
+      approvalRequired:
+        false,
+
+      approvalId:
+        null,
+
+      message:
+        "CASE Budget received an unexpected transaction-delete response.",
+    };
+  }
+
+  return {
+    success:
+      true,
+
+    status:
+      "deleted",
+
+    approvalRequired:
+      false,
+
+    approvalId:
+      null,
+
+    message:
+      "Transaction deleted successfully.",
+  };
+}
+
+function cloneTransaction(
+  transaction:
+    TransactionData,
+): TransactionData {
+  return {
+    ...transaction,
+
+    account: {
+      ...transaction.account,
+    },
+
+    ...(transaction.category
+      ? {
+          category: {
+            ...transaction.category,
+          },
+        }
+      : {
+          category:
+            undefined,
+        }),
+
+    ...(transaction.transferAccountId
+      ? {
+          transferAccountId:
+            transaction.transferAccountId,
+        }
+      : {
+          transferAccountId:
+            undefined,
+        }),
+  };
+}
+
+function cloneTransactions(
+  transactions:
+    TransactionData[],
+) {
+  return transactions.map(
+    cloneTransaction,
+  );
+}
+
+function buildTransactionSummary(
+  transactions:
+    TransactionData[],
+): TransactionSummary {
+  let totalIncome =
+    0;
+
+  let totalExpenses =
+    0;
+
+  let clearedIncome =
+    0;
+
+  let clearedExpenses =
+    0;
+
+  let pendingExpenseAmount =
+    0;
+
+  let totalTransferAmount =
+    0;
+
+  let pendingCount =
+    0;
+
+  let clearedCount =
+    0;
+
+  let transferCount =
+    0;
+
+  let uncategorizedCount =
+    0;
+
+  for (
+    const transaction of
+      transactions
+  ) {
+    const amount =
+      normalizeAmount(
+        transaction.amount,
+      );
+
+    if (
+      transaction.status ===
+      "pending"
+    ) {
+      pendingCount +=
+        1;
+    }
+
+    if (
+      transaction.status ===
+      "cleared"
+    ) {
+      clearedCount +=
+        1;
+    }
+
+    switch (
+      transaction.type
+    ) {
+      case "income": {
+        totalIncome +=
+          amount;
+
+        if (
+          transaction.status ===
+          "cleared"
+        ) {
+          clearedIncome +=
+            amount;
+        }
+
+        break;
+      }
+
+      case "expense": {
+        totalExpenses +=
+          amount;
+
+        if (
+          transaction.status ===
+          "cleared"
+        ) {
+          clearedExpenses +=
+            amount;
+        }
+
+        if (
+          transaction.status ===
+          "pending"
+        ) {
+          pendingExpenseAmount +=
+            amount;
+        }
+
+        if (
+          !transaction.category?.id
+        ) {
+          uncategorizedCount +=
+            1;
+        }
+
+        break;
+      }
+
+      case "transfer": {
+        totalTransferAmount +=
+          amount;
+
+        transferCount +=
+          1;
+
+        break;
+      }
+    }
+  }
+
+  return {
+    totalIncome:
+      roundCurrency(
+        totalIncome,
+      ),
+
+    totalExpenses:
+      roundCurrency(
+        totalExpenses,
+      ),
+
+    netAmount:
+      roundCurrency(
+        totalIncome -
+        totalExpenses,
+      ),
+
+    clearedIncome:
+      roundCurrency(
+        clearedIncome,
+      ),
+
+    clearedExpenses:
+      roundCurrency(
+        clearedExpenses,
+      ),
+
+    netClearedAmount:
+      roundCurrency(
+        clearedIncome -
+        clearedExpenses,
+      ),
+
+    pendingExpenseAmount:
+      roundCurrency(
+        pendingExpenseAmount,
+      ),
+
+    totalTransferAmount:
+      roundCurrency(
+        totalTransferAmount,
+      ),
+
+    pendingCount,
+
+    clearedCount,
+
+    transferCount,
+
+    uncategorizedCount,
+
+    totalCount:
+      transactions.length,
+  };
+}
+
+function normalizeAmount(
+  value:
+    number,
+) {
+  if (
+    !Number.isFinite(
+      value,
+    )
+  ) {
+    return 0;
+  }
+
+  return Math.abs(
+    value,
+  );
+}
+
+function roundCurrency(
+  value:
+    number,
+) {
+  return Math.round(
+    (
+      value +
+      Number.EPSILON
+    ) *
+      100,
+  ) /
+    100;
+}
+
+function normalizeOptionalText(
+  value:
+    unknown,
+): string | null {
+  if (
+    typeof value !==
+      "string"
+  ) {
+    return null;
+  }
+
+  const normalized =
+    value.trim();
+
+  return normalized
+    ? normalized
+    : null;
+}
+
+function getFallbackMerchant(
+  type:
+    TransactionData["type"],
+) {
+  switch (
+    type
+  ) {
+    case "income":
+      return "Income";
+
+    case "transfer":
+      return "Transfer";
+
+    case "expense":
+    default:
+      return "Transaction";
+  }
 }

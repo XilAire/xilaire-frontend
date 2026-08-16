@@ -3,6 +3,15 @@ import ProgressBar from "@/components/ui/ProgressBar";
 export type BudgetProgressProps = {
   assignedAmount: number;
   spentAmount: number;
+
+  /**
+   * Canonical available_amount for this budget item.
+   *
+   * This already includes rollover and transaction activity and should be
+   * used for all "remaining/available" presentation.
+   */
+  availableAmount: number;
+
   showLabel?: boolean;
   className?: string;
 };
@@ -28,6 +37,13 @@ function joinClassNames(
     .join(" ");
 }
 
+/**
+ * Progress percentage is a visualization only.
+ *
+ * assignedAmount and spentAmount are canonical values already returned by
+ * getBudget(). This helper does not reconstruct transaction activity or
+ * available money.
+ */
 function getSpentPercentage(
   assignedAmount: number,
   spentAmount: number,
@@ -49,15 +65,13 @@ function getSpentPercentage(
 function getProgressTone(
   assignedAmount: number,
   spentAmount: number,
+  availableAmount: number,
 ):
   | "primary"
   | "success"
   | "warning"
   | "danger" {
-  if (
-    spentAmount >
-    assignedAmount
-  ) {
+  if (availableAmount < 0) {
     return "danger";
   }
 
@@ -81,12 +95,20 @@ function getProgressTone(
 function getProgressLabel(
   assignedAmount: number,
   spentAmount: number,
+  availableAmount: number,
 ) {
   if (
     assignedAmount <= 0 &&
-    spentAmount <= 0
+    spentAmount <= 0 &&
+    availableAmount === 0
   ) {
     return "No money assigned";
+  }
+
+  if (availableAmount < 0) {
+    return `${currencyFormatter.format(
+      -availableAmount,
+    )} overspent`;
   }
 
   if (
@@ -98,35 +120,19 @@ function getProgressLabel(
     )} spent without an assigned amount`;
   }
 
-  if (
-    spentAmount >
-    assignedAmount
-  ) {
-    const overspentAmount =
-      spentAmount -
-      assignedAmount;
-
-    return `${currencyFormatter.format(
-      overspentAmount,
-    )} overspent`;
-  }
-
-  const remainingAmount =
-    assignedAmount -
-    spentAmount;
-
-  if (remainingAmount === 0) {
+  if (availableAmount === 0) {
     return "Fully spent";
   }
 
   return `${currencyFormatter.format(
-    remainingAmount,
-  )} remaining`;
+    availableAmount,
+  )} available`;
 }
 
 export default function BudgetProgress({
   assignedAmount,
   spentAmount,
+  availableAmount,
   showLabel = true,
   className,
 }: BudgetProgressProps) {
@@ -140,6 +146,7 @@ export default function BudgetProgress({
     getProgressTone(
       assignedAmount,
       spentAmount,
+      availableAmount,
     );
 
   const progressMaximum =
@@ -149,6 +156,11 @@ export default function BudgetProgress({
         ? spentAmount
         : 1;
 
+  /*
+   * ProgressBar is bounded visually at 100%. Overspending is represented by
+   * the danger tone and canonical negative availableAmount rather than by
+   * forcing the progress primitive beyond its maximum.
+   */
   const progressValue =
     Math.min(
       Math.max(
@@ -159,8 +171,7 @@ export default function BudgetProgress({
     );
 
   const isOverspent =
-    spentAmount >
-    assignedAmount;
+    availableAmount < 0;
 
   return (
     <div
@@ -182,6 +193,7 @@ export default function BudgetProgress({
             {getProgressLabel(
               assignedAmount,
               spentAmount,
+              availableAmount,
             )}
           </span>
 

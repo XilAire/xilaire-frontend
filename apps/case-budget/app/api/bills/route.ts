@@ -8,7 +8,6 @@ import {
 import {
   BillStorageError,
   createBill,
-  importBills,
   listBills,
 } from "@/lib/bills/bill-storage";
 
@@ -70,18 +69,6 @@ type CreateBillRequestBody = {
   bill:
     BillData;
 };
-
-type ImportBillsRequestBody = {
-  action:
-    "import";
-
-  bills:
-    BillData[];
-};
-
-type BillsPostRequestBody =
-  | CreateBillRequestBody
-  | ImportBillsRequestBody;
 
 /**
  * GET /api/bills
@@ -145,31 +132,14 @@ export async function GET() {
 /**
  * POST /api/bills
  *
- * Supports two operations:
+ * Creates one persisted bill for the authenticated user's active
+ * CASE Budget workspace.
  *
- * 1. Create one new bill:
+ * The server derives userId and workspaceId from the authenticated
+ * session. Client-provided ownership identifiers are never trusted.
  *
- * {
- *   "bill": { ... }
- * }
- *
- * or:
- *
- * {
- *   "action": "create",
- *   "bill": { ... }
- * }
- *
- * 2. One-time migration/import of browser-local bills:
- *
- * {
- *   "action": "import",
- *   "bills": [ ... ]
- * }
- *
- * The server always derives userId and workspaceId from the
- * authenticated session. Client-provided ownership identifiers are
- * never trusted.
+ * Browser-local import/migration is intentionally not supported in
+ * production. Supabase is the canonical persistence layer.
  */
 export async function POST(
   request:
@@ -192,55 +162,6 @@ export async function POST(
     ) {
       return createValidationErrorResponse(
         "A valid JSON request body is required.",
-      );
-    }
-
-    if (
-      isImportBillsRequestBody(
-        requestBody,
-      )
-    ) {
-      const importedBills =
-        await importBills({
-          userId,
-          workspaceId,
-          bills:
-            requestBody.bills,
-        });
-
-      return NextResponse.json<
-        BillsApiResponse<{
-          bills:
-            BillData[];
-
-          importedCount:
-            number;
-        }>
-      >(
-        {
-          success:
-            true,
-
-          data: {
-            bills:
-              importedBills,
-
-            importedCount:
-              importedBills.length,
-          },
-
-          error:
-            null,
-        },
-        {
-          status:
-            201,
-
-          headers: {
-            "Cache-Control":
-              "no-store",
-          },
-        },
       );
     }
 
@@ -288,7 +209,7 @@ export async function POST(
     }
 
     return createValidationErrorResponse(
-      "The bill request is invalid. Supply a bill to create or use action \"import\" with a bills array.",
+      "The bill request is invalid. Supply a valid bill to create.",
     );
   } catch (
     error
@@ -351,38 +272,6 @@ function isCreateBillRequestBody(
   );
 }
 
-function isImportBillsRequestBody(
-  value:
-    unknown,
-): value is ImportBillsRequestBody {
-  if (
-    !isRecord(
-      value,
-    )
-  ) {
-    return false;
-  }
-
-  if (
-    value.action !==
-    "import"
-  ) {
-    return false;
-  }
-
-  if (
-    !Array.isArray(
-      value.bills,
-    )
-  ) {
-    return false;
-  }
-
-  return value.bills.every(
-    isBillData,
-  );
-}
-
 /**
  * Performs lightweight API-boundary validation.
  *
@@ -426,7 +315,8 @@ function isBillData(
       "number" ||
     !Number.isFinite(
       value.amount,
-    )
+    ) ||
+    value.amount < 0
   ) {
     return false;
   }

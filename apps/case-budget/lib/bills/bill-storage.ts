@@ -53,12 +53,6 @@ export type DeleteBillInput =
       string;
   };
 
-export type ImportBillsInput =
-  BillStorageScope & {
-    bills:
-      BillData[];
-  };
-
 export type BillStorageErrorCode =
   | "invalid-input"
   | "not-found"
@@ -479,9 +473,8 @@ export async function getBill({
 /**
  * Creates one CASE Budget bill.
  *
- * The database generates the canonical UUID. Existing browser-local
- * IDs are intentionally not persisted into the UUID primary-key
- * column.
+ * Supabase generates the canonical UUID. The client-supplied BillData
+ * ID is never persisted into the primary-key column.
  */
 export async function createBill({
   userId,
@@ -773,215 +766,6 @@ export async function deleteBill({
       error,
       fallbackMessage:
         "CASE Budget could not delete the bill.",
-    });
-  }
-}
-
-/**
- * Imports browser-local bills into Supabase.
- *
- * This is intentionally create-only. Each imported local bill receives
- * a new canonical database UUID.
- *
- * The caller should only use this during the one-time localStorage
- * migration when the workspace does not already contain persisted bills.
- */
-export async function importBills({
-  userId,
-  workspaceId,
-  bills,
-}: ImportBillsInput):
-  Promise<BillData[]> {
-  const operation =
-    "importBills";
-
-  const scope =
-    normalizeStorageScope({
-      userId,
-      workspaceId,
-      operation,
-    });
-
-  if (
-    !Array.isArray(
-      bills,
-    )
-  ) {
-    throw new BillStorageError({
-      message:
-        "Bills must be supplied as an array.",
-      code:
-        "invalid-input",
-      operation,
-    });
-  }
-
-  if (
-    bills.length ===
-    0
-  ) {
-    return [];
-  }
-
-  for (
-    const bill of bills
-  ) {
-    validateBill({
-      bill,
-      operation,
-    });
-  }
-
-  const insertRows =
-    bills.map(
-      (
-        bill,
-      ) =>
-        mapBillDataToInsertRow({
-          bill,
-          scope,
-        }),
-    );
-
-  try {
-    const {
-      data,
-      error,
-    } =
-      await createAdminClient()
-        .from(
-          CASE_BUDGET_BILLS_TABLE,
-        )
-        .insert(
-          insertRows,
-        )
-        .select(
-          "*",
-        );
-
-    if (
-      error
-    ) {
-      throw createDatabaseError({
-        operation,
-        message:
-          "CASE Budget could not import the local bills.",
-        error,
-      });
-    }
-
-    if (
-      !Array.isArray(
-        data,
-      )
-    ) {
-      throw new BillStorageError({
-        message:
-          "CASE Budget imported the bills but did not receive the saved records.",
-        code:
-          "database-error",
-        operation,
-      });
-    }
-
-    return data
-      .map(
-        (
-          row,
-        ) =>
-          mapBillRowToBillData(
-            row as CaseBudgetBillRow,
-          ),
-      )
-      .sort(
-        compareBillsByDueDate,
-      );
-  } catch (
-    error
-  ) {
-    throw normalizeStorageError({
-      operation,
-      error,
-      fallbackMessage:
-        "CASE Budget could not import the local bills.",
-    });
-  }
-}
-
-/**
- * Returns true when the supplied workspace already has at least one
- * persisted bill for the user.
- *
- * This is useful during localStorage migration so browser-local bills
- * are not imported repeatedly.
- */
-export async function hasPersistedBills({
-  userId,
-  workspaceId,
-}: BillStorageScope):
-  Promise<boolean> {
-  const operation =
-    "hasPersistedBills";
-
-  const scope =
-    normalizeStorageScope({
-      userId,
-      workspaceId,
-      operation,
-    });
-
-  try {
-    const {
-      count,
-      error,
-    } =
-      await createAdminClient()
-        .from(
-          CASE_BUDGET_BILLS_TABLE,
-        )
-        .select(
-          "id",
-          {
-            count:
-              "exact",
-
-            head:
-              true,
-          },
-        )
-        .eq(
-          "workspace_id",
-          scope.workspaceId,
-        )
-        .eq(
-          "user_id",
-          scope.userId,
-        );
-
-    if (
-      error
-    ) {
-      throw createDatabaseError({
-        operation,
-        message:
-          "CASE Budget could not determine whether persisted bills exist.",
-        error,
-      });
-    }
-
-    return (
-      count ??
-      0
-    ) >
-      0;
-  } catch (
-    error
-  ) {
-    throw normalizeStorageError({
-      operation,
-      error,
-      fallbackMessage:
-        "CASE Budget could not determine whether persisted bills exist.",
     });
   }
 }
@@ -1571,6 +1355,22 @@ function normalizeBudgetAllocation(
     return null;
   }
 
+  const allocationType =
+    normalizeBudgetAllocationType(
+      allocation.allocationType,
+    );
+
+  if (
+    allocation.value < 0 ||
+    (
+      allocationType ===
+        "percentage" &&
+      allocation.value > 100
+    )
+  ) {
+    return null;
+  }
+
   const createdAt =
     normalizeOptionalTimestamp(
       allocation.createdAt,
@@ -1596,10 +1396,7 @@ function normalizeBudgetAllocation(
       categoryName,
     },
 
-    allocationType:
-      normalizeBudgetAllocationType(
-        allocation.allocationType,
-      ),
+    allocationType,
 
     value:
       allocation.value,
@@ -1683,6 +1480,25 @@ function parseBudgetAllocation(
     return null;
   }
 
+  const allocationType =
+    normalizeBudgetAllocationType(
+      readOptionalString(
+        value.allocationType,
+      ) ??
+      "fixed",
+    );
+
+  if (
+    numericValue < 0 ||
+    (
+      allocationType ===
+        "percentage" &&
+      numericValue > 100
+    )
+  ) {
+    return null;
+  }
+
   return {
     id,
 
@@ -1698,13 +1514,7 @@ function parseBudgetAllocation(
       categoryName,
     },
 
-    allocationType:
-      normalizeBudgetAllocationType(
-        readOptionalString(
-          value.allocationType,
-        ) ??
-        "fixed",
-      ),
+    allocationType,
 
     value:
       numericValue,
@@ -2246,29 +2056,6 @@ function normalizeOptionalText(
   return normalizedValue
     ? normalizedValue
     : null;
-}
-
-function compareBillsByDueDate(
-  first:
-    BillData,
-  second:
-    BillData,
-) {
-  const dueDateDifference =
-    first.dueDate.localeCompare(
-      second.dueDate,
-    );
-
-  if (
-    dueDateDifference !==
-      0
-  ) {
-    return dueDateDifference;
-  }
-
-  return first.name.localeCompare(
-    second.name,
-  );
 }
 
 function isRecord(

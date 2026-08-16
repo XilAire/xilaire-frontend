@@ -895,7 +895,7 @@ export default function CalendarEventModal({
             ),
           };
 
-        updateEvent(
+        await updateEvent(
           updateData,
         );
 
@@ -910,7 +910,7 @@ export default function CalendarEventModal({
           );
 
         const createdEvent =
-          addEvent(
+          await addEvent(
             createData,
           );
 

@@ -380,6 +380,16 @@ export default function WorkspaceSwitcher({
             .length > 0,
       );
 
+  const createWorkspaceTitle =
+    activeWorkspace?.isOwner
+      ? "Create another workspace"
+      : "Create your own workspace";
+
+  const createWorkspaceDescription =
+    activeWorkspace?.isOwner
+      ? "Add another personal, household, or business workspace."
+      : "Start an independent CASE Budget workspace that you own.";
+
   useEffect(
     () => {
       function handlePointerDown(
@@ -608,6 +618,7 @@ export default function WorkspaceSwitcher({
                       activeWorkspace.type
                     ]
                   }
+
                   {activeWorkspace.memberCount !==
                   undefined
                     ? ` · ${activeWorkspace.memberCount} ${
@@ -624,7 +635,11 @@ export default function WorkspaceSwitcher({
                 <span className="shrink-0 rounded-full bg-[var(--pro-soft)] px-2 py-1 text-[9px] font-extrabold uppercase tracking-wide text-[var(--pro)]">
                   Owner
                 </span>
-              ) : null}
+              ) : (
+                <span className="shrink-0 rounded-full bg-[var(--surface-muted)] px-2 py-1 text-[9px] font-extrabold uppercase tracking-wide text-[var(--text-muted)]">
+                  Member
+                </span>
+              )}
             </div>
           </div>
 
@@ -699,20 +714,39 @@ export default function WorkspaceSwitcher({
                             </div>
 
                             <div className="min-w-0 flex-1">
-                              <p
-                                className={[
-                                  "truncate text-sm font-semibold",
-                                  isActive
-                                    ? "text-[var(--primary)]"
-                                    : "text-[var(--text-primary)]",
-                                ].join(
-                                  " ",
-                                )}
-                              >
-                                {
-                                  workspace.name
-                                }
-                              </p>
+                              <div className="flex min-w-0 items-center gap-2">
+                                <p
+                                  className={[
+                                    "min-w-0 flex-1 truncate text-sm font-semibold",
+                                    isActive
+                                      ? "text-[var(--primary)]"
+                                      : "text-[var(--text-primary)]",
+                                  ].join(
+                                    " ",
+                                  )}
+                                >
+                                  {
+                                    workspace.name
+                                  }
+                                </p>
+
+                                <span
+                                  className={[
+                                    "shrink-0 rounded-full px-1.5 py-0.5 text-[8px] font-extrabold uppercase tracking-wide",
+                                    workspace.isOwner
+                                      ? "bg-[var(--pro-soft)] text-[var(--pro)]"
+                                      : "bg-[var(--surface-muted)] text-[var(--text-muted)]",
+                                  ].join(
+                                    " ",
+                                  )}
+                                >
+                                  {
+                                    workspace.isOwner
+                                      ? "Owned"
+                                      : "Member"
+                                  }
+                                </span>
+                              </div>
 
                               <p className="truncate text-xs text-[var(--text-muted)]">
                                 {
@@ -787,11 +821,15 @@ export default function WorkspaceSwitcher({
 
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-bold text-[var(--primary)]">
-                  Create workspace
+                  {
+                    createWorkspaceTitle
+                  }
                 </span>
 
-                <span className="mt-0.5 block text-[11px] text-[var(--text-muted)]">
-                  Add a separate personal, household, or business workspace.
+                <span className="mt-0.5 block text-[11px] leading-relaxed text-[var(--text-muted)]">
+                  {
+                    createWorkspaceDescription
+                  }
                 </span>
               </span>
             </button>

@@ -153,6 +153,7 @@ export default function PayCycleSetupFlow({
 
   const {
     addPayCycle,
+    preferences,
     setPreferences,
   } = usePayCycles();
 
@@ -192,6 +193,7 @@ export default function PayCycleSetupFlow({
     () =>
       createInitialFormState(
         initialValues,
+        preferences,
       ),
   );
 
@@ -295,7 +297,7 @@ export default function PayCycleSetupFlow({
     );
   }
 
-  function handleSubmit(
+  async function handleSubmit(
     event: FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
@@ -322,13 +324,13 @@ export default function PayCycleSetupFlow({
 
     try {
       const createdPayCycle =
-        addPayCycle(
+        await addPayCycle(
           createPayCycleInput(
             formState,
           ),
         );
 
-      setPreferences({
+      await setPreferences({
         minimumCashReserve:
           parseCurrencyInput(
             formState.minimumCashReserve,
@@ -1874,9 +1876,15 @@ function ValidationMessage({
 }
 
 function createInitialFormState(
-  initialValues?: Partial<
-    CreatePayCycleData
-  >,
+  initialValues:
+    | Partial<
+        CreatePayCycleData
+      >
+    | undefined,
+  preferences:
+    ReturnType<
+      typeof usePayCycles
+    >["preferences"],
 ): SetupFormState {
   const today =
     getTodayDateString();
@@ -1971,19 +1979,21 @@ function createInitialFormState(
       true,
 
     minimumCashReserve:
-      "250",
+      String(
+        preferences.minimumCashReserve,
+      ),
     allowPartialBillFunding:
-      true,
+      preferences.allowPartialBillFunding,
     useCurrentAccountBalance:
-      true,
+      preferences.useCurrentAccountBalance,
     prioritizePastDueBills:
-      true,
+      preferences.prioritizePastDueBills,
     prioritizeAutopayBills:
-      true,
+      preferences.prioritizeAutopayBills,
     prioritizeMinimumDebtPayments:
-      true,
+      preferences.prioritizeMinimumDebtPayments,
     prioritizeCriticalServices:
-      true,
+      preferences.prioritizeCriticalServices,
 
     notes:
       initialValues?.notes ??

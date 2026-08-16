@@ -57,32 +57,76 @@ function joinClassNames(
     .join(" ");
 }
 
-function getGroupAssignedAmount(
-  group: BudgetCategoryGroupData,
-) {
-  return group.categories.reduce(
-    (
-      total,
-      item,
-    ) =>
-      total +
-      item.assignedAmount,
-    0,
-  );
-}
+type GroupFinancialTotals = {
+  assignedAmount:
+    number;
 
-function getGroupSpentAmount(
-  group: BudgetCategoryGroupData,
-) {
-  return group.categories.reduce(
-    (
-      total,
-      item,
-    ) =>
-      total +
-      item.spentAmount,
-    0,
-  );
+  spentAmount:
+    number;
+
+  remainingAmount:
+    number;
+};
+
+/**
+ * Builds read-only group presentation totals from the canonical budget item
+ * values already returned by getBudget().
+ *
+ * Important production boundary:
+ *
+ * - This component never reads transactions directly.
+ * - This component never applies transaction deltas.
+ * - item.spentAmount already represents canonical Supabase activity_amount.
+ * - item.availableAmount already represents canonical Supabase
+ *   available_amount, including rollover.
+ * - Group totals only aggregate those canonical item values for display.
+ * - No available balance is re-derived as assigned minus spent.
+ * - No budget data is persisted or mutated here.
+ */
+function getGroupFinancialTotals(
+  group:
+    BudgetCategoryGroupData,
+): GroupFinancialTotals {
+  const totals =
+    group.categories.reduce(
+      (
+        current,
+        item,
+      ) => ({
+        assignedAmount:
+          current.assignedAmount +
+          item.assignedAmount,
+
+        spentAmount:
+          current.spentAmount +
+          item.spentAmount,
+
+        remainingAmount:
+          current.remainingAmount +
+          item.availableAmount,
+      }),
+      {
+        assignedAmount:
+          0,
+
+        spentAmount:
+          0,
+
+        remainingAmount:
+          0,
+      },
+    );
+
+  return {
+    assignedAmount:
+      totals.assignedAmount,
+
+    spentAmount:
+      totals.spentAmount,
+
+    remainingAmount:
+      totals.remainingAmount,
+  };
 }
 
 export default function BudgetCategoryGroup({
@@ -94,19 +138,14 @@ export default function BudgetCategoryGroup({
   getLinkedBillsForBudgetItem,
   onViewBill,
 }: BudgetCategoryGroupProps) {
-  const assignedAmount =
-    getGroupAssignedAmount(
+  const {
+    assignedAmount,
+    spentAmount,
+    remainingAmount,
+  } =
+    getGroupFinancialTotals(
       group,
     );
-
-  const spentAmount =
-    getGroupSpentAmount(
-      group,
-    );
-
-  const remainingAmount =
-    assignedAmount -
-    spentAmount;
 
   function handleEditCategoryClick(
     event:

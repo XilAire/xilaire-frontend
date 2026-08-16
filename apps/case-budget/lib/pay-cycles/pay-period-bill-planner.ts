@@ -72,7 +72,7 @@ export type BillPlannerValidationResult = {
 
 const DEFAULT_PLANNING_PREFERENCES:
   PayCyclePlanningPreferences = {
-    minimumCashReserve: 250,
+    minimumCashReserve: 0,
 
     prioritizePastDueBills: true,
     prioritizeAutopayBills: true,

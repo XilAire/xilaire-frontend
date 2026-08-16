@@ -9,21 +9,9 @@ import type {
   ResetPasswordActionState,
 } from "@/types/auth/reset-password-action";
 
-export const initialResetPasswordActionState:
-  ResetPasswordActionState = {
-    success:
-      false,
-
-    message:
-      "",
-
-    fieldErrors: {},
-  };
-
 export async function resetPasswordAction(
   _previousState:
-    ResetPasswordActionState =
-      initialResetPasswordActionState,
+    ResetPasswordActionState,
   formData:
     FormData,
 ): Promise<ResetPasswordActionState> {

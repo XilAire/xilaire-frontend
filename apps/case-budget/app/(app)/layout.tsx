@@ -10,6 +10,10 @@ import {
   cookies,
 } from "next/headers";
 
+import {
+  getInvestments,
+} from "@/actions/investments/get-investments";
+
 import AppProvider, {
   type AppUser,
   type AppWorkspace,
@@ -154,6 +158,21 @@ export default async function AuthenticatedAppLayout({
     initialWorkspaces[0]?.id ??
     "";
 
+  /*
+   * Load canonical investment state only after the active workspace has
+   * been resolved.
+   *
+   * getInvestments() resolves authentication and workspace scope on the
+   * server. The browser never supplies the workspace ID used by the
+   * investment query.
+   *
+   * When the user switches workspaces, AppProvider updates the authoritative
+   * HttpOnly workspace cookie and calls router.refresh(). This layout then
+   * executes again and loads investment data for the newly active workspace.
+   */
+  const investmentsResult =
+    await getInvestments();
+
   const initialUser =
     currentProfileResult.profile
       ? mapCurrentProfileToAppUser(
@@ -199,6 +218,9 @@ export default async function AuthenticatedAppLayout({
       }
       initialWorkspaces={
         initialWorkspaces
+      }
+      initialInvestments={
+        investmentsResult.investments
       }
     >
       {children}

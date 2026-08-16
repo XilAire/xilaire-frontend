@@ -42,53 +42,9 @@ type ValidationErrors = Partial<
   >
 >;
 
-const FALLBACK_DEFAULT_PREFERENCES:
-  PayCyclePlanningPreferences = {
-    minimumCashReserve:
-      250,
-
-    prioritizePastDueBills:
-      true,
-    prioritizeAutopayBills:
-      true,
-    prioritizeMinimumDebtPayments:
-      true,
-    prioritizeCriticalServices:
-      true,
-    criticalBillsOverridePriority:
-      true,
-
-    allowPartialBillFunding:
-      true,
-    useCurrentAccountBalance:
-      true,
-    includePendingIncome:
-      false,
-
-    lookAheadPayPeriods:
-      3,
-    planningWindowDays:
-      45,
-    billPlanningWindowDays:
-      45,
-
-    extraCashStrategy:
-      "keep-available",
-    extraCashDebtPercentage:
-      50,
-    extraCashSavingsPercentage:
-      50,
-
-    criticalBillIds:
-      [],
-    lowPriorityBillIds:
-      [],
-  };
-
 export default function PayCyclePreferencesPanel({
   preferences,
-  defaultPreferences =
-    FALLBACK_DEFAULT_PREFERENCES,
+  defaultPreferences,
   title =
     "Planning Preferences",
   description =
@@ -362,12 +318,17 @@ export default function PayCyclePreferencesPanel({
 
     setDraft(
       normalizePreferences(
-        defaultPreferences,
+        defaultPreferences ??
+        normalizedSavedPreferences,
       ),
     );
 
     setValidationErrors(
       {},
+    );
+
+    setSubmitError(
+      null,
     );
   }
 

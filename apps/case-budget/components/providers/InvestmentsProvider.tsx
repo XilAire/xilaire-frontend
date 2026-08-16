@@ -11,210 +11,115 @@ import {
   useState,
 } from "react";
 
-export type InvestmentAccountType =
-  | "brokerage"
-  | "retirement"
-  | "ira"
-  | "roth-ira"
-  | "401k"
-  | "403b"
-  | "529"
-  | "hsa"
-  | "crypto"
-  | "other";
+import {
+  createActivity as createActivityAction,
+} from "@/actions/investments/create-activity";
 
-export type InvestmentConnectionStatus =
-  | "manual"
-  | "connected"
-  | "disconnected"
-  | "error"
-  | "pending";
+import {
+  createHolding as createHoldingAction,
+} from "@/actions/investments/create-holding";
 
-export type InvestmentHoldingType =
-  | "stock"
-  | "etf"
-  | "mutual-fund"
-  | "bond"
-  | "option"
-  | "crypto"
-  | "cash"
-  | "real-estate"
-  | "commodity"
-  | "other";
+import {
+  createInvestmentAccount as createInvestmentAccountAction,
+} from "@/actions/investments/create-investment-account";
 
-export type InvestmentActivityType =
-  | "contribution"
-  | "withdrawal"
-  | "buy"
-  | "sell"
-  | "dividend"
-  | "interest"
-  | "fee"
-  | "transfer"
-  | "adjustment";
+import {
+  createInvestmentPerformanceSnapshot as createInvestmentPerformanceSnapshotAction,
+} from "@/actions/investments/create-investment-performance-snapshot";
 
-export type InvestmentAccountData = {
-  id: string;
-  name: string;
-  institution?: string;
-  type: InvestmentAccountType;
-  linkedAccountId?: string;
-  currency: string;
-  cashBalance: number;
-  isIncludedInNetWorth: boolean;
-  connectionStatus: InvestmentConnectionStatus;
-  lastSyncedAt?: string;
-  notes?: string;
-  createdAt: string;
-  updatedAt: string;
-};
+import {
+  deleteActivity as deleteActivityAction,
+} from "@/actions/investments/delete-activity";
 
-export type InvestmentHoldingData = {
-  id: string;
-  investmentAccountId: string;
-  symbol?: string;
-  name: string;
-  type: InvestmentHoldingType;
-  quantity: number;
-  averageCost: number;
-  currentPrice: number;
-  marketValue: number;
-  costBasis: number;
-  unrealizedGain: number;
-  unrealizedGainPercentage: number;
-  annualDividendIncome?: number;
-  lastPriceUpdatedAt?: string;
-  notes?: string;
-  createdAt: string;
-  updatedAt: string;
-};
+import {
+  deleteHolding as deleteHoldingAction,
+} from "@/actions/investments/delete-holding";
 
-export type InvestmentActivityData = {
-  id: string;
-  investmentAccountId: string;
-  holdingId?: string;
-  type: InvestmentActivityType;
-  date: string;
-  amount: number;
-  quantity?: number;
-  pricePerUnit?: number;
-  fees?: number;
-  description?: string;
-  createdAt: string;
-  updatedAt: string;
-};
+import {
+  deleteInvestmentAccount as deleteInvestmentAccountAction,
+} from "@/actions/investments/delete-investment-account";
 
-export type InvestmentPerformanceSnapshot = {
-  id: string;
-  date: string;
+import {
+  deleteInvestmentPerformanceSnapshot as deleteInvestmentPerformanceSnapshotAction,
+} from "@/actions/investments/delete-investment-performance-snapshot";
 
-  portfolioValue: number;
-  costBasis: number;
-  cashValue: number;
+import {
+  updateActivity as updateActivityAction,
+} from "@/actions/investments/update-activity";
 
-  dailyGain: number;
-  dailyGainPercentage: number;
+import {
+  updateHolding as updateHoldingAction,
+} from "@/actions/investments/update-holding";
 
-  createdAt: string;
-  updatedAt: string;
-};
+import {
+  updateInvestmentAccount as updateInvestmentAccountAction,
+} from "@/actions/investments/update-investment-account";
 
-export type CreateInvestmentPerformanceSnapshotData = {
-  date: string;
+import {
+  updateInvestmentPerformanceSnapshot as updateInvestmentPerformanceSnapshotAction,
+} from "@/actions/investments/update-investment-performance-snapshot";
 
-  portfolioValue: number;
-  costBasis: number;
-  cashValue: number;
-};
+import type {
+  CreateInvestmentAccountData,
+  CreateInvestmentActivityData,
+  CreateInvestmentHoldingData,
+  CreateInvestmentPerformanceSnapshotData,
+  InvestmentAccountData,
+  InvestmentActivityData,
+  InvestmentHoldingData,
+  InvestmentPerformanceSnapshot,
+  UpdateInvestmentAccountData,
+  UpdateInvestmentActivityData,
+  UpdateInvestmentHoldingData,
+  UpdateInvestmentPerformanceSnapshotData,
+} from "@/types/investment";
 
-export type UpdateInvestmentPerformanceSnapshotData = Partial<
-  Omit<
-    InvestmentPerformanceSnapshot,
-    | "id"
-    | "dailyGain"
-    | "dailyGainPercentage"
-    | "createdAt"
-  >
->;
-
-export type CreateInvestmentAccountData = {
-  name: string;
-  institution?: string;
-  type: InvestmentAccountType;
-  linkedAccountId?: string;
-  currency?: string;
-  cashBalance?: number;
-  isIncludedInNetWorth?: boolean;
-  connectionStatus?: InvestmentConnectionStatus;
-  lastSyncedAt?: string;
-  notes?: string;
-};
-
-export type UpdateInvestmentAccountData = Partial<
-  Omit<
-    InvestmentAccountData,
-    "id" | "createdAt"
-  >
->;
-
-export type CreateInvestmentHoldingData = {
-  investmentAccountId: string;
-  symbol?: string;
-  name: string;
-  type: InvestmentHoldingType;
-  quantity: number;
-  averageCost: number;
-  currentPrice?: number;
-  annualDividendIncome?: number;
-  lastPriceUpdatedAt?: string;
-  notes?: string;
-};
-
-export type UpdateInvestmentHoldingData = Partial<
-  Omit<
-    InvestmentHoldingData,
-    | "id"
-    | "investmentAccountId"
-    | "marketValue"
-    | "costBasis"
-    | "unrealizedGain"
-    | "unrealizedGainPercentage"
-    | "createdAt"
-  >
->;
-
-export type CreateInvestmentActivityData = {
-  investmentAccountId: string;
-  holdingId?: string;
-  type: InvestmentActivityType;
-  date: string;
-  amount: number;
-  quantity?: number;
-  pricePerUnit?: number;
-  fees?: number;
-  description?: string;
-};
-
-export type UpdateInvestmentActivityData = Partial<
-  Omit<
-    InvestmentActivityData,
-    | "id"
-    | "investmentAccountId"
-    | "holdingId"
-    | "createdAt"
-  >
->;
+export type {
+  CreateInvestmentAccountData,
+  CreateInvestmentActivityData,
+  CreateInvestmentHoldingData,
+  CreateInvestmentPerformanceSnapshotData,
+  InvestmentAccountData,
+  InvestmentAccountType,
+  InvestmentActivityData,
+  InvestmentActivityType,
+  InvestmentConnectionStatus,
+  InvestmentHoldingData,
+  InvestmentHoldingType,
+  InvestmentPerformanceSnapshot,
+  UpdateInvestmentAccountData,
+  UpdateInvestmentActivityData,
+  UpdateInvestmentHoldingData,
+  UpdateInvestmentPerformanceSnapshotData,
+} from "@/types/investment";
 
 export type InvestmentAccountSummary = {
-  investmentAccountId: string;
-  cashBalance: number;
-  holdingsMarketValue: number;
-  totalMarketValue: number;
-  totalCostBasis: number;
-  unrealizedGain: number;
-  unrealizedGainPercentage: number;
-  annualDividendIncome: number;
-  holdingCount: number;
+  investmentAccountId:
+    string;
+
+  cashBalance:
+    number;
+
+  holdingsMarketValue:
+    number;
+
+  totalMarketValue:
+    number;
+
+  totalCostBasis:
+    number;
+
+  unrealizedGain:
+    number;
+
+  unrealizedGainPercentage:
+    number;
+
+  annualDividendIncome:
+    number;
+
+  holdingCount:
+    number;
 };
 
 type InvestmentsContextValue = {
@@ -233,125 +138,157 @@ type InvestmentsContextValue = {
   includedInvestmentAccounts:
     InvestmentAccountData[];
 
-  totalCashBalance: number;
-  totalHoldingsMarketValue: number;
-  totalInvestmentValue: number;
-  totalCostBasis: number;
-  totalUnrealizedGain: number;
-  totalUnrealizedGainPercentage: number;
-  totalAnnualDividendIncome: number;
+  totalCashBalance:
+    number;
+
+  totalHoldingsMarketValue:
+    number;
+
+  totalInvestmentValue:
+    number;
+
+  totalCostBasis:
+    number;
+
+  totalUnrealizedGain:
+    number;
+
+  totalUnrealizedGainPercentage:
+    number;
+
+  totalAnnualDividendIncome:
+    number;
 
   addInvestmentAccount: (
     input:
       CreateInvestmentAccountData,
-  ) => InvestmentAccountData;
+  ) => Promise<InvestmentAccountData>;
 
   updateInvestmentAccount: (
-    investmentAccountId: string,
+    investmentAccountId:
+      string,
     updates:
       UpdateInvestmentAccountData,
-  ) => void;
+  ) => Promise<InvestmentAccountData>;
 
   deleteInvestmentAccount: (
-    investmentAccountId: string,
-  ) => void;
+    investmentAccountId:
+      string,
+  ) => Promise<void>;
 
   getInvestmentAccountById: (
-    investmentAccountId: string,
+    investmentAccountId:
+      string,
   ) => InvestmentAccountData | null;
 
   setInvestmentAccountNetWorthInclusion: (
-    investmentAccountId: string,
-    included: boolean,
-  ) => void;
+    investmentAccountId:
+      string,
+    included:
+      boolean,
+  ) => Promise<InvestmentAccountData>;
 
   updateInvestmentAccountCashBalance: (
-    investmentAccountId: string,
-    cashBalance: number,
-  ) => void;
+    investmentAccountId:
+      string,
+    cashBalance:
+      number,
+  ) => Promise<InvestmentAccountData>;
 
   addHolding: (
     input:
       CreateInvestmentHoldingData,
-  ) => InvestmentHoldingData;
+  ) => Promise<InvestmentHoldingData>;
 
   updateHolding: (
-    holdingId: string,
+    holdingId:
+      string,
     updates:
       UpdateInvestmentHoldingData,
-  ) => void;
+  ) => Promise<InvestmentHoldingData>;
 
   deleteHolding: (
-    holdingId: string,
-  ) => void;
+    holdingId:
+      string,
+  ) => Promise<void>;
 
   getHoldingById: (
-    holdingId: string,
+    holdingId:
+      string,
   ) => InvestmentHoldingData | null;
 
   getHoldingsForAccount: (
-    investmentAccountId: string,
+    investmentAccountId:
+      string,
   ) => InvestmentHoldingData[];
 
   updateHoldingMarketPrice: (
-    holdingId: string,
-    currentPrice: number,
-    updatedAt?: string,
-  ) => void;
+    holdingId:
+      string,
+    currentPrice:
+      number,
+    updatedAt?:
+      string,
+  ) => Promise<InvestmentHoldingData>;
 
   addActivity: (
     input:
       CreateInvestmentActivityData,
-  ) => InvestmentActivityData;
+  ) => Promise<InvestmentActivityData>;
 
   updateActivity: (
-    activityId: string,
+    activityId:
+      string,
     updates:
       UpdateInvestmentActivityData,
-  ) => void;
+  ) => Promise<InvestmentActivityData>;
 
   deleteActivity: (
-    activityId: string,
-  ) => void;
+    activityId:
+      string,
+  ) => Promise<void>;
 
   getActivitiesForAccount: (
-    investmentAccountId: string,
+    investmentAccountId:
+      string,
   ) => InvestmentActivityData[];
 
   getActivitiesForHolding: (
-    holdingId: string,
+    holdingId:
+      string,
   ) => InvestmentActivityData[];
 
   addPerformanceSnapshot: (
     input:
       CreateInvestmentPerformanceSnapshotData,
-  ) => InvestmentPerformanceSnapshot;
+  ) => Promise<InvestmentPerformanceSnapshot>;
 
   updatePerformanceSnapshot: (
-    snapshotId: string,
+    snapshotId:
+      string,
     updates:
       UpdateInvestmentPerformanceSnapshotData,
-  ) => void;
+  ) => Promise<InvestmentPerformanceSnapshot>;
 
   deletePerformanceSnapshot: (
-    snapshotId: string,
-  ) => void;
+    snapshotId:
+      string,
+  ) => Promise<void>;
 
   getPerformanceSnapshotById: (
-    snapshotId: string,
+    snapshotId:
+      string,
   ) => InvestmentPerformanceSnapshot | null;
 
-  captureCurrentPerformanceSnapshot: (
-    date?: string,
-  ) => InvestmentPerformanceSnapshot;
-
   getAccountSummary: (
-    investmentAccountId: string,
+    investmentAccountId:
+      string,
   ) => InvestmentAccountSummary;
 };
 
 export type InvestmentsProviderProps = {
-  children: ReactNode;
+  children:
+    ReactNode;
 
   initialInvestmentAccounts?:
     InvestmentAccountData[];
@@ -366,32 +303,12 @@ export type InvestmentsProviderProps = {
     InvestmentPerformanceSnapshot[];
 };
 
-type StoredInvestmentsState = {
-  investmentAccounts:
-    InvestmentAccountData[];
-
-  holdings:
-    InvestmentHoldingData[];
-
-  activities:
-    InvestmentActivityData[];
-
-  investmentPerformanceHistory:
-    InvestmentPerformanceSnapshot[];
-};
-
-const INVESTMENTS_STORAGE_KEY =
-  "case-budget:investments:v3";
-
-const LEGACY_INVESTMENTS_STORAGE_KEYS = [
-  "case-budget:investments:v2",
-  "case-budget:investments:v1",
-];
-
 const InvestmentsContext =
   createContext<
     InvestmentsContextValue | undefined
-  >(undefined);
+  >(
+    undefined,
+  );
 
 export default function InvestmentsProvider({
   children,
@@ -403,57 +320,54 @@ export default function InvestmentsProvider({
   const [
     investmentAccounts,
     setInvestmentAccounts,
-  ] = useState<
-    InvestmentAccountData[]
-  >(
-    () =>
-      normalizeInvestmentAccounts(
-        initialInvestmentAccounts,
-      ),
-  );
+  ] =
+    useState<
+      InvestmentAccountData[]
+    >(
+      initialInvestmentAccounts,
+    );
 
   const [
     holdings,
     setHoldings,
-  ] = useState<
-    InvestmentHoldingData[]
-  >(
-    () =>
-      normalizeHoldings(
-        initialHoldings,
-      ),
-  );
+  ] =
+    useState<
+      InvestmentHoldingData[]
+    >(
+      initialHoldings,
+    );
 
   const [
     activities,
     setActivities,
-  ] = useState<
-    InvestmentActivityData[]
-  >(
-    () =>
-      normalizeActivities(
-        initialActivities,
-      ),
-  );
+  ] =
+    useState<
+      InvestmentActivityData[]
+    >(
+      () =>
+        sortActivities(
+          initialActivities,
+        ),
+    );
 
+  /*
+   * Performance history is canonical server-backed state.
+   *
+   * Mutations always complete through authenticated server actions first.
+   * Local React state is reconciled only after the database mutation succeeds.
+   */
   const [
     investmentPerformanceHistory,
     setInvestmentPerformanceHistory,
-  ] = useState<
-    InvestmentPerformanceSnapshot[]
-  >(
-    () =>
-      normalizePerformanceHistory(
-        initialPerformanceHistory,
-      ),
-  );
-
-  const [
-    hasHydratedStorage,
-    setHasHydratedStorage,
-  ] = useState(
-    false,
-  );
+  ] =
+    useState<
+      InvestmentPerformanceSnapshot[]
+    >(
+      () =>
+        sortPerformanceSnapshots(
+          initialPerformanceHistory,
+        ),
+    );
 
   const investmentAccountsRef =
     useRef(
@@ -511,84 +425,6 @@ export default function InvestmentsProvider({
         investmentPerformanceHistory;
     },
     [
-      investmentPerformanceHistory,
-    ],
-  );
-
-  useEffect(
-    () => {
-      const storedState =
-        loadStoredInvestmentsState();
-
-      if (
-        storedState
-      ) {
-        setInvestmentAccounts(
-          storedState.investmentAccounts,
-        );
-
-        setHoldings(
-          storedState.holdings,
-        );
-
-        setActivities(
-          storedState.activities,
-        );
-
-        setInvestmentPerformanceHistory(
-          storedState.investmentPerformanceHistory,
-        );
-      }
-
-      setHasHydratedStorage(
-        true,
-      );
-    },
-    [],
-  );
-
-  useEffect(
-    () => {
-      if (
-        !hasHydratedStorage
-      ) {
-        return;
-      }
-
-      const storedState:
-        StoredInvestmentsState = {
-          investmentAccounts,
-          holdings,
-          activities,
-          investmentPerformanceHistory,
-        };
-
-      try {
-        window.localStorage.setItem(
-          INVESTMENTS_STORAGE_KEY,
-          JSON.stringify(
-            storedState,
-          ),
-        );
-
-        LEGACY_INVESTMENTS_STORAGE_KEYS.forEach(
-          (
-            storageKey,
-          ) => {
-            window.localStorage.removeItem(
-              storageKey,
-            );
-          },
-        );
-      } catch {
-        // Local storage may be unavailable or full.
-      }
-    },
-    [
-      activities,
-      hasHydratedStorage,
-      holdings,
-      investmentAccounts,
       investmentPerformanceHistory,
     ],
   );
@@ -760,213 +596,107 @@ export default function InvestmentsProvider({
 
   const addInvestmentAccount =
     useCallback(
-      (
+      async (
         input:
           CreateInvestmentAccountData,
       ) => {
-        const timestamp =
-          new Date().toISOString();
+        const result =
+          await createInvestmentAccountAction(
+            input,
+          );
 
-        const preferredId =
-          createInvestmentAccountId();
+        if (
+          !result.success ||
+          !result.account
+        ) {
+          throw new Error(
+            result.error?.message ??
+              "CASE Budget could not create the investment account.",
+          );
+        }
 
-        const newAccount:
-          InvestmentAccountData = {
-            id:
-              preferredId,
-
-            name:
-              input.name.trim(),
-
-            institution:
-              normalizeOptionalText(
-                input.institution,
-              ),
-
-            type:
-              input.type,
-
-            linkedAccountId:
-              normalizeOptionalText(
-                input.linkedAccountId,
-              ),
-
-            currency:
-              normalizeCurrencyCode(
-                input.currency,
-              ),
-
-            cashBalance:
-              normalizeCurrency(
-                Math.max(
-                  0,
-                  input.cashBalance ??
-                    0,
-                ),
-              ),
-
-            isIncludedInNetWorth:
-              input.isIncludedInNetWorth ??
-              true,
-
-            connectionStatus:
-              input.connectionStatus ??
-              "manual",
-
-            lastSyncedAt:
-              normalizeOptionalText(
-                input.lastSyncedAt,
-              ),
-
-            notes:
-              normalizeOptionalText(
-                input.notes,
-              ),
-
-            createdAt:
-              timestamp,
-
-            updatedAt:
-              timestamp,
-          };
+        const account =
+          result.account;
 
         setInvestmentAccounts(
           (
             currentAccounts,
-          ) => {
-            const storedAccount = {
-              ...newAccount,
-
-              id:
-                currentAccounts.some(
-                  (
-                    account,
-                  ) =>
-                    account.id ===
-                    preferredId,
-                )
-                  ? createUniqueInvestmentAccountId(
-                      currentAccounts,
-                    )
-                  : preferredId,
-            };
-
-            return [
-              storedAccount,
-              ...currentAccounts,
-            ];
-          },
+          ) =>
+            upsertById(
+              currentAccounts,
+              account,
+              true,
+            ),
         );
 
-        return newAccount;
+        return account;
       },
       [],
     );
 
   const updateInvestmentAccount =
     useCallback(
-      (
+      async (
         investmentAccountId:
           string,
         updates:
           UpdateInvestmentAccountData,
       ) => {
+        const result =
+          await updateInvestmentAccountAction({
+            investmentAccountId,
+            updates,
+          });
+
+        if (
+          !result.success ||
+          !result.account
+        ) {
+          throw new Error(
+            result.error?.message ??
+              "CASE Budget could not update the investment account.",
+          );
+        }
+
+        const account =
+          result.account;
+
         setInvestmentAccounts(
           (
             currentAccounts,
           ) =>
-            currentAccounts.map(
-              (
-                account,
-              ) => {
-                if (
-                  account.id !==
-                  investmentAccountId
-                ) {
-                  return account;
-                }
-
-                return {
-                  ...account,
-                  ...updates,
-
-                  id:
-                    account.id,
-
-                  name:
-                    updates.name?.trim() ||
-                    account.name,
-
-                  institution:
-                    updates.institution ===
-                    undefined
-                      ? account.institution
-                      : normalizeOptionalText(
-                          updates.institution,
-                        ),
-
-                  linkedAccountId:
-                    updates.linkedAccountId ===
-                    undefined
-                      ? account.linkedAccountId
-                      : normalizeOptionalText(
-                          updates.linkedAccountId,
-                        ),
-
-                  currency:
-                    updates.currency ===
-                    undefined
-                      ? account.currency
-                      : normalizeCurrencyCode(
-                          updates.currency,
-                        ),
-
-                  cashBalance:
-                    updates.cashBalance ===
-                    undefined
-                      ? account.cashBalance
-                      : normalizeCurrency(
-                          Math.max(
-                            0,
-                            updates.cashBalance,
-                          ),
-                        ),
-
-                  lastSyncedAt:
-                    updates.lastSyncedAt ===
-                    undefined
-                      ? account.lastSyncedAt
-                      : normalizeOptionalText(
-                          updates.lastSyncedAt,
-                        ),
-
-                  notes:
-                    updates.notes ===
-                    undefined
-                      ? account.notes
-                      : normalizeOptionalText(
-                          updates.notes,
-                        ),
-
-                  createdAt:
-                    account.createdAt,
-
-                  updatedAt:
-                    new Date().toISOString(),
-                };
-              },
+            upsertById(
+              currentAccounts,
+              account,
+              false,
             ),
         );
+
+        return account;
       },
       [],
     );
 
   const deleteInvestmentAccount =
     useCallback(
-      (
+      async (
         investmentAccountId:
           string,
       ) => {
+        const result =
+          await deleteInvestmentAccountAction({
+            investmentAccountId,
+          });
+
+        if (
+          !result.success
+        ) {
+          throw new Error(
+            result.error?.message ??
+              "CASE Budget could not delete the investment account.",
+          );
+        }
+
         setInvestmentAccounts(
           (
             currentAccounts,
@@ -1028,20 +758,19 @@ export default function InvestmentsProvider({
 
   const setInvestmentAccountNetWorthInclusion =
     useCallback(
-      (
+      async (
         investmentAccountId:
           string,
         included:
           boolean,
-      ) => {
+      ) =>
         updateInvestmentAccount(
           investmentAccountId,
           {
             isIncludedInNetWorth:
               included,
           },
-        );
-      },
+        ),
       [
         updateInvestmentAccount,
       ],
@@ -1049,25 +778,18 @@ export default function InvestmentsProvider({
 
   const updateInvestmentAccountCashBalance =
     useCallback(
-      (
+      async (
         investmentAccountId:
           string,
         cashBalance:
           number,
-      ) => {
+      ) =>
         updateInvestmentAccount(
           investmentAccountId,
           {
-            cashBalance:
-              normalizeCurrency(
-                Math.max(
-                  0,
-                  cashBalance,
-                ),
-              ),
+            cashBalance,
           },
-        );
-      },
+        ),
       [
         updateInvestmentAccount,
       ],
@@ -1075,244 +797,107 @@ export default function InvestmentsProvider({
 
   const addHolding =
     useCallback(
-      (
+      async (
         input:
           CreateInvestmentHoldingData,
       ) => {
+        const result =
+          await createHoldingAction(
+            input,
+          );
+
         if (
-          !investmentAccountsRef.current.some(
-            (
-              account,
-            ) =>
-              account.id ===
-              input.investmentAccountId,
-          )
+          !result.success ||
+          !result.holding
         ) {
           throw new Error(
-            "The selected investment account does not exist.",
+            result.error?.message ??
+              "CASE Budget could not create the investment holding.",
           );
         }
 
-        const timestamp =
-          new Date().toISOString();
-
-        const preferredId =
-          createHoldingId();
-
-        const newHolding =
-          buildHolding({
-            id:
-              preferredId,
-
-            investmentAccountId:
-              input.investmentAccountId,
-
-            symbol:
-              normalizeOptionalSymbol(
-                input.symbol,
-              ),
-
-            name:
-              input.name.trim(),
-
-            type:
-              input.type,
-
-            quantity:
-              normalizeQuantity(
-                input.quantity,
-              ),
-
-            averageCost:
-              normalizeCurrency(
-                Math.max(
-                  0,
-                  input.averageCost,
-                ),
-              ),
-
-            currentPrice:
-              normalizeCurrency(
-                Math.max(
-                  0,
-                  input.currentPrice ??
-                    input.averageCost,
-                ),
-              ),
-
-            annualDividendIncome:
-              normalizeOptionalCurrency(
-                input.annualDividendIncome,
-              ),
-
-            lastPriceUpdatedAt:
-              normalizeOptionalText(
-                input.lastPriceUpdatedAt,
-              ),
-
-            notes:
-              normalizeOptionalText(
-                input.notes,
-              ),
-
-            createdAt:
-              timestamp,
-
-            updatedAt:
-              timestamp,
-          });
+        const holding =
+          result.holding;
 
         setHoldings(
           (
             currentHoldings,
-          ) => {
-            const storedHolding = {
-              ...newHolding,
-
-              id:
-                currentHoldings.some(
-                  (
-                    holding,
-                  ) =>
-                    holding.id ===
-                    preferredId,
-                )
-                  ? createUniqueHoldingId(
-                      currentHoldings,
-                    )
-                  : preferredId,
-            };
-
-            return [
-              storedHolding,
-              ...currentHoldings,
-            ];
-          },
+          ) =>
+            upsertById(
+              currentHoldings,
+              holding,
+              true,
+            ),
         );
 
-        return newHolding;
+        return holding;
       },
       [],
     );
 
   const updateHolding =
     useCallback(
-      (
+      async (
         holdingId:
           string,
         updates:
           UpdateInvestmentHoldingData,
       ) => {
+        const result =
+          await updateHoldingAction({
+            holdingId,
+            updates,
+          });
+
+        if (
+          !result.success ||
+          !result.holding
+        ) {
+          throw new Error(
+            result.error?.message ??
+              "CASE Budget could not update the investment holding.",
+          );
+        }
+
+        const holding =
+          result.holding;
+
         setHoldings(
           (
             currentHoldings,
           ) =>
-            currentHoldings.map(
-              (
-                holding,
-              ) => {
-                if (
-                  holding.id !==
-                  holdingId
-                ) {
-                  return holding;
-                }
-
-                return buildHolding({
-                  ...holding,
-                  ...updates,
-
-                  id:
-                    holding.id,
-
-                  investmentAccountId:
-                    holding.investmentAccountId,
-
-                  symbol:
-                    updates.symbol ===
-                    undefined
-                      ? holding.symbol
-                      : normalizeOptionalSymbol(
-                          updates.symbol,
-                        ),
-
-                  name:
-                    updates.name?.trim() ||
-                    holding.name,
-
-                  quantity:
-                    updates.quantity ===
-                    undefined
-                      ? holding.quantity
-                      : normalizeQuantity(
-                          updates.quantity,
-                        ),
-
-                  averageCost:
-                    updates.averageCost ===
-                    undefined
-                      ? holding.averageCost
-                      : normalizeCurrency(
-                          Math.max(
-                            0,
-                            updates.averageCost,
-                          ),
-                        ),
-
-                  currentPrice:
-                    updates.currentPrice ===
-                    undefined
-                      ? holding.currentPrice
-                      : normalizeCurrency(
-                          Math.max(
-                            0,
-                            updates.currentPrice,
-                          ),
-                        ),
-
-                  annualDividendIncome:
-                    updates.annualDividendIncome ===
-                    undefined
-                      ? holding.annualDividendIncome
-                      : normalizeOptionalCurrency(
-                          updates.annualDividendIncome,
-                        ),
-
-                  lastPriceUpdatedAt:
-                    updates.lastPriceUpdatedAt ===
-                    undefined
-                      ? holding.lastPriceUpdatedAt
-                      : normalizeOptionalText(
-                          updates.lastPriceUpdatedAt,
-                        ),
-
-                  notes:
-                    updates.notes ===
-                    undefined
-                      ? holding.notes
-                      : normalizeOptionalText(
-                          updates.notes,
-                        ),
-
-                  createdAt:
-                    holding.createdAt,
-
-                  updatedAt:
-                    new Date().toISOString(),
-                });
-              },
+            upsertById(
+              currentHoldings,
+              holding,
+              false,
             ),
         );
+
+        return holding;
       },
       [],
     );
 
   const deleteHolding =
     useCallback(
-      (
+      async (
         holdingId:
           string,
       ) => {
+        const result =
+          await deleteHoldingAction({
+            holdingId,
+          });
+
+        if (
+          !result.success
+        ) {
+          throw new Error(
+            result.error?.message ??
+              "CASE Budget could not delete the investment holding.",
+          );
+        }
+
         setHoldings(
           (
             currentHoldings,
@@ -1326,26 +911,11 @@ export default function InvestmentsProvider({
             ),
         );
 
-        setActivities(
-          (
-            currentActivities,
-          ) =>
-            currentActivities.map(
-              (
-                activity,
-              ) =>
-                activity.holdingId ===
-                holdingId
-                  ? {
-                      ...activity,
-                      holdingId:
-                        undefined,
-                      updatedAt:
-                        new Date().toISOString(),
-                    }
-                  : activity,
-            ),
-        );
+        /*
+         * The database foreign-key behavior is canonical. We do not mutate
+         * surviving activity records locally to invent a holding relationship.
+         * Server-provided props will reconcile on the next server refresh.
+         */
       },
       [],
     );
@@ -1385,30 +955,22 @@ export default function InvestmentsProvider({
 
   const updateHoldingMarketPrice =
     useCallback(
-      (
+      async (
         holdingId:
           string,
         currentPrice:
           number,
         updatedAt =
           new Date().toISOString(),
-      ) => {
+      ) =>
         updateHolding(
           holdingId,
           {
-            currentPrice:
-              normalizeCurrency(
-                Math.max(
-                  0,
-                  currentPrice,
-                ),
-              ),
-
+            currentPrice,
             lastPriceUpdatedAt:
               updatedAt,
           },
-        );
-      },
+        ),
       [
         updateHolding,
       ],
@@ -1416,230 +978,111 @@ export default function InvestmentsProvider({
 
   const addActivity =
     useCallback(
-      (
+      async (
         input:
           CreateInvestmentActivityData,
       ) => {
+        const result =
+          await createActivityAction(
+            input,
+          );
+
         if (
-          !investmentAccountsRef.current.some(
-            (
-              account,
-            ) =>
-              account.id ===
-              input.investmentAccountId,
-          )
+          !result.success ||
+          !result.activity
         ) {
           throw new Error(
-            "The selected investment account does not exist.",
+            result.error?.message ??
+              "CASE Budget could not create the investment activity.",
           );
         }
 
-        if (
-          input.holdingId &&
-          !holdingsRef.current.some(
-            (
-              holding,
-            ) =>
-              holding.id ===
-                input.holdingId &&
-              holding.investmentAccountId ===
-                input.investmentAccountId,
-          )
-        ) {
-          throw new Error(
-            "The selected holding does not belong to this investment account.",
-          );
-        }
-
-        const timestamp =
-          new Date().toISOString();
-
-        const preferredId =
-          createActivityId();
-
-        const newActivity:
-          InvestmentActivityData = {
-            id:
-              preferredId,
-
-            investmentAccountId:
-              input.investmentAccountId,
-
-            holdingId:
-              input.holdingId,
-
-            type:
-              input.type,
-
-            date:
-              input.date,
-
-            amount:
-              normalizeCurrency(
-                Math.abs(
-                  input.amount,
-                ),
-              ),
-
-            quantity:
-              normalizeOptionalQuantity(
-                input.quantity,
-              ),
-
-            pricePerUnit:
-              normalizeOptionalCurrency(
-                input.pricePerUnit,
-              ),
-
-            fees:
-              normalizeOptionalCurrency(
-                input.fees,
-              ),
-
-            description:
-              normalizeOptionalText(
-                input.description,
-              ),
-
-            createdAt:
-              timestamp,
-
-            updatedAt:
-              timestamp,
-          };
+        const activity =
+          result.activity;
 
         setActivities(
           (
             currentActivities,
-          ) => {
-            const storedActivity = {
-              ...newActivity,
-
-              id:
-                currentActivities.some(
-                  (
-                    activity,
-                  ) =>
-                    activity.id ===
-                    preferredId,
-                )
-                  ? createUniqueActivityId(
-                      currentActivities,
-                    )
-                  : preferredId,
-            };
-
-            return sortActivities([
-              storedActivity,
-              ...currentActivities,
-            ]);
-          },
+          ) =>
+            sortActivities(
+              upsertById(
+                currentActivities,
+                activity,
+                true,
+              ),
+            ),
         );
 
-        return newActivity;
+        return activity;
       },
       [],
     );
 
   const updateActivity =
     useCallback(
-      (
+      async (
         activityId:
           string,
         updates:
           UpdateInvestmentActivityData,
       ) => {
+        const result =
+          await updateActivityAction({
+            activityId,
+            updates,
+          });
+
+        if (
+          !result.success ||
+          !result.activity
+        ) {
+          throw new Error(
+            result.error?.message ??
+              "CASE Budget could not update the investment activity.",
+          );
+        }
+
+        const activity =
+          result.activity;
+
         setActivities(
           (
             currentActivities,
           ) =>
             sortActivities(
-              currentActivities.map(
-                (
-                  activity,
-                ) => {
-                  if (
-                    activity.id !==
-                    activityId
-                  ) {
-                    return activity;
-                  }
-
-                  return {
-                    ...activity,
-                    ...updates,
-
-                    id:
-                      activity.id,
-
-                    investmentAccountId:
-                      activity.investmentAccountId,
-
-                    holdingId:
-                      activity.holdingId,
-
-                    amount:
-                      updates.amount ===
-                      undefined
-                        ? activity.amount
-                        : normalizeCurrency(
-                            Math.abs(
-                              updates.amount,
-                            ),
-                          ),
-
-                    quantity:
-                      updates.quantity ===
-                      undefined
-                        ? activity.quantity
-                        : normalizeOptionalQuantity(
-                            updates.quantity,
-                          ),
-
-                    pricePerUnit:
-                      updates.pricePerUnit ===
-                      undefined
-                        ? activity.pricePerUnit
-                        : normalizeOptionalCurrency(
-                            updates.pricePerUnit,
-                          ),
-
-                    fees:
-                      updates.fees ===
-                      undefined
-                        ? activity.fees
-                        : normalizeOptionalCurrency(
-                            updates.fees,
-                          ),
-
-                    description:
-                      updates.description ===
-                      undefined
-                        ? activity.description
-                        : normalizeOptionalText(
-                            updates.description,
-                          ),
-
-                    createdAt:
-                      activity.createdAt,
-
-                    updatedAt:
-                      new Date().toISOString(),
-                  };
-                },
+              upsertById(
+                currentActivities,
+                activity,
+                false,
               ),
             ),
         );
+
+        return activity;
       },
       [],
     );
 
   const deleteActivity =
     useCallback(
-      (
+      async (
         activityId:
           string,
       ) => {
+        const result =
+          await deleteActivityAction({
+            activityId,
+          });
+
+        if (
+          !result.success
+        ) {
+          throw new Error(
+            result.error?.message ??
+              "CASE Budget could not delete the investment activity.",
+          );
+        }
+
         setActivities(
           (
             currentActivities,
@@ -1690,228 +1133,110 @@ export default function InvestmentsProvider({
 
   const addPerformanceSnapshot =
     useCallback(
-      (
+      async (
         input:
           CreateInvestmentPerformanceSnapshotData,
       ) => {
-        const timestamp =
-          new Date().toISOString();
-
-        const normalizedDate =
-          normalizeDateKey(
-            input.date,
+        const result =
+          await createInvestmentPerformanceSnapshotAction(
+            input,
           );
 
-        const preferredId =
-          createPerformanceSnapshotId();
+        if (
+          !result.success ||
+          !result.snapshot
+        ) {
+          throw new Error(
+            result.error?.message ??
+              "CASE Budget could not save the investment performance snapshot.",
+          );
+        }
 
-        const candidate:
-          InvestmentPerformanceSnapshot = {
-            id:
-              preferredId,
-
-            date:
-              normalizedDate,
-
-            portfolioValue:
-              normalizeCurrency(
-                Math.max(
-                  0,
-                  input.portfolioValue,
-                ),
-              ),
-
-            costBasis:
-              normalizeCurrency(
-                Math.max(
-                  0,
-                  input.costBasis,
-                ),
-              ),
-
-            cashValue:
-              normalizeCurrency(
-                Math.max(
-                  0,
-                  input.cashValue,
-                ),
-              ),
-
-            dailyGain:
-              0,
-
-            dailyGainPercentage:
-              0,
-
-            createdAt:
-              timestamp,
-
-            updatedAt:
-              timestamp,
-          };
-
-        let storedSnapshot =
-          candidate;
+        const snapshot =
+          result.snapshot;
 
         setInvestmentPerformanceHistory(
           (
             currentHistory,
-          ) => {
-            const existingSnapshot =
-              currentHistory.find(
-                (
-                  snapshot,
-                ) =>
-                  snapshot.date ===
-                  normalizedDate,
-              );
-
-            if (
-              existingSnapshot
-            ) {
-              storedSnapshot = {
-                ...candidate,
-
-                id:
-                  existingSnapshot.id,
-
-                createdAt:
-                  existingSnapshot.createdAt,
-              };
-
-              return recalculatePerformanceHistory([
-                ...currentHistory.filter(
-                  (
-                    snapshot,
-                  ) =>
-                    snapshot.id !==
-                    existingSnapshot.id,
-                ),
-                storedSnapshot,
-              ]);
-            }
-
-            storedSnapshot = {
-              ...candidate,
-
-              id:
-                currentHistory.some(
-                  (
-                    snapshot,
-                  ) =>
-                    snapshot.id ===
-                    preferredId,
-                )
-                  ? createUniquePerformanceSnapshotId(
-                      currentHistory,
-                    )
-                  : preferredId,
-            };
-
-            return recalculatePerformanceHistory([
-              ...currentHistory,
-              storedSnapshot,
-            ]);
-          },
+          ) =>
+            sortPerformanceSnapshots(
+              upsertPerformanceSnapshot(
+                currentHistory,
+                snapshot,
+              ),
+            ),
         );
 
-        return storedSnapshot;
+        return snapshot;
       },
       [],
     );
 
   const updatePerformanceSnapshot =
     useCallback(
-      (
+      async (
         snapshotId:
           string,
         updates:
           UpdateInvestmentPerformanceSnapshotData,
       ) => {
+        const result =
+          await updateInvestmentPerformanceSnapshotAction({
+            snapshotId,
+            updates,
+          });
+
+        if (
+          !result.success ||
+          !result.snapshot
+        ) {
+          throw new Error(
+            result.error?.message ??
+              "CASE Budget could not update the investment performance snapshot.",
+          );
+        }
+
+        const snapshot =
+          result.snapshot;
+
         setInvestmentPerformanceHistory(
           (
             currentHistory,
           ) =>
-            recalculatePerformanceHistory(
-              currentHistory.map(
-                (
-                  snapshot,
-                ) => {
-                  if (
-                    snapshot.id !==
-                    snapshotId
-                  ) {
-                    return snapshot;
-                  }
-
-                  return {
-                    ...snapshot,
-                    ...updates,
-
-                    id:
-                      snapshot.id,
-
-                    date:
-                      updates.date ===
-                      undefined
-                        ? snapshot.date
-                        : normalizeDateKey(
-                            updates.date,
-                          ),
-
-                    portfolioValue:
-                      updates.portfolioValue ===
-                      undefined
-                        ? snapshot.portfolioValue
-                        : normalizeCurrency(
-                            Math.max(
-                              0,
-                              updates.portfolioValue,
-                            ),
-                          ),
-
-                    costBasis:
-                      updates.costBasis ===
-                      undefined
-                        ? snapshot.costBasis
-                        : normalizeCurrency(
-                            Math.max(
-                              0,
-                              updates.costBasis,
-                            ),
-                          ),
-
-                    cashValue:
-                      updates.cashValue ===
-                      undefined
-                        ? snapshot.cashValue
-                        : normalizeCurrency(
-                            Math.max(
-                              0,
-                              updates.cashValue,
-                            ),
-                          ),
-
-                    createdAt:
-                      snapshot.createdAt,
-
-                    updatedAt:
-                      new Date().toISOString(),
-                  };
-                },
+            sortPerformanceSnapshots(
+              upsertById(
+                currentHistory,
+                snapshot,
+                false,
               ),
             ),
         );
+
+        return snapshot;
       },
       [],
     );
 
   const deletePerformanceSnapshot =
     useCallback(
-      (
+      async (
         snapshotId:
           string,
       ) => {
+        const result =
+          await deleteInvestmentPerformanceSnapshotAction({
+            snapshotId,
+          });
+
+        if (
+          !result.success
+        ) {
+          throw new Error(
+            result.error?.message ??
+              "CASE Budget could not delete the investment performance snapshot.",
+          );
+        }
+
         setInvestmentPerformanceHistory(
           (
             currentHistory,
@@ -1946,168 +1271,6 @@ export default function InvestmentsProvider({
         null,
       [],
     );
-
-  const captureCurrentPerformanceSnapshot =
-    useCallback(
-      (
-        date =
-          getTodayDateKey(),
-      ) => {
-        const includedAccounts =
-          investmentAccountsRef.current.filter(
-            (
-              account,
-            ) =>
-              account.isIncludedInNetWorth,
-          );
-
-        const includedIds =
-          new Set(
-            includedAccounts.map(
-              (
-                account,
-              ) =>
-                account.id,
-            ),
-          );
-
-        const includedCurrentHoldings =
-          holdingsRef.current.filter(
-            (
-              holding,
-            ) =>
-              includedIds.has(
-                holding.investmentAccountId,
-              ),
-          );
-
-        const cashValue =
-          normalizeCurrency(
-            includedAccounts.reduce(
-              (
-                total,
-                account,
-              ) =>
-                total +
-                account.cashBalance,
-              0,
-            ),
-          );
-
-        const holdingsValue =
-          normalizeCurrency(
-            includedCurrentHoldings.reduce(
-              (
-                total,
-                holding,
-              ) =>
-                total +
-                holding.marketValue,
-              0,
-            ),
-          );
-
-        const costBasis =
-          normalizeCurrency(
-            includedCurrentHoldings.reduce(
-              (
-                total,
-                holding,
-              ) =>
-                total +
-                holding.costBasis,
-              0,
-            ),
-          );
-
-        const timestamp =
-          new Date().toISOString();
-
-        const normalizedDate =
-          normalizeDateKey(
-            date,
-          );
-
-        const existingSnapshot =
-          investmentPerformanceHistoryRef.current.find(
-            (
-              snapshot,
-            ) =>
-              snapshot.date ===
-              normalizedDate,
-          );
-
-        const snapshot:
-          InvestmentPerformanceSnapshot = {
-            id:
-              existingSnapshot?.id ??
-              createPerformanceSnapshotId(),
-
-            date:
-              normalizedDate,
-
-            portfolioValue:
-              normalizeCurrency(
-                cashValue +
-                holdingsValue,
-              ),
-
-            costBasis,
-
-            cashValue,
-
-            dailyGain:
-              0,
-
-            dailyGainPercentage:
-              0,
-
-            createdAt:
-              existingSnapshot?.createdAt ??
-              timestamp,
-
-            updatedAt:
-              timestamp,
-          };
-
-        setInvestmentPerformanceHistory(
-          (
-            currentHistory,
-          ) =>
-            recalculatePerformanceHistory([
-              ...currentHistory.filter(
-                (
-                  currentSnapshot,
-                ) =>
-                  currentSnapshot.date !==
-                  normalizedDate,
-              ),
-              snapshot,
-            ]),
-        );
-
-        return snapshot;
-      },
-      [],
-    );
-
-  useEffect(
-    () => {
-      if (
-        !hasHydratedStorage
-      ) {
-        return;
-      }
-
-      captureCurrentPerformanceSnapshot();
-    },
-    [
-      captureCurrentPerformanceSnapshot,
-      hasHydratedStorage,
-      holdings,
-      investmentAccounts,
-    ],
-  );
 
   const getAccountSummary =
     useCallback(
@@ -2260,7 +1423,6 @@ export default function InvestmentsProvider({
         updatePerformanceSnapshot,
         deletePerformanceSnapshot,
         getPerformanceSnapshotById,
-        captureCurrentPerformanceSnapshot,
 
         getAccountSummary,
       }),
@@ -2268,9 +1430,8 @@ export default function InvestmentsProvider({
         activities,
         addActivity,
         addHolding,
-        addInvestmentAccount,
         addPerformanceSnapshot,
-        captureCurrentPerformanceSnapshot,
+        addInvestmentAccount,
         deleteActivity,
         deleteHolding,
         deleteInvestmentAccount,
@@ -2331,849 +1492,51 @@ export function useInvestments() {
   return context;
 }
 
-function buildHolding(
-  input:
-    Omit<
-      InvestmentHoldingData,
-      | "marketValue"
-      | "costBasis"
-      | "unrealizedGain"
-      | "unrealizedGainPercentage"
-    >,
-): InvestmentHoldingData {
-  const quantity =
-    normalizeQuantity(
-      input.quantity,
-    );
-
-  const averageCost =
-    normalizeCurrency(
-      Math.max(
-        0,
-        input.averageCost,
-      ),
-    );
-
-  const currentPrice =
-    normalizeCurrency(
-      Math.max(
-        0,
-        input.currentPrice,
-      ),
-    );
-
-  const marketValue =
-    normalizeCurrency(
-      quantity *
-      currentPrice,
-    );
-
-  const costBasis =
-    normalizeCurrency(
-      quantity *
-      averageCost,
-    );
-
-  const unrealizedGain =
-    normalizeCurrency(
-      marketValue -
-      costBasis,
-    );
-
-  return {
-    ...input,
-    quantity,
-    averageCost,
-    currentPrice,
-    marketValue,
-    costBasis,
-    unrealizedGain,
-
-    unrealizedGainPercentage:
-      calculatePercentage(
-        unrealizedGain,
-        costBasis,
-      ),
-  };
-}
-
-function loadStoredInvestmentsState():
-  StoredInvestmentsState | null {
-  if (
-    typeof window ===
-    "undefined"
-  ) {
-    return null;
-  }
-
-  const currentState =
-    readStoredInvestmentsState(
-      INVESTMENTS_STORAGE_KEY,
-    );
-
-  if (
-    currentState
-  ) {
-    return currentState;
-  }
-
-  for (
-    const legacyStorageKey of
-    LEGACY_INVESTMENTS_STORAGE_KEYS
-  ) {
-    const legacyState =
-      readStoredInvestmentsState(
-        legacyStorageKey,
-      );
-
-    if (
-      !legacyState
-    ) {
-      continue;
-    }
-
-    try {
-      window.localStorage.setItem(
-        INVESTMENTS_STORAGE_KEY,
-        JSON.stringify(
-          legacyState,
-        ),
-      );
-
-      LEGACY_INVESTMENTS_STORAGE_KEYS.forEach(
-        (
-          storageKey,
-        ) => {
-          window.localStorage.removeItem(
-            storageKey,
-          );
-        },
-      );
-    } catch {
-      // Local storage may be unavailable or full.
-    }
-
-    return legacyState;
-  }
-
-  return null;
-}
-
-function readStoredInvestmentsState(
-  storageKey:
-    string,
-):
-  StoredInvestmentsState | null {
-  try {
-    const rawValue =
-      window.localStorage.getItem(
-        storageKey,
-      );
-
-    if (
-      !rawValue
-    ) {
-      return null;
-    }
-
-    const parsedValue:
-      unknown =
-      JSON.parse(
-        rawValue,
-      );
-
-    if (
-      !isStoredInvestmentsState(
-        parsedValue,
-      )
-    ) {
-      window.localStorage.removeItem(
-        storageKey,
-      );
-
-      return null;
-    }
-
-    const investmentAccounts =
-      normalizeInvestmentAccounts(
-        parsedValue.investmentAccounts,
-      );
-
-    const accountIds =
-      new Set(
-        investmentAccounts.map(
-          (
-            account,
-          ) =>
-            account.id,
-        ),
-      );
-
-    const holdings =
-      normalizeHoldings(
-        parsedValue.holdings,
-      ).filter(
-        (
-          holding,
-        ) =>
-          accountIds.has(
-            holding.investmentAccountId,
-          ),
-      );
-
-    const holdingIds =
-      new Set(
-        holdings.map(
-          (
-            holding,
-          ) =>
-            holding.id,
-        ),
-      );
-
-    const activities =
-      normalizeActivities(
-        parsedValue.activities,
-      )
-        .filter(
-          (
-            activity,
-          ) =>
-            accountIds.has(
-              activity.investmentAccountId,
-            ),
-        )
-        .map(
-          (
-            activity,
-          ) =>
-            activity.holdingId &&
-            !holdingIds.has(
-              activity.holdingId,
-            )
-              ? {
-                  ...activity,
-                  holdingId:
-                    undefined,
-                }
-              : activity,
-        );
-
-    const investmentPerformanceHistory =
-      normalizePerformanceHistory(
-        parsedValue.investmentPerformanceHistory ??
-        [],
-      );
-
-    return {
-      investmentAccounts,
-      holdings,
-      activities,
-      investmentPerformanceHistory,
-    };
-  } catch {
-    return null;
-  }
-}
-
-function isStoredInvestmentsState(
-  value:
-    unknown,
-): value is StoredInvestmentsState {
-  if (
-    !value ||
-    typeof value !==
-      "object" ||
-    Array.isArray(
-      value,
-    )
-  ) {
-    return false;
-  }
-
-  const candidate =
-    value as Partial<
-      StoredInvestmentsState
-    >;
-
-  return (
-    Array.isArray(
-      candidate.investmentAccounts,
-    ) &&
-    candidate.investmentAccounts.every(
-      isInvestmentAccountData,
-    ) &&
-    Array.isArray(
-      candidate.holdings,
-    ) &&
-    candidate.holdings.every(
-      isInvestmentHoldingData,
-    ) &&
-    Array.isArray(
-      candidate.activities,
-    ) &&
-    candidate.activities.every(
-      isInvestmentActivityData,
-    ) &&
-    (
-      candidate.investmentPerformanceHistory ===
-      undefined ||
-      (
-        Array.isArray(
-          candidate.investmentPerformanceHistory,
-        ) &&
-        candidate.investmentPerformanceHistory.every(
-          isInvestmentPerformanceSnapshot,
-        )
-      )
-    )
-  );
-}
-
-function isInvestmentAccountData(
-  value:
-    unknown,
-): value is InvestmentAccountData {
-  if (
-    !value ||
-    typeof value !==
-      "object" ||
-    Array.isArray(
-      value,
-    )
-  ) {
-    return false;
-  }
-
-  const candidate =
-    value as Partial<
-      InvestmentAccountData
-    >;
-
-  return (
-    typeof candidate.id ===
-      "string" &&
-    candidate.id.trim() !==
-      "" &&
-    typeof candidate.name ===
-      "string" &&
-    candidate.name.trim() !==
-      "" &&
-    isInvestmentAccountType(
-      candidate.type,
-    ) &&
-    typeof candidate.currency ===
-      "string" &&
-    candidate.currency.trim() !==
-      "" &&
-    typeof candidate.cashBalance ===
-      "number" &&
-    Number.isFinite(
-      candidate.cashBalance,
-    ) &&
-    typeof candidate.isIncludedInNetWorth ===
-      "boolean" &&
-    isInvestmentConnectionStatus(
-      candidate.connectionStatus,
-    ) &&
-    typeof candidate.createdAt ===
-      "string" &&
-    typeof candidate.updatedAt ===
-      "string"
-  );
-}
-
-function isInvestmentHoldingData(
-  value:
-    unknown,
-): value is InvestmentHoldingData {
-  if (
-    !value ||
-    typeof value !==
-      "object" ||
-    Array.isArray(
-      value,
-    )
-  ) {
-    return false;
-  }
-
-  const candidate =
-    value as Partial<
-      InvestmentHoldingData
-    >;
-
-  return (
-    typeof candidate.id ===
-      "string" &&
-    candidate.id.trim() !==
-      "" &&
-    typeof candidate.investmentAccountId ===
-      "string" &&
-    candidate.investmentAccountId.trim() !==
-      "" &&
-    typeof candidate.name ===
-      "string" &&
-    candidate.name.trim() !==
-      "" &&
-    isInvestmentHoldingType(
-      candidate.type,
-    ) &&
-    isFiniteNumber(
-      candidate.quantity,
-    ) &&
-    isFiniteNumber(
-      candidate.averageCost,
-    ) &&
-    isFiniteNumber(
-      candidate.currentPrice,
-    ) &&
-    isFiniteNumber(
-      candidate.marketValue,
-    ) &&
-    isFiniteNumber(
-      candidate.costBasis,
-    ) &&
-    isFiniteNumber(
-      candidate.unrealizedGain,
-    ) &&
-    isFiniteNumber(
-      candidate.unrealizedGainPercentage,
-    ) &&
-    typeof candidate.createdAt ===
-      "string" &&
-    typeof candidate.updatedAt ===
-      "string"
-  );
-}
-
-function isInvestmentActivityData(
-  value:
-    unknown,
-): value is InvestmentActivityData {
-  if (
-    !value ||
-    typeof value !==
-      "object" ||
-    Array.isArray(
-      value,
-    )
-  ) {
-    return false;
-  }
-
-  const candidate =
-    value as Partial<
-      InvestmentActivityData
-    >;
-
-  return (
-    typeof candidate.id ===
-      "string" &&
-    candidate.id.trim() !==
-      "" &&
-    typeof candidate.investmentAccountId ===
-      "string" &&
-    candidate.investmentAccountId.trim() !==
-      "" &&
-    isInvestmentActivityType(
-      candidate.type,
-    ) &&
-    typeof candidate.date ===
-      "string" &&
-    candidate.date.trim() !==
-      "" &&
-    isFiniteNumber(
-      candidate.amount,
-    ) &&
-    typeof candidate.createdAt ===
-      "string" &&
-    typeof candidate.updatedAt ===
-      "string"
-  );
-}
-
-function isInvestmentPerformanceSnapshot(
-  value:
-    unknown,
-): value is InvestmentPerformanceSnapshot {
-  if (
-    !value ||
-    typeof value !==
-      "object" ||
-    Array.isArray(
-      value,
-    )
-  ) {
-    return false;
-  }
-
-  const candidate =
-    value as Partial<
-      InvestmentPerformanceSnapshot
-    >;
-
-  return (
-    typeof candidate.id ===
-      "string" &&
-    candidate.id.trim() !==
-      "" &&
-    typeof candidate.date ===
-      "string" &&
-    candidate.date.trim() !==
-      "" &&
-    isFiniteNumber(
-      candidate.portfolioValue,
-    ) &&
-    isFiniteNumber(
-      candidate.costBasis,
-    ) &&
-    isFiniteNumber(
-      candidate.cashValue,
-    ) &&
-    isFiniteNumber(
-      candidate.dailyGain,
-    ) &&
-    isFiniteNumber(
-      candidate.dailyGainPercentage,
-    ) &&
-    typeof candidate.createdAt ===
-      "string" &&
-    typeof candidate.updatedAt ===
-      "string"
-  );
-}
-
-function normalizeInvestmentAccounts(
-  accounts:
-    InvestmentAccountData[],
-) {
-  return deduplicateById(
-    accounts
-      .filter(
-        isInvestmentAccountData,
-      )
-      .map(
-        (
-          account,
-        ) => ({
-          ...account,
-
-          name:
-            account.name.trim(),
-
-          institution:
-            normalizeOptionalText(
-              account.institution,
-            ),
-
-          linkedAccountId:
-            normalizeOptionalText(
-              account.linkedAccountId,
-            ),
-
-          currency:
-            normalizeCurrencyCode(
-              account.currency,
-            ),
-
-          cashBalance:
-            normalizeCurrency(
-              Math.max(
-                0,
-                account.cashBalance,
-              ),
-            ),
-
-          notes:
-            normalizeOptionalText(
-              account.notes,
-            ),
-        }),
-      ),
-    createInvestmentAccountId,
-  );
-}
-
-function normalizeHoldings(
-  holdings:
-    InvestmentHoldingData[],
-) {
-  return deduplicateById(
-    holdings
-      .filter(
-        isInvestmentHoldingData,
-      )
-      .map(
-        (
-          holding,
-        ) =>
-          buildHolding({
-            ...holding,
-
-            symbol:
-              normalizeOptionalSymbol(
-                holding.symbol,
-              ),
-
-            name:
-              holding.name.trim(),
-
-            annualDividendIncome:
-              normalizeOptionalCurrency(
-                holding.annualDividendIncome,
-              ),
-
-            notes:
-              normalizeOptionalText(
-                holding.notes,
-              ),
-          }),
-      ),
-    createHoldingId,
-  );
-}
-
-function normalizeActivities(
-  activities:
-    InvestmentActivityData[],
-) {
-  return sortActivities(
-    deduplicateById(
-      activities
-        .filter(
-          isInvestmentActivityData,
-        )
-        .map(
-          (
-            activity,
-          ) => ({
-            ...activity,
-
-            amount:
-              normalizeCurrency(
-                Math.abs(
-                  activity.amount,
-                ),
-              ),
-
-            quantity:
-              normalizeOptionalQuantity(
-                activity.quantity,
-              ),
-
-            pricePerUnit:
-              normalizeOptionalCurrency(
-                activity.pricePerUnit,
-              ),
-
-            fees:
-              normalizeOptionalCurrency(
-                activity.fees,
-              ),
-
-            description:
-              normalizeOptionalText(
-                activity.description,
-              ),
-          }),
-        ),
-      createActivityId,
-    ),
-  );
-}
-
-function normalizePerformanceHistory(
-  history:
-    InvestmentPerformanceSnapshot[],
-) {
-  const normalizedHistory =
-    deduplicateById(
-      history
-        .filter(
-          isInvestmentPerformanceSnapshot,
-        )
-        .map(
-          (
-            snapshot,
-          ) => ({
-            ...snapshot,
-
-            date:
-              normalizeDateKey(
-                snapshot.date,
-              ),
-
-            portfolioValue:
-              normalizeCurrency(
-                Math.max(
-                  0,
-                  snapshot.portfolioValue,
-                ),
-              ),
-
-            costBasis:
-              normalizeCurrency(
-                Math.max(
-                  0,
-                  snapshot.costBasis,
-                ),
-              ),
-
-            cashValue:
-              normalizeCurrency(
-                Math.max(
-                  0,
-                  snapshot.cashValue,
-                ),
-              ),
-
-            dailyGain:
-              normalizeCurrency(
-                snapshot.dailyGain,
-              ),
-
-            dailyGainPercentage:
-              normalizePercentage(
-                snapshot.dailyGainPercentage,
-              ),
-          }),
-        ),
-      createPerformanceSnapshotId,
-    );
-
-  const snapshotsByDate =
-    new Map<
-      string,
-      InvestmentPerformanceSnapshot
-    >();
-
-  normalizedHistory.forEach(
-    (
-      snapshot,
-    ) => {
-      const existingSnapshot =
-        snapshotsByDate.get(
-          snapshot.date,
-        );
-
-      if (
-        !existingSnapshot ||
-        snapshot.updatedAt >
-          existingSnapshot.updatedAt
-      ) {
-        snapshotsByDate.set(
-          snapshot.date,
-          snapshot,
-        );
-      }
-    },
-  );
-
-  return recalculatePerformanceHistory(
-    Array.from(
-      snapshotsByDate.values(),
-    ),
-  );
-}
-
-function recalculatePerformanceHistory(
-  history:
-    InvestmentPerformanceSnapshot[],
-) {
-  const sortedHistory =
-    [...history].sort(
-      (
-        firstSnapshot,
-        secondSnapshot,
-      ) =>
-        firstSnapshot.date.localeCompare(
-          secondSnapshot.date,
-        ),
-    );
-
-  return sortedHistory.map(
-    (
-      snapshot,
-      index,
-    ) => {
-      const previousSnapshot =
-        index >
-        0
-          ? sortedHistory[
-              index -
-              1
-            ]
-          : null;
-
-      const dailyGain =
-        previousSnapshot
-          ? normalizeCurrency(
-              snapshot.portfolioValue -
-              previousSnapshot.portfolioValue,
-            )
-          : 0;
-
-      const dailyGainPercentage =
-        previousSnapshot &&
-        previousSnapshot.portfolioValue >
-          0
-          ? calculatePercentage(
-              dailyGain,
-              previousSnapshot.portfolioValue,
-            )
-          : 0;
-
-      return {
-        ...snapshot,
-        dailyGain,
-        dailyGainPercentage,
-      };
-    },
-  );
-}
-
-function deduplicateById<
+function upsertById<
   Item extends {
-    id: string;
+    id:
+      string;
   },
 >(
   items:
     Item[],
-  createId: () => string,
+  item:
+    Item,
+  prependWhenNew:
+    boolean,
 ) {
-  const seenIds =
-    new Set<string>();
+  const existingIndex =
+    items.findIndex(
+      (
+        currentItem,
+      ) =>
+        currentItem.id ===
+        item.id,
+    );
+
+  if (
+    existingIndex ===
+    -1
+  ) {
+    return prependWhenNew
+      ? [
+          item,
+          ...items,
+        ]
+      : [
+          ...items,
+          item,
+        ];
+  }
 
   return items.map(
     (
-      item,
-    ) => {
-      let nextId =
-        item.id;
-
-      while (
-        seenIds.has(
-          nextId,
-        )
-      ) {
-        nextId =
-          createId();
-      }
-
-      seenIds.add(
-        nextId,
-      );
-
-      return nextId ===
-        item.id
+      currentItem,
+    ) =>
+      currentItem.id ===
+      item.id
         ? item
-        : {
-            ...item,
-            id:
-              nextId,
-          };
-    },
+        : currentItem,
   );
 }
 
@@ -3207,248 +1570,109 @@ function sortActivities(
   );
 }
 
-function createUniqueInvestmentAccountId(
-  accounts:
-    InvestmentAccountData[],
+function upsertPerformanceSnapshot(
+  snapshots:
+    InvestmentPerformanceSnapshot[],
+  snapshot:
+    InvestmentPerformanceSnapshot,
 ) {
-  return createUniqueId(
-    accounts.map(
+  const withoutMatchingDate =
+    snapshots.filter(
       (
-        account,
+        currentSnapshot,
       ) =>
-        account.id,
-    ),
-    createInvestmentAccountId,
+        currentSnapshot.id ===
+          snapshot.id ||
+        currentSnapshot.date !==
+          snapshot.date,
+    );
+
+  return upsertById(
+    withoutMatchingDate,
+    snapshot,
+    false,
   );
 }
 
-function createUniqueHoldingId(
-  holdings:
-    InvestmentHoldingData[],
-) {
-  return createUniqueId(
-    holdings.map(
-      (
-        holding,
-      ) =>
-        holding.id,
-    ),
-    createHoldingId,
-  );
-}
-
-function createUniquePerformanceSnapshotId(
+function sortPerformanceSnapshots(
   snapshots:
     InvestmentPerformanceSnapshot[],
 ) {
-  return createUniqueId(
-    snapshots.map(
+  return recalculatePerformanceHistory(
+    [
+      ...snapshots,
+    ].sort(
       (
-        snapshot,
+        firstSnapshot,
+        secondSnapshot,
       ) =>
-        snapshot.id,
+        firstSnapshot.date.localeCompare(
+          secondSnapshot.date,
+        ),
     ),
-    createPerformanceSnapshotId,
   );
 }
 
-function createUniqueActivityId(
-  activities:
-    InvestmentActivityData[],
+function recalculatePerformanceHistory(
+  snapshots:
+    InvestmentPerformanceSnapshot[],
 ) {
-  return createUniqueId(
-    activities.map(
+  const sortedSnapshots =
+    [
+      ...snapshots,
+    ].sort(
       (
-        activity,
+        firstSnapshot,
+        secondSnapshot,
       ) =>
-        activity.id,
-    ),
-    createActivityId,
-  );
-}
-
-function createUniqueId(
-  existingIds:
-    string[],
-  createId: () => string,
-) {
-  const existingIdSet =
-    new Set(
-      existingIds,
+        firstSnapshot.date.localeCompare(
+          secondSnapshot.date,
+        ),
     );
 
-  let candidateId =
-    createId();
+  return sortedSnapshots.map(
+    (
+      snapshot,
+      index,
+    ) => {
+      const previousSnapshot =
+        index >
+          0
+          ? sortedSnapshots[
+              index -
+                1
+            ]
+          : null;
 
-  while (
-    existingIdSet.has(
-      candidateId,
-    )
-  ) {
-    candidateId =
-      createId();
-  }
+      if (
+        !previousSnapshot
+      ) {
+        return {
+          ...snapshot,
+          dailyGain:
+            0,
+          dailyGainPercentage:
+            0,
+        };
+      }
 
-  return candidateId;
-}
+      const dailyGain =
+        normalizeCurrency(
+          snapshot.portfolioValue -
+            previousSnapshot.portfolioValue,
+        );
 
-function createInvestmentAccountId() {
-  return createEntityId(
-    "investment-account",
-  );
-}
+      return {
+        ...snapshot,
+        dailyGain,
 
-function createHoldingId() {
-  return createEntityId(
-    "holding",
-  );
-}
-
-function createActivityId() {
-  return createEntityId(
-    "investment-activity",
-  );
-}
-
-function createPerformanceSnapshotId() {
-  return createEntityId(
-    "investment-performance",
-  );
-}
-
-function createEntityId(
-  prefix:
-    string,
-) {
-  if (
-    typeof crypto !==
-      "undefined" &&
-    typeof crypto.randomUUID ===
-      "function"
-  ) {
-    return `${prefix}-${crypto.randomUUID()}`;
-  }
-
-  return `${prefix}-${Date.now()}-${Math.random()
-    .toString(
-      36,
-    )
-    .slice(
-      2,
-      10,
-    )}`;
-}
-
-function isInvestmentAccountType(
-  value:
-    unknown,
-): value is InvestmentAccountType {
-  return (
-    value ===
-      "brokerage" ||
-    value ===
-      "retirement" ||
-    value ===
-      "ira" ||
-    value ===
-      "roth-ira" ||
-    value ===
-      "401k" ||
-    value ===
-      "403b" ||
-    value ===
-      "529" ||
-    value ===
-      "hsa" ||
-    value ===
-      "crypto" ||
-    value ===
-      "other"
-  );
-}
-
-function isInvestmentConnectionStatus(
-  value:
-    unknown,
-): value is InvestmentConnectionStatus {
-  return (
-    value ===
-      "manual" ||
-    value ===
-      "connected" ||
-    value ===
-      "disconnected" ||
-    value ===
-      "error" ||
-    value ===
-      "pending"
-  );
-}
-
-function isInvestmentHoldingType(
-  value:
-    unknown,
-): value is InvestmentHoldingType {
-  return (
-    value ===
-      "stock" ||
-    value ===
-      "etf" ||
-    value ===
-      "mutual-fund" ||
-    value ===
-      "bond" ||
-    value ===
-      "option" ||
-    value ===
-      "crypto" ||
-    value ===
-      "cash" ||
-    value ===
-      "real-estate" ||
-    value ===
-      "commodity" ||
-    value ===
-      "other"
-  );
-}
-
-function isInvestmentActivityType(
-  value:
-    unknown,
-): value is InvestmentActivityType {
-  return (
-    value ===
-      "contribution" ||
-    value ===
-      "withdrawal" ||
-    value ===
-      "buy" ||
-    value ===
-      "sell" ||
-    value ===
-      "dividend" ||
-    value ===
-      "interest" ||
-    value ===
-      "fee" ||
-    value ===
-      "transfer" ||
-    value ===
-      "adjustment"
-  );
-}
-
-function isFiniteNumber(
-  value:
-    unknown,
-): value is number {
-  return (
-    typeof value ===
-      "number" &&
-    Number.isFinite(
-      value,
-    )
+        dailyGainPercentage:
+          calculatePercentage(
+            dailyGain,
+            previousSnapshot.portfolioValue,
+          ),
+      };
+    },
   );
 }
 
@@ -3464,211 +1688,13 @@ function normalizeCurrency(
     return 0;
   }
 
-  return Math.round(
-    value *
-    100,
-  ) /
-  100;
-}
-
-function normalizeOptionalCurrency(
-  value:
-    number | undefined,
-) {
-  if (
-    value ===
-    undefined
-  ) {
-    return undefined;
-  }
-
-  return normalizeCurrency(
-    Math.max(
-      0,
-      value,
-    ),
+  return (
+    Math.round(
+      value *
+        100,
+    ) /
+    100
   );
-}
-
-function normalizeQuantity(
-  value:
-    number,
-) {
-  if (
-    !Number.isFinite(
-      value,
-    )
-  ) {
-    return 0;
-  }
-
-  return Math.round(
-    Math.max(
-      0,
-      value,
-    ) *
-    1_000_000,
-  ) /
-  1_000_000;
-}
-
-function normalizeOptionalQuantity(
-  value:
-    number | undefined,
-) {
-  if (
-    value ===
-    undefined
-  ) {
-    return undefined;
-  }
-
-  return normalizeQuantity(
-    value,
-  );
-}
-
-function normalizeOptionalText(
-  value:
-    string | undefined,
-) {
-  const normalizedValue =
-    value?.trim();
-
-  return normalizedValue
-    ? normalizedValue
-    : undefined;
-}
-
-function normalizeOptionalSymbol(
-  value:
-    string | undefined,
-) {
-  const normalizedValue =
-    value
-      ?.trim()
-      .toUpperCase();
-
-  return normalizedValue
-    ? normalizedValue
-    : undefined;
-}
-
-function normalizeCurrencyCode(
-  value:
-    string | undefined,
-) {
-  const normalizedValue =
-    value
-      ?.trim()
-      .toUpperCase();
-
-  return normalizedValue ||
-    "USD";
-}
-
-function normalizeDateKey(
-  value:
-    string,
-) {
-  const dateValue =
-    value.slice(
-      0,
-      10,
-    );
-
-  const parsedDate =
-    new Date(
-      `${dateValue}T00:00:00`,
-    );
-
-  if (
-    Number.isNaN(
-      parsedDate.getTime(),
-    )
-  ) {
-    return getTodayDateKey();
-  }
-
-  return [
-    parsedDate
-      .getFullYear()
-      .toString()
-      .padStart(
-        4,
-        "0",
-      ),
-    (
-      parsedDate.getMonth() +
-      1
-    )
-      .toString()
-      .padStart(
-        2,
-        "0",
-      ),
-    parsedDate
-      .getDate()
-      .toString()
-      .padStart(
-        2,
-        "0",
-      ),
-  ].join(
-    "-",
-  );
-}
-
-function getTodayDateKey() {
-  const today =
-    new Date();
-
-  return [
-    today
-      .getFullYear()
-      .toString()
-      .padStart(
-        4,
-        "0",
-      ),
-    (
-      today.getMonth() +
-      1
-    )
-      .toString()
-      .padStart(
-        2,
-        "0",
-      ),
-    today
-      .getDate()
-      .toString()
-      .padStart(
-        2,
-        "0",
-      ),
-  ].join(
-    "-",
-  );
-}
-
-function normalizePercentage(
-  value:
-    number,
-) {
-  if (
-    !Number.isFinite(
-      value,
-    )
-  ) {
-    return 0;
-  }
-
-  return Math.round(
-    value *
-    100,
-  ) /
-  100;
 }
 
 function calculatePercentage(
@@ -3690,13 +1716,15 @@ function calculatePercentage(
     return 0;
   }
 
-  return Math.round(
-    (
-      value /
-      base
-    ) *
-    100 *
-    100,
-  ) /
-  100;
+  return (
+    Math.round(
+      (
+        value /
+        base
+      ) *
+        100 *
+        100,
+    ) /
+    100
+  );
 }

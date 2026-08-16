@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 
 import AddDebtModal from "@/components/debt/AddDebtModal";
+import DebtDetailsModal from "@/components/debt/DebtDetailsModal";
 
 import {
   type DebtData,
@@ -592,18 +593,20 @@ export default function DebtPayoffOverview() {
         }
       />
 
-      {selectedDebt ? (
-        <TemporaryDebtDetailsPanel
-          debt={
-            selectedDebt
-          }
-          onClose={() =>
-            setSelectedDebtId(
-              null,
-            )
-          }
-        />
-      ) : null}
+      <DebtDetailsModal
+        open={
+          selectedDebt !==
+          null
+        }
+        debt={
+          selectedDebt
+        }
+        onClose={() =>
+          setSelectedDebtId(
+            null,
+          )
+        }
+      />
     </div>
   );
 }
@@ -1018,72 +1021,6 @@ function FilteredEmptyState({
           description
         }
       </p>
-    </div>
-  );
-}
-
-function TemporaryDebtDetailsPanel({
-  debt,
-  onClose,
-}: {
-  debt:
-    DebtData;
-  onClose:
-    () => void;
-}) {
-  return (
-    <div
-      className="fixed inset-0 z-[1500] flex items-end justify-center bg-slate-950/40 p-0 backdrop-blur-[2px] sm:items-center sm:p-5"
-      role="presentation"
-      onMouseDown={
-        onClose
-      }
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="debt-details-placeholder-title"
-        onMouseDown={(
-          event,
-        ) =>
-          event.stopPropagation()
-        }
-        className="w-full max-w-lg rounded-t-[28px] bg-white p-6 shadow-2xl sm:rounded-[28px]"
-      >
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
-          <TrendingDown className="h-6 w-6" />
-        </div>
-
-        <h2
-          id="debt-details-placeholder-title"
-          className="mt-5 text-xl font-bold text-slate-950"
-        >
-          {
-            debt.name
-          }
-        </h2>
-
-        <p className="mt-2 text-sm leading-6 text-slate-500">
-          {formatCurrency(
-            debt.currentBalance,
-          )}{" "}
-          remaining at{" "}
-          {formatInterestRate(
-            debt.interestRate,
-          )}
-          .
-        </p>
-
-        <button
-          type="button"
-          onClick={
-            onClose
-          }
-          className="mt-6 min-h-11 w-full rounded-full bg-slate-950 px-4 text-sm font-bold text-white"
-        >
-          Close
-        </button>
-      </div>
     </div>
   );
 }

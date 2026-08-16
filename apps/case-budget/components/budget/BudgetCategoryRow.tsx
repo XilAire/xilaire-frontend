@@ -50,23 +50,14 @@ function joinClassNames(
     .join(" ");
 }
 
-function getRemainingAmount(
-  category: BudgetCategoryData,
-) {
-  return (
-    category.assignedAmount -
-    category.spentAmount
-  );
-}
-
 function getRemainingLabel(
-  remainingAmount: number,
+  availableAmount: number,
 ) {
-  if (remainingAmount < 0) {
+  if (availableAmount < 0) {
     return "Overspent";
   }
 
-  if (remainingAmount === 0) {
+  if (availableAmount === 0) {
     return "Fully spent";
   }
 
@@ -183,11 +174,15 @@ export default function BudgetCategoryRow({
   onEdit,
   onOpenBill,
 }: BudgetCategoryRowProps) {
-  const remainingAmount =
-    getRemainingAmount(category);
+  /*
+   * Canonical Supabase available_amount. This already includes assignment,
+   * rollover, and transaction activity.
+   */
+  const availableAmount =
+    category.availableAmount;
 
   const isOverspent =
-    remainingAmount < 0;
+    availableAmount < 0;
 
   const isBillSyncEnabled =
     Boolean(
@@ -276,7 +271,7 @@ export default function BudgetCategoryRow({
 
               <p className="mt-1 text-xs text-[var(--text-muted)]">
                 {getRemainingLabel(
-                  remainingAmount,
+                  availableAmount,
                 )}
               </p>
 
@@ -288,6 +283,9 @@ export default function BudgetCategoryRow({
                   spentAmount={
                     category.spentAmount
                   }
+                  availableAmount={
+                    availableAmount
+                  }
                 />
               </div>
             </div>
@@ -296,8 +294,8 @@ export default function BudgetCategoryRow({
 
         <MobileAmountGrid
           category={category}
-          remainingAmount={
-            remainingAmount
+          availableAmount={
+            availableAmount
           }
         />
 
@@ -322,12 +320,12 @@ export default function BudgetCategoryRow({
               : "Remaining"
           }
           amount={
-            remainingAmount
+            availableAmount
           }
           valueClassName={
             isOverspent
               ? "text-[var(--danger)]"
-              : remainingAmount === 0
+              : availableAmount === 0
                 ? "text-[var(--text-muted)]"
                 : "text-[var(--success)]"
           }
@@ -500,15 +498,15 @@ export default function BudgetCategoryRow({
 
 type MobileAmountGridProps = {
   category: BudgetCategoryData;
-  remainingAmount: number;
+  availableAmount: number;
 };
 
 function MobileAmountGrid({
   category,
-  remainingAmount,
+  availableAmount,
 }: MobileAmountGridProps) {
   const isOverspent =
-    remainingAmount < 0;
+    availableAmount < 0;
 
   return (
     <div className="grid grid-cols-3 gap-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-3 lg:hidden">
@@ -533,12 +531,12 @@ function MobileAmountGrid({
             : "Remaining"
         }
         amount={
-          remainingAmount
+          availableAmount
         }
         valueClassName={
           isOverspent
             ? "text-[var(--danger)]"
-            : remainingAmount === 0
+            : availableAmount === 0
               ? "text-[var(--text-muted)]"
               : "text-[var(--success)]"
         }

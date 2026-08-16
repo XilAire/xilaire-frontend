@@ -35,6 +35,15 @@ type CreateWorkspaceType =
   | "household"
   | "business";
 
+type CreateWorkspacePlan =
+  | "free"
+  | "plus"
+  | "pro";
+
+type CreateWorkspaceBillingInterval =
+  | "monthly"
+  | "annual";
+
 type CreateWorkspaceRequestBody = {
   name:
     string;
@@ -44,6 +53,12 @@ type CreateWorkspaceRequestBody = {
 
   description?:
     string | null;
+
+  plan:
+    CreateWorkspacePlan;
+
+  billingInterval?:
+    CreateWorkspaceBillingInterval;
 
   makeActive?:
     boolean;
@@ -76,6 +91,15 @@ type CreatedWorkspace = {
 
   updatedAt:
     string;
+
+  selectedPlan:
+    CreateWorkspacePlan;
+
+  billingInterval:
+    CreateWorkspaceBillingInterval | null;
+
+  requiresCheckout:
+    boolean;
 };
 
 type WorkspaceInsertRow = {
@@ -236,12 +260,21 @@ const ACTIVE_WORKSPACE_COOKIE_MAX_AGE_SECONDS =
  *
  * Creation includes:
  *
- * 1. Resolving the authenticated user's effective subscription.
- * 2. Counting the user's active owned workspaces.
- * 3. Enforcing the effective workspace entitlement.
- * 4. Creating a workspaces row.
- * 5. Creating an active owner workspace_members row.
- * 6. Optionally making the new workspace active.
+ * 1. Validating the requested workspace plan.
+ * 2. Resolving the authenticated user's CURRENT effective subscription.
+ * 3. Counting the user's active owned workspaces.
+ * 4. Enforcing the CURRENT effective workspace entitlement.
+ * 5. Creating a workspaces row.
+ * 6. Creating an active owner workspace_members row.
+ * 7. Optionally making the new workspace active.
+ * 8. Returning whether Stripe checkout is required for the selected plan.
+ *
+ * IMPORTANT:
+ *
+ * Selecting Plus or Pro here does NOT grant paid entitlements. The selected
+ * plan is checkout intent only. Paid access continues to come exclusively
+ * from the persisted Stripe-backed subscription after checkout/webhook
+ * processing succeeds.
  *
  * The authenticated user ID is always resolved on the server.
  */
@@ -313,6 +346,20 @@ export async function POST(
 
     const workspaceType =
       requestBody.workspaceType;
+
+    const selectedPlan =
+      requestBody.plan;
+
+    const billingInterval =
+      selectedPlan ===
+        "free"
+        ? null
+        : requestBody.billingInterval ??
+          "monthly";
+
+    const requiresCheckout =
+      selectedPlan !==
+      "free";
 
     const makeActive =
       requestBody.makeActive !==
@@ -644,6 +691,12 @@ export async function POST(
 
       updatedAt:
         now,
+
+      selectedPlan,
+
+      billingInterval,
+
+      requiresCheckout,
     };
 
     if (
@@ -664,6 +717,20 @@ export async function POST(
 
         activeWorkspaceId:
           string | null;
+
+        checkout: {
+          required:
+            boolean;
+
+          plan:
+            CreateWorkspacePlan;
+
+          billingInterval:
+            CreateWorkspaceBillingInterval | null;
+
+          workspaceId:
+            string;
+        };
 
         workspaceUsage: {
           plan:
@@ -701,6 +768,18 @@ export async function POST(
             makeActive
               ? workspaceId
               : null,
+
+          checkout: {
+            required:
+              requiresCheckout,
+
+            plan:
+              selectedPlan,
+
+            billingInterval,
+
+            workspaceId,
+          },
 
           workspaceUsage: {
             plan:
@@ -905,6 +984,33 @@ function isCreateWorkspaceRequestBody(
   }
 
   if (
+    !isCreateWorkspacePlan(
+      value.plan,
+    )
+  ) {
+    return false;
+  }
+
+  if (
+    value.billingInterval !==
+      undefined &&
+    !isCreateWorkspaceBillingInterval(
+      value.billingInterval,
+    )
+  ) {
+    return false;
+  }
+
+  if (
+    value.plan ===
+      "free" &&
+    value.billingInterval !==
+      undefined
+  ) {
+    return false;
+  }
+
+  if (
     value.makeActive !==
       undefined &&
     typeof value.makeActive !==
@@ -927,6 +1033,32 @@ function isCreateWorkspaceType(
       "household" ||
     value ===
       "business"
+  );
+}
+
+function isCreateWorkspacePlan(
+  value:
+    unknown,
+): value is CreateWorkspacePlan {
+  return (
+    value ===
+      "free" ||
+    value ===
+      "plus" ||
+    value ===
+      "pro"
+  );
+}
+
+function isCreateWorkspaceBillingInterval(
+  value:
+    unknown,
+): value is CreateWorkspaceBillingInterval {
+  return (
+    value ===
+      "monthly" ||
+    value ===
+      "annual"
   );
 }
 

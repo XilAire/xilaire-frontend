@@ -12,12 +12,57 @@ import {
 } from "react";
 
 import {
+  archiveBudgetGroup,
+} from "@/actions/budget/archive-budget-group";
+
+import {
+  archiveBudgetItem,
+} from "@/actions/budget/archive-budget-item";
+
+import {
+  archiveIncomeSource,
+} from "@/actions/budget/archive-income-source";
+
+import {
+  copyBudgetMonth,
+} from "@/actions/budget/copy-budget-month";
+
+import {
+  createBudgetGroup,
+} from "@/actions/budget/create-budget-group";
+
+import {
+  createBudgetItem,
+} from "@/actions/budget/create-budget-item";
+
+import {
+  createBudgetMonth,
+} from "@/actions/budget/create-budget-month";
+
+import {
+  createIncomeSource,
+} from "@/actions/budget/create-income-source";
+
+import {
+  getBudget,
+} from "@/actions/budget/get-budget";
+
+import {
+  updateBudgetGroup as updateBudgetGroupAction,
+} from "@/actions/budget/update-budget-group";
+
+import {
+  updateBudgetItem as updateBudgetItemAction,
+} from "@/actions/budget/update-budget-item";
+
+import {
+  updateIncomeSource,
+} from "@/actions/budget/update-income-source";
+
+import {
   cloneBudgetGroups,
   cloneIncomeSources,
-  copyBudgetGroupsForNewMonth,
-  copyIncomeSourcesForNewMonth,
   createDateFromMonthKey,
-  createId,
   createMonthDate,
   createMonthKey,
   formatMonthLabel,
@@ -25,187 +70,372 @@ import {
 } from "@/lib/budget/month-utils";
 
 import type {
+  HouseholdApprovalRequest,
+} from "@/types/household/household-approval";
+
+import type {
   BudgetCategoryData,
   BudgetCategoryGroupData,
   BudgetIncomeSource,
-  BudgetIncomeStatus,
   BudgetMonthData,
   BudgetMonthsByKey,
   CreateBudgetGroupData,
 } from "@/types/budget";
 
-const BUDGET_MONTHS_STORAGE_KEY =
-  "case-budget:budget-months:v2";
-
-const SELECTED_MONTH_STORAGE_KEY =
-  "case-budget:selected-month:v2";
-
-const LEGACY_BUDGET_MONTHS_STORAGE_KEY =
-  "case-budget:budget-months:v1";
-
-const LEGACY_SELECTED_MONTH_STORAGE_KEY =
-  "case-budget:selected-month:v1";
-
-const LEGACY_DEMO_MONTH_KEY =
-  "2026-07";
-
-const LEGACY_DEMO_INCOME_IDS =
-  new Set([
-    "income-primary-paycheck",
-    "income-secondary-paycheck",
-    "income-side-business",
-  ]);
-
-const LEGACY_DEMO_GROUP_IDS =
-  new Set([
-    "group-housing",
-    "group-transportation",
-    "group-food",
-    "group-savings",
-    "group-personal",
-    "group-debt",
-  ]);
-
 export type BudgetTotals = {
-  plannedIncome: number;
-  receivedIncome: number;
-  assignedAmount: number;
-  spentAmount: number;
-  remainingAmount: number;
+  plannedIncome:
+    number;
+
+  receivedIncome:
+    number;
+
+  assignedAmount:
+    number;
+
+  spentAmount:
+    number;
+
+  rolloverAmount:
+    number;
+
+  /**
+   * Canonical total availability across all budget items.
+   *
+   * This is the sum of each item's persisted available_amount and therefore
+   * already includes rollover and transaction activity.
+   */
+  availableAmount:
+    number;
+
+  /**
+   * Income that has not yet been assigned to budget items.
+   *
+   * Kept as remainingAmount for compatibility with the existing summary UI.
+   * This is intentionally different from availableAmount.
+   */
+  remainingAmount:
+    number;
 };
 
 export type BudgetMonthNavigation = {
-  monthLabel: string;
-  previousMonthLabel: string;
-  nextMonthLabel: string;
+  monthLabel:
+    string;
+
+  previousMonthLabel:
+    string;
+
+  nextMonthLabel:
+    string;
 };
 
 export type CreateIncomeData = {
-  name: string;
-  amount: number;
-  receivedAmount: number;
+  name:
+    string;
+
+  amount:
+    number;
+
+  receivedAmount:
+    number;
 };
 
 export type UpdateIncomeData = {
-  id: string;
-  name: string;
-  amount: number;
-  receivedAmount: number;
+  id:
+    string;
+
+  name:
+    string;
+
+  amount:
+    number;
+
+  receivedAmount:
+    number;
 };
 
 export type CreateBudgetItemData = {
-  name: string;
-  assignedAmount: number;
+  name:
+    string;
+
+  assignedAmount:
+    number;
 };
 
 export type BudgetItemLocation = {
-  group: BudgetCategoryGroupData;
-  item: BudgetCategoryData;
+  group:
+    BudgetCategoryGroupData;
+
+  item:
+    BudgetCategoryData;
 };
 
+export type BudgetMutationResult<T> =
+  | {
+      success:
+        true;
+
+      data:
+        T;
+
+      approvalRequired:
+        false;
+
+      approval:
+        null;
+
+      error:
+        null;
+    }
+  | {
+      success:
+        true;
+
+      data:
+        null;
+
+      approvalRequired:
+        true;
+
+      approval:
+        HouseholdApprovalRequest;
+
+      error:
+        null;
+    }
+  | {
+      success:
+        false;
+
+      data:
+        null;
+
+      approvalRequired:
+        false;
+
+      approval:
+        null;
+
+      error:
+        string;
+    };
+
 type BudgetContextValue = {
-  selectedMonth: Date;
-  selectedMonthKey: string;
-  selectedBudgetMonth: BudgetMonthData | undefined;
-  hasSelectedBudget: boolean;
+  selectedMonth:
+    Date;
 
-  budgetMonths: BudgetMonthsByKey;
-  incomeSources: BudgetIncomeSource[];
-  budgetGroups: BudgetCategoryGroupData[];
+  selectedMonthKey:
+    string;
 
-  previousMonth: Date;
-  previousMonthKey: string;
-  canCopyPreviousMonth: boolean;
-  returnBudgetMonthKey: string | null;
+  selectedBudgetMonth:
+    BudgetMonthData | undefined;
 
-  monthNavigation: BudgetMonthNavigation;
-  totals: BudgetTotals;
+  hasSelectedBudget:
+    boolean;
 
-  navigateToMonth: (
-    month: Date,
-  ) => void;
-  goToPreviousMonth: () => void;
-  goToNextMonth: () => void;
-  createBlankBudget: () => void;
-  copyPreviousMonth: () => void;
-  returnToExistingBudget: () => void;
+  budgetMonths:
+    BudgetMonthsByKey;
 
-  addIncome: (
-    income: CreateIncomeData,
-  ) => BudgetIncomeSource | null;
-  updateIncome: (
-    income: UpdateIncomeData,
-  ) => void;
-  deleteIncome: (
-    incomeSourceId: string,
-  ) => void;
+  incomeSources:
+    BudgetIncomeSource[];
 
-  addBudgetGroup: (
-    group: CreateBudgetGroupData,
-  ) => BudgetCategoryGroupData | null;
-  updateBudgetGroup: (
-    group: BudgetCategoryGroupData,
-  ) => void;
-  deleteBudgetGroup: (
-    groupId: string,
-  ) => void;
+  budgetGroups:
+    BudgetCategoryGroupData[];
 
-  addBudgetItem: (
-    groupId: string,
-    item: CreateBudgetItemData,
-  ) => BudgetCategoryData | null;
-  updateBudgetItem: (
-    groupId: string,
-    item: BudgetCategoryData,
-  ) => void;
-  updateBudgetItemById: (
-    itemId: string,
-    updates: Partial<
-      Pick<
+  previousMonth:
+    Date;
+
+  previousMonthKey:
+    string;
+
+  canCopyPreviousMonth:
+    boolean;
+
+  returnBudgetMonthKey:
+    string | null;
+
+  monthNavigation:
+    BudgetMonthNavigation;
+
+  totals:
+    BudgetTotals;
+
+  isLoading:
+    boolean;
+
+  isMutating:
+    boolean;
+
+  error:
+    string | null;
+
+  pendingApproval:
+    HouseholdApprovalRequest | null;
+
+  clearError:
+    () => void;
+
+  clearPendingApproval:
+    () => void;
+
+  refreshBudget:
+    () => Promise<boolean>;
+
+  navigateToMonth:
+    (
+      month:
+        Date,
+    ) => void;
+
+  goToPreviousMonth:
+    () => void;
+
+  goToNextMonth:
+    () => void;
+
+  createBlankBudget:
+    () => Promise<
+      BudgetMutationResult<BudgetMonthData>
+    >;
+
+  copyPreviousMonth:
+    () => Promise<
+      BudgetMutationResult<BudgetMonthData>
+    >;
+
+  returnToExistingBudget:
+    () => void;
+
+  addIncome:
+    (
+      income:
+        CreateIncomeData,
+    ) => Promise<
+      BudgetMutationResult<BudgetIncomeSource>
+    >;
+
+  updateIncome:
+    (
+      income:
+        UpdateIncomeData,
+    ) => Promise<
+      BudgetMutationResult<BudgetIncomeSource>
+    >;
+
+  deleteIncome:
+    (
+      incomeSourceId:
+        string,
+    ) => Promise<
+      BudgetMutationResult<BudgetIncomeSource>
+    >;
+
+  addBudgetGroup:
+    (
+      group:
+        CreateBudgetGroupData,
+    ) => Promise<
+      BudgetMutationResult<BudgetCategoryGroupData>
+    >;
+
+  updateBudgetGroup:
+    (
+      group:
+        BudgetCategoryGroupData,
+    ) => Promise<
+      BudgetMutationResult<BudgetCategoryGroupData>
+    >;
+
+  deleteBudgetGroup:
+    (
+      groupId:
+        string,
+    ) => Promise<
+      BudgetMutationResult<BudgetCategoryGroupData>
+    >;
+
+  addBudgetItem:
+    (
+      groupId:
+        string,
+      item:
+        CreateBudgetItemData,
+    ) => Promise<
+      BudgetMutationResult<BudgetCategoryData>
+    >;
+
+  updateBudgetItem:
+    (
+      groupId:
+        string,
+      item:
         BudgetCategoryData,
-        | "name"
-        | "assignedAmount"
-        | "spentAmount"
-      >
-    >,
-  ) => void;
-  adjustBudgetItemSpentAmount: (
-    itemId: string,
-    amountDelta: number,
-  ) => void;
-  deleteBudgetItem: (
-    groupId: string,
-    itemId: string,
-  ) => void;
+    ) => Promise<
+      BudgetMutationResult<BudgetCategoryData>
+    >;
 
-  getBudgetItemById: (
-    itemId: string,
-  ) => BudgetItemLocation | null;
+  updateBudgetItemById:
+    (
+      itemId:
+        string,
+      updates:
+        Partial<
+          Pick<
+            BudgetCategoryData,
+            | "name"
+            | "assignedAmount"
+          >
+        >,
+    ) => Promise<
+      BudgetMutationResult<BudgetCategoryData>
+    >;
+
+  deleteBudgetItem:
+    (
+      groupId:
+        string,
+      itemId:
+        string,
+    ) => Promise<
+      BudgetMutationResult<BudgetCategoryData>
+    >;
+
+  getBudgetItemById:
+    (
+      itemId:
+        string,
+    ) => BudgetItemLocation | null;
 };
 
 export type BudgetProviderProps = {
-  children: ReactNode;
-  initialMonth?: Date;
-  initialBudgetMonths?: BudgetMonthsByKey;
+  children:
+    ReactNode;
+
+  initialMonth?:
+    Date;
+
+  /**
+   * The active workspace selected by AppProvider.
+   *
+   * When this value changes the provider invalidates all in-flight reads,
+   * clears the previous workspace's budget from client memory, and reloads
+   * the newly active workspace from Supabase.
+   *
+   * This remains optional temporarily so this file can be introduced before
+   * the AppProvider wiring change. AppProvider should pass its canonical
+   * activeWorkspaceId in the next step.
+   */
+  activeWorkspaceId?:
+    string | null;
+
+  /**
+   * Optional server-rendered bootstrap data.
+   *
+   * This is never persisted in browser storage. The provider refreshes from
+   * Supabase after mount so the database remains canonical.
+   */
+  initialBudgetMonths?:
+    BudgetMonthsByKey;
 };
-
-function getIncomeStatus(
-  plannedAmount: number,
-  receivedAmount: number,
-): BudgetIncomeStatus {
-  if (
-    plannedAmount > 0 &&
-    receivedAmount >= plannedAmount
-  ) {
-    return "received";
-  }
-
-  if (receivedAmount > 0) {
-    return "partial";
-  }
-
-  return "planned";
-}
 
 function createDefaultSelectedMonth() {
   const currentDate =
@@ -217,31 +447,9 @@ function createDefaultSelectedMonth() {
   );
 }
 
-function createInitialBudgetMonths():
-  BudgetMonthsByKey {
-  return {};
-}
-
-function isBudgetMonthEmpty(
-  budgetMonth:
-    BudgetMonthData | undefined,
-) {
-  if (
-    !budgetMonth
-  ) {
-    return true;
-  }
-
-  return (
-    budgetMonth.incomeSources.length ===
-      0 &&
-    budgetMonth.budgetGroups.length ===
-      0
-  );
-}
-
 function cloneBudgetMonths(
-  budgetMonths: BudgetMonthsByKey,
+  budgetMonths:
+    BudgetMonthsByKey,
 ): BudgetMonthsByKey {
   return Object.fromEntries(
     Object.entries(
@@ -254,11 +462,14 @@ function cloneBudgetMonths(
         monthKey,
         {
           ...month,
+
           monthKey,
+
           incomeSources:
             cloneIncomeSources(
               month.incomeSources,
             ),
+
           budgetGroups:
             cloneBudgetGroups(
               month.budgetGroups,
@@ -269,571 +480,179 @@ function cloneBudgetMonths(
   );
 }
 
-function isBudgetMonthsByKey(
-  value: unknown,
-): value is BudgetMonthsByKey {
-  if (
-    !value ||
-    typeof value !==
-      "object" ||
-    Array.isArray(
-      value,
-    )
-  ) {
-    return false;
-  }
-
-  return Object.entries(
-    value,
-  ).every(
-    ([
-      monthKey,
-      month,
-    ]) => {
-      if (
-        !month ||
-        typeof month !==
-          "object" ||
-        Array.isArray(
-          month,
-        )
-      ) {
-        return false;
-      }
-
-      const candidate =
-        month as Partial<BudgetMonthData>;
-
-      return (
-        typeof monthKey ===
-          "string" &&
-        typeof candidate.monthKey ===
-          "string" &&
-        Array.isArray(
-          candidate.incomeSources,
-        ) &&
-        Array.isArray(
-          candidate.budgetGroups,
-        )
-      );
-    },
-  );
-}
-
-function loadStoredBudgetMonths() {
-  if (
-    typeof window ===
-    "undefined"
-  ) {
-    return null;
-  }
-
-  const currentBudgetMonths =
-    readStoredBudgetMonths(
-      BUDGET_MONTHS_STORAGE_KEY,
-    );
-
-  if (
-    currentBudgetMonths
-  ) {
-    return currentBudgetMonths;
-  }
-
-  const legacyBudgetMonths =
-    readStoredBudgetMonths(
-      LEGACY_BUDGET_MONTHS_STORAGE_KEY,
-    );
-
-  if (
-    !legacyBudgetMonths
-  ) {
-    return null;
-  }
-
-  const migratedBudgetMonths =
-    migrateLegacyBudgetMonths(
-      legacyBudgetMonths,
-    );
-
-  try {
-    window.localStorage.setItem(
-      BUDGET_MONTHS_STORAGE_KEY,
-      JSON.stringify(
-        migratedBudgetMonths,
-      ),
-    );
-
-    window.localStorage.removeItem(
-      LEGACY_BUDGET_MONTHS_STORAGE_KEY,
-    );
-  } catch {
-    // Local storage may be unavailable or full.
-  }
-
-  return migratedBudgetMonths;
-}
-
-function readStoredBudgetMonths(
-  storageKey: string,
-) {
-  try {
-    const storedValue =
-      window.localStorage.getItem(
-        storageKey,
-      );
-
-    if (
-      !storedValue
-    ) {
-      return null;
-    }
-
-    const parsedValue:
-      unknown =
-      JSON.parse(
-        storedValue,
-      );
-
-    if (
-      !isBudgetMonthsByKey(
-        parsedValue,
-      )
-    ) {
-      window.localStorage.removeItem(
-        storageKey,
-      );
-
-      return null;
-    }
-
-    return cloneBudgetMonths(
-      parsedValue,
-    );
-  } catch {
-    return null;
-  }
-}
-
-function migrateLegacyBudgetMonths(
-  legacyBudgetMonths:
-    BudgetMonthsByKey,
-): BudgetMonthsByKey {
-  return Object.fromEntries(
-    Object.entries(
-      legacyBudgetMonths,
-    ).filter(
-      ([
-        monthKey,
-        budgetMonth,
-      ]) =>
-        !isUntouchedLegacyDemoMonth(
-          monthKey,
-          budgetMonth,
-        ),
-    ),
-  );
-}
-
-function isUntouchedLegacyDemoMonth(
-  monthKey: string,
-  budgetMonth:
-    BudgetMonthData,
+function normalizeError(
+  error:
+    unknown,
+  fallback:
+    string,
 ) {
   if (
-    monthKey !==
-      LEGACY_DEMO_MONTH_KEY ||
-    budgetMonth.monthKey !==
-      LEGACY_DEMO_MONTH_KEY
+    error instanceof
+      Error &&
+    error.message.trim()
   ) {
-    return false;
+    return error.message;
   }
 
-  if (
-    budgetMonth.incomeSources.length !==
-      3 ||
-    budgetMonth.budgetGroups.length !==
-      6
-  ) {
-    return false;
-  }
-
-  const hasExpectedIncome =
-    budgetMonth.incomeSources.every(
-      (
-        incomeSource,
-      ) =>
-        LEGACY_DEMO_INCOME_IDS.has(
-          incomeSource.id,
-        ),
-    );
-
-  const hasExpectedGroups =
-    budgetMonth.budgetGroups.every(
-      (
-        group,
-      ) =>
-        LEGACY_DEMO_GROUP_IDS.has(
-          group.id,
-        ),
-    );
-
-  if (
-    !hasExpectedIncome ||
-    !hasExpectedGroups
-  ) {
-    return false;
-  }
-
-  return (
-    matchesLegacyIncomeSource(
-      budgetMonth,
-      "income-primary-paycheck",
-      "Primary Paycheck",
-      3200,
-      3200,
-    ) &&
-    matchesLegacyIncomeSource(
-      budgetMonth,
-      "income-secondary-paycheck",
-      "Secondary Paycheck",
-      1800,
-      900,
-    ) &&
-    matchesLegacyIncomeSource(
-      budgetMonth,
-      "income-side-business",
-      "Side Business",
-      500,
-      0,
-    ) &&
-    matchesLegacyBudgetItem(
-      budgetMonth,
-      "category-mortgage",
-      1850,
-      1850,
-    ) &&
-    matchesLegacyBudgetItem(
-      budgetMonth,
-      "category-electricity",
-      220,
-      184.37,
-    ) &&
-    matchesLegacyBudgetItem(
-      budgetMonth,
-      "category-car-payment",
-      525,
-      525,
-    ) &&
-    matchesLegacyBudgetItem(
-      budgetMonth,
-      "category-groceries",
-      650,
-      478.24,
-    ) &&
-    matchesLegacyBudgetItem(
-      budgetMonth,
-      "category-emergency-fund",
-      300,
-      300,
-    ) &&
-    matchesLegacyBudgetItem(
-      budgetMonth,
-      "category-personal-spending",
-      200,
-      136.52,
-    )
-  );
+  return fallback;
 }
 
-function matchesLegacyIncomeSource(
-  budgetMonth:
-    BudgetMonthData,
-  incomeSourceId: string,
-  name: string,
-  amount: number,
-  receivedAmount: number,
-) {
-  const incomeSource =
-    budgetMonth.incomeSources.find(
-      (
-        currentIncomeSource,
-      ) =>
-        currentIncomeSource.id ===
-        incomeSourceId,
-    );
+function createFailure<T>(
+  message:
+    string,
+): BudgetMutationResult<T> {
+  return {
+    success:
+      false,
 
-  return (
-    incomeSource?.name ===
-      name &&
-    incomeSource.amount ===
-      amount &&
-    incomeSource.receivedAmount ===
-      receivedAmount
-  );
+    data:
+      null,
+
+    approvalRequired:
+      false,
+
+    approval:
+      null,
+
+    error:
+      message,
+  };
 }
 
-function matchesLegacyBudgetItem(
-  budgetMonth:
-    BudgetMonthData,
-  itemId: string,
-  assignedAmount: number,
-  spentAmount: number,
-) {
-  for (
-    const group of
-    budgetMonth.budgetGroups
-  ) {
-    const item =
-      group.categories.find(
-        (
-          currentItem,
-        ) =>
-          currentItem.id ===
-          itemId,
-      );
+function createApprovalRequired<T>(
+  approval:
+    HouseholdApprovalRequest,
+): BudgetMutationResult<T> {
+  return {
+    success:
+      true,
 
-    if (
-      item
-    ) {
-      return (
-        item.assignedAmount ===
-          assignedAmount &&
-        item.spentAmount ===
-          spentAmount
-      );
-    }
-  }
+    data:
+      null,
 
-  return false;
+    approvalRequired:
+      true,
+
+    approval,
+
+    error:
+      null,
+  };
 }
 
-function loadStoredSelectedMonth() {
-  if (
-    typeof window ===
-    "undefined"
-  ) {
-    return null;
-  }
+function createSuccess<T>(
+  data:
+    T,
+): BudgetMutationResult<T> {
+  return {
+    success:
+      true,
 
-  const currentSelectedMonth =
-    readStoredSelectedMonth(
-      SELECTED_MONTH_STORAGE_KEY,
-    );
+    data,
 
-  if (
-    currentSelectedMonth
-  ) {
-    return currentSelectedMonth;
-  }
+    approvalRequired:
+      false,
 
-  const legacySelectedMonth =
-    readStoredSelectedMonth(
-      LEGACY_SELECTED_MONTH_STORAGE_KEY,
-    );
+    approval:
+      null,
 
-  if (
-    !legacySelectedMonth
-  ) {
-    return null;
-  }
-
-  const migratedSelectedMonth =
-    createMonthKey(
-      legacySelectedMonth,
-    ) ===
-    LEGACY_DEMO_MONTH_KEY
-      ? createDefaultSelectedMonth()
-      : legacySelectedMonth;
-
-  try {
-    window.localStorage.setItem(
-      SELECTED_MONTH_STORAGE_KEY,
-      createMonthKey(
-        migratedSelectedMonth,
-      ),
-    );
-
-    window.localStorage.removeItem(
-      LEGACY_SELECTED_MONTH_STORAGE_KEY,
-    );
-  } catch {
-    // Local storage may be unavailable or full.
-  }
-
-  return migratedSelectedMonth;
-}
-
-function readStoredSelectedMonth(
-  storageKey: string,
-) {
-  try {
-    const storedMonthKey =
-      window.localStorage.getItem(
-        storageKey,
-      );
-
-    if (
-      !storedMonthKey
-    ) {
-      return null;
-    }
-
-    const selectedMonth =
-      createDateFromMonthKey(
-        storedMonthKey,
-      );
-
-    if (
-      Number.isNaN(
-        selectedMonth.getTime(),
-      )
-    ) {
-      window.localStorage.removeItem(
-        storageKey,
-      );
-
-      return null;
-    }
-
-    return selectedMonth;
-  } catch {
-    return null;
-  }
+    error:
+      null,
+  };
 }
 
 const BudgetContext =
   createContext<
     BudgetContextValue | undefined
-  >(undefined);
+  >(
+    undefined,
+  );
 
 export default function BudgetProvider({
   children,
   initialMonth,
+  activeWorkspaceId,
   initialBudgetMonths,
 }: BudgetProviderProps) {
   const [
     selectedMonth,
     setSelectedMonth,
-  ] = useState<Date>(
-    () =>
-      initialMonth
-        ? createMonthDate(
-            initialMonth.getFullYear(),
-            initialMonth.getMonth(),
-          )
-        : createDefaultSelectedMonth(),
-  );
+  ] =
+    useState<Date>(
+      () =>
+        initialMonth
+          ? createMonthDate(
+              initialMonth.getFullYear(),
+              initialMonth.getMonth(),
+            )
+          : createDefaultSelectedMonth(),
+    );
 
   const [
     budgetMonths,
     setBudgetMonths,
-  ] = useState<BudgetMonthsByKey>(
-    () =>
-      initialBudgetMonths
-        ? cloneBudgetMonths(
-            initialBudgetMonths,
-          )
-        : createInitialBudgetMonths(),
-  );
-
-  const hasHydratedStorage =
-    useRef(
-      false,
+  ] =
+    useState<BudgetMonthsByKey>(
+      () =>
+        initialBudgetMonths
+          ? cloneBudgetMonths(
+              initialBudgetMonths,
+            )
+          : {},
     );
 
-  useEffect(
-    () => {
-      const storedBudgetMonths =
-        loadStoredBudgetMonths();
+  const [
+    isLoading,
+    setIsLoading,
+  ] =
+    useState(
+      !initialBudgetMonths,
+    );
 
-      const storedSelectedMonth =
-        loadStoredSelectedMonth();
+  const [
+    mutationCount,
+    setMutationCount,
+  ] =
+    useState(
+      0,
+    );
 
-      if (
-        storedBudgetMonths
-      ) {
-        setBudgetMonths(
-          storedBudgetMonths,
-        );
-      }
+  const [
+    error,
+    setError,
+  ] =
+    useState<
+      string | null
+    >(
+      null,
+    );
 
-      if (
-        storedSelectedMonth
-      ) {
-        setSelectedMonth(
-          createMonthDate(
-            storedSelectedMonth.getFullYear(),
-            storedSelectedMonth.getMonth(),
-          ),
-        );
-      }
+  const [
+    pendingApproval,
+    setPendingApproval,
+  ] =
+    useState<
+      HouseholdApprovalRequest | null
+    >(
+      null,
+    );
 
-      hasHydratedStorage.current =
-        true;
-    },
-    [],
-  );
+  const mountedRef =
+    useRef(
+      true,
+    );
 
-  useEffect(
-    () => {
-      try {
-        window.localStorage.removeItem(
-          LEGACY_BUDGET_MONTHS_STORAGE_KEY,
-        );
+  const loadSequenceRef =
+    useRef(
+      0,
+    );
 
-        window.localStorage.removeItem(
-          LEGACY_SELECTED_MONTH_STORAGE_KEY,
-        );
-      } catch {
-        // Local storage may be unavailable.
-      }
-    },
-    [],
-  );
-
-  useEffect(
-    () => {
-      if (
-        !hasHydratedStorage.current
-      ) {
-        return;
-      }
-
-      try {
-        window.localStorage.setItem(
-          BUDGET_MONTHS_STORAGE_KEY,
-          JSON.stringify(
-            budgetMonths,
-          ),
-        );
-      } catch {
-        // Local storage may be unavailable or full.
-      }
-    },
-    [budgetMonths],
-  );
-
-  useEffect(
-    () => {
-      if (
-        !hasHydratedStorage.current
-      ) {
-        return;
-      }
-
-      try {
-        window.localStorage.setItem(
-          SELECTED_MONTH_STORAGE_KEY,
-          createMonthKey(
-            selectedMonth,
-          ),
-        );
-      } catch {
-        // Local storage may be unavailable or full.
-      }
-    },
-    [selectedMonth],
-  );
+  const activeWorkspaceIdRef =
+    useRef<
+      string | null | undefined
+    >(
+      activeWorkspaceId,
+    );
 
   const selectedMonthKey =
     useMemo(
@@ -841,7 +660,9 @@ export default function BudgetProvider({
         createMonthKey(
           selectedMonth,
         ),
-      [selectedMonth],
+      [
+        selectedMonth,
+      ],
     );
 
   const selectedBudgetMonth =
@@ -860,7 +681,9 @@ export default function BudgetProvider({
           selectedMonth,
           -1,
         ),
-      [selectedMonth],
+      [
+        selectedMonth,
+      ],
     );
 
   const previousMonthKey =
@@ -869,7 +692,9 @@ export default function BudgetProvider({
         createMonthKey(
           previousMonth,
         ),
-      [previousMonth],
+      [
+        previousMonth,
+      ],
     );
 
   const previousBudgetMonth =
@@ -887,7 +712,9 @@ export default function BudgetProvider({
         Object.keys(
           budgetMonths,
         ).sort(),
-      [budgetMonths],
+      [
+        budgetMonths,
+      ],
     );
 
   const returnBudgetMonthKey =
@@ -919,7 +746,9 @@ export default function BudgetProvider({
           ];
         }
 
-        return existingBudgetMonthKeys[0];
+        return existingBudgetMonthKeys[
+          0
+        ];
       },
       [
         existingBudgetMonthKeys,
@@ -929,11 +758,13 @@ export default function BudgetProvider({
 
   const incomeSources =
     selectedBudgetMonth
-      ?.incomeSources ?? [];
+      ?.incomeSources ??
+    [];
 
   const budgetGroups =
     selectedBudgetMonth
-      ?.budgetGroups ?? [];
+      ?.budgetGroups ??
+    [];
 
   const monthNavigation =
     useMemo<BudgetMonthNavigation>(
@@ -949,12 +780,16 @@ export default function BudgetProvider({
             formatMonthLabel(
               selectedMonth,
             ),
-          previousMonthLabel: `View ${formatMonthLabel(
-            previousMonth,
-          )} budget`,
-          nextMonthLabel: `View ${formatMonthLabel(
-            nextMonth,
-          )} budget`,
+
+          previousMonthLabel:
+            `View ${formatMonthLabel(
+              previousMonth,
+            )} budget`,
+
+          nextMonthLabel:
+            `View ${formatMonthLabel(
+              nextMonth,
+            )} budget`,
         };
       },
       [
@@ -1007,33 +842,72 @@ export default function BudgetProvider({
             0,
           );
 
-        const spentAmount =
+        const itemFinancialTotals =
           budgetGroups.reduce(
             (
-              groupTotal,
+              groupTotals,
               group,
             ) =>
-              groupTotal +
               group.categories.reduce(
                 (
-                  itemTotal,
+                  totals,
                   item,
-                ) =>
-                  itemTotal +
-                  item.spentAmount,
-                0,
+                ) => ({
+                  spentAmount:
+                    totals.spentAmount +
+                    item.spentAmount,
+
+                  rolloverAmount:
+                    totals.rolloverAmount +
+                    item.rolloverAmount,
+
+                  availableAmount:
+                    totals.availableAmount +
+                    item.availableAmount,
+                }),
+                groupTotals,
               ),
-            0,
+            {
+              spentAmount:
+                0,
+
+              rolloverAmount:
+                0,
+
+              availableAmount:
+                0,
+            },
           );
+
+        /*
+         * remainingAmount remains the amount of planned income that has not
+         * been assigned. It is NOT item availability.
+         *
+         * availableAmount is the canonical sum of persisted item
+         * available_amount values and already accounts for rollover and
+         * transaction activity.
+         */
+        const remainingAmount =
+          plannedIncome -
+          assignedAmount;
 
         return {
           plannedIncome,
+
           receivedIncome,
+
           assignedAmount,
-          spentAmount,
-          remainingAmount:
-            plannedIncome -
-            assignedAmount,
+
+          spentAmount:
+            itemFinancialTotals.spentAmount,
+
+          rolloverAmount:
+            itemFinancialTotals.rolloverAmount,
+
+          availableAmount:
+            itemFinancialTotals.availableAmount,
+
+          remainingAmount,
         };
       },
       [
@@ -1042,44 +916,304 @@ export default function BudgetProvider({
       ],
     );
 
-  const updateSelectedBudgetMonth =
+  const isMutating =
+    mutationCount >
+    0;
+
+  const clearError =
     useCallback(
-      (
-        updater: (
-          currentMonth:
-            BudgetMonthData,
-        ) => BudgetMonthData,
-      ) => {
-        setBudgetMonths(
-          (
-            currentBudgetMonths,
-          ) => {
-            const currentMonth =
-              currentBudgetMonths[
-                selectedMonthKey
-              ];
-
-            if (!currentMonth) {
-              return currentBudgetMonths;
-            }
-
-            return {
-              ...currentBudgetMonths,
-              [selectedMonthKey]:
-                updater(
-                  currentMonth,
-                ),
-            };
-          },
+      () => {
+        setError(
+          null,
         );
       },
-      [selectedMonthKey],
+      [],
+    );
+
+  const clearPendingApproval =
+    useCallback(
+      () => {
+        setPendingApproval(
+          null,
+        );
+      },
+      [],
+    );
+
+  const refreshBudget =
+    useCallback(
+      async () => {
+        const requestedWorkspaceId =
+          activeWorkspaceIdRef.current;
+
+        const sequence =
+          ++loadSequenceRef.current;
+
+        setIsLoading(
+          true,
+        );
+
+        try {
+          const result =
+            await getBudget();
+
+          if (
+            !mountedRef.current ||
+            sequence !==
+              loadSequenceRef.current
+          ) {
+            return false;
+          }
+
+          if (
+            activeWorkspaceIdRef.current !==
+            requestedWorkspaceId
+          ) {
+            return false;
+          }
+
+          if (
+            !result.success
+          ) {
+            setError(
+              result.error.message,
+            );
+
+            return false;
+          }
+
+          setBudgetMonths(
+            cloneBudgetMonths(
+              result.budgetMonths,
+            ),
+          );
+
+          setError(
+            null,
+          );
+
+          return true;
+        } catch (
+          loadError
+        ) {
+          if (
+            mountedRef.current &&
+            sequence ===
+              loadSequenceRef.current &&
+            activeWorkspaceIdRef.current ===
+              requestedWorkspaceId
+          ) {
+            setError(
+              normalizeError(
+                loadError,
+                "CASE Budget could not load your budget.",
+              ),
+            );
+          }
+
+          return false;
+        } finally {
+          if (
+            mountedRef.current &&
+            sequence ===
+              loadSequenceRef.current &&
+            activeWorkspaceIdRef.current ===
+              requestedWorkspaceId
+          ) {
+            setIsLoading(
+              false,
+            );
+          }
+        }
+      },
+      [],
+    );
+
+  useEffect(
+    () => {
+      mountedRef.current =
+        true;
+
+      /*
+       * Invalidate every request started for the previous workspace before
+       * clearing its in-memory budget. A late Supabase response can therefore
+       * never populate the newly selected workspace with stale data.
+       */
+      ++loadSequenceRef.current;
+
+      activeWorkspaceIdRef.current =
+        activeWorkspaceId;
+
+      setBudgetMonths(
+        {},
+      );
+
+      setError(
+        null,
+      );
+
+      setPendingApproval(
+        null,
+      );
+
+      /*
+       * AppProvider wiring is intentionally introduced in the next file.
+       * Until activeWorkspaceId is supplied, undefined means "use the
+       * server-authenticated active workspace" and preserves current startup
+       * behavior.
+       *
+       * null/empty means there is currently no active workspace to load.
+       */
+      if (
+        activeWorkspaceId ===
+          null ||
+        activeWorkspaceId ===
+          ""
+      ) {
+        setIsLoading(
+          false,
+        );
+
+        return () => {
+          mountedRef.current =
+            false;
+        };
+      }
+
+      void refreshBudget();
+
+      return () => {
+        mountedRef.current =
+          false;
+
+        ++loadSequenceRef.current;
+      };
+    },
+    [
+      activeWorkspaceId,
+      refreshBudget,
+    ],
+  );
+
+  const runMutation =
+    useCallback(
+      async <T,>(
+        operation:
+          () => Promise<
+            BudgetMutationResult<T>
+          >,
+      ) => {
+        setMutationCount(
+          (
+            current,
+          ) =>
+            current +
+            1,
+        );
+
+        setError(
+          null,
+        );
+
+        setPendingApproval(
+          null,
+        );
+
+        try {
+          return await operation();
+        } catch (
+          mutationError
+        ) {
+          const message =
+            normalizeError(
+              mutationError,
+              "CASE Budget could not complete the requested change.",
+            );
+
+          if (
+            mountedRef.current
+          ) {
+            setError(
+              message,
+            );
+
+            /*
+             * Server actions may perform protected secondary synchronization
+             * or recovery work before surfacing an error. Reload canonical
+             * budget state rather than assuming the pre-mutation client
+             * snapshot is still authoritative.
+             */
+            await refreshBudget();
+
+            setError(
+              message,
+            );
+          }
+
+          return createFailure<T>(
+            message,
+          );
+        } finally {
+          if (
+            mountedRef.current
+          ) {
+            setMutationCount(
+              (
+                current,
+              ) =>
+                Math.max(
+                  0,
+                  current -
+                    1,
+                ),
+            );
+          }
+        }
+      },
+      [
+        refreshBudget,
+      ],
+    );
+
+  const handleApproval =
+    useCallback(
+      <T,>(
+        approval:
+          HouseholdApprovalRequest,
+      ) => {
+        setPendingApproval(
+          approval,
+        );
+
+        return createApprovalRequired<T>(
+          approval,
+        );
+      },
+      [],
+    );
+
+  const handleActionError =
+    useCallback(
+      <T,>(
+        message:
+          string,
+      ) => {
+        setError(
+          message,
+        );
+
+        return createFailure<T>(
+          message,
+        );
+      },
+      [],
     );
 
   const navigateToMonth =
     useCallback(
       (
-        month: Date,
+        month:
+          Date,
       ) => {
         setSelectedMonth(
           createMonthDate(
@@ -1125,106 +1259,148 @@ export default function BudgetProvider({
 
   const createBlankBudget =
     useCallback(
-      () => {
-        setBudgetMonths(
-          (
-            currentBudgetMonths,
-          ) => {
+      async () =>
+        runMutation<
+          BudgetMonthData
+        >(
+          async () => {
             if (
-              currentBudgetMonths[
+              budgetMonths[
                 selectedMonthKey
               ]
             ) {
-              return currentBudgetMonths;
+              return createSuccess(
+                budgetMonths[
+                  selectedMonthKey
+                ],
+              );
             }
 
-            return {
-              ...currentBudgetMonths,
-              [selectedMonthKey]: {
+            const result =
+              await createBudgetMonth({
                 monthKey:
                   selectedMonthKey,
-                incomeSources: [],
-                budgetGroups: [],
-              },
-            };
+              });
+
+            if (
+              !result.success
+            ) {
+              return handleActionError(
+                result.error.message,
+              );
+            }
+
+            if (
+              result.approvalRequired
+            ) {
+              return handleApproval(
+                result.approval,
+              );
+            }
+
+            const budget =
+              result.month.budget;
+
+            setBudgetMonths(
+              (
+                current,
+              ) => ({
+                ...current,
+
+                [
+                  selectedMonthKey
+                ]:
+                  budget,
+              }),
+            );
+
+            await refreshBudget();
+
+            return createSuccess(
+              budget,
+            );
           },
-        );
-      },
-      [selectedMonthKey],
+        ),
+      [
+        budgetMonths,
+        handleActionError,
+        handleApproval,
+        refreshBudget,
+        runMutation,
+        selectedMonthKey,
+      ],
     );
 
   const copyPreviousMonth =
     useCallback(
-      () => {
-        setBudgetMonths(
-          (
-            currentBudgetMonths,
-          ) => {
-            const sourceMonth =
-              currentBudgetMonths[
-                previousMonthKey
-              ];
-
+      async () =>
+        runMutation<
+          BudgetMonthData
+        >(
+          async () => {
             if (
-              !sourceMonth
+              !canCopyPreviousMonth
             ) {
-              return currentBudgetMonths;
+              return handleActionError(
+                "There is no previous budget month available to copy.",
+              );
             }
 
-            const targetMonth =
-              currentBudgetMonths[
-                selectedMonthKey
-              ];
+            const result =
+              await copyBudgetMonth({
+                sourceMonthKey:
+                  previousMonthKey,
 
-            /*
-             * Allow the copy operation when the target month does not
-             * exist OR when an empty month was created previously.
-             *
-             * This fixes the silent failure where an empty target month
-             * blocked "Copy Previous Month" because the provider only
-             * checked whether a month object existed.
-             *
-             * Never overwrite a month that already contains real budget
-             * data. That protects user-entered income, groups, and items.
-             */
-            if (
-              targetMonth &&
-              !isBudgetMonthEmpty(
-                targetMonth,
-              )
-            ) {
-              return currentBudgetMonths;
-            }
-
-            const copiedIncomeSources =
-              copyIncomeSourcesForNewMonth(
-                sourceMonth.incomeSources,
-              );
-
-            const copiedBudgetGroups =
-              copyBudgetGroupsForNewMonth(
-                sourceMonth.budgetGroups,
-              );
-
-            return {
-              ...currentBudgetMonths,
-
-              [selectedMonthKey]: {
-                monthKey:
+                targetMonthKey:
                   selectedMonthKey,
+              });
 
-                incomeSources:
-                  copiedIncomeSources,
+            if (
+              !result.success
+            ) {
+              return handleActionError(
+                result.error.message,
+              );
+            }
 
-                budgetGroups:
-                  copiedBudgetGroups,
-              },
-            };
+            if (
+              result.approvalRequired
+            ) {
+              return handleApproval(
+                result.approval,
+              );
+            }
+
+            const budget =
+              result.month.budget;
+
+            setBudgetMonths(
+              (
+                current,
+              ) => ({
+                ...current,
+
+                [
+                  selectedMonthKey
+                ]:
+                  budget,
+              }),
+            );
+
+            await refreshBudget();
+
+            return createSuccess(
+              budget,
+            );
           },
-        );
-      },
+        ),
       [
+        canCopyPreviousMonth,
+        handleActionError,
+        handleApproval,
         previousMonthKey,
+        refreshBudget,
+        runMutation,
         selectedMonthKey,
       ],
     );
@@ -1252,571 +1428,725 @@ export default function BudgetProvider({
 
   const addIncome =
     useCallback(
-      (
-        income: CreateIncomeData,
-      ) => {
-        if (!hasSelectedBudget) {
-          return null;
-        }
+      async (
+        income:
+          CreateIncomeData,
+      ) =>
+        runMutation<
+          BudgetIncomeSource
+        >(
+          async () => {
+            if (
+              !hasSelectedBudget
+            ) {
+              return handleActionError(
+                "Create this budget month before adding income.",
+              );
+            }
 
-        const newIncomeSource:
-          BudgetIncomeSource = {
-            id:
-              createId(
-                "income",
-              ),
-            name:
-              income.name,
-            amount:
-              income.amount,
-            receivedAmount:
-              income.receivedAmount,
-            status:
-              getIncomeStatus(
-                income.amount,
-                income.receivedAmount,
-              ),
-          };
+            const result =
+              await createIncomeSource({
+                monthKey:
+                  selectedMonthKey,
 
-        updateSelectedBudgetMonth(
-          (
-            currentMonth,
-          ) => ({
-            ...currentMonth,
-            incomeSources: [
-              ...currentMonth.incomeSources,
-              newIncomeSource,
-            ],
-          }),
-        );
+                name:
+                  income.name,
 
-        return newIncomeSource;
-      },
+                plannedAmount:
+                  income.amount,
+
+                receivedAmount:
+                  income.receivedAmount,
+              });
+
+            if (
+              !result.success
+            ) {
+              return handleActionError(
+                result.error.message,
+              );
+            }
+
+            if (
+              result.approvalRequired
+            ) {
+              return handleApproval(
+                result.approval,
+              );
+            }
+
+            const created =
+              result.incomeSource.incomeSource;
+
+            await refreshBudget();
+
+            return createSuccess(
+              created,
+            );
+          },
+        ),
       [
+        handleActionError,
+        handleApproval,
         hasSelectedBudget,
-        updateSelectedBudgetMonth,
+        refreshBudget,
+        runMutation,
+        selectedMonthKey,
       ],
     );
 
   const updateIncome =
     useCallback(
-      (
-        income: UpdateIncomeData,
-      ) => {
-        if (!hasSelectedBudget) {
-          return;
-        }
+      async (
+        income:
+          UpdateIncomeData,
+      ) =>
+        runMutation<
+          BudgetIncomeSource
+        >(
+          async () => {
+            const result =
+              await updateIncomeSource({
+                incomeSourceId:
+                  income.id,
 
-        updateSelectedBudgetMonth(
-          (
-            currentMonth,
-          ) => ({
-            ...currentMonth,
-            incomeSources:
-              currentMonth.incomeSources.map(
-                (
-                  currentIncomeSource,
-                ) =>
-                  currentIncomeSource.id ===
-                  income.id
-                    ? {
-                        id:
-                          income.id,
-                        name:
-                          income.name,
-                        amount:
-                          income.amount,
-                        receivedAmount:
-                          income.receivedAmount,
-                        status:
-                          getIncomeStatus(
-                            income.amount,
-                            income.receivedAmount,
-                          ),
-                      }
-                    : currentIncomeSource,
-              ),
-          }),
-        );
-      },
+                name:
+                  income.name,
+
+                plannedAmount:
+                  income.amount,
+
+                receivedAmount:
+                  income.receivedAmount,
+              });
+
+            if (
+              !result.success
+            ) {
+              return handleActionError(
+                result.error.message,
+              );
+            }
+
+            if (
+              result.approvalRequired
+            ) {
+              return handleApproval(
+                result.approval,
+              );
+            }
+
+            const updated =
+              result.incomeSource.incomeSource;
+
+            await refreshBudget();
+
+            return createSuccess(
+              updated,
+            );
+          },
+        ),
       [
-        hasSelectedBudget,
-        updateSelectedBudgetMonth,
+        handleActionError,
+        handleApproval,
+        refreshBudget,
+        runMutation,
       ],
     );
 
   const deleteIncome =
     useCallback(
-      (
-        incomeSourceId: string,
-      ) => {
-        if (!hasSelectedBudget) {
-          return;
-        }
+      async (
+        incomeSourceId:
+          string,
+      ) =>
+        runMutation<
+          BudgetIncomeSource
+        >(
+          async () => {
+            const result =
+              await archiveIncomeSource({
+                incomeSourceId,
 
-        updateSelectedBudgetMonth(
-          (
-            currentMonth,
-          ) => ({
-            ...currentMonth,
-            incomeSources:
-              currentMonth.incomeSources.filter(
-                (
-                  incomeSource,
-                ) =>
-                  incomeSource.id !==
-                  incomeSourceId,
-              ),
-          }),
-        );
-      },
+                archived:
+                  true,
+              });
+
+            if (
+              !result.success
+            ) {
+              return handleActionError(
+                result.error.message,
+              );
+            }
+
+            if (
+              result.approvalRequired
+            ) {
+              return handleApproval(
+                result.approval,
+              );
+            }
+
+            const archived =
+              result.incomeSource.incomeSource;
+
+            await refreshBudget();
+
+            return createSuccess(
+              archived,
+            );
+          },
+        ),
       [
-        hasSelectedBudget,
-        updateSelectedBudgetMonth,
+        handleActionError,
+        handleApproval,
+        refreshBudget,
+        runMutation,
       ],
     );
 
   const addBudgetGroup =
     useCallback(
-      (
+      async (
         group:
           CreateBudgetGroupData,
-      ) => {
-        if (!hasSelectedBudget) {
-          return null;
-        }
+      ) =>
+        runMutation<
+          BudgetCategoryGroupData
+        >(
+          async () => {
+            if (
+              !hasSelectedBudget
+            ) {
+              return handleActionError(
+                "Create this budget month before adding a group.",
+              );
+            }
 
-        const newGroup:
-          BudgetCategoryGroupData = {
-            id:
-              createId(
-                "group",
-              ),
-            name:
-              group.name,
-            description:
-              group.description,
-            categories: [],
-          };
+            const result =
+              await createBudgetGroup({
+                monthKey:
+                  selectedMonthKey,
 
-        updateSelectedBudgetMonth(
-          (
-            currentMonth,
-          ) => ({
-            ...currentMonth,
-            budgetGroups: [
-              ...currentMonth.budgetGroups,
-              newGroup,
-            ],
-          }),
-        );
+                name:
+                  group.name,
 
-        return newGroup;
-      },
+                description:
+                  group.description,
+              });
+
+            if (
+              !result.success
+            ) {
+              return handleActionError(
+                result.error.message,
+              );
+            }
+
+            if (
+              result.approvalRequired
+            ) {
+              return handleApproval(
+                result.approval,
+              );
+            }
+
+            const created =
+              result.group.group;
+
+            await refreshBudget();
+
+            return createSuccess(
+              created,
+            );
+          },
+        ),
       [
+        handleActionError,
+        handleApproval,
         hasSelectedBudget,
-        updateSelectedBudgetMonth,
+        refreshBudget,
+        runMutation,
+        selectedMonthKey,
       ],
     );
 
   const updateBudgetGroup =
     useCallback(
-      (
+      async (
         group:
           BudgetCategoryGroupData,
-      ) => {
-        if (!hasSelectedBudget) {
-          return;
-        }
+      ) =>
+        runMutation<
+          BudgetCategoryGroupData
+        >(
+          async () => {
+            const result =
+              await updateBudgetGroupAction({
+                groupId:
+                  group.id,
 
-        updateSelectedBudgetMonth(
-          (
-            currentMonth,
-          ) => ({
-            ...currentMonth,
-            budgetGroups:
-              currentMonth.budgetGroups.map(
-                (
-                  currentGroup,
-                ) =>
-                  currentGroup.id ===
-                  group.id
-                    ? group
-                    : currentGroup,
-              ),
-          }),
-        );
-      },
+                name:
+                  group.name,
+
+                description:
+                  group.description ??
+                  null,
+              });
+
+            if (
+              !result.success
+            ) {
+              return handleActionError(
+                result.error.message,
+              );
+            }
+
+            if (
+              result.approvalRequired
+            ) {
+              return handleApproval(
+                result.approval,
+              );
+            }
+
+            const updated =
+              result.group.group;
+
+            await refreshBudget();
+
+            return createSuccess(
+              updated,
+            );
+          },
+        ),
       [
-        hasSelectedBudget,
-        updateSelectedBudgetMonth,
+        handleActionError,
+        handleApproval,
+        refreshBudget,
+        runMutation,
       ],
     );
 
   const deleteBudgetGroup =
     useCallback(
-      (
-        groupId: string,
-      ) => {
-        if (!hasSelectedBudget) {
-          return;
-        }
+      async (
+        groupId:
+          string,
+      ) =>
+        runMutation<
+          BudgetCategoryGroupData
+        >(
+          async () => {
+            const result =
+              await archiveBudgetGroup({
+                groupId,
 
-        updateSelectedBudgetMonth(
-          (
-            currentMonth,
-          ) => ({
-            ...currentMonth,
-            budgetGroups:
-              currentMonth.budgetGroups.filter(
-                (
-                  currentGroup,
-                ) =>
-                  currentGroup.id !==
-                  groupId,
-              ),
-          }),
-        );
-      },
+                archived:
+                  true,
+              });
+
+            if (
+              !result.success
+            ) {
+              return handleActionError(
+                result.error.message,
+              );
+            }
+
+            if (
+              result.approvalRequired
+            ) {
+              return handleApproval(
+                result.approval,
+              );
+            }
+
+            const archived =
+              result.group.group;
+
+            await refreshBudget();
+
+            return createSuccess(
+              archived,
+            );
+          },
+        ),
       [
-        hasSelectedBudget,
-        updateSelectedBudgetMonth,
+        handleActionError,
+        handleApproval,
+        refreshBudget,
+        runMutation,
       ],
     );
 
   const addBudgetItem =
     useCallback(
-      (
-        groupId: string,
+      async (
+        groupId:
+          string,
         item:
           CreateBudgetItemData,
-      ) => {
-        if (!hasSelectedBudget) {
-          return null;
-        }
+      ) =>
+        runMutation<
+          BudgetCategoryData
+        >(
+          async () => {
+            if (
+              !hasSelectedBudget
+            ) {
+              return handleActionError(
+                "Create this budget month before adding an item.",
+              );
+            }
 
-        const newItem:
-          BudgetCategoryData = {
-            id:
-              createId(
-                "item",
-              ),
-            name:
-              item.name,
-            assignedAmount:
-              item.assignedAmount,
-            spentAmount: 0,
-          };
+            const result =
+              await createBudgetItem({
+                groupId,
 
-        updateSelectedBudgetMonth(
-          (
-            currentMonth,
-          ) => ({
-            ...currentMonth,
-            budgetGroups:
-              currentMonth.budgetGroups.map(
-                (
-                  currentGroup,
-                ) =>
-                  currentGroup.id ===
-                  groupId
-                    ? {
-                        ...currentGroup,
-                        categories: [
-                          ...currentGroup.categories,
-                          newItem,
-                        ],
-                      }
-                    : currentGroup,
-              ),
-          }),
-        );
+                name:
+                  item.name,
 
-        return newItem;
-      },
+                plannedAmount:
+                  item.assignedAmount,
+              });
+
+            if (
+              !result.success
+            ) {
+              return handleActionError(
+                result.error.message,
+              );
+            }
+
+            if (
+              result.approvalRequired
+            ) {
+              return handleApproval(
+                result.approval,
+              );
+            }
+
+            const created =
+              result.item.item;
+
+            await refreshBudget();
+
+            return createSuccess(
+              created,
+            );
+          },
+        ),
       [
+        handleActionError,
+        handleApproval,
         hasSelectedBudget,
-        updateSelectedBudgetMonth,
+        refreshBudget,
+        runMutation,
       ],
     );
 
   const updateBudgetItem =
     useCallback(
-      (
-        groupId: string,
+      async (
+        groupId:
+          string,
         item:
           BudgetCategoryData,
-      ) => {
-        if (!hasSelectedBudget) {
-          return;
-        }
+      ) =>
+        runMutation<
+          BudgetCategoryData
+        >(
+          async () => {
+            /*
+             * spentAmount is deliberately ignored here.
+             *
+             * Transaction activity belongs to the transaction persistence
+             * flow and is recalculated from canonical Supabase data.
+             */
+            const result =
+              await updateBudgetItemAction({
+                itemId:
+                  item.id,
 
-        updateSelectedBudgetMonth(
-          (
-            currentMonth,
-          ) => ({
-            ...currentMonth,
-            budgetGroups:
-              currentMonth.budgetGroups.map(
-                (
-                  currentGroup,
-                ) =>
-                  currentGroup.id ===
-                  groupId
-                    ? {
-                        ...currentGroup,
-                        categories:
-                          currentGroup.categories.map(
-                            (
-                              currentItem,
-                            ) =>
-                              currentItem.id ===
-                              item.id
-                                ? item
-                                : currentItem,
-                          ),
-                      }
-                    : currentGroup,
-              ),
-          }),
-        );
-      },
+                groupId,
+
+                name:
+                  item.name,
+
+                plannedAmount:
+                  item.assignedAmount,
+              });
+
+            if (
+              !result.success
+            ) {
+              return handleActionError(
+                result.error.message,
+              );
+            }
+
+            if (
+              result.approvalRequired
+            ) {
+              return handleApproval(
+                result.approval,
+              );
+            }
+
+            const updated =
+              result.item.item;
+
+            await refreshBudget();
+
+            return createSuccess(
+              updated,
+            );
+          },
+        ),
       [
-        hasSelectedBudget,
-        updateSelectedBudgetMonth,
+        handleActionError,
+        handleApproval,
+        refreshBudget,
+        runMutation,
       ],
     );
 
   const updateBudgetItemById =
     useCallback(
-      (
-        itemId: string,
-        updates: Partial<
-          Pick<
-            BudgetCategoryData,
-            | "name"
-            | "assignedAmount"
-            | "spentAmount"
-          >
-        >,
-      ) => {
-        if (!hasSelectedBudget) {
-          return;
-        }
+      async (
+        itemId:
+          string,
+        updates:
+          Partial<
+            Pick<
+              BudgetCategoryData,
+              | "name"
+              | "assignedAmount"
+            >
+          >,
+      ) =>
+        runMutation<
+          BudgetCategoryData
+        >(
+          async () => {
+            const result =
+              await updateBudgetItemAction({
+                itemId,
 
-        updateSelectedBudgetMonth(
-          (
-            currentMonth,
-          ) => ({
-            ...currentMonth,
-            budgetGroups:
-              currentMonth.budgetGroups.map(
-                (
-                  currentGroup,
-                ) => ({
-                  ...currentGroup,
-                  categories:
-                    currentGroup.categories.map(
-                      (
-                        currentItem,
-                      ) =>
-                        currentItem.id ===
-                        itemId
-                          ? {
-                              ...currentItem,
-                              ...updates,
-                            }
-                          : currentItem,
-                    ),
-                }),
-              ),
-          }),
-        );
-      },
+                ...(updates.name !==
+                undefined
+                  ? {
+                      name:
+                        updates.name,
+                    }
+                  : {}),
+
+                ...(updates.assignedAmount !==
+                undefined
+                  ? {
+                      plannedAmount:
+                        updates.assignedAmount,
+                    }
+                  : {}),
+              });
+
+            if (
+              !result.success
+            ) {
+              return handleActionError(
+                result.error.message,
+              );
+            }
+
+            if (
+              result.approvalRequired
+            ) {
+              return handleApproval(
+                result.approval,
+              );
+            }
+
+            const updated =
+              result.item.item;
+
+            await refreshBudget();
+
+            return createSuccess(
+              updated,
+            );
+          },
+        ),
       [
-        hasSelectedBudget,
-        updateSelectedBudgetMonth,
+        handleActionError,
+        handleApproval,
+        refreshBudget,
+        runMutation,
       ],
     );
 
-  const adjustBudgetItemSpentAmount =
-    useCallback(
-      (
-        itemId: string,
-        amountDelta: number,
-      ) => {
-        if (
-          !hasSelectedBudget ||
-          !Number.isFinite(
-            amountDelta,
-          ) ||
-          amountDelta === 0
-        ) {
-          return;
-        }
 
-        updateSelectedBudgetMonth(
-          (
-            currentMonth,
-          ) => ({
-            ...currentMonth,
-            budgetGroups:
-              currentMonth.budgetGroups.map(
-                (
-                  currentGroup,
-                ) => ({
-                  ...currentGroup,
-                  categories:
-                    currentGroup.categories.map(
-                      (
-                        currentItem,
-                      ) => {
-                        if (
-                          currentItem.id !==
-                          itemId
-                        ) {
-                          return currentItem;
-                        }
-
-                        const nextSpentAmount =
-                          Math.max(
-                            0,
-                            currentItem.spentAmount +
-                              amountDelta,
-                          );
-
-                        return {
-                          ...currentItem,
-                          spentAmount:
-                            nextSpentAmount,
-                        };
-                      },
-                    ),
-                }),
-              ),
-          }),
-        );
-      },
-      [
-        hasSelectedBudget,
-        updateSelectedBudgetMonth,
-      ],
-    );
 
   const deleteBudgetItem =
     useCallback(
-      (
-        groupId: string,
-        itemId: string,
-      ) => {
-        if (!hasSelectedBudget) {
-          return;
-        }
+      async (
+        groupId:
+          string,
+        itemId:
+          string,
+      ) =>
+        runMutation<
+          BudgetCategoryData
+        >(
+          async () => {
+            const currentLocation =
+              findBudgetItemById(
+                budgetGroups,
+                itemId,
+              );
 
-        updateSelectedBudgetMonth(
-          (
-            currentMonth,
-          ) => ({
-            ...currentMonth,
-            budgetGroups:
-              currentMonth.budgetGroups.map(
-                (
-                  currentGroup,
-                ) =>
-                  currentGroup.id ===
-                  groupId
-                    ? {
-                        ...currentGroup,
-                        categories:
-                          currentGroup.categories.filter(
-                            (
-                              currentItem,
-                            ) =>
-                              currentItem.id !==
-                              itemId,
-                          ),
-                      }
-                    : currentGroup,
-              ),
-          }),
-        );
-      },
+            if (
+              currentLocation &&
+              currentLocation.group.id !==
+                groupId
+            ) {
+              return handleActionError(
+                "The selected budget item no longer belongs to that group. Refresh the budget and try again.",
+              );
+            }
+
+            const result =
+              await archiveBudgetItem({
+                itemId,
+
+                archived:
+                  true,
+              });
+
+            if (
+              !result.success
+            ) {
+              return handleActionError(
+                result.error.message,
+              );
+            }
+
+            if (
+              result.approvalRequired
+            ) {
+              return handleApproval(
+                result.approval,
+              );
+            }
+
+            const archived =
+              result.item.item;
+
+            await refreshBudget();
+
+            return createSuccess(
+              archived,
+            );
+          },
+        ),
       [
-        hasSelectedBudget,
-        updateSelectedBudgetMonth,
+        budgetGroups,
+        handleActionError,
+        handleApproval,
+        refreshBudget,
+        runMutation,
       ],
     );
 
   const getBudgetItemById =
     useCallback(
       (
-        itemId: string,
-      ) => {
-        for (
-          const group
-          of budgetGroups
-        ) {
-          const item =
-            group.categories.find(
-              (
-                currentItem,
-              ) =>
-                currentItem.id ===
-                itemId,
-            );
-
-          if (item) {
-            return {
-              group,
-              item,
-            };
-          }
-        }
-
-        return null;
-      },
-      [budgetGroups],
+        itemId:
+          string,
+      ) =>
+        findBudgetItemById(
+          budgetGroups,
+          itemId,
+        ),
+      [
+        budgetGroups,
+      ],
     );
 
   const value =
     useMemo<BudgetContextValue>(
       () => ({
         selectedMonth,
+
         selectedMonthKey,
+
         selectedBudgetMonth,
+
         hasSelectedBudget,
 
         budgetMonths,
+
         incomeSources,
+
         budgetGroups,
 
         previousMonth,
+
         previousMonthKey,
+
         canCopyPreviousMonth,
+
         returnBudgetMonthKey,
 
         monthNavigation,
+
         totals,
 
+        isLoading,
+
+        isMutating,
+
+        error,
+
+        pendingApproval,
+
+        clearError,
+
+        clearPendingApproval,
+
+        refreshBudget,
+
         navigateToMonth,
+
         goToPreviousMonth,
+
         goToNextMonth,
+
         createBlankBudget,
+
         copyPreviousMonth,
+
         returnToExistingBudget,
 
         addIncome,
+
         updateIncome,
+
         deleteIncome,
 
         addBudgetGroup,
+
         updateBudgetGroup,
+
         deleteBudgetGroup,
 
         addBudgetItem,
+
         updateBudgetItem,
+
         updateBudgetItemById,
-        adjustBudgetItemSpentAmount,
+
         deleteBudgetItem,
 
         getBudgetItemById,
@@ -1825,24 +2155,30 @@ export default function BudgetProvider({
         addBudgetGroup,
         addBudgetItem,
         addIncome,
-        adjustBudgetItemSpentAmount,
         budgetGroups,
         budgetMonths,
         canCopyPreviousMonth,
+        clearError,
+        clearPendingApproval,
         copyPreviousMonth,
         createBlankBudget,
         deleteBudgetGroup,
         deleteBudgetItem,
         deleteIncome,
+        error,
         getBudgetItemById,
         goToNextMonth,
         goToPreviousMonth,
         hasSelectedBudget,
         incomeSources,
+        isLoading,
+        isMutating,
         monthNavigation,
         navigateToMonth,
+        pendingApproval,
         previousMonth,
         previousMonthKey,
+        refreshBudget,
         returnBudgetMonthKey,
         returnToExistingBudget,
         selectedBudgetMonth,
@@ -1858,11 +2194,48 @@ export default function BudgetProvider({
 
   return (
     <BudgetContext.Provider
-      value={value}
+      value={
+        value
+      }
     >
-      {children}
+      {
+        children
+      }
     </BudgetContext.Provider>
   );
+}
+
+function findBudgetItemById(
+  budgetGroups:
+    BudgetCategoryGroupData[],
+  itemId:
+    string,
+): BudgetItemLocation | null {
+  for (
+    const group
+    of budgetGroups
+  ) {
+    const item =
+      group.categories.find(
+        (
+          currentItem,
+        ) =>
+          currentItem.id ===
+          itemId,
+      );
+
+    if (
+      item
+    ) {
+      return {
+        group,
+
+        item,
+      };
+    }
+  }
+
+  return null;
 }
 
 export function useBudget() {
@@ -1871,7 +2244,9 @@ export function useBudget() {
       BudgetContext,
     );
 
-  if (!context) {
+  if (
+    !context
+  ) {
     throw new Error(
       "useBudget must be used within a BudgetProvider.",
     );

@@ -7,106 +7,135 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
-export type GoalStatus =
-  | "active"
-  | "paused"
-  | "completed";
+import {
+  archiveGoal,
+} from "@/actions/goals/archive-goal";
 
-export type GoalData = {
-  id: string;
-  name: string;
-  currentAmount: number;
-  targetAmount: number;
-  targetDate?: string;
-  status: GoalStatus;
-  notes?: string;
-  createdAt: string;
-  updatedAt: string;
-};
+import {
+  contributeToGoal as contributeToGoalAction,
+} from "@/actions/goals/contribute-to-goal";
 
-export type CreateGoalData = {
-  name: string;
-  currentAmount?: number;
-  targetAmount: number;
-  targetDate?: string;
-  status?: GoalStatus;
-  notes?: string;
-};
+import {
+  createGoal,
+} from "@/actions/goals/create-goal";
 
-export type UpdateGoalData = Partial<
-  Omit<
-    GoalData,
-    "id" | "createdAt"
-  >
->;
+import {
+  getGoals,
+} from "@/actions/goals/get-goals";
+
+import {
+  updateGoal as updateGoalAction,
+} from "@/actions/goals/update-goal";
+
+import {
+  useApp,
+} from "@/components/providers/AppProvider";
+
+import type {
+  ArchiveGoalResult,
+  ContributeToGoalResult,
+  CreateGoalData,
+  CreateGoalResult,
+  GetGoalsResult,
+  GoalData,
+  UpdateGoalData,
+  UpdateGoalResult,
+} from "@/types/goal";
+
+export type {
+  CreateGoalData,
+  GoalData,
+  GoalStatus,
+  UpdateGoalData,
+} from "@/types/goal";
 
 type GoalsContextValue = {
-  goals: GoalData[];
-  activeGoals: GoalData[];
-  completedGoals: GoalData[];
-  totalSaved: number;
-  totalTarget: number;
+  goals:
+    GoalData[];
 
-  addGoal: (
-    goal: CreateGoalData,
-  ) => GoalData;
+  activeGoals:
+    GoalData[];
 
-  updateGoal: (
-    goalId: string,
-    updates: UpdateGoalData,
-  ) => void;
+  completedGoals:
+    GoalData[];
 
-  deleteGoal: (
-    goalId: string,
-  ) => void;
+  totalSaved:
+    number;
 
-  contributeToGoal: (
-    goalId: string,
-    amount: number,
-  ) => void;
+  totalTarget:
+    number;
 
-  getGoalById: (
-    goalId: string,
-  ) => GoalData | null;
+  isLoading:
+    boolean;
+
+  error:
+    string | null;
+
+  refreshGoals:
+    () => Promise<void>;
+
+  addGoal:
+    (
+      goal:
+        CreateGoalData,
+    ) => Promise<CreateGoalResult>;
+
+  updateGoal:
+    (
+      goalId:
+        string,
+      updates:
+        UpdateGoalData,
+    ) => Promise<UpdateGoalResult>;
+
+  deleteGoal:
+    (
+      goalId:
+        string,
+    ) => Promise<ArchiveGoalResult>;
+
+  contributeToGoal:
+    (
+      goalId:
+        string,
+      amount:
+        number,
+    ) => Promise<ContributeToGoalResult>;
+
+  getGoalById:
+    (
+      goalId:
+        string,
+    ) => GoalData | null;
 };
 
 export type GoalsProviderProps = {
-  children: ReactNode;
-  initialGoals?: GoalData[];
+  children:
+    ReactNode;
+
+  initialGoals?:
+    GoalData[];
 };
 
-const GOALS_STORAGE_KEY =
-  "case-budget:goals:v1";
-
-const defaultGoals: GoalData[] =
+const defaultGoals:
+  GoalData[] =
   [];
 
 const GoalsContext =
   createContext<
     GoalsContextValue | undefined
-  >(undefined);
-
-function createGoalId() {
-  if (
-    typeof crypto !==
-      "undefined" &&
-    typeof crypto.randomUUID ===
-      "function"
-  ) {
-    return `goal-${crypto.randomUUID()}`;
-  }
-
-  return `goal-${Date.now()}-${Math.random()
-    .toString(36)
-    .slice(2, 10)}`;
-}
+  >(
+    undefined,
+  );
 
 function normalizeCurrency(
-  value: number,
-) {
+  value:
+    number,
+): number {
   if (
     !Number.isFinite(
       value,
@@ -116,13 +145,19 @@ function normalizeCurrency(
   }
 
   return Math.round(
-    value * 100,
-  ) / 100;
+    (
+      value +
+      Number.EPSILON
+    ) *
+      100,
+  ) /
+    100;
 }
 
 function cloneGoals(
-  goals: GoalData[],
-) {
+  goals:
+    GoalData[],
+): GoalData[] {
   return goals.map(
     (
       goal,
@@ -132,168 +167,197 @@ function cloneGoals(
   );
 }
 
-function isGoalStatus(
-  value: unknown,
-): value is GoalStatus {
-  return (
-    value === "active" ||
-    value === "paused" ||
-    value === "completed"
-  );
+function getResultError(
+  result:
+    | GetGoalsResult
+    | CreateGoalResult
+    | UpdateGoalResult
+    | ArchiveGoalResult
+    | ContributeToGoalResult,
+): string | null {
+  return result.success
+    ? null
+    : result.error;
 }
 
-function isGoalData(
-  value: unknown,
-): value is GoalData {
-  if (
-    !value ||
-    typeof value !==
-      "object" ||
-    Array.isArray(
-      value,
-    )
-  ) {
-    return false;
-  }
-
-  const candidate =
-    value as Partial<GoalData>;
-
-  return (
-    typeof candidate.id ===
-      "string" &&
-    typeof candidate.name ===
-      "string" &&
-    typeof candidate.currentAmount ===
-      "number" &&
-    Number.isFinite(
-      candidate.currentAmount,
-    ) &&
-    typeof candidate.targetAmount ===
-      "number" &&
-    Number.isFinite(
-      candidate.targetAmount,
-    ) &&
-    isGoalStatus(
-      candidate.status,
-    ) &&
-    typeof candidate.createdAt ===
-      "string" &&
-    typeof candidate.updatedAt ===
-      "string"
-  );
-}
-
-function loadStoredGoals() {
-  if (
-    typeof window ===
-    "undefined"
-  ) {
-    return null;
-  }
-
-  try {
-    const storedValue =
-      window.localStorage.getItem(
-        GOALS_STORAGE_KEY,
-      );
-
-    if (!storedValue) {
-      return null;
-    }
-
-    const parsedValue:
-      unknown =
-      JSON.parse(
-        storedValue,
-      );
-
-    if (
-      !Array.isArray(
-        parsedValue,
-      ) ||
-      !parsedValue.every(
-        isGoalData,
-      )
-    ) {
-      window.localStorage.removeItem(
-        GOALS_STORAGE_KEY,
-      );
-
-      return null;
-    }
-
-    return cloneGoals(
-      parsedValue,
-    );
-  } catch {
-    return null;
-  }
-}
-
+/**
+ * Production Goals provider.
+ *
+ * Supabase is the canonical persistence layer.
+ *
+ * This provider intentionally does not:
+ *
+ * - generate goal IDs in the browser,
+ * - hydrate financial data from localStorage,
+ * - persist financial data to localStorage,
+ * - accept workspace IDs from client components.
+ *
+ * The server actions resolve the authenticated user and active workspace.
+ */
 export default function GoalsProvider({
   children,
   initialGoals = defaultGoals,
 }: GoalsProviderProps) {
+  const {
+    activeWorkspaceId,
+  } =
+    useApp();
+
+  const workspaceId =
+    activeWorkspaceId ||
+    null;
+
   const [
     goals,
     setGoals,
-  ] = useState<GoalData[]>(
-    () =>
-      cloneGoals(
-        initialGoals,
-      ),
-  );
+  ] =
+    useState<
+      GoalData[]
+    >(
+      () =>
+        cloneGoals(
+          initialGoals,
+        ),
+    );
 
   const [
-    hasHydratedStorage,
-    setHasHydratedStorage,
-  ] = useState(
-    false,
-  );
+    isLoading,
+    setIsLoading,
+  ] =
+    useState(
+      true,
+    );
+
+  const [
+    error,
+    setError,
+  ] =
+    useState<
+      string | null
+    >(
+      null,
+    );
+
+  /**
+   * Prevent a slower request for a previous workspace from replacing state
+   * after the user switches workspaces.
+   */
+  const requestVersionRef =
+    useRef(
+      0,
+    );
+
+  const refreshGoals =
+    useCallback(
+      async () => {
+        const requestVersion =
+          ++requestVersionRef.current;
+
+        setIsLoading(
+          true,
+        );
+
+        setError(
+          null,
+        );
+
+        try {
+          const result =
+            await getGoals();
+
+          if (
+            requestVersion !==
+            requestVersionRef.current
+          ) {
+            return;
+          }
+
+          if (
+            !result.success
+          ) {
+            setGoals(
+              [],
+            );
+
+            setError(
+              result.error,
+            );
+
+            return;
+          }
+
+          setGoals(
+            cloneGoals(
+              result.goals,
+            ),
+          );
+        } catch (
+          refreshError
+        ) {
+          if (
+            requestVersion !==
+            requestVersionRef.current
+          ) {
+            return;
+          }
+
+          console.error(
+            "[CASE Budget Goals] Failed to refresh goals.",
+            refreshError,
+          );
+
+          setGoals(
+            [],
+          );
+
+          setError(
+            "CASE Budget could not load goals. Please try again.",
+          );
+        } finally {
+          if (
+            requestVersion ===
+            requestVersionRef.current
+          ) {
+            setIsLoading(
+              false,
+            );
+          }
+        }
+      },
+      [],
+    );
 
   useEffect(
     () => {
-      const storedGoals =
-        loadStoredGoals();
+      /**
+       * Any workspace change invalidates the prior request immediately.
+       */
+      requestVersionRef.current +=
+        1;
 
       if (
-        storedGoals
+        !workspaceId
       ) {
         setGoals(
-          storedGoals,
+          [],
         );
-      }
 
-      setHasHydratedStorage(
-        true,
-      );
-    },
-    [],
-  );
+        setError(
+          null,
+        );
 
-  useEffect(
-    () => {
-      if (
-        !hasHydratedStorage
-      ) {
+        setIsLoading(
+          false,
+        );
+
         return;
       }
 
-      try {
-        window.localStorage.setItem(
-          GOALS_STORAGE_KEY,
-          JSON.stringify(
-            goals,
-          ),
-        );
-      } catch {
-        // Local storage may be unavailable or full.
-      }
+      void refreshGoals();
     },
     [
-      goals,
-      hasHydratedStorage,
+      refreshGoals,
+      workspaceId,
     ],
   );
 
@@ -367,234 +431,359 @@ export default function GoalsProvider({
 
   const addGoal =
     useCallback(
-      (
+      async (
         goal:
           CreateGoalData,
-      ) => {
-        const timestamp =
-          new Date().toISOString();
-
-        const currentAmount =
-          normalizeCurrency(
-            goal.currentAmount ??
-            0,
-          );
-
-        const targetAmount =
-          normalizeCurrency(
-            goal.targetAmount,
-          );
-
-        const newGoal:
-          GoalData = {
-            id:
-              createGoalId(),
-
-            name:
-              goal.name.trim(),
-
-            currentAmount,
-
-            targetAmount,
-
-            targetDate:
-              goal.targetDate,
-
-            status:
-              currentAmount >=
-              targetAmount
-                ? "completed"
-                : goal.status ??
-                  "active",
-
-            notes:
-              goal.notes?.trim() ||
-              undefined,
-
-            createdAt:
-              timestamp,
-
-            updatedAt:
-              timestamp,
-          };
-
-        setGoals(
-          (
-            currentGoals,
-          ) => [
-            newGoal,
-            ...currentGoals,
-          ],
+      ): Promise<CreateGoalResult> => {
+        setError(
+          null,
         );
 
-        return newGoal;
+        try {
+          const result =
+            await createGoal(
+              goal,
+            );
+
+          const resultError =
+            getResultError(
+              result,
+            );
+
+          if (
+            resultError
+          ) {
+            setError(
+              resultError,
+            );
+
+            return result;
+          }
+
+          if (
+            !result.success
+          ) {
+            return result;
+          }
+
+          setGoals(
+            (
+              currentGoals,
+            ) => [
+              {
+                ...result.goal,
+              },
+              ...currentGoals.filter(
+                (
+                  currentGoal,
+                ) =>
+                  currentGoal.id !==
+                  result.goal.id,
+              ),
+            ],
+          );
+
+          return result;
+        } catch (
+          mutationError
+        ) {
+          console.error(
+            "[CASE Budget Goals] Failed to create goal.",
+            mutationError,
+          );
+
+          const message =
+            "CASE Budget could not create the goal. Please try again.";
+
+          setError(
+            message,
+          );
+
+          return {
+            success:
+              false,
+
+            error:
+              message,
+          };
+        }
       },
       [],
     );
 
   const updateGoal =
     useCallback(
-      (
-        goalId: string,
+      async (
+        goalId:
+          string,
         updates:
           UpdateGoalData,
-      ) => {
-        setGoals(
-          (
-            currentGoals,
-          ) =>
-            currentGoals.map(
-              (
-                goal,
-              ) => {
-                if (
-                  goal.id !==
-                  goalId
-                ) {
-                  return goal;
-                }
-
-                const nextCurrentAmount =
-                  updates.currentAmount ===
-                  undefined
-                    ? goal.currentAmount
-                    : normalizeCurrency(
-                        updates.currentAmount,
-                      );
-
-                const nextTargetAmount =
-                  updates.targetAmount ===
-                  undefined
-                    ? goal.targetAmount
-                    : normalizeCurrency(
-                        updates.targetAmount,
-                      );
-
-                return {
-                  ...goal,
-                  ...updates,
-
-                  id:
-                    goal.id,
-
-                  name:
-                    updates.name?.trim() ||
-                    goal.name,
-
-                  currentAmount:
-                    nextCurrentAmount,
-
-                  targetAmount:
-                    nextTargetAmount,
-
-                  status:
-                    nextCurrentAmount >=
-                    nextTargetAmount
-                      ? "completed"
-                      : updates.status ??
-                        goal.status,
-
-                  notes:
-                    updates.notes ===
-                    undefined
-                      ? goal.notes
-                      : updates.notes.trim() ||
-                        undefined,
-
-                  createdAt:
-                    goal.createdAt,
-
-                  updatedAt:
-                    new Date().toISOString(),
-                };
-              },
-            ),
+      ): Promise<UpdateGoalResult> => {
+        setError(
+          null,
         );
+
+        try {
+          const result =
+            await updateGoalAction(
+              {
+                goalId,
+                updates,
+              },
+            );
+
+          const resultError =
+            getResultError(
+              result,
+            );
+
+          if (
+            resultError
+          ) {
+            setError(
+              resultError,
+            );
+
+            return result;
+          }
+
+          if (
+            !result.success
+          ) {
+            return result;
+          }
+
+          setGoals(
+            (
+              currentGoals,
+            ) =>
+              currentGoals.map(
+                (
+                  currentGoal,
+                ) =>
+                  currentGoal.id ===
+                  result.goal.id
+                    ? {
+                        ...result.goal,
+                      }
+                    : currentGoal,
+              ),
+          );
+
+          return result;
+        } catch (
+          mutationError
+        ) {
+          console.error(
+            "[CASE Budget Goals] Failed to update goal.",
+            mutationError,
+          );
+
+          const message =
+            "CASE Budget could not update the goal. Please try again.";
+
+          setError(
+            message,
+          );
+
+          return {
+            success:
+              false,
+
+            error:
+              message,
+          };
+        }
       },
       [],
     );
 
   const deleteGoal =
     useCallback(
-      (
-        goalId: string,
-      ) => {
-        setGoals(
-          (
-            currentGoals,
-          ) =>
-            currentGoals.filter(
-              (
-                goal,
-              ) =>
-                goal.id !==
-                goalId,
-            ),
+      async (
+        goalId:
+          string,
+      ): Promise<ArchiveGoalResult> => {
+        setError(
+          null,
         );
+
+        try {
+          const result =
+            await archiveGoal(
+              {
+                goalId,
+                archived:
+                  true,
+              },
+            );
+
+          const resultError =
+            getResultError(
+              result,
+            );
+
+          if (
+            resultError
+          ) {
+            setError(
+              resultError,
+            );
+
+            return result;
+          }
+
+          if (
+            !result.success
+          ) {
+            return result;
+          }
+
+          if (
+            result.archived
+          ) {
+            setGoals(
+              (
+                currentGoals,
+              ) =>
+                currentGoals.filter(
+                  (
+                    currentGoal,
+                  ) =>
+                    currentGoal.id !==
+                    result.goal.id,
+                ),
+            );
+          } else {
+            setGoals(
+              (
+                currentGoals,
+              ) => [
+                {
+                  ...result.goal,
+                },
+                ...currentGoals.filter(
+                  (
+                    currentGoal,
+                  ) =>
+                    currentGoal.id !==
+                    result.goal.id,
+                ),
+              ],
+            );
+          }
+
+          return result;
+        } catch (
+          mutationError
+        ) {
+          console.error(
+            "[CASE Budget Goals] Failed to archive goal.",
+            mutationError,
+          );
+
+          const message =
+            "CASE Budget could not remove the goal. Please try again.";
+
+          setError(
+            message,
+          );
+
+          return {
+            success:
+              false,
+
+            error:
+              message,
+          };
+        }
       },
       [],
     );
 
   const contributeToGoal =
     useCallback(
-      (
-        goalId: string,
-        amount: number,
-      ) => {
-        if (
-          !Number.isFinite(
-            amount,
-          ) ||
-          amount === 0
-        ) {
-          return;
-        }
-
-        setGoals(
-          (
-            currentGoals,
-          ) =>
-            currentGoals.map(
-              (
-                goal,
-              ) => {
-                if (
-                  goal.id !==
-                  goalId
-                ) {
-                  return goal;
-                }
-
-                const nextAmount =
-                  normalizeCurrency(
-                    Math.max(
-                      0,
-                      goal.currentAmount +
-                      amount,
-                    ),
-                  );
-
-                return {
-                  ...goal,
-
-                  currentAmount:
-                    nextAmount,
-
-                  status:
-                    nextAmount >=
-                    goal.targetAmount
-                      ? "completed"
-                      : goal.status ===
-                        "completed"
-                        ? "active"
-                        : goal.status,
-
-                  updatedAt:
-                    new Date().toISOString(),
-                };
-              },
-            ),
+      async (
+        goalId:
+          string,
+        amount:
+          number,
+      ): Promise<ContributeToGoalResult> => {
+        setError(
+          null,
         );
+
+        try {
+          const result =
+            await contributeToGoalAction(
+              {
+                goalId,
+                amount,
+              },
+            );
+
+          const resultError =
+            getResultError(
+              result,
+            );
+
+          if (
+            resultError
+          ) {
+            setError(
+              resultError,
+            );
+
+            return result;
+          }
+
+          if (
+            !result.success
+          ) {
+            return result;
+          }
+
+          setGoals(
+            (
+              currentGoals,
+            ) =>
+              currentGoals.map(
+                (
+                  currentGoal,
+                ) =>
+                  currentGoal.id ===
+                  result.goal.id
+                    ? {
+                        ...result.goal,
+                      }
+                    : currentGoal,
+              ),
+          );
+
+          return result;
+        } catch (
+          mutationError
+        ) {
+          console.error(
+            "[CASE Budget Goals] Failed to contribute to goal.",
+            mutationError,
+          );
+
+          const message =
+            "CASE Budget could not update the goal balance. Please try again.";
+
+          setError(
+            message,
+          );
+
+          return {
+            success:
+              false,
+
+            error:
+              message,
+          };
+        }
       },
       [],
     );
@@ -602,8 +791,9 @@ export default function GoalsProvider({
   const getGoalById =
     useCallback(
       (
-        goalId: string,
-      ) => {
+        goalId:
+          string,
+      ): GoalData | null => {
         return (
           goals.find(
             (
@@ -628,6 +818,9 @@ export default function GoalsProvider({
         completedGoals,
         totalSaved,
         totalTarget,
+        isLoading,
+        error,
+        refreshGoals,
         addGoal,
         updateGoal,
         deleteGoal,
@@ -640,8 +833,11 @@ export default function GoalsProvider({
         completedGoals,
         contributeToGoal,
         deleteGoal,
+        error,
         getGoalById,
         goals,
+        isLoading,
+        refreshGoals,
         totalSaved,
         totalTarget,
         updateGoal,
@@ -665,7 +861,9 @@ export function useGoals() {
       GoalsContext,
     );
 
-  if (!context) {
+  if (
+    !context
+  ) {
     throw new Error(
       "useGoals must be used within a GoalsProvider.",
     );

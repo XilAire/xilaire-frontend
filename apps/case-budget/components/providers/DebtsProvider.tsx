@@ -7,135 +7,175 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
-export type DebtType =
-  | "credit-card"
-  | "personal-loan"
-  | "student-loan"
-  | "auto-loan"
-  | "mortgage"
-  | "medical"
-  | "other";
+import {
+  archiveDebt as archiveDebtAction,
+  type ArchiveDebtResult,
+} from "@/actions/debts/archive-debt";
 
-export type DebtStatus =
-  | "active"
-  | "paid-off";
+import {
+  createDebt as createDebtAction,
+} from "@/actions/debts/create-debt";
 
-export type DebtData = {
-  id: string;
-  name: string;
-  lender?: string;
-  type: DebtType;
-  originalBalance: number;
-  currentBalance: number;
-  interestRate: number;
-  minimumPayment: number;
-  dueDay?: number;
-  status: DebtStatus;
-  createdAt: string;
-  updatedAt: string;
-};
+import {
+  getDebts as getDebtsAction,
+} from "@/actions/debts/get-debts";
 
-export type CreateDebtData = {
-  name: string;
-  lender?: string;
-  type: DebtType;
-  originalBalance: number;
-  currentBalance?: number;
-  interestRate?: number;
-  minimumPayment?: number;
-  dueDay?: number;
-};
+import {
+  recordDebtPayment as recordDebtPaymentAction,
+} from "@/actions/debts/record-debt-payment";
 
-export type UpdateDebtData = Partial<
-  Omit<
-    DebtData,
-    "id" | "createdAt"
-  >
->;
+import {
+  updateDebt as updateDebtAction,
+} from "@/actions/debts/update-debt";
 
-type DebtsContextValue = {
-  debts: DebtData[];
-  activeDebts: DebtData[];
-  paidOffDebts: DebtData[];
-  totalDebt: number;
-  totalMinimumPayments: number;
+import type {
+  CreateDebtData,
+  CreateDebtResult,
+  DebtData,
+  DebtPaymentData,
+  GetDebtsResult,
+  RecordDebtPaymentData,
+  RecordDebtPaymentResult,
+  UpdateDebtData,
+  UpdateDebtResult,
+} from "@/types/debt";
 
-  addDebt: (
-    debt: CreateDebtData,
-  ) => DebtData;
-
-  updateDebt: (
-    debtId: string,
-    updates: UpdateDebtData,
-  ) => void;
-
-  deleteDebt: (
-    debtId: string,
-  ) => void;
-
-  recordDebtPayment: (
-    debtId: string,
-    amount: number,
-  ) => void;
-
-  getDebtById: (
-    debtId: string,
-  ) => DebtData | null;
-};
+export type {
+  CreateDebtData,
+  DebtData,
+  DebtPaymentData,
+  DebtStatus,
+  DebtType,
+  RecordDebtPaymentData,
+  UpdateDebtData,
+} from "@/types/debt";
 
 export type DebtsProviderProps = {
-  children: ReactNode;
-  initialDebts?: DebtData[];
+  children:
+    ReactNode;
+
+  /**
+   * Optional server-provided debt state.
+   *
+   * When supplied, the provider can render immediately from canonical server
+   * data and then refresh from Supabase after mounting.
+   */
+  initialDebts?:
+    DebtData[];
+
+  /**
+   * Optional server-provided payment history.
+   */
+  initialPayments?:
+    DebtPaymentData[];
 };
 
-const DEBTS_STORAGE_KEY =
-  "case-budget:debts:v1";
+type DebtsContextValue = {
+  debts:
+    DebtData[];
 
-const defaultDebts: DebtData[] =
-  [];
+  activeDebts:
+    DebtData[];
+
+  paidOffDebts:
+    DebtData[];
+
+  payments:
+    DebtPaymentData[];
+
+  totalDebt:
+    number;
+
+  totalMinimumPayments:
+    number;
+
+  isLoading:
+    boolean;
+
+  isMutating:
+    boolean;
+
+  error:
+    string | null;
+
+  refreshDebts:
+    () => Promise<GetDebtsResult>;
+
+  addDebt:
+    (
+      debt:
+        CreateDebtData,
+    ) => Promise<CreateDebtResult>;
+
+  updateDebt:
+    (
+      debtId:
+        string,
+      updates:
+        UpdateDebtData,
+    ) => Promise<UpdateDebtResult>;
+
+  deleteDebt:
+    (
+      debtId:
+        string,
+    ) => Promise<ArchiveDebtResult>;
+
+  restoreDebt:
+    (
+      debtId:
+        string,
+    ) => Promise<ArchiveDebtResult>;
+
+  recordDebtPayment:
+    (
+      debtId:
+        string,
+      amount:
+        number,
+      options?:
+        Omit<
+          RecordDebtPaymentData,
+          | "debtId"
+          | "amount"
+        >,
+    ) => Promise<RecordDebtPaymentResult>;
+
+  getDebtById:
+    (
+      debtId:
+        string,
+    ) => DebtData | null;
+
+  getPaymentsForDebt:
+    (
+      debtId:
+        string,
+    ) => DebtPaymentData[];
+
+  clearError:
+    () => void;
+};
+
+const defaultDebts:
+  DebtData[] = [];
+
+const defaultPayments:
+  DebtPaymentData[] = [];
 
 const DebtsContext =
   createContext<
     DebtsContextValue | undefined
   >(undefined);
 
-function createDebtId() {
-  if (
-    typeof crypto !==
-      "undefined" &&
-    typeof crypto.randomUUID ===
-      "function"
-  ) {
-    return `debt-${crypto.randomUUID()}`;
-  }
-
-  return `debt-${Date.now()}-${Math.random()
-    .toString(36)
-    .slice(2, 10)}`;
-}
-
-function normalizeCurrency(
-  value: number,
-) {
-  if (
-    !Number.isFinite(
-      value,
-    )
-  ) {
-    return 0;
-  }
-
-  return Math.round(
-    value * 100,
-  ) / 100;
-}
-
 function cloneDebts(
-  debts: DebtData[],
-) {
+  debts:
+    DebtData[],
+): DebtData[] {
   return debts.map(
     (
       debt,
@@ -145,160 +185,427 @@ function cloneDebts(
   );
 }
 
-function isDebtData(
-  value: unknown,
-): value is DebtData {
-  if (
-    !value ||
-    typeof value !==
-      "object" ||
-    Array.isArray(
-      value,
-    )
-  ) {
-    return false;
-  }
-
-  const candidate =
-    value as Partial<DebtData>;
-
-  return (
-    typeof candidate.id ===
-      "string" &&
-    typeof candidate.name ===
-      "string" &&
-    typeof candidate.originalBalance ===
-      "number" &&
-    typeof candidate.currentBalance ===
-      "number" &&
-    typeof candidate.interestRate ===
-      "number" &&
-    typeof candidate.minimumPayment ===
-      "number" &&
+function clonePayments(
+  payments:
+    DebtPaymentData[],
+): DebtPaymentData[] {
+  return payments.map(
     (
-      candidate.status ===
-        "active" ||
-      candidate.status ===
-        "paid-off"
-    ) &&
-    typeof candidate.createdAt ===
-      "string" &&
-    typeof candidate.updatedAt ===
-      "string"
+      payment,
+    ) => ({
+      ...payment,
+    }),
   );
 }
 
-function loadStoredDebts() {
+function normalizeCurrency(
+  value:
+    number,
+): number {
   if (
-    typeof window ===
-    "undefined"
+    !Number.isFinite(
+      value,
+    )
   ) {
-    return null;
+    return 0;
   }
 
-  try {
-    const storedValue =
-      window.localStorage.getItem(
-        DEBTS_STORAGE_KEY,
-      );
+  return Math.round(
+    (
+      value +
+      Number.EPSILON
+    ) *
+      100,
+  ) /
+    100;
+}
 
-    if (!storedValue) {
-      return null;
-    }
+function sortDebts(
+  debts:
+    DebtData[],
+): DebtData[] {
+  return [
+    ...debts,
+  ].sort(
+    (
+      left,
+      right,
+    ) => {
+      if (
+        left.status !==
+        right.status
+      ) {
+        return left.status ===
+          "active"
+          ? -1
+          : 1;
+      }
 
-    const parsedValue:
-      unknown =
-      JSON.parse(
-        storedValue,
-      );
+      const updatedDifference =
+        Date.parse(
+          right.updatedAt,
+        ) -
+        Date.parse(
+          left.updatedAt,
+        );
 
-    if (
-      !Array.isArray(
-        parsedValue,
-      ) ||
-      !parsedValue.every(
-        isDebtData,
-      )
-    ) {
-      window.localStorage.removeItem(
-        DEBTS_STORAGE_KEY,
-      );
+      if (
+        Number.isFinite(
+          updatedDifference,
+        ) &&
+        updatedDifference !==
+          0
+      ) {
+        return updatedDifference;
+      }
 
-      return null;
-    }
+      return Date.parse(
+        right.createdAt,
+      ) -
+        Date.parse(
+          left.createdAt,
+        );
+    },
+  );
+}
 
-    return cloneDebts(
-      parsedValue,
+function sortPayments(
+  payments:
+    DebtPaymentData[],
+): DebtPaymentData[] {
+  return [
+    ...payments,
+  ].sort(
+    (
+      left,
+      right,
+    ) => {
+      const paymentDateDifference =
+        right.paymentDate.localeCompare(
+          left.paymentDate,
+        );
+
+      if (
+        paymentDateDifference !==
+        0
+      ) {
+        return paymentDateDifference;
+      }
+
+      return Date.parse(
+        right.createdAt,
+      ) -
+        Date.parse(
+          left.createdAt,
+        );
+    },
+  );
+}
+
+function replaceDebt(
+  currentDebts:
+    DebtData[],
+  updatedDebt:
+    DebtData,
+): DebtData[] {
+  const existingIndex =
+    currentDebts.findIndex(
+      (
+        debt,
+      ) =>
+        debt.id ===
+        updatedDebt.id,
     );
-  } catch {
-    return null;
+
+  if (
+    existingIndex ===
+      -1
+  ) {
+    return sortDebts([
+      updatedDebt,
+      ...currentDebts,
+    ]);
   }
+
+  return sortDebts(
+    currentDebts.map(
+      (
+        debt,
+      ) =>
+        debt.id ===
+        updatedDebt.id
+          ? updatedDebt
+          : debt,
+    ),
+  );
+}
+
+function upsertPayment(
+  currentPayments:
+    DebtPaymentData[],
+  payment:
+    DebtPaymentData,
+): DebtPaymentData[] {
+  const withoutExisting =
+    currentPayments.filter(
+      (
+        currentPayment,
+      ) =>
+        currentPayment.id !==
+        payment.id,
+    );
+
+  return sortPayments([
+    payment,
+    ...withoutExisting,
+  ]);
 }
 
 export default function DebtsProvider({
   children,
-  initialDebts = defaultDebts,
+  initialDebts =
+    defaultDebts,
+  initialPayments =
+    defaultPayments,
 }: DebtsProviderProps) {
   const [
     debts,
     setDebts,
-  ] = useState<DebtData[]>(
-    () =>
-      cloneDebts(
-        initialDebts,
-      ),
-  );
+  ] =
+    useState<
+      DebtData[]
+    >(
+      () =>
+        sortDebts(
+          cloneDebts(
+            initialDebts,
+          ),
+        ),
+    );
 
   const [
-    hasHydratedStorage,
-    setHasHydratedStorage,
+    payments,
+    setPayments,
+  ] =
+    useState<
+      DebtPaymentData[]
+    >(
+      () =>
+        sortPayments(
+          clonePayments(
+            initialPayments,
+          ),
+        ),
+    );
+
+  const [
+    isLoading,
+    setIsLoading,
   ] =
     useState(
-      false,
+      true,
+    );
+
+  const [
+    mutationCount,
+    setMutationCount,
+  ] =
+    useState(
+      0,
+    );
+
+  const [
+    error,
+    setError,
+  ] =
+    useState<
+      string | null
+    >(
+      null,
+    );
+
+  /**
+   * Prevent an older refresh response from replacing a newer refresh.
+   *
+   * This matters when the active workspace changes quickly or a component
+   * explicitly refreshes while the provider's initial load is still pending.
+   */
+  const refreshRequestIdRef =
+    useRef(
+      0,
+    );
+
+  const mountedRef =
+    useRef(
+      true,
     );
 
   useEffect(
     () => {
-      const storedDebts =
-        loadStoredDebts();
+      mountedRef.current =
+        true;
 
-      if (
-        storedDebts
-      ) {
-        setDebts(
-          storedDebts,
-        );
-      }
-
-      setHasHydratedStorage(
-        true,
-      );
+      return () => {
+        mountedRef.current =
+          false;
+      };
     },
     [],
   );
 
+  const clearError =
+    useCallback(
+      () => {
+        setError(
+          null,
+        );
+      },
+      [],
+    );
+
+  const beginMutation =
+    useCallback(
+      () => {
+        setMutationCount(
+          (
+            current,
+          ) =>
+            current +
+            1,
+        );
+      },
+      [],
+    );
+
+  const endMutation =
+    useCallback(
+      () => {
+        setMutationCount(
+          (
+            current,
+          ) =>
+            Math.max(
+              0,
+              current -
+                1,
+            ),
+        );
+      },
+      [],
+    );
+
+  const refreshDebts =
+    useCallback(
+      async (): Promise<GetDebtsResult> => {
+        const requestId =
+          refreshRequestIdRef.current +
+          1;
+
+        refreshRequestIdRef.current =
+          requestId;
+
+        setIsLoading(
+          true,
+        );
+
+        try {
+          const result =
+            await getDebtsAction();
+
+          if (
+            !mountedRef.current ||
+            refreshRequestIdRef.current !==
+              requestId
+          ) {
+            return result;
+          }
+
+          if (
+            !result.success
+          ) {
+            setError(
+              result.error,
+            );
+
+            return result;
+          }
+
+          setDebts(
+            sortDebts(
+              cloneDebts(
+                result.debts,
+              ),
+            ),
+          );
+
+          setPayments(
+            sortPayments(
+              clonePayments(
+                result.payments,
+              ),
+            ),
+          );
+
+          setError(
+            null,
+          );
+
+          return result;
+        } catch (
+          caughtError
+        ) {
+          console.error(
+            "[CASE Budget DebtsProvider] Failed to refresh debts.",
+            caughtError,
+          );
+
+          const result:
+            GetDebtsResult = {
+              success:
+                false,
+
+              error:
+                "CASE Budget could not load your debts. Please try again.",
+            };
+
+          if (
+            mountedRef.current &&
+            refreshRequestIdRef.current ===
+              requestId
+          ) {
+            setError(
+              result.error,
+            );
+          }
+
+          return result;
+        } finally {
+          if (
+            mountedRef.current &&
+            refreshRequestIdRef.current ===
+              requestId
+          ) {
+            setIsLoading(
+              false,
+            );
+          }
+        }
+      },
+      [],
+    );
+
+  /**
+   * Supabase is now the canonical source of debt data.
+   *
+   * There is intentionally no localStorage hydration or persistence here.
+   * Every provider mount reloads the authenticated active workspace.
+   */
   useEffect(
     () => {
-      if (
-        !hasHydratedStorage
-      ) {
-        return;
-      }
-
-      try {
-        window.localStorage.setItem(
-          DEBTS_STORAGE_KEY,
-          JSON.stringify(
-            debts,
-          ),
-        );
-      } catch {
-        // Local storage may be unavailable or full.
-      }
+      void refreshDebts();
     },
     [
-      debts,
-      hasHydratedStorage,
+      refreshDebts,
     ],
   );
 
@@ -372,260 +679,399 @@ export default function DebtsProvider({
 
   const addDebt =
     useCallback(
-      (
+      async (
         debt:
           CreateDebtData,
-      ) => {
-        const timestamp =
-          new Date().toISOString();
+      ): Promise<CreateDebtResult> => {
+        beginMutation();
 
-        const originalBalance =
-          normalizeCurrency(
-            debt.originalBalance,
-          );
+        try {
+          const result =
+            await createDebtAction(
+              debt,
+            );
 
-        const currentBalance =
-          normalizeCurrency(
-            debt.currentBalance ??
-            originalBalance,
-          );
+          if (
+            !result.success
+          ) {
+            setError(
+              result.error,
+            );
 
-        const newDebt:
-          DebtData = {
-            id:
-              createDebtId(),
+            return result;
+          }
 
-            name:
-              debt.name.trim(),
-
-            lender:
-              debt.lender?.trim() ||
-              undefined,
-
-            type:
-              debt.type,
-
-            originalBalance,
-
-            currentBalance,
-
-            interestRate:
-              Number.isFinite(
-                debt.interestRate,
-              )
-                ? debt.interestRate ??
-                  0
-                : 0,
-
-            minimumPayment:
-              normalizeCurrency(
-                debt.minimumPayment ??
-                0,
+          setDebts(
+            (
+              currentDebts,
+            ) =>
+              replaceDebt(
+                currentDebts,
+                result.debt,
               ),
+          );
 
-            dueDay:
-              debt.dueDay,
+          setError(
+            null,
+          );
 
-            status:
-              currentBalance <=
-              0
-                ? "paid-off"
-                : "active",
+          return result;
+        } catch (
+          caughtError
+        ) {
+          console.error(
+            "[CASE Budget DebtsProvider] Failed to create debt.",
+            caughtError,
+          );
 
-            createdAt:
-              timestamp,
+          const result:
+            CreateDebtResult = {
+              success:
+                false,
 
-            updatedAt:
-              timestamp,
-          };
+              error:
+                "CASE Budget could not create the debt. Please try again.",
+            };
 
-        setDebts(
-          (
-            currentDebts,
-          ) => [
-            newDebt,
-            ...currentDebts,
-          ],
-        );
+          setError(
+            result.error,
+          );
 
-        return newDebt;
+          return result;
+        } finally {
+          endMutation();
+        }
       },
-      [],
+      [
+        beginMutation,
+        endMutation,
+      ],
     );
 
   const updateDebt =
     useCallback(
-      (
-        debtId: string,
+      async (
+        debtId:
+          string,
         updates:
           UpdateDebtData,
-      ) => {
-        setDebts(
-          (
-            currentDebts,
-          ) =>
-            currentDebts.map(
-              (
-                debt,
-              ) => {
-                if (
-                  debt.id !==
-                  debtId
-                ) {
-                  return debt;
-                }
+      ): Promise<UpdateDebtResult> => {
+        beginMutation();
 
-                const currentBalance =
-                  updates.currentBalance ===
-                  undefined
-                    ? debt.currentBalance
-                    : normalizeCurrency(
-                        updates.currentBalance,
-                      );
+        try {
+          const result =
+            await updateDebtAction({
+              debtId,
+              updates,
+            });
 
-                return {
-                  ...debt,
-                  ...updates,
+          if (
+            !result.success
+          ) {
+            setError(
+              result.error,
+            );
 
-                  id:
-                    debt.id,
+            return result;
+          }
 
-                  name:
-                    updates.name?.trim() ||
-                    debt.name,
+          setDebts(
+            (
+              currentDebts,
+            ) =>
+              replaceDebt(
+                currentDebts,
+                result.debt,
+              ),
+          );
 
-                  lender:
-                    updates.lender ===
-                    undefined
-                      ? debt.lender
-                      : updates.lender.trim() ||
-                        undefined,
+          setError(
+            null,
+          );
 
-                  originalBalance:
-                    updates.originalBalance ===
-                    undefined
-                      ? debt.originalBalance
-                      : normalizeCurrency(
-                          updates.originalBalance,
-                        ),
+          return result;
+        } catch (
+          caughtError
+        ) {
+          console.error(
+            "[CASE Budget DebtsProvider] Failed to update debt.",
+            caughtError,
+          );
 
-                  currentBalance,
+          const result:
+            UpdateDebtResult = {
+              success:
+                false,
 
-                  minimumPayment:
-                    updates.minimumPayment ===
-                    undefined
-                      ? debt.minimumPayment
-                      : normalizeCurrency(
-                          updates.minimumPayment,
-                        ),
+              error:
+                "CASE Budget could not update the debt. Please try again.",
+            };
 
-                  status:
-                    currentBalance <=
-                    0
-                      ? "paid-off"
-                      : updates.status ??
-                        debt.status,
+          setError(
+            result.error,
+          );
 
-                  createdAt:
-                    debt.createdAt,
-
-                  updatedAt:
-                    new Date().toISOString(),
-                };
-              },
-            ),
-        );
+          return result;
+        } finally {
+          endMutation();
+        }
       },
-      [],
+      [
+        beginMutation,
+        endMutation,
+      ],
     );
 
+  /**
+   * The existing UI calls this deleteDebt for compatibility, but production
+   * behavior is a soft archive. No debt or payment-history row is deleted.
+   */
   const deleteDebt =
     useCallback(
-      (
-        debtId: string,
-      ) => {
-        setDebts(
-          (
-            currentDebts,
-          ) =>
-            currentDebts.filter(
-              (
-                debt,
-              ) =>
-                debt.id !==
-                debtId,
-            ),
-        );
+      async (
+        debtId:
+          string,
+      ): Promise<ArchiveDebtResult> => {
+        beginMutation();
+
+        try {
+          const result =
+            await archiveDebtAction({
+              debtId,
+              archived:
+                true,
+            });
+
+          if (
+            !result.success
+          ) {
+            setError(
+              result.error,
+            );
+
+            return result;
+          }
+
+          setDebts(
+            (
+              currentDebts,
+            ) =>
+              currentDebts.filter(
+                (
+                  debt,
+                ) =>
+                  debt.id !==
+                  debtId,
+              ),
+          );
+
+          setError(
+            null,
+          );
+
+          return result;
+        } catch (
+          caughtError
+        ) {
+          console.error(
+            "[CASE Budget DebtsProvider] Failed to archive debt.",
+            caughtError,
+          );
+
+          const result:
+            ArchiveDebtResult = {
+              success:
+                false,
+
+              error:
+                "CASE Budget could not archive the debt. Please try again.",
+            };
+
+          setError(
+            result.error,
+          );
+
+          return result;
+        } finally {
+          endMutation();
+        }
       },
-      [],
+      [
+        beginMutation,
+        endMutation,
+      ],
+    );
+
+  const restoreDebt =
+    useCallback(
+      async (
+        debtId:
+          string,
+      ): Promise<ArchiveDebtResult> => {
+        beginMutation();
+
+        try {
+          const result =
+            await archiveDebtAction({
+              debtId,
+              archived:
+                false,
+            });
+
+          if (
+            !result.success
+          ) {
+            setError(
+              result.error,
+            );
+
+            return result;
+          }
+
+          setDebts(
+            (
+              currentDebts,
+            ) =>
+              replaceDebt(
+                currentDebts,
+                result.debt,
+              ),
+          );
+
+          setError(
+            null,
+          );
+
+          return result;
+        } catch (
+          caughtError
+        ) {
+          console.error(
+            "[CASE Budget DebtsProvider] Failed to restore debt.",
+            caughtError,
+          );
+
+          const result:
+            ArchiveDebtResult = {
+              success:
+                false,
+
+              error:
+                "CASE Budget could not restore the debt. Please try again.",
+            };
+
+          setError(
+            result.error,
+          );
+
+          return result;
+        } finally {
+          endMutation();
+        }
+      },
+      [
+        beginMutation,
+        endMutation,
+      ],
     );
 
   const recordDebtPayment =
     useCallback(
-      (
-        debtId: string,
-        amount: number,
-      ) => {
-        if (
-          !Number.isFinite(
-            amount,
-          ) ||
-          amount <= 0
+      async (
+        debtId:
+          string,
+        amount:
+          number,
+        options:
+          Omit<
+            RecordDebtPaymentData,
+            | "debtId"
+            | "amount"
+          > = {},
+      ): Promise<RecordDebtPaymentResult> => {
+        beginMutation();
+
+        try {
+          const result =
+            await recordDebtPaymentAction({
+              debtId,
+              amount,
+              ...options,
+            });
+
+          if (
+            !result.success
+          ) {
+            setError(
+              result.error,
+            );
+
+            return result;
+          }
+
+          setDebts(
+            (
+              currentDebts,
+            ) =>
+              replaceDebt(
+                currentDebts,
+                result.debt,
+              ),
+          );
+
+          setPayments(
+            (
+              currentPayments,
+            ) =>
+              upsertPayment(
+                currentPayments,
+                result.payment,
+              ),
+          );
+
+          setError(
+            null,
+          );
+
+          return result;
+        } catch (
+          caughtError
         ) {
-          return;
+          console.error(
+            "[CASE Budget DebtsProvider] Failed to record debt payment.",
+            caughtError,
+          );
+
+          const result:
+            RecordDebtPaymentResult = {
+              success:
+                false,
+
+              error:
+                "CASE Budget could not record the debt payment. Please try again.",
+            };
+
+          setError(
+            result.error,
+          );
+
+          return result;
+        } finally {
+          endMutation();
         }
-
-        setDebts(
-          (
-            currentDebts,
-          ) =>
-            currentDebts.map(
-              (
-                debt,
-              ) => {
-                if (
-                  debt.id !==
-                  debtId
-                ) {
-                  return debt;
-                }
-
-                const nextBalance =
-                  normalizeCurrency(
-                    Math.max(
-                      0,
-                      debt.currentBalance -
-                      amount,
-                    ),
-                  );
-
-                return {
-                  ...debt,
-
-                  currentBalance:
-                    nextBalance,
-
-                  status:
-                    nextBalance ===
-                    0
-                      ? "paid-off"
-                      : "active",
-
-                  updatedAt:
-                    new Date().toISOString(),
-                };
-              },
-            ),
-        );
       },
-      [],
+      [
+        beginMutation,
+        endMutation,
+      ],
     );
 
   const getDebtById =
     useCallback(
       (
-        debtId: string,
-      ) => {
+        debtId:
+          string,
+      ): DebtData | null => {
         return (
           debts.find(
             (
@@ -642,31 +1088,70 @@ export default function DebtsProvider({
       ],
     );
 
+  const getPaymentsForDebt =
+    useCallback(
+      (
+        debtId:
+          string,
+      ): DebtPaymentData[] => {
+        return payments.filter(
+          (
+            payment,
+          ) =>
+            payment.debtId ===
+            debtId,
+        );
+      },
+      [
+        payments,
+      ],
+    );
+
+  const isMutating =
+    mutationCount >
+    0;
+
   const value =
     useMemo<DebtsContextValue>(
       () => ({
         debts,
         activeDebts,
         paidOffDebts,
+        payments,
         totalDebt,
         totalMinimumPayments,
+        isLoading,
+        isMutating,
+        error,
+        refreshDebts,
         addDebt,
         updateDebt,
         deleteDebt,
+        restoreDebt,
         recordDebtPayment,
         getDebtById,
+        getPaymentsForDebt,
+        clearError,
       }),
       [
-        activeDebts,
-        addDebt,
         debts,
-        deleteDebt,
-        getDebtById,
+        activeDebts,
         paidOffDebts,
-        recordDebtPayment,
+        payments,
         totalDebt,
         totalMinimumPayments,
+        isLoading,
+        isMutating,
+        error,
+        refreshDebts,
+        addDebt,
         updateDebt,
+        deleteDebt,
+        restoreDebt,
+        recordDebtPayment,
+        getDebtById,
+        getPaymentsForDebt,
+        clearError,
       ],
     );
 
@@ -681,13 +1166,16 @@ export default function DebtsProvider({
   );
 }
 
-export function useDebts() {
+export function useDebts():
+  DebtsContextValue {
   const context =
     useContext(
       DebtsContext,
     );
 
-  if (!context) {
+  if (
+    !context
+  ) {
     throw new Error(
       "useDebts must be used within a DebtsProvider.",
     );

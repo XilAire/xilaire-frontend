@@ -11,10 +11,13 @@ import type {
   InvestmentConnectionStatus,
   InvestmentHoldingData,
   InvestmentHoldingType,
+  InvestmentPerformanceSnapshot,
+  CreateInvestmentPerformanceSnapshotData,
+  UpdateInvestmentPerformanceSnapshotData,
   UpdateInvestmentAccountData,
   UpdateInvestmentActivityData,
   UpdateInvestmentHoldingData,
-} from "@/components/providers/InvestmentsProvider";
+} from "@/types/investment";
 
 import {
   createClient,
@@ -29,6 +32,9 @@ export type InvestmentsData = {
 
   activities:
     InvestmentActivityData[];
+
+  performanceSnapshots:
+    InvestmentPerformanceSnapshot[];
 };
 
 export type InvestmentsDataResult = {
@@ -145,6 +151,52 @@ export type DeleteInvestmentActivityInput = {
   activityId: string;
 };
 
+export type InvestmentPerformanceSnapshotsResult = {
+  success: boolean;
+  data: InvestmentPerformanceSnapshot[];
+  error: string | null;
+};
+
+export type InvestmentPerformanceSnapshotResult = {
+  success: boolean;
+  data: InvestmentPerformanceSnapshot | null;
+  error: string | null;
+};
+
+export type CreateInvestmentPerformanceSnapshotInput = {
+  workspaceId: string;
+  snapshot: CreateInvestmentPerformanceSnapshotData;
+};
+
+export type UpdateInvestmentPerformanceSnapshotInput = {
+  workspaceId: string;
+  snapshotId: string;
+  updates: UpdateInvestmentPerformanceSnapshotData;
+};
+
+export type DeleteInvestmentPerformanceSnapshotInput = {
+  workspaceId: string;
+  snapshotId: string;
+};
+
+export type SyncInvestmentPerformanceSnapshotResult = {
+  success: boolean;
+  data: InvestmentPerformanceSnapshot | null;
+  error: string | null;
+};
+
+type InvestmentPerformanceSnapshotRow = {
+  id: string;
+  workspace_id: string;
+  snapshot_date: string;
+  portfolio_value: number | string;
+  cost_basis: number | string;
+  cash_value: number | string;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 type InvestmentAccountRow = {
   id: string;
   workspace_id: string;
@@ -204,6 +256,21 @@ type InvestmentActivityRow = {
   created_at: string;
   updated_at: string;
 };
+
+const INVESTMENT_PERFORMANCE_SNAPSHOT_SELECT =
+  [
+    "id",
+    "workspace_id",
+    "snapshot_date",
+    "portfolio_value",
+    "cost_basis",
+    "cash_value",
+    "created_by",
+    "created_at",
+    "updated_at",
+  ].join(
+    ",",
+  );
 
 const INVESTMENT_ACCOUNT_SELECT =
   [
@@ -345,6 +412,9 @@ export async function getInvestmentsData(
 
         activities:
           [],
+
+        performanceSnapshots:
+          [],
       },
 
       error:
@@ -360,6 +430,7 @@ export async function getInvestmentsData(
       accountsResult,
       holdingsResult,
       activitiesResult,
+      performanceResult,
     ] =
       await Promise.all([
         supabase
@@ -425,6 +496,25 @@ export async function getInvestmentsData(
                 false,
             },
           ),
+
+        supabase
+          .from(
+            "investment_performance_snapshots",
+          )
+          .select(
+            INVESTMENT_PERFORMANCE_SNAPSHOT_SELECT,
+          )
+          .eq(
+            "workspace_id",
+            normalizedWorkspaceId,
+          )
+          .order(
+            "snapshot_date",
+            {
+              ascending:
+                true,
+            },
+          ),
       ]);
 
     if (
@@ -457,6 +547,18 @@ export async function getInvestmentsData(
       return createInvestmentsDataError(
         normalizeInvestmentsError(
           activitiesResult
+            .error
+            .message,
+        ),
+      );
+    }
+
+    if (
+      performanceResult.error
+    ) {
+      return createInvestmentsDataError(
+        normalizeInvestmentsError(
+          performanceResult
             .error
             .message,
         ),
@@ -526,6 +628,29 @@ export async function getInvestmentsData(
             null,
         );
 
+    const performanceSnapshots =
+      deriveInvestmentPerformanceSnapshots(
+        (
+          performanceResult.data ??
+          []
+        )
+          .map(
+            (
+              row,
+            ) =>
+              parseInvestmentPerformanceSnapshotRow(
+                row,
+              ),
+          )
+          .filter(
+            (
+              snapshot,
+            ): snapshot is InvestmentPerformanceSnapshot =>
+              snapshot !==
+              null,
+          ),
+      );
+
     return {
       success: true,
 
@@ -533,6 +658,7 @@ export async function getInvestmentsData(
         investmentAccounts,
         holdings,
         activities,
+        performanceSnapshots,
       },
 
       error: null,
@@ -737,6 +863,10 @@ export async function getInvestmentAccountById(
       };
     }
 
+    await syncTodayInvestmentPerformanceSnapshot(
+      normalizedWorkspaceId,
+    );
+
     return {
       success: true,
       data:
@@ -910,6 +1040,10 @@ export async function createInvestmentAccount({
         "The created investment account response was incomplete or invalid.",
       );
     }
+
+    await syncTodayInvestmentPerformanceSnapshot(
+      normalizedWorkspaceId,
+    );
 
     return {
       success: true,
@@ -1275,6 +1409,10 @@ export async function deleteInvestmentAccount({
       };
     }
 
+    await syncTodayInvestmentPerformanceSnapshot(
+      normalizedWorkspaceId,
+    );
+
     return {
       success: true,
       error: null,
@@ -1490,6 +1628,10 @@ export async function getInvestmentHoldingById(
         "The investment holding response was incomplete or invalid.",
       );
     }
+
+    await syncTodayInvestmentPerformanceSnapshot(
+      normalizedWorkspaceId,
+    );
 
     return {
       success: true,
@@ -1722,6 +1864,10 @@ export async function createInvestmentHolding({
         "The created investment holding response was incomplete or invalid.",
       );
     }
+
+    await syncTodayInvestmentPerformanceSnapshot(
+      normalizedWorkspaceId,
+    );
 
     return {
       success: true,
@@ -2117,6 +2263,10 @@ export async function deleteInvestmentHolding({
       };
     }
 
+    await syncTodayInvestmentPerformanceSnapshot(
+      normalizedWorkspaceId,
+    );
+
     return {
       success: true,
       error: null,
@@ -2356,6 +2506,10 @@ export async function getInvestmentActivityById(
         "The investment activity response was incomplete or invalid.",
       );
     }
+
+    await syncTodayInvestmentPerformanceSnapshot(
+      normalizedWorkspaceId,
+    );
 
     return {
       success: true,
@@ -2605,6 +2759,10 @@ export async function createInvestmentActivity({
         "The created investment activity response was incomplete or invalid.",
       );
     }
+
+    await syncTodayInvestmentPerformanceSnapshot(
+      normalizedWorkspaceId,
+    );
 
     return {
       success: true,
@@ -2933,6 +3091,10 @@ export async function deleteInvestmentActivity({
       };
     }
 
+    await syncTodayInvestmentPerformanceSnapshot(
+      normalizedWorkspaceId,
+    );
+
     return {
       success: true,
       error: null,
@@ -2949,6 +3111,1114 @@ export async function deleteInvestmentActivity({
         ),
     };
   }
+}
+
+export async function syncTodayInvestmentPerformanceSnapshot(
+  workspaceId: string,
+): Promise<SyncInvestmentPerformanceSnapshotResult> {
+  const normalizedWorkspaceId =
+    normalizeRequiredText(
+      workspaceId,
+    );
+
+  if (
+    !normalizedWorkspaceId
+  ) {
+    return {
+      success: false,
+      data: null,
+      error:
+        "A workspace is required to synchronize investment performance.",
+    };
+  }
+
+  try {
+    const supabase =
+      await createClient();
+
+    const [
+      accountsResult,
+      holdingsResult,
+    ] =
+      await Promise.all([
+        supabase
+          .from(
+            "investment_accounts",
+          )
+          .select(
+            "cash_balance",
+          )
+          .eq(
+            "workspace_id",
+            normalizedWorkspaceId,
+          ),
+
+        supabase
+          .from(
+            "investment_holdings",
+          )
+          .select(
+            "market_value,cost_basis",
+          )
+          .eq(
+            "workspace_id",
+            normalizedWorkspaceId,
+          ),
+      ]);
+
+    if (
+      accountsResult.error
+    ) {
+      return {
+        success: false,
+        data: null,
+        error:
+          normalizeInvestmentsError(
+            accountsResult
+              .error
+              .message,
+          ),
+      };
+    }
+
+    if (
+      holdingsResult.error
+    ) {
+      return {
+        success: false,
+        data: null,
+        error:
+          normalizeInvestmentsError(
+            holdingsResult
+              .error
+              .message,
+          ),
+      };
+    }
+
+    let cashValue =
+      0;
+
+    for (
+      const row of
+        accountsResult.data ??
+        []
+    ) {
+      if (
+        !isRecord(
+          row,
+        )
+      ) {
+        continue;
+      }
+
+      const value =
+        parseRequiredNumber(
+          row.cash_balance,
+        );
+
+      if (
+        value !==
+        null
+      ) {
+        cashValue +=
+          value;
+      }
+    }
+
+    let holdingsMarketValue =
+      0;
+
+    let costBasis =
+      0;
+
+    for (
+      const row of
+        holdingsResult.data ??
+        []
+    ) {
+      if (
+        !isRecord(
+          row,
+        )
+      ) {
+        continue;
+      }
+
+      const marketValue =
+        parseRequiredNumber(
+          row.market_value,
+        );
+
+      const holdingCostBasis =
+        parseRequiredNumber(
+          row.cost_basis,
+        );
+
+      if (
+        marketValue !==
+        null
+      ) {
+        holdingsMarketValue +=
+          marketValue;
+      }
+
+      if (
+        holdingCostBasis !==
+        null
+      ) {
+        costBasis +=
+          holdingCostBasis;
+      }
+    }
+
+    cashValue =
+      normalizeCurrency(
+        Math.max(
+          0,
+          cashValue,
+        ),
+      );
+
+    holdingsMarketValue =
+      normalizeCurrency(
+        Math.max(
+          0,
+          holdingsMarketValue,
+        ),
+      );
+
+    costBasis =
+      normalizeCurrency(
+        Math.max(
+          0,
+          costBasis,
+        ),
+      );
+
+    const portfolioValue =
+      normalizeCurrency(
+        holdingsMarketValue +
+          cashValue,
+      );
+
+    return createInvestmentPerformanceSnapshot({
+      workspaceId:
+        normalizedWorkspaceId,
+
+      snapshot: {
+        date:
+          getLocalDateString(),
+
+        portfolioValue,
+        costBasis,
+        cashValue,
+      },
+    });
+  } catch (
+    error
+  ) {
+    return {
+      success: false,
+      data: null,
+      error:
+        getUnknownErrorMessage(
+          error,
+        ),
+    };
+  }
+}
+
+export async function getInvestmentPerformanceSnapshots(
+  workspaceId: string,
+): Promise<InvestmentPerformanceSnapshotsResult> {
+  const normalizedWorkspaceId =
+    normalizeRequiredText(
+      workspaceId,
+    );
+
+  if (
+    !normalizedWorkspaceId
+  ) {
+    return {
+      success: false,
+      data: [],
+      error:
+        "A workspace is required to load investment performance.",
+    };
+  }
+
+  try {
+    const supabase =
+      await createClient();
+
+    const {
+      data,
+      error,
+    } =
+      await supabase
+        .from(
+          "investment_performance_snapshots",
+        )
+        .select(
+          INVESTMENT_PERFORMANCE_SNAPSHOT_SELECT,
+        )
+        .eq(
+          "workspace_id",
+          normalizedWorkspaceId,
+        )
+        .order(
+          "snapshot_date",
+          {
+            ascending:
+              true,
+          },
+        );
+
+    if (
+      error
+    ) {
+      return {
+        success: false,
+        data: [],
+        error:
+          normalizeInvestmentsError(
+            error.message,
+          ),
+      };
+    }
+
+    const snapshots =
+      (
+        data ??
+        []
+      )
+        .map(
+          (
+            row,
+          ) =>
+            parseInvestmentPerformanceSnapshotRow(
+              row,
+            ),
+        )
+        .filter(
+          (
+            snapshot,
+          ): snapshot is InvestmentPerformanceSnapshot =>
+            snapshot !==
+            null,
+        );
+
+    return {
+      success: true,
+      data:
+        deriveInvestmentPerformanceSnapshots(
+          snapshots,
+        ),
+      error: null,
+    };
+  } catch (
+    error
+  ) {
+    return {
+      success: false,
+      data: [],
+      error:
+        getUnknownErrorMessage(
+          error,
+        ),
+    };
+  }
+}
+
+export async function createInvestmentPerformanceSnapshot({
+  workspaceId,
+  snapshot,
+}: CreateInvestmentPerformanceSnapshotInput): Promise<InvestmentPerformanceSnapshotResult> {
+  const normalizedWorkspaceId =
+    normalizeRequiredText(
+      workspaceId,
+    );
+
+  const normalizedDate =
+    normalizeDate(
+      snapshot.date,
+    );
+
+  if (
+    !normalizedWorkspaceId
+  ) {
+    return createInvestmentPerformanceSnapshotError(
+      "A workspace is required to create an investment performance snapshot.",
+    );
+  }
+
+  if (
+    !normalizedDate
+  ) {
+    return createInvestmentPerformanceSnapshotError(
+      "A valid investment performance snapshot date is required.",
+    );
+  }
+
+  if (
+    !isNonNegativeFiniteNumber(
+      snapshot.portfolioValue,
+    ) ||
+    !isNonNegativeFiniteNumber(
+      snapshot.costBasis,
+    ) ||
+    !isNonNegativeFiniteNumber(
+      snapshot.cashValue,
+    )
+  ) {
+    return createInvestmentPerformanceSnapshotError(
+      "Investment performance values cannot be negative.",
+    );
+  }
+
+  try {
+    const supabase =
+      await createClient();
+
+    const {
+      data,
+      error,
+    } =
+      await supabase
+        .from(
+          "investment_performance_snapshots",
+        )
+        .upsert(
+          {
+            workspace_id:
+              normalizedWorkspaceId,
+
+            snapshot_date:
+              normalizedDate,
+
+            portfolio_value:
+              normalizeCurrency(
+                snapshot.portfolioValue,
+              ),
+
+            cost_basis:
+              normalizeCurrency(
+                snapshot.costBasis,
+              ),
+
+            cash_value:
+              normalizeCurrency(
+                snapshot.cashValue,
+              ),
+
+            updated_at:
+              new Date().toISOString(),
+          },
+          {
+            onConflict:
+              "workspace_id,snapshot_date",
+          },
+        )
+        .select(
+          INVESTMENT_PERFORMANCE_SNAPSHOT_SELECT,
+        )
+        .single();
+
+    if (
+      error
+    ) {
+      return createInvestmentPerformanceSnapshotError(
+        normalizeInvestmentsError(
+          error.message,
+        ),
+      );
+    }
+
+    const parsedSnapshot =
+      parseInvestmentPerformanceSnapshotRow(
+        data,
+      );
+
+    if (
+      !parsedSnapshot
+    ) {
+      return createInvestmentPerformanceSnapshotError(
+        "The investment performance snapshot response was incomplete or invalid.",
+      );
+    }
+
+    const previousResult =
+      await getPreviousInvestmentPerformanceSnapshot(
+        normalizedWorkspaceId,
+        parsedSnapshot.date,
+      );
+
+    if (
+      !previousResult.success
+    ) {
+      return createInvestmentPerformanceSnapshotError(
+        previousResult.error ??
+          "Unable to calculate investment performance.",
+      );
+    }
+
+    return {
+      success: true,
+      data:
+        deriveInvestmentPerformanceSnapshot(
+          parsedSnapshot,
+          previousResult.data,
+        ),
+      error: null,
+    };
+  } catch (
+    error
+  ) {
+    return createInvestmentPerformanceSnapshotError(
+      getUnknownErrorMessage(
+        error,
+      ),
+    );
+  }
+}
+
+export async function updateInvestmentPerformanceSnapshot({
+  workspaceId,
+  snapshotId,
+  updates,
+}: UpdateInvestmentPerformanceSnapshotInput): Promise<InvestmentPerformanceSnapshotResult> {
+  const normalizedWorkspaceId =
+    normalizeRequiredText(
+      workspaceId,
+    );
+
+  const normalizedSnapshotId =
+    normalizeRequiredText(
+      snapshotId,
+    );
+
+  if (
+    !normalizedWorkspaceId ||
+    !normalizedSnapshotId
+  ) {
+    return createInvestmentPerformanceSnapshotError(
+      "A workspace and investment performance snapshot are required.",
+    );
+  }
+
+  const updatePayload:
+    Record<
+      string,
+      unknown
+    > =
+    {};
+
+  if (
+    updates.date !==
+    undefined
+  ) {
+    const normalizedDate =
+      normalizeDate(
+        updates.date,
+      );
+
+    if (
+      !normalizedDate
+    ) {
+      return createInvestmentPerformanceSnapshotError(
+        "A valid investment performance snapshot date is required.",
+      );
+    }
+
+    updatePayload.snapshot_date =
+      normalizedDate;
+  }
+
+  if (
+    updates.portfolioValue !==
+    undefined
+  ) {
+    if (
+      !isNonNegativeFiniteNumber(
+        updates.portfolioValue,
+      )
+    ) {
+      return createInvestmentPerformanceSnapshotError(
+        "Portfolio value cannot be negative.",
+      );
+    }
+
+    updatePayload.portfolio_value =
+      normalizeCurrency(
+        updates.portfolioValue,
+      );
+  }
+
+  if (
+    updates.costBasis !==
+    undefined
+  ) {
+    if (
+      !isNonNegativeFiniteNumber(
+        updates.costBasis,
+      )
+    ) {
+      return createInvestmentPerformanceSnapshotError(
+        "Cost basis cannot be negative.",
+      );
+    }
+
+    updatePayload.cost_basis =
+      normalizeCurrency(
+        updates.costBasis,
+      );
+  }
+
+  if (
+    updates.cashValue !==
+    undefined
+  ) {
+    if (
+      !isNonNegativeFiniteNumber(
+        updates.cashValue,
+      )
+    ) {
+      return createInvestmentPerformanceSnapshotError(
+        "Cash value cannot be negative.",
+      );
+    }
+
+    updatePayload.cash_value =
+      normalizeCurrency(
+        updates.cashValue,
+      );
+  }
+
+  if (
+    Object.keys(
+      updatePayload,
+    ).length ===
+    0
+  ) {
+    return getInvestmentPerformanceSnapshotById(
+      normalizedWorkspaceId,
+      normalizedSnapshotId,
+    );
+  }
+
+  updatePayload.updated_at =
+    new Date().toISOString();
+
+  try {
+    const supabase =
+      await createClient();
+
+    const {
+      data,
+      error,
+    } =
+      await supabase
+        .from(
+          "investment_performance_snapshots",
+        )
+        .update(
+          updatePayload,
+        )
+        .eq(
+          "workspace_id",
+          normalizedWorkspaceId,
+        )
+        .eq(
+          "id",
+          normalizedSnapshotId,
+        )
+        .select(
+          INVESTMENT_PERFORMANCE_SNAPSHOT_SELECT,
+        )
+        .maybeSingle();
+
+    if (
+      error
+    ) {
+      return createInvestmentPerformanceSnapshotError(
+        normalizeInvestmentsError(
+          error.message,
+        ),
+      );
+    }
+
+    if (
+      !data
+    ) {
+      return createInvestmentPerformanceSnapshotError(
+        "The investment performance snapshot could not be found.",
+      );
+    }
+
+    const parsedSnapshot =
+      parseInvestmentPerformanceSnapshotRow(
+        data,
+      );
+
+    if (
+      !parsedSnapshot
+    ) {
+      return createInvestmentPerformanceSnapshotError(
+        "The updated investment performance snapshot response was incomplete or invalid.",
+      );
+    }
+
+    const previousResult =
+      await getPreviousInvestmentPerformanceSnapshot(
+        normalizedWorkspaceId,
+        parsedSnapshot.date,
+      );
+
+    if (
+      !previousResult.success
+    ) {
+      return createInvestmentPerformanceSnapshotError(
+        previousResult.error ??
+          "Unable to calculate investment performance.",
+      );
+    }
+
+    return {
+      success: true,
+      data:
+        deriveInvestmentPerformanceSnapshot(
+          parsedSnapshot,
+          previousResult.data,
+        ),
+      error: null,
+    };
+  } catch (
+    error
+  ) {
+    return createInvestmentPerformanceSnapshotError(
+      getUnknownErrorMessage(
+        error,
+      ),
+    );
+  }
+}
+
+export async function deleteInvestmentPerformanceSnapshot({
+  workspaceId,
+  snapshotId,
+}: DeleteInvestmentPerformanceSnapshotInput): Promise<InvestmentDeleteResult> {
+  const normalizedWorkspaceId =
+    normalizeRequiredText(
+      workspaceId,
+    );
+
+  const normalizedSnapshotId =
+    normalizeRequiredText(
+      snapshotId,
+    );
+
+  if (
+    !normalizedWorkspaceId ||
+    !normalizedSnapshotId
+  ) {
+    return {
+      success: false,
+      error:
+        "A workspace and investment performance snapshot are required.",
+    };
+  }
+
+  try {
+    const supabase =
+      await createClient();
+
+    const {
+      error,
+    } =
+      await supabase
+        .from(
+          "investment_performance_snapshots",
+        )
+        .delete()
+        .eq(
+          "workspace_id",
+          normalizedWorkspaceId,
+        )
+        .eq(
+          "id",
+          normalizedSnapshotId,
+        );
+
+    if (
+      error
+    ) {
+      return {
+        success: false,
+        error:
+          normalizeInvestmentsError(
+            error.message,
+          ),
+      };
+    }
+
+    return {
+      success: true,
+      error: null,
+    };
+  } catch (
+    error
+  ) {
+    return {
+      success: false,
+      error:
+        getUnknownErrorMessage(
+          error,
+        ),
+    };
+  }
+}
+
+async function getInvestmentPerformanceSnapshotById(
+  workspaceId: string,
+  snapshotId: string,
+): Promise<InvestmentPerformanceSnapshotResult> {
+  try {
+    const supabase =
+      await createClient();
+
+    const {
+      data,
+      error,
+    } =
+      await supabase
+        .from(
+          "investment_performance_snapshots",
+        )
+        .select(
+          INVESTMENT_PERFORMANCE_SNAPSHOT_SELECT,
+        )
+        .eq(
+          "workspace_id",
+          workspaceId,
+        )
+        .eq(
+          "id",
+          snapshotId,
+        )
+        .maybeSingle();
+
+    if (
+      error
+    ) {
+      return createInvestmentPerformanceSnapshotError(
+        normalizeInvestmentsError(
+          error.message,
+        ),
+      );
+    }
+
+    if (
+      !data
+    ) {
+      return {
+        success: true,
+        data: null,
+        error: null,
+      };
+    }
+
+    const parsedSnapshot =
+      parseInvestmentPerformanceSnapshotRow(
+        data,
+      );
+
+    if (
+      !parsedSnapshot
+    ) {
+      return createInvestmentPerformanceSnapshotError(
+        "The investment performance snapshot response was incomplete or invalid.",
+      );
+    }
+
+    const previousResult =
+      await getPreviousInvestmentPerformanceSnapshot(
+        workspaceId,
+        parsedSnapshot.date,
+      );
+
+    if (
+      !previousResult.success
+    ) {
+      return createInvestmentPerformanceSnapshotError(
+        previousResult.error ??
+          "Unable to calculate investment performance.",
+      );
+    }
+
+    return {
+      success: true,
+      data:
+        deriveInvestmentPerformanceSnapshot(
+          parsedSnapshot,
+          previousResult.data,
+        ),
+      error: null,
+    };
+  } catch (
+    error
+  ) {
+    return createInvestmentPerformanceSnapshotError(
+      getUnknownErrorMessage(
+        error,
+      ),
+    );
+  }
+}
+
+async function getPreviousInvestmentPerformanceSnapshot(
+  workspaceId: string,
+  snapshotDate: string,
+): Promise<InvestmentPerformanceSnapshotResult> {
+  try {
+    const supabase =
+      await createClient();
+
+    const {
+      data,
+      error,
+    } =
+      await supabase
+        .from(
+          "investment_performance_snapshots",
+        )
+        .select(
+          INVESTMENT_PERFORMANCE_SNAPSHOT_SELECT,
+        )
+        .eq(
+          "workspace_id",
+          workspaceId,
+        )
+        .lt(
+          "snapshot_date",
+          snapshotDate,
+        )
+        .order(
+          "snapshot_date",
+          {
+            ascending:
+              false,
+          },
+        )
+        .limit(
+          1,
+        )
+        .maybeSingle();
+
+    if (
+      error
+    ) {
+      return createInvestmentPerformanceSnapshotError(
+        normalizeInvestmentsError(
+          error.message,
+        ),
+      );
+    }
+
+    if (
+      !data
+    ) {
+      return {
+        success: true,
+        data: null,
+        error: null,
+      };
+    }
+
+    const snapshot =
+      parseInvestmentPerformanceSnapshotRow(
+        data,
+      );
+
+    if (
+      !snapshot
+    ) {
+      return createInvestmentPerformanceSnapshotError(
+        "The previous investment performance snapshot response was incomplete or invalid.",
+      );
+    }
+
+    return {
+      success: true,
+      data: snapshot,
+      error: null,
+    };
+  } catch (
+    error
+  ) {
+    return createInvestmentPerformanceSnapshotError(
+      getUnknownErrorMessage(
+        error,
+      ),
+    );
+  }
+}
+
+function parseInvestmentPerformanceSnapshotRow(
+  value: unknown,
+): InvestmentPerformanceSnapshot | null {
+  if (
+    !isRecord(
+      value,
+    )
+  ) {
+    return null;
+  }
+
+  const row =
+    value as Partial<InvestmentPerformanceSnapshotRow>;
+
+  const id =
+    normalizeRequiredText(
+      row.id,
+    );
+
+  const date =
+    normalizeDate(
+      normalizeRequiredText(
+        row.snapshot_date,
+      ) ??
+        "",
+    );
+
+  const portfolioValue =
+    parseRequiredNumber(
+      row.portfolio_value,
+    );
+
+  const costBasis =
+    parseRequiredNumber(
+      row.cost_basis,
+    );
+
+  const cashValue =
+    parseRequiredNumber(
+      row.cash_value,
+    );
+
+  const createdAt =
+    normalizeRequiredText(
+      row.created_at,
+    );
+
+  const updatedAt =
+    normalizeRequiredText(
+      row.updated_at,
+    );
+
+  if (
+    !id ||
+    !date ||
+    portfolioValue ===
+      null ||
+    costBasis ===
+      null ||
+    cashValue ===
+      null ||
+    !createdAt ||
+    !updatedAt
+  ) {
+    return null;
+  }
+
+  return {
+    id,
+    date,
+
+    portfolioValue:
+      normalizeCurrency(
+        portfolioValue,
+      ),
+
+    costBasis:
+      normalizeCurrency(
+        costBasis,
+      ),
+
+    cashValue:
+      normalizeCurrency(
+        cashValue,
+      ),
+
+    dailyGain: 0,
+    dailyGainPercentage: 0,
+    createdAt,
+    updatedAt,
+  };
+}
+
+function deriveInvestmentPerformanceSnapshots(
+  snapshots: InvestmentPerformanceSnapshot[],
+): InvestmentPerformanceSnapshot[] {
+  const sortedSnapshots =
+    [...snapshots].sort(
+      (
+        first,
+        second,
+      ) =>
+        first.date.localeCompare(
+          second.date,
+        ),
+    );
+
+  return sortedSnapshots.map(
+    (
+      snapshot,
+      index,
+    ) =>
+      deriveInvestmentPerformanceSnapshot(
+        snapshot,
+        index >
+          0
+          ? sortedSnapshots[
+              index -
+                1
+            ]
+          : null,
+      ),
+  );
+}
+
+function deriveInvestmentPerformanceSnapshot(
+  snapshot: InvestmentPerformanceSnapshot,
+  previousSnapshot: InvestmentPerformanceSnapshot | null,
+): InvestmentPerformanceSnapshot {
+  if (
+    !previousSnapshot
+  ) {
+    return {
+      ...snapshot,
+      dailyGain: 0,
+      dailyGainPercentage: 0,
+    };
+  }
+
+  const dailyGain =
+    normalizeCurrency(
+      snapshot.portfolioValue -
+        previousSnapshot.portfolioValue,
+    );
+
+  return {
+    ...snapshot,
+    dailyGain,
+
+    dailyGainPercentage:
+      calculatePercentage(
+        dailyGain,
+        previousSnapshot.portfolioValue,
+      ),
+  };
 }
 
 function parseInvestmentAccountRow(
@@ -3866,6 +5136,33 @@ function parseOptionalNumber(
   );
 }
 
+function getLocalDateString(
+  date =
+    new Date(),
+) {
+  const year =
+    date.getFullYear();
+
+  const month =
+    String(
+      date.getMonth() +
+        1,
+    ).padStart(
+      2,
+      "0",
+    );
+
+  const day =
+    String(
+      date.getDate(),
+    ).padStart(
+      2,
+      "0",
+    );
+
+  return `${year}-${month}-${day}`;
+}
+
 function normalizeDate(
   value: string,
 ) {
@@ -4013,8 +5310,21 @@ function createInvestmentsDataError(
 
       activities:
         [],
+
+      performanceSnapshots:
+        [],
     },
 
+    error,
+  };
+}
+
+function createInvestmentPerformanceSnapshotError(
+  error: string,
+): InvestmentPerformanceSnapshotResult {
+  return {
+    success: false,
+    data: null,
     error,
   };
 }
@@ -4074,6 +5384,17 @@ function normalizeInvestmentsError(
     )
   ) {
     return "The selected investment account, holding, or workspace is no longer available.";
+  }
+
+  if (
+    normalizedMessage.includes(
+      "duplicate key",
+    ) ||
+    normalizedMessage.includes(
+      "unique constraint",
+    )
+  ) {
+    return "An investment performance snapshot already exists for the selected date.";
   }
 
   if (

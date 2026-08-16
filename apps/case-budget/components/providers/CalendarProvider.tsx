@@ -11,6 +11,25 @@ import {
 } from "react";
 
 import {
+  archiveCalendarEvent,
+} from "@/actions/calendar/archive-calendar-event";
+import {
+  createCalendarEvent,
+} from "@/actions/calendar/create-calendar-event";
+import {
+  getCalendarEvents,
+} from "@/actions/calendar/get-calendar-events";
+import {
+  getCalendarPreferences,
+} from "@/actions/calendar/get-calendar-preferences";
+import {
+  updateCalendarEvent,
+} from "@/actions/calendar/update-calendar-event";
+import {
+  updateCalendarPreferences,
+} from "@/actions/calendar/update-calendar-preferences";
+
+import {
   useAccounts,
 } from "@/components/providers/AccountsProvider";
 import {
@@ -28,7 +47,6 @@ import {
   applyCalendarPreferences,
   buildAgendaGroups,
   buildCalendarMonth,
-  createFinancialCalendarEventId,
   detectCalendarConflicts,
   filterCalendarEvents,
   formatDateKey,
@@ -49,6 +67,8 @@ import type {
   FinancialCalendarFilters,
   FinancialCalendarMonth,
   FinancialCalendarPreferences,
+  FinancialCalendarPersistentFilters,
+  FinancialCalendarPreferenceData,
   FinancialCalendarState,
   FinancialCalendarSummary,
   FinancialCalendarView,
@@ -73,40 +93,40 @@ type CalendarContextValue = {
   preferences: FinancialCalendarPreferences;
   addEvent: (
     event: CreateFinancialCalendarEventData,
-  ) => FinancialCalendarEvent;
+  ) => Promise<FinancialCalendarEvent>;
   updateEvent: (
     event: UpdateFinancialCalendarEventData,
-  ) => void;
+  ) => Promise<void>;
   deleteEvent: (
     eventId: string,
-  ) => void;
+  ) => Promise<void>;
   getEventById: (
     eventId: string,
   ) => FinancialCalendarEvent | null;
   setSelectedDate: (
     date: string,
-  ) => void;
+  ) => Promise<void>;
   setView: (
     view: FinancialCalendarView,
-  ) => void;
+  ) => Promise<void>;
   setFilters: (
     filters: Partial<FinancialCalendarFilters>,
-  ) => void;
-  resetFilters: () => void;
+  ) => Promise<void>;
+  resetFilters: () => Promise<void>;
   setPreferences: (
     preferences: Partial<FinancialCalendarPreferences>,
-  ) => void;
-  resetPreferences: () => void;
+  ) => Promise<void>;
+  resetPreferences: () => Promise<void>;
   markEventCompleted: (
     eventId: string,
-  ) => void;
+  ) => Promise<void>;
   markEventSkipped: (
     eventId: string,
-  ) => void;
+  ) => Promise<void>;
   restoreEvent: (
     eventId: string,
-  ) => void;
-  clearManualEvents: () => void;
+  ) => Promise<void>;
+  clearManualEvents: () => Promise<void>;
 };
 
 export type CalendarProviderProps = {
@@ -114,17 +134,6 @@ export type CalendarProviderProps = {
   initialEvents?: FinancialCalendarEvent[];
   initialState?: Partial<FinancialCalendarState>;
 };
-
-type StoredCalendarData = {
-  manualEvents: FinancialCalendarEvent[];
-  selectedDate: string;
-  view: FinancialCalendarView;
-  filters: FinancialCalendarFilters;
-  preferences: FinancialCalendarPreferences;
-};
-
-const CALENDAR_STORAGE_KEY =
-  "case-budget:financial-calendar:v1";
 
 const CalendarContext =
   createContext<CalendarContextValue | undefined>(
@@ -227,102 +236,97 @@ export default function CalendarProvider({
       }),
     );
 
-  const [
-    hasHydratedStorage,
-    setHasHydratedStorage,
-  ] = useState(
-    false,
-  );
-
   useEffect(
     () => {
-      const storedData =
-        loadStoredCalendarData();
+      let cancelled =
+        false;
 
-      if (
-        storedData
-      ) {
-        setManualEvents(
-          cloneEvents(
-            storedData.manualEvents,
-          ),
-        );
+      async function loadPersistedCalendar() {
+        const [
+          eventsResult,
+          preferencesResult,
+        ] =
+          await Promise.all([
+            getCalendarEvents(),
+            getCalendarPreferences(),
+          ]);
 
-        setSelectedDateState(
-          normalizeCalendarDate(
-            storedData.selectedDate,
-          ),
-        );
+        if (
+          cancelled
+        ) {
+          return;
+        }
 
-        setViewState(
-          storedData.view,
-        );
+        if (
+          eventsResult.success
+        ) {
+          setManualEvents(
+            cloneEvents(
+              eventsResult.events,
+            ),
+          );
+        } else {
+          console.error(
+            "[CASE Budget Calendar] Failed to load persisted calendar events.",
+            eventsResult.error,
+          );
+        }
 
-        setFiltersState({
-          ...DEFAULT_CALENDAR_FILTERS,
-          ...storedData.filters,
-          eventTypes: [
-            ...storedData.filters.eventTypes,
-          ],
-          statuses: [
-            ...storedData.filters.statuses,
-          ],
-          priorities: [
-            ...storedData.filters.priorities,
-          ],
-          accountIds: [
-            ...storedData.filters.accountIds,
-          ],
-        });
+        if (
+          preferencesResult.success
+        ) {
+          const persisted =
+            preferencesResult.preferences;
 
-        setPreferencesState({
-          ...DEFAULT_CALENDAR_PREFERENCES,
-          ...storedData.preferences,
-        });
+          setSelectedDateState(
+            normalizeCalendarDate(
+              persisted.selectedDate ??
+                today,
+            ),
+          );
+
+          setViewState(
+            persisted.defaultView,
+          );
+
+          setFiltersState(
+            persistentFiltersToFilters(
+              persisted.filters,
+            ),
+          );
+
+          setPreferencesState(
+            (
+              current,
+            ) => ({
+              ...current,
+              defaultView:
+                persisted.defaultView,
+              weekStartsOn:
+                persisted.weekStartsOn,
+              showWeekends:
+                persisted.showWeekends,
+              enableConflictDetection:
+                persisted.enableConflictDetection,
+            }),
+          );
+        } else {
+          console.error(
+            "[CASE Budget Calendar] Failed to load persisted calendar preferences.",
+            preferencesResult.error,
+          );
+        }
       }
 
-      setHasHydratedStorage(
-        true,
-      );
-    },
-    [],
-  );
+      void loadPersistedCalendar();
 
-  useEffect(
-    () => {
-      if (
-        !hasHydratedStorage
-      ) {
-        return;
-      }
-
-      const storedData:
-        StoredCalendarData = {
-          manualEvents,
-          selectedDate,
-          view,
-          filters,
-          preferences,
-        };
-
-      try {
-        window.localStorage.setItem(
-          CALENDAR_STORAGE_KEY,
-          JSON.stringify(
-            storedData,
-          ),
-        );
-      } catch {
-        // Storage may be unavailable or full.
-      }
+      return () => {
+        cancelled =
+          true;
+      };
     },
     [
-      filters,
-      hasHydratedStorage,
-      manualEvents,
-      preferences,
-      selectedDate,
-      view,
+      today,
     ],
   );
 
@@ -505,186 +509,72 @@ export default function CalendarProvider({
 
   const addEvent =
     useCallback(
-      (
+      async (
         input:
           CreateFinancialCalendarEventData,
       ) => {
-        const now =
-          new Date().toISOString();
+        const result =
+          await createCalendarEvent(
+            input,
+          );
 
-        const event:
-          FinancialCalendarEvent = {
-            id:
-              createFinancialCalendarEventId(),
-            title:
-              input.title.trim(),
-            description:
-              normalizeOptionalString(
-                input.description,
-              ),
-            notes:
-              normalizeOptionalString(
-                input.notes,
-              ),
-            type:
-              input.type,
-            status:
-              input.status,
-            priority:
-              input.priority,
-            date:
-              normalizeCalendarDate(
-                input.date,
-              ),
-            startTime:
-              input.isAllDay
-                ? undefined
-                : normalizeOptionalString(
-                    input.startTime,
-                  ),
-            endTime:
-              input.isAllDay
-                ? undefined
-                : normalizeOptionalString(
-                    input.endTime,
-                  ),
-            isAllDay:
-              input.isAllDay,
-            amount:
-              normalizeOptionalNumber(
-                input.amount,
-              ),
-            accountId:
-              normalizeOptionalString(
-                input.accountId,
-              ),
-            categoryId:
-              normalizeOptionalString(
-                input.categoryId,
-              ),
-            recurrence:
-              input.recurrence
-                ? cloneRecurrence(
-                    input.recurrence,
-                  )
-                : undefined,
-            reminders:
-              input.reminders.map(
-                (
-                  reminder,
-                ) => ({
-                  ...reminder,
-                }),
-              ),
-            isAutoGenerated:
-              false,
-            createdAt:
-              now,
-            updatedAt:
-              now,
-          };
+        if (
+          !result.success
+        ) {
+          throw new Error(
+            result.error,
+          );
+        }
 
         setManualEvents(
           (
             currentEvents,
-          ) => [
-            ...currentEvents,
-            event,
-          ],
+          ) =>
+            upsertCalendarEvent(
+              currentEvents,
+              result.event,
+            ),
         );
 
-        return event;
+        return result.event;
       },
       [],
     );
 
   const updateEvent =
     useCallback(
-      (
+      async (
         input:
           UpdateFinancialCalendarEventData,
       ) => {
+        const {
+          id,
+          ...updates
+        } =
+          input;
+
+        const result =
+          await updateCalendarEvent({
+            eventId:
+              id,
+            updates,
+          });
+
+        if (
+          !result.success
+        ) {
+          throw new Error(
+            result.error,
+          );
+        }
+
         setManualEvents(
           (
             currentEvents,
           ) =>
-            currentEvents.map(
-              (
-                event,
-              ) => {
-                if (
-                  event.id !==
-                  input.id
-                ) {
-                  return event;
-                }
-
-                return {
-                  ...event,
-                  title:
-                    input.title.trim(),
-                  description:
-                    normalizeOptionalString(
-                      input.description,
-                    ),
-                  notes:
-                    normalizeOptionalString(
-                      input.notes,
-                    ),
-                  type:
-                    input.type,
-                  status:
-                    input.status,
-                  priority:
-                    input.priority,
-                  date:
-                    normalizeCalendarDate(
-                      input.date,
-                    ),
-                  startTime:
-                    input.isAllDay
-                      ? undefined
-                      : normalizeOptionalString(
-                          input.startTime,
-                        ),
-                  endTime:
-                    input.isAllDay
-                      ? undefined
-                      : normalizeOptionalString(
-                          input.endTime,
-                        ),
-                  isAllDay:
-                    input.isAllDay,
-                  amount:
-                    normalizeOptionalNumber(
-                      input.amount,
-                    ),
-                  accountId:
-                    normalizeOptionalString(
-                      input.accountId,
-                    ),
-                  categoryId:
-                    normalizeOptionalString(
-                      input.categoryId,
-                    ),
-                  recurrence:
-                    input.recurrence
-                      ? cloneRecurrence(
-                          input.recurrence,
-                        )
-                      : undefined,
-                  reminders:
-                    input.reminders.map(
-                      (
-                        reminder,
-                      ) => ({
-                        ...reminder,
-                      }),
-                    ),
-                  updatedAt:
-                    new Date().toISOString(),
-                };
-              },
+            upsertCalendarEvent(
+              currentEvents,
+              result.event,
             ),
         );
       },
@@ -693,10 +583,25 @@ export default function CalendarProvider({
 
   const deleteEvent =
     useCallback(
-      (
+      async (
         eventId:
           string,
       ) => {
+        const result =
+          await archiveCalendarEvent({
+            eventId,
+            archived:
+              true,
+          });
+
+        if (
+          !result.success
+        ) {
+          throw new Error(
+            result.error,
+          );
+        }
+
         setManualEvents(
           (
             currentEvents,
@@ -732,164 +637,344 @@ export default function CalendarProvider({
       ],
     );
 
+  const persistCalendarPreferences =
+    useCallback(
+      async ({
+        nextSelectedDate,
+        nextView,
+        nextFilters,
+        nextPreferences,
+      }: {
+        nextSelectedDate?:
+          string;
+        nextView?:
+          FinancialCalendarView;
+        nextFilters?:
+          FinancialCalendarFilters;
+        nextPreferences?:
+          FinancialCalendarPreferences;
+      }) => {
+        const result =
+          await updateCalendarPreferences({
+            ...(nextSelectedDate !==
+            undefined
+              ? {
+                  selectedDate:
+                    nextSelectedDate,
+                }
+              : {}),
+            ...(nextView !==
+            undefined
+              ? {
+                  defaultView:
+                    nextView,
+                }
+              : {}),
+            ...(nextFilters
+              ? {
+                  filters:
+                    filtersToPersistentFilters(
+                      nextFilters,
+                    ),
+                }
+              : {}),
+            ...(nextPreferences
+              ? {
+                  defaultView:
+                    nextPreferences.defaultView,
+                  weekStartsOn:
+                    nextPreferences.weekStartsOn,
+                  showWeekends:
+                    nextPreferences.showWeekends,
+                  enableConflictDetection:
+                    nextPreferences.enableConflictDetection,
+                }
+              : {}),
+          });
+
+        if (
+          !result.success
+        ) {
+          throw new Error(
+            result.error,
+          );
+        }
+
+        applyPersistedPreferenceData({
+          persisted:
+            result.preferences,
+          setSelectedDateState,
+          setViewState,
+          setFiltersState,
+          setPreferencesState,
+          today,
+        });
+      },
+      [
+        today,
+      ],
+    );
+
   const setSelectedDate =
     useCallback(
-      (
+      async (
         date:
           string,
       ) => {
-        setSelectedDateState(
+        const nextDate =
           normalizeCalendarDate(
             date,
-          ),
-        );
+          );
+
+        await persistCalendarPreferences({
+          nextSelectedDate:
+            nextDate,
+        });
       },
-      [],
+      [
+        persistCalendarPreferences,
+      ],
     );
 
   const setView =
     useCallback(
-      (
+      async (
         nextView:
           FinancialCalendarView,
       ) => {
-        setViewState(
+        await persistCalendarPreferences({
           nextView,
-        );
+        });
       },
-      [],
+      [
+        persistCalendarPreferences,
+      ],
     );
 
   const setFilters =
     useCallback(
-      (
+      async (
         updates:
           Partial<FinancialCalendarFilters>,
       ) => {
-        setFiltersState(
-          (
-            currentFilters,
-          ) =>
-            mergeCalendarFilters(
-              currentFilters,
-              updates,
-            ),
-        );
+        const nextFilters =
+          mergeCalendarFilters(
+            filters,
+            updates,
+          );
+
+        await persistCalendarPreferences({
+          nextFilters,
+        });
       },
-      [],
+      [
+        filters,
+        persistCalendarPreferences,
+      ],
     );
 
   const resetFilters =
     useCallback(
-      () => {
-        setFiltersState({
-          ...DEFAULT_CALENDAR_FILTERS,
-          eventTypes: [
-            ...DEFAULT_CALENDAR_FILTERS.eventTypes,
-          ],
-          statuses: [
-            ...DEFAULT_CALENDAR_FILTERS.statuses,
-          ],
-          priorities: [
-            ...DEFAULT_CALENDAR_FILTERS.priorities,
-          ],
-          accountIds: [
-            ...DEFAULT_CALENDAR_FILTERS.accountIds,
-          ],
+      async () => {
+        await persistCalendarPreferences({
+          nextFilters:
+            cloneFilters(
+              DEFAULT_CALENDAR_FILTERS,
+            ),
         });
       },
-      [],
+      [
+        persistCalendarPreferences,
+      ],
     );
 
   const setPreferences =
     useCallback(
-      (
+      async (
         updates:
           Partial<FinancialCalendarPreferences>,
       ) => {
+        const nextPreferences =
+          mergeCalendarPreferences(
+            preferences,
+            updates,
+          );
+
+        await persistCalendarPreferences({
+          nextPreferences,
+        });
+
         setPreferencesState(
-          (
-            currentPreferences,
-          ) =>
-            mergeCalendarPreferences(
-              currentPreferences,
-              updates,
-            ),
+          nextPreferences,
         );
       },
-      [],
+      [
+        persistCalendarPreferences,
+        preferences,
+      ],
     );
 
   const resetPreferences =
     useCallback(
-      () => {
-        setPreferencesState({
+      async () => {
+        const nextPreferences = {
           ...DEFAULT_CALENDAR_PREFERENCES,
+        };
+
+        await persistCalendarPreferences({
+          nextView:
+            nextPreferences.defaultView,
+          nextPreferences,
         });
 
-        setViewState(
-          DEFAULT_CALENDAR_PREFERENCES.defaultView,
+        setPreferencesState(
+          nextPreferences,
         );
       },
-      [],
+      [
+        persistCalendarPreferences,
+      ],
+    );
+
+  const updateStatus =
+    useCallback(
+      async (
+        eventId:
+          string,
+        status:
+          FinancialCalendarEvent["status"],
+      ) => {
+        const event =
+          manualEvents.find(
+            (
+              candidate,
+            ) =>
+              candidate.id ===
+              eventId,
+          );
+
+        if (
+          !event
+        ) {
+          throw new Error(
+            "Only persisted manual calendar events can be changed here.",
+          );
+        }
+
+        await updateEvent({
+          ...event,
+          status,
+        });
+      },
+      [
+        manualEvents,
+        updateEvent,
+      ],
     );
 
   const markEventCompleted =
     useCallback(
-      (
+      async (
         eventId:
           string,
       ) => {
-        updateManualEventStatus({
+        await updateStatus(
           eventId,
-          status:
-            "completed",
-          setManualEvents,
-        });
+          "completed",
+        );
       },
-      [],
+      [
+        updateStatus,
+      ],
     );
 
   const markEventSkipped =
     useCallback(
-      (
+      async (
         eventId:
           string,
       ) => {
-        updateManualEventStatus({
+        await updateStatus(
           eventId,
-          status:
-            "skipped",
-          setManualEvents,
-        });
+          "skipped",
+        );
       },
-      [],
+      [
+        updateStatus,
+      ],
     );
 
   const restoreEvent =
     useCallback(
-      (
+      async (
         eventId:
           string,
       ) => {
-        updateManualEventStatus({
+        await updateStatus(
           eventId,
-          status:
-            "scheduled",
-          setManualEvents,
-        });
+          "scheduled",
+        );
       },
-      [],
+      [
+        updateStatus,
+      ],
     );
 
   const clearManualEvents =
     useCallback(
-      () => {
+      async () => {
+        const results =
+          await Promise.all(
+            manualEvents.map(
+              (
+                event,
+              ) =>
+                archiveCalendarEvent({
+                  eventId:
+                    event.id,
+                  archived:
+                    true,
+                }),
+            ),
+          );
+
+        const failed =
+          results.find(
+            (
+              result,
+            ) =>
+              !result.success,
+          );
+
+        if (
+          failed &&
+          !failed.success
+        ) {
+          const refreshed =
+            await getCalendarEvents();
+
+          if (
+            refreshed.success
+          ) {
+            setManualEvents(
+              cloneEvents(
+                refreshed.events,
+              ),
+            );
+          }
+
+          throw new Error(
+            failed.error,
+          );
+        }
+
         setManualEvents(
           [],
         );
       },
-      [],
+      [
+        manualEvents,
+      ],
     );
 
   const value =
@@ -984,6 +1069,170 @@ export function useCalendar() {
   }
 
   return context;
+}
+
+function filtersToPersistentFilters(
+  filters:
+    FinancialCalendarFilters,
+): FinancialCalendarPersistentFilters {
+  return {
+    search:
+      filters.search,
+    eventTypes: [
+      ...filters.eventTypes,
+    ],
+    statuses: [
+      ...filters.statuses,
+    ],
+    priorities: [
+      ...filters.priorities,
+    ],
+    accountIds: [
+      ...filters.accountIds,
+    ],
+    includeCompleted:
+      filters.includeCompleted,
+    includeCanceled:
+      filters.includeCanceled,
+    includeAutoGenerated:
+      filters.includeAutoGenerated,
+    includeManual:
+      filters.includeManual,
+  };
+}
+
+function persistentFiltersToFilters(
+  filters:
+    FinancialCalendarPersistentFilters,
+): FinancialCalendarFilters {
+  return {
+    ...DEFAULT_CALENDAR_FILTERS,
+    ...filters,
+    eventTypes: [
+      ...filters.eventTypes,
+    ],
+    statuses: [
+      ...filters.statuses,
+    ],
+    priorities: [
+      ...filters.priorities,
+    ],
+    accountIds: [
+      ...filters.accountIds,
+    ],
+  };
+}
+
+function cloneFilters(
+  filters:
+    FinancialCalendarFilters,
+): FinancialCalendarFilters {
+  return {
+    ...filters,
+    eventTypes: [
+      ...filters.eventTypes,
+    ],
+    statuses: [
+      ...filters.statuses,
+    ],
+    priorities: [
+      ...filters.priorities,
+    ],
+    accountIds: [
+      ...filters.accountIds,
+    ],
+  };
+}
+
+function applyPersistedPreferenceData({
+  persisted,
+  setSelectedDateState,
+  setViewState,
+  setFiltersState,
+  setPreferencesState,
+  today,
+}: {
+  persisted:
+    FinancialCalendarPreferenceData;
+  setSelectedDateState:
+    React.Dispatch<React.SetStateAction<string>>;
+  setViewState:
+    React.Dispatch<React.SetStateAction<FinancialCalendarView>>;
+  setFiltersState:
+    React.Dispatch<React.SetStateAction<FinancialCalendarFilters>>;
+  setPreferencesState:
+    React.Dispatch<React.SetStateAction<FinancialCalendarPreferences>>;
+  today:
+    string;
+}) {
+  setSelectedDateState(
+    normalizeCalendarDate(
+      persisted.selectedDate ??
+        today,
+    ),
+  );
+
+  setViewState(
+    persisted.defaultView,
+  );
+
+  setFiltersState(
+    persistentFiltersToFilters(
+      persisted.filters,
+    ),
+  );
+
+  setPreferencesState(
+    (
+      current,
+    ) => ({
+      ...current,
+      defaultView:
+        persisted.defaultView,
+      weekStartsOn:
+        persisted.weekStartsOn,
+      showWeekends:
+        persisted.showWeekends,
+      enableConflictDetection:
+        persisted.enableConflictDetection,
+    }),
+  );
+}
+
+function upsertCalendarEvent(
+  events:
+    FinancialCalendarEvent[],
+  event:
+    FinancialCalendarEvent,
+): FinancialCalendarEvent[] {
+  const nextEvent =
+    cloneEvents([
+      event,
+    ])[0];
+
+  const exists =
+    events.some(
+      (
+        candidate,
+      ) =>
+        candidate.id ===
+        event.id,
+    );
+
+  return exists
+    ? events.map(
+        (
+          candidate,
+        ) =>
+          candidate.id ===
+          event.id
+            ? nextEvent
+            : candidate,
+      )
+    : [
+        ...events,
+        nextEvent,
+      ];
 }
 
 function createGeneratedCalendarEvents({
@@ -1762,130 +2011,6 @@ function calculateProviderSummary({
     nextBillDueDate:
       nextBill?.date,
   };
-}
-
-function updateManualEventStatus({
-  eventId,
-  status,
-  setManualEvents,
-}: {
-  eventId: string;
-  status: FinancialCalendarEvent["status"];
-  setManualEvents: React.Dispatch<
-    React.SetStateAction<FinancialCalendarEvent[]>
-  >;
-}) {
-  setManualEvents(
-    (
-      currentEvents,
-    ) =>
-      currentEvents.map(
-        (
-          event,
-        ) =>
-          event.id ===
-          eventId
-            ? {
-                ...event,
-                status,
-                updatedAt:
-                  new Date().toISOString(),
-              }
-            : event,
-      ),
-  );
-}
-
-function loadStoredCalendarData() {
-  if (
-    typeof window ===
-    "undefined"
-  ) {
-    return null;
-  }
-
-  try {
-    const storedValue =
-      window.localStorage.getItem(
-        CALENDAR_STORAGE_KEY,
-      );
-
-    if (
-      !storedValue
-    ) {
-      return null;
-    }
-
-    const parsedValue:
-      unknown =
-      JSON.parse(
-        storedValue,
-      );
-
-    if (
-      !isStoredCalendarData(
-        parsedValue,
-      )
-    ) {
-      window.localStorage.removeItem(
-        CALENDAR_STORAGE_KEY,
-      );
-
-      return null;
-    }
-
-    return parsedValue;
-  } catch {
-    return null;
-  }
-}
-
-function isStoredCalendarData(
-  value: unknown,
-): value is StoredCalendarData {
-  if (
-    !value ||
-    typeof value !==
-      "object" ||
-    Array.isArray(
-      value,
-    )
-  ) {
-    return false;
-  }
-
-  const record =
-    value as Partial<StoredCalendarData>;
-
-  return (
-    Array.isArray(
-      record.manualEvents,
-    ) &&
-    typeof record.selectedDate ===
-      "string" &&
-    isCalendarView(
-      record.view,
-    ) &&
-    Boolean(
-      record.filters,
-    ) &&
-    Boolean(
-      record.preferences,
-    )
-  );
-}
-
-function isCalendarView(
-  value: unknown,
-): value is FinancialCalendarView {
-  return (
-    value ===
-      "month" ||
-    value ===
-      "week" ||
-    value ===
-      "agenda"
-  );
 }
 
 function deduplicateCalendarEvents(

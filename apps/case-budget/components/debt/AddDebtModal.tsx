@@ -125,6 +125,16 @@ export default function AddDebtModal({
       false,
     );
 
+  const [
+    submitError,
+    setSubmitError,
+  ] =
+    useState<
+      string | null
+    >(
+      null,
+    );
+
   const originalBalance =
     useMemo(
       () =>
@@ -214,6 +224,10 @@ export default function AddDebtModal({
       setIsSubmitting(
         false,
       );
+
+      setSubmitError(
+        null,
+      );
     },
     [
       open,
@@ -233,7 +247,8 @@ export default function AddDebtModal({
       ) {
         if (
           event.key ===
-          "Escape"
+            "Escape" &&
+          !isSubmitting
         ) {
           onClose();
         }
@@ -252,6 +267,7 @@ export default function AddDebtModal({
       };
     },
     [
+      isSubmitting,
       onClose,
       open,
     ],
@@ -289,6 +305,10 @@ export default function AddDebtModal({
         [field]:
           undefined,
       }),
+    );
+
+    setSubmitError(
+      null,
     );
   }
 
@@ -394,11 +414,21 @@ export default function AddDebtModal({
     );
   }
 
-  function handleSubmit(
+  async function handleSubmit(
     event:
       React.FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
+
+    if (
+      isSubmitting
+    ) {
+      return;
+    }
+
+    setSubmitError(
+      null,
+    );
 
     if (
       !validateForm()
@@ -410,34 +440,72 @@ export default function AddDebtModal({
       true,
     );
 
-    addDebt({
-      name:
-        formState.name.trim(),
+    try {
+      const result =
+        await addDebt({
+          name:
+            formState.name.trim(),
 
-      lender:
-        formState.lender.trim() ||
-        undefined,
+          lender:
+            formState.lender.trim() ||
+            undefined,
 
-      type:
-        formState.type,
+          type:
+            formState.type,
 
-      originalBalance,
+          originalBalance,
 
-      currentBalance,
+          currentBalance,
 
-      interestRate,
+          interestRate,
 
-      minimumPayment,
+          minimumPayment,
 
-      dueDay:
-        formState.dueDay
-          ? Number(
-              formState.dueDay,
-            )
-          : undefined,
-    });
+          dueDay:
+            formState.dueDay
+              ? Number(
+                  formState.dueDay,
+                )
+              : undefined,
+        });
 
-    onClose();
+      if (
+        !result.success
+      ) {
+        setErrors(
+          (
+            currentErrors,
+          ) => ({
+            ...currentErrors,
+            ...(result.fieldErrors ??
+              {}),
+          }),
+        );
+
+        setSubmitError(
+          result.error,
+        );
+
+        return;
+      }
+
+      onClose();
+    } catch (
+      caughtError
+    ) {
+      console.error(
+        "[CASE Budget AddDebtModal] Failed to add debt.",
+        caughtError,
+      );
+
+      setSubmitError(
+        "CASE Budget could not add the debt. Please try again.",
+      );
+    } finally {
+      setIsSubmitting(
+        false,
+      );
+    }
   }
 
   return (
@@ -446,7 +514,12 @@ export default function AddDebtModal({
         type="button"
         aria-label="Close add debt dialog"
         onClick={
-          onClose
+          isSubmitting
+            ? undefined
+            : onClose
+        }
+        disabled={
+          isSubmitting
         }
         className="absolute inset-0 cursor-default bg-slate-950/45 backdrop-blur-sm"
       />
@@ -488,7 +561,10 @@ export default function AddDebtModal({
               onClick={
                 onClose
               }
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              disabled={
+                isSubmitting
+              }
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
               aria-label="Close add debt dialog"
             >
               <X className="h-5 w-5" />
@@ -786,6 +862,15 @@ export default function AddDebtModal({
                 </div>
               </FieldGroup>
 
+              {submitError ? (
+                <div
+                  role="alert"
+                  className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700"
+                >
+                  {submitError}
+                </div>
+              ) : null}
+
               <div className="rounded-[22px] border border-emerald-100 bg-emerald-50/60 p-4">
                 <div className="flex items-center justify-between gap-4">
                   <div>
@@ -848,7 +933,10 @@ export default function AddDebtModal({
               onClick={
                 onClose
               }
-              className="min-h-11 rounded-full border border-slate-200 bg-white px-5 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+              disabled={
+                isSubmitting
+              }
+              className="min-h-11 rounded-full border border-slate-200 bg-white px-5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Cancel
             </button>

@@ -60,7 +60,6 @@ export default function BudgetOverview() {
 
   const {
     getLinkedBillsForBudgetItem,
-    syncBudgetItemUpdate,
   } = useBills();
 
   const {
@@ -74,6 +73,12 @@ export default function BudgetOverview() {
     returnBudgetMonthKey,
     monthNavigation,
     totals,
+    isLoading,
+    isMutating,
+    error,
+    pendingApproval,
+    clearError,
+    clearPendingApproval,
     navigateToMonth,
     goToPreviousMonth,
     goToNextMonth,
@@ -246,12 +251,24 @@ export default function BudgetOverview() {
     handleCloseMonthPicker();
   }
 
-  function handleCreateBlankBudget() {
-    createBlankBudget();
+  async function handleCreateBlankBudget() {
+    if (
+      isMutating
+    ) {
+      return;
+    }
+
+    await createBlankBudget();
   }
 
-  function handleCopyPreviousMonth() {
-    copyPreviousMonth();
+  async function handleCopyPreviousMonth() {
+    if (
+      isMutating
+    ) {
+      return;
+    }
+
+    await copyPreviousMonth();
   }
 
   function handleReturnToExistingBudget() {
@@ -260,7 +277,10 @@ export default function BudgetOverview() {
   }
 
   function handleOpenAddIncome() {
-    if (!hasSelectedBudget) {
+    if (
+      !hasSelectedBudget ||
+      isMutating
+    ) {
       return;
     }
 
@@ -275,21 +295,36 @@ export default function BudgetOverview() {
     );
   }
 
-  function handleCreateIncome(
+  async function handleCreateIncome(
     income: AddIncomeFormData,
   ) {
-    if (!hasSelectedBudget) {
+    if (
+      !hasSelectedBudget ||
+      isMutating
+    ) {
       return;
     }
 
-    addIncome(income);
-    handleCloseAddIncome();
+    const result =
+      await addIncome(
+        income,
+      );
+
+    if (
+      result.success &&
+      !result.approvalRequired
+    ) {
+      handleCloseAddIncome();
+    }
   }
 
   function handleOpenEditIncome(
     incomeSource: BudgetIncomeSource,
   ) {
-    if (!hasSelectedBudget) {
+    if (
+      !hasSelectedBudget ||
+      isMutating
+    ) {
       return;
     }
 
@@ -312,36 +347,57 @@ export default function BudgetOverview() {
     );
   }
 
-  function handleUpdateIncome(
+  async function handleUpdateIncome(
     updatedIncomeSource: EditIncomeFormData,
   ) {
-    if (!hasSelectedBudget) {
+    if (
+      !hasSelectedBudget ||
+      isMutating
+    ) {
       return;
     }
 
-    updateIncome(
-      updatedIncomeSource,
-    );
+    const result =
+      await updateIncome(
+        updatedIncomeSource,
+      );
 
-    handleCloseEditIncome();
+    if (
+      result.success &&
+      !result.approvalRequired
+    ) {
+      handleCloseEditIncome();
+    }
   }
 
-  function handleDeleteIncome(
+  async function handleDeleteIncome(
     incomeSourceId: string,
   ) {
-    if (!hasSelectedBudget) {
+    if (
+      !hasSelectedBudget ||
+      isMutating
+    ) {
       return;
     }
 
-    deleteIncome(
-      incomeSourceId,
-    );
+    const result =
+      await deleteIncome(
+        incomeSourceId,
+      );
 
-    handleCloseEditIncome();
+    if (
+      result.success &&
+      !result.approvalRequired
+    ) {
+      handleCloseEditIncome();
+    }
   }
 
   function handleOpenAddBudgetCategory() {
-    if (!hasSelectedBudget) {
+    if (
+      !hasSelectedBudget ||
+      isMutating
+    ) {
       return;
     }
 
@@ -356,23 +412,38 @@ export default function BudgetOverview() {
     );
   }
 
-  function handleCreateBudgetCategory(
+  async function handleCreateBudgetCategory(
     category: Parameters<
       typeof addBudgetGroup
     >[0],
   ) {
-    if (!hasSelectedBudget) {
+    if (
+      !hasSelectedBudget ||
+      isMutating
+    ) {
       return;
     }
 
-    addBudgetGroup(category);
-    handleCloseAddBudgetCategory();
+    const result =
+      await addBudgetGroup(
+        category,
+      );
+
+    if (
+      result.success &&
+      !result.approvalRequired
+    ) {
+      handleCloseAddBudgetCategory();
+    }
   }
 
   function handleOpenEditBudgetCategory(
     group: BudgetCategoryGroupData,
   ) {
-    if (!hasSelectedBudget) {
+    if (
+      !hasSelectedBudget ||
+      isMutating
+    ) {
       return;
     }
 
@@ -395,46 +466,79 @@ export default function BudgetOverview() {
     );
   }
 
-  function handleUpdateBudgetCategory(
+  async function handleUpdateBudgetCategory(
     updatedCategory: BudgetCategoryGroupData,
   ) {
-    if (!hasSelectedBudget) {
+    if (
+      !hasSelectedBudget ||
+      isMutating
+    ) {
       return;
     }
 
-    updateBudgetGroup(
-      updatedCategory,
-    );
+    const result =
+      await updateBudgetGroup(
+        updatedCategory,
+      );
 
-    handleCloseEditBudgetCategory();
+    if (
+      result.success &&
+      !result.approvalRequired
+    ) {
+      handleCloseEditBudgetCategory();
+    }
   }
 
-  function handleDeleteBudgetCategory(
+  async function handleDeleteBudgetCategory(
     category: BudgetCategoryGroupData,
   ) {
-    if (!hasSelectedBudget) {
+    if (
+      !hasSelectedBudget ||
+      isMutating
+    ) {
       return;
     }
 
-    deleteBudgetGroup(
-      category.id,
-    );
+    const result =
+      await deleteBudgetGroup(
+        category.id,
+      );
+
+    if (
+      !result.success ||
+      result.approvalRequired
+    ) {
+      return;
+    }
 
     if (
       selectedGroup?.id ===
       category.id
     ) {
-      setSelectedGroup(null);
-      setIsAddItemModalOpen(false);
+      setSelectedGroup(
+        null,
+      );
+
+      setIsAddItemModalOpen(
+        false,
+      );
     }
 
     if (
       selectedItemGroup?.id ===
       category.id
     ) {
-      setSelectedItem(null);
-      setSelectedItemGroup(null);
-      setIsEditItemModalOpen(false);
+      setSelectedItem(
+        null,
+      );
+
+      setSelectedItemGroup(
+        null,
+      );
+
+      setIsEditItemModalOpen(
+        false,
+      );
     }
 
     handleCloseEditBudgetCategory();
@@ -443,7 +547,10 @@ export default function BudgetOverview() {
   function handleOpenAddItem(
     group: BudgetCategoryGroupData,
   ) {
-    if (!hasSelectedBudget) {
+    if (
+      !hasSelectedBudget ||
+      isMutating
+    ) {
       return;
     }
 
@@ -466,29 +573,39 @@ export default function BudgetOverview() {
     );
   }
 
-  function handleAddItem(
+  async function handleAddItem(
     item: AddBudgetItemFormData,
   ) {
     if (
       !hasSelectedBudget ||
-      !selectedGroup
+      !selectedGroup ||
+      isMutating
     ) {
       return;
     }
 
-    addBudgetItem(
-      selectedGroup.id,
-      item,
-    );
+    const result =
+      await addBudgetItem(
+        selectedGroup.id,
+        item,
+      );
 
-    handleCloseAddItem();
+    if (
+      result.success &&
+      !result.approvalRequired
+    ) {
+      handleCloseAddItem();
+    }
   }
 
   function handleOpenEditItem(
     item: BudgetCategoryData,
     group: BudgetCategoryGroupData,
   ) {
-    if (!hasSelectedBudget) {
+    if (
+      !hasSelectedBudget ||
+      isMutating
+    ) {
       return;
     }
 
@@ -519,28 +636,30 @@ export default function BudgetOverview() {
     );
   }
 
-  function handleUpdateItem(
+  async function handleUpdateItem(
     updatedItem: BudgetCategoryData,
   ) {
     if (
       !hasSelectedBudget ||
       !selectedItemGroup ||
-      !selectedItem
+      !selectedItem ||
+      isMutating
     ) {
       return;
     }
 
-    syncBudgetItemUpdate(
-      selectedItem,
-      updatedItem,
-    );
+    const result =
+      await updateBudgetItem(
+        selectedItemGroup.id,
+        updatedItem,
+      );
 
-    updateBudgetItem(
-      selectedItemGroup.id,
-      updatedItem,
-    );
-
-    handleCloseEditItem();
+    if (
+      result.success &&
+      !result.approvalRequired
+    ) {
+      handleCloseEditItem();
+    }
   }
 
   useEffect(() => {
@@ -605,28 +724,92 @@ export default function BudgetOverview() {
     router.push(`/dashboard/bills?billId=${bill.id}`);
   }
 
-  function handleDeleteItem(
+  async function handleDeleteItem(
     itemId: string,
   ) {
     if (
       !hasSelectedBudget ||
-      !selectedItemGroup
+      !selectedItemGroup ||
+      isMutating
     ) {
       return;
     }
 
-    deleteBudgetItem(
-      selectedItemGroup.id,
-      itemId,
-    );
+    const result =
+      await deleteBudgetItem(
+        selectedItemGroup.id,
+        itemId,
+      );
 
-    handleCloseEditItem();
+    if (
+      result.success &&
+      !result.approvalRequired
+    ) {
+      handleCloseEditItem();
+    }
   }
 
   return (
     <>
       <PageContainer>
         <div className="space-y-6 py-6 sm:space-y-8 sm:py-8">
+          {error ? (
+            <div
+              role="alert"
+              className="flex flex-col gap-3 rounded-2xl border border-red-500/25 bg-red-500/10 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <p className="text-sm font-semibold text-red-700 dark:text-red-300">
+                {error}
+              </p>
+
+              <button
+                type="button"
+                onClick={
+                  clearError
+                }
+                className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-lg border border-red-500/30 px-3 text-xs font-bold text-red-700 transition-colors hover:bg-red-500/10 dark:text-red-300"
+              >
+                Dismiss
+              </button>
+            </div>
+          ) : null}
+
+          {pendingApproval ? (
+            <div
+              role="status"
+              className="flex flex-col gap-3 rounded-2xl border border-[var(--primary)]/25 bg-[var(--primary)]/10 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-[var(--text-primary)]">
+                  Household approval required
+                </p>
+
+                <p className="mt-1 text-sm leading-6 text-[var(--text-muted)]">
+                  Your requested budget change was submitted for approval. No budget data was changed yet.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={
+                  clearPendingApproval
+                }
+                className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border-default)] bg-[var(--surface-default)] px-3 text-xs font-bold text-[var(--text-primary)] transition-colors hover:bg-[var(--surface-muted)]"
+              >
+                Dismiss
+              </button>
+            </div>
+          ) : null}
+
+          {isLoading ? (
+            <div
+              role="status"
+              className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-default)] px-4 py-3 text-sm font-semibold text-[var(--text-muted)]"
+            >
+              Loading budget from Supabase...
+            </div>
+          ) : null}
+
           <BudgetHeader
             title="Monthly Budget"
             description="Plan every dollar, track your spending, and stay in control of your financial goals."
@@ -650,7 +833,8 @@ export default function BudgetOverview() {
             }
           />
 
-          {hasSelectedBudget ? (
+          {!isLoading &&
+          hasSelectedBudget ? (
             <>
               <BudgetSummaryCards
                 plannedIncome={
@@ -664,6 +848,12 @@ export default function BudgetOverview() {
                 }
                 spentAmount={
                   totals.spentAmount
+                }
+                availableAmount={
+                  totals.availableAmount
+                }
+                rolloverAmount={
+                  totals.rolloverAmount
                 }
               />
 
@@ -727,6 +917,9 @@ export default function BudgetOverview() {
                           onClick={
                             handleOpenAddBudgetCategory
                           }
+                          disabled={
+                            isMutating
+                          }
                           className={joinClassNames(
                             "inline-flex",
                             "min-h-11",
@@ -750,6 +943,8 @@ export default function BudgetOverview() {
                             "focus-visible:ring-[var(--primary)]",
                             "focus-visible:ring-offset-2",
                             "focus-visible:ring-offset-[var(--background)]",
+                            "disabled:cursor-not-allowed",
+                            "disabled:opacity-60",
                           )}
                         >
                           <PlusIcon />
@@ -816,7 +1011,10 @@ export default function BudgetOverview() {
                           onClick={
                             handleOpenAddBudgetCategory
                           }
-                          className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-[var(--primary)] px-5 py-2.5 text-sm font-bold leading-none text-white outline-none transition-[filter,box-shadow] hover:brightness-95 focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
+                          disabled={
+                            isMutating
+                          }
+                          className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-[var(--primary)] px-5 py-2.5 text-sm font-bold leading-none text-white outline-none transition-[filter,box-shadow] hover:brightness-95 focus-visible:ring-2 focus-visible:ring-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           <PlusIcon />
 
@@ -835,11 +1033,20 @@ export default function BudgetOverview() {
                     assigned={
                       totals.assignedAmount
                     }
+                    unassignedAmount={
+                      totals.remainingAmount
+                    }
+                    availableAmount={
+                      totals.availableAmount
+                    }
+                    rolloverAmount={
+                      totals.rolloverAmount
+                    }
                   />
                 </aside>
               </div>
             </>
-          ) : (
+          ) : !isLoading ? (
             <EmptyBudgetMonthCard
               monthLabel={
                 monthNavigation.monthLabel
@@ -864,7 +1071,7 @@ export default function BudgetOverview() {
                   : undefined
               }
             />
-          )}
+          ) : null}
         </div>
       </PageContainer>
 
@@ -883,7 +1090,8 @@ export default function BudgetOverview() {
         }
       />
 
-      {hasSelectedBudget ? (
+      {!isLoading &&
+      hasSelectedBudget ? (
         <>
           <AddIncomeModal
             isOpen={

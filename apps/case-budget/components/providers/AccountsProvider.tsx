@@ -7,576 +7,949 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
-export type AccountType =
-  | "checking"
-  | "savings"
-  | "cash"
-  | "credit-card"
-  | "investment"
-  | "retirement"
-  | "mortgage"
-  | "loan"
-  | "real-estate"
-  | "vehicle"
-  | "other";
+import {
+  archiveAccount as archiveAccountAction,
+  type ArchiveCaseBudgetAccountResult,
+} from "@/actions/accounts/archive-account";
 
-export type AccountClassification =
-  | "asset"
-  | "liability";
+import {
+  createAccount as createAccountAction,
+  type CreateCaseBudgetAccountResult,
+} from "@/actions/accounts/create-account";
 
-export type AccountConnectionStatus =
-  | "manual"
-  | "connected"
-  | "disconnected"
-  | "error"
-  | "pending";
+import {
+  getAccounts as getAccountsAction,
+  type GetCaseBudgetAccountsResult,
+} from "@/actions/accounts/get-accounts";
 
-export type AccountData = {
-  id: string;
-  name: string;
-  institution?: string;
-  type: AccountType;
-  classification: AccountClassification;
-  balance: number;
-  availableBalance?: number;
-  currency: string;
-  isIncludedInNetWorth: boolean;
-  connectionStatus: AccountConnectionStatus;
-  lastSyncedAt?: string;
-  createdAt: string;
-  updatedAt: string;
-};
+import {
+  updateAccount as updateAccountAction,
+  type UpdateCaseBudgetAccountResult,
+} from "@/actions/accounts/update-account";
 
-export type CreateAccountData = {
-  name: string;
-  institution?: string;
-  type: AccountType;
-  classification: AccountClassification;
-  balance: number;
-  availableBalance?: number;
-  currency?: string;
-  isIncludedInNetWorth?: boolean;
-  connectionStatus?: AccountConnectionStatus;
-};
+import type {
+  AccountData,
+  AccountSummary,
+  AccountType,
+  AccountClassification,
+  AccountConnectionStatus,
+  CreateAccountData,
+  UpdateAccountData,
+} from "@/types/account";
 
-export type UpdateAccountData = Partial<
-  Omit<
-    AccountData,
-    "id" | "createdAt"
-  >
->;
+export type {
+  AccountData,
+  AccountType,
+  AccountClassification,
+  AccountConnectionStatus,
+  CreateAccountData,
+  UpdateAccountData,
+} from "@/types/account";
+
+export type AccountMutationResult =
+  | CreateCaseBudgetAccountResult
+  | UpdateCaseBudgetAccountResult
+  | ArchiveCaseBudgetAccountResult;
 
 type AccountsContextValue = {
-  accounts: AccountData[];
-  assetAccounts: AccountData[];
-  liabilityAccounts: AccountData[];
-  includedNetWorthAccounts: AccountData[];
-  totalAssets: number;
-  totalLiabilities: number;
-  netWorth: number;
+  accounts:
+    AccountData[];
 
-  addAccount: (
-    account: CreateAccountData,
-  ) => AccountData;
+  allAccounts:
+    AccountData[];
 
-  updateAccount: (
-    accountId: string,
-    updates: UpdateAccountData,
-  ) => void;
+  archivedAccounts:
+    AccountData[];
 
-  deleteAccount: (
-    accountId: string,
-  ) => void;
+  assetAccounts:
+    AccountData[];
 
-  getAccountById: (
-    accountId: string,
-  ) => AccountData | null;
+  liabilityAccounts:
+    AccountData[];
 
-  updateAccountBalance: (
-    accountId: string,
-    balance: number,
-    availableBalance?: number,
-  ) => void;
+  includedNetWorthAccounts:
+    AccountData[];
 
-  setAccountNetWorthInclusion: (
-    accountId: string,
-    included: boolean,
-  ) => void;
+  totalAssets:
+    number;
+
+  totalLiabilities:
+    number;
+
+  netWorth:
+    number;
+
+  summary:
+    AccountSummary;
+
+  isLoading:
+    boolean;
+
+  isRefreshing:
+    boolean;
+
+  isMutating:
+    boolean;
+
+  error:
+    string | null;
+
+  refreshAccounts:
+    () => Promise<GetCaseBudgetAccountsResult>;
+
+  addAccount:
+    (
+      account:
+        CreateAccountData,
+    ) => Promise<CreateCaseBudgetAccountResult>;
+
+  updateAccount:
+    (
+      accountId:
+        string,
+      updates:
+        UpdateAccountData,
+    ) => Promise<UpdateCaseBudgetAccountResult>;
+
+  deleteAccount:
+    (
+      accountId:
+        string,
+    ) => Promise<ArchiveCaseBudgetAccountResult>;
+
+  archiveAccount:
+    (
+      accountId:
+        string,
+    ) => Promise<ArchiveCaseBudgetAccountResult>;
+
+  restoreAccount:
+    (
+      accountId:
+        string,
+    ) => Promise<ArchiveCaseBudgetAccountResult>;
+
+  getAccountById:
+    (
+      accountId:
+        string,
+    ) => AccountData | null;
+
+  updateAccountBalance:
+    (
+      accountId:
+        string,
+      balance:
+        number,
+      availableBalance?:
+        number,
+    ) => Promise<UpdateCaseBudgetAccountResult>;
+
+  setAccountNetWorthInclusion:
+    (
+      accountId:
+        string,
+      included:
+        boolean,
+    ) => Promise<UpdateCaseBudgetAccountResult>;
+
+  clearError:
+    () => void;
 };
 
 export type AccountsProviderProps = {
-  children: ReactNode;
-  initialAccounts?: AccountData[];
+  children:
+    ReactNode;
+
+  /**
+   * Optional server-provided seed.
+   *
+   * This is not persisted client-side. Supabase remains the source of truth,
+   * and the provider refreshes from the production account read action after
+   * mounting.
+   */
+  initialAccounts?:
+    AccountData[];
 };
 
-const ACCOUNTS_STORAGE_KEY =
-  "case-budget:accounts:v2";
+const EMPTY_SUMMARY:
+  AccountSummary = {
+    totalAssets:
+      0,
 
-const LEGACY_ACCOUNTS_STORAGE_KEY =
-  "case-budget:accounts:v1";
+    totalLiabilities:
+      0,
 
-const LEGACY_DEMO_ACCOUNT_IDS =
-  new Set([
-    "checking",
-    "savings",
-    "visa",
-  ]);
+    netWorth:
+      0,
 
-const defaultAccounts:
-  AccountData[] = [];
+    activeAccountCount:
+      0,
+
+    archivedAccountCount:
+      0,
+
+    connectedAccountCount:
+      0,
+
+    manualAccountCount:
+      0,
+
+    includedInNetWorthCount:
+      0,
+
+    totalCount:
+      0,
+  };
 
 const AccountsContext =
   createContext<
     AccountsContextValue | undefined
-  >(undefined);
-
-function createAccountId() {
-  if (
-    typeof crypto !==
-      "undefined" &&
-    typeof crypto.randomUUID ===
-      "function"
-  ) {
-    return `account-${crypto.randomUUID()}`;
-  }
-
-  return `account-${Date.now()}-${Math.random()
-    .toString(36)
-    .slice(2, 10)}`;
-}
-
-function createUniqueAccountId(
-  accounts: AccountData[],
-) {
-  const existingIds =
-    new Set(
-      accounts.map(
-        (
-          account,
-        ) =>
-          account.id,
-      ),
-    );
-
-  let candidateId =
-    createAccountId();
-
-  while (
-    existingIds.has(
-      candidateId,
-    )
-  ) {
-    candidateId =
-      createAccountId();
-  }
-
-  return candidateId;
-}
-
-function cloneAccount(
-  account: AccountData,
-): AccountData {
-  return {
-    ...account,
-  };
-}
-
-function cloneAccounts(
-  accounts: AccountData[],
-) {
-  return accounts.map(
-    cloneAccount,
+  >(
+    undefined,
   );
-}
 
-function isAccountType(
-  value: unknown,
-): value is AccountType {
-  return (
-    value === "checking" ||
-    value === "savings" ||
-    value === "cash" ||
-    value === "credit-card" ||
-    value === "investment" ||
-    value === "retirement" ||
-    value === "mortgage" ||
-    value === "loan" ||
-    value === "real-estate" ||
-    value === "vehicle" ||
-    value === "other"
-  );
-}
-
-function isAccountClassification(
-  value: unknown,
-): value is AccountClassification {
-  return (
-    value === "asset" ||
-    value === "liability"
-  );
-}
-
-function isAccountConnectionStatus(
-  value: unknown,
-): value is AccountConnectionStatus {
-  return (
-    value === "manual" ||
-    value === "connected" ||
-    value === "disconnected" ||
-    value === "error" ||
-    value === "pending"
-  );
-}
-
-function isAccountData(
-  value: unknown,
-): value is AccountData {
-  if (
-    !value ||
-    typeof value !==
-      "object" ||
-    Array.isArray(
-      value,
-    )
-  ) {
-    return false;
-  }
-
-  const candidate =
-    value as Partial<AccountData>;
-
-  return (
-    typeof candidate.id ===
-      "string" &&
-    candidate.id.trim() !==
-      "" &&
-    typeof candidate.name ===
-      "string" &&
-    candidate.name.trim() !==
-      "" &&
-    isAccountType(
-      candidate.type,
-    ) &&
-    isAccountClassification(
-      candidate.classification,
-    ) &&
-    typeof candidate.balance ===
-      "number" &&
-    Number.isFinite(
-      candidate.balance,
-    ) &&
-    typeof candidate.currency ===
-      "string" &&
-    candidate.currency.trim() !==
-      "" &&
-    typeof candidate.isIncludedInNetWorth ===
-      "boolean" &&
-    isAccountConnectionStatus(
-      candidate.connectionStatus,
-    ) &&
-    typeof candidate.createdAt ===
-      "string" &&
-    typeof candidate.updatedAt ===
-      "string"
-  );
-}
-
-function loadStoredAccounts() {
-  if (
-    typeof window ===
-    "undefined"
-  ) {
-    return null;
-  }
-
-  const currentAccounts =
-    readStoredAccounts(
-      ACCOUNTS_STORAGE_KEY,
-    );
-
-  if (
-    currentAccounts
-  ) {
-    return currentAccounts;
-  }
-
-  const legacyAccounts =
-    readStoredAccounts(
-      LEGACY_ACCOUNTS_STORAGE_KEY,
-    );
-
-  if (
-    !legacyAccounts
-  ) {
-    return null;
-  }
-
-  const migratedAccounts =
-    legacyAccounts.filter(
-      (
-        account,
-      ) =>
-        !isUntouchedLegacyDemoAccount(
-          account,
+/**
+ * Production CASE Budget Accounts provider.
+ *
+ * Supabase is the only persistence layer.
+ *
+ * There is intentionally:
+ *
+ * - no localStorage hydration;
+ * - no localStorage persistence;
+ * - no browser-generated account ID;
+ * - no client-only create/update/delete source of truth.
+ *
+ * React state is only an in-memory representation of canonical server data.
+ */
+export default function AccountsProvider({
+  children,
+  initialAccounts = [],
+}: AccountsProviderProps) {
+  const [
+    allAccounts,
+    setAllAccounts,
+  ] =
+    useState<
+      AccountData[]
+    >(
+      () =>
+        cloneAccounts(
+          initialAccounts,
         ),
     );
 
-  try {
-    window.localStorage.setItem(
-      ACCOUNTS_STORAGE_KEY,
-      JSON.stringify(
-        migratedAccounts,
-      ),
-    );
-
-    window.localStorage.removeItem(
-      LEGACY_ACCOUNTS_STORAGE_KEY,
-    );
-  } catch {
-    // Local storage may be unavailable or full.
-  }
-
-  return migratedAccounts;
-}
-
-function readStoredAccounts(
-  storageKey: string,
-) {
-  try {
-    const storedValue =
-      window.localStorage.getItem(
-        storageKey,
-      );
-
-    if (
-      !storedValue
-    ) {
-      return null;
-    }
-
-    const parsedValue:
-      unknown =
-      JSON.parse(
-        storedValue,
-      );
-
-    if (
-      !Array.isArray(
-        parsedValue,
-      ) ||
-      !parsedValue.every(
-        isAccountData,
-      )
-    ) {
-      window.localStorage.removeItem(
-        storageKey,
-      );
-
-      return null;
-    }
-
-    return cloneAccounts(
-      parsedValue,
-    );
-  } catch {
-    return null;
-  }
-}
-
-function isUntouchedLegacyDemoAccount(
-  account: AccountData,
-) {
-  if (
-    !LEGACY_DEMO_ACCOUNT_IDS.has(
-      account.id,
-    )
-  ) {
-    return false;
-  }
-
-  switch (
-    account.id
-  ) {
-    case "checking":
-      return (
-        account.name ===
-          "Checking" &&
-        account.institution ===
-          "Navy Federal Credit Union" &&
-        account.type ===
-          "checking" &&
-        account.classification ===
-          "asset" &&
-        account.balance ===
-          8240.55 &&
-        account.availableBalance ===
-          8240.55 &&
-        account.currency ===
-          "USD" &&
-        account.isIncludedInNetWorth ===
-          true &&
-        account.connectionStatus ===
-          "manual" &&
-        account.createdAt ===
-          "2026-07-01T12:00:00.000Z" &&
-        account.updatedAt ===
-          "2026-07-29T12:00:00.000Z"
-      );
-
-    case "savings":
-      return (
-        account.name ===
-          "Emergency Savings" &&
-        account.institution ===
-          "Navy Federal Credit Union" &&
-        account.type ===
-          "savings" &&
-        account.classification ===
-          "asset" &&
-        account.balance ===
-          12500 &&
-        account.availableBalance ===
-          12500 &&
-        account.currency ===
-          "USD" &&
-        account.isIncludedInNetWorth ===
-          true &&
-        account.connectionStatus ===
-          "manual" &&
-        account.createdAt ===
-          "2026-07-01T12:00:00.000Z" &&
-        account.updatedAt ===
-          "2026-07-29T12:00:00.000Z"
-      );
-
-    case "visa":
-      return (
-        account.name ===
-          "Visa" &&
-        account.institution ===
-          "Capital One" &&
-        account.type ===
-          "credit-card" &&
-        account.classification ===
-          "liability" &&
-        account.balance ===
-          6240.18 &&
-        account.availableBalance ===
-          undefined &&
-        account.currency ===
-          "USD" &&
-        account.isIncludedInNetWorth ===
-          true &&
-        account.connectionStatus ===
-          "manual" &&
-        account.createdAt ===
-          "2026-07-01T12:00:00.000Z" &&
-        account.updatedAt ===
-          "2026-07-29T12:00:00.000Z"
-      );
-
-    default:
-      return false;
-  }
-}
-
-function normalizeBalance(
-  value: number,
-) {
-  if (
-    !Number.isFinite(
-      value,
-    )
-  ) {
-    return 0;
-  }
-
-  return Math.round(
-    value * 100,
-  ) / 100;
-}
-
-export default function AccountsProvider({
-  children,
-  initialAccounts = defaultAccounts,
-}: AccountsProviderProps) {
   const [
-    accounts,
-    setAccounts,
-  ] = useState<AccountData[]>(
-    () =>
-      cloneAccounts(
-        initialAccounts,
-      ),
-  );
+    isLoading,
+    setIsLoading,
+  ] =
+    useState(
+      initialAccounts.length ===
+        0,
+    );
 
   const [
-    hasHydratedStorage,
-    setHasHydratedStorage,
-  ] = useState(
-    false,
-  );
+    isRefreshing,
+    setIsRefreshing,
+  ] =
+    useState(
+      false,
+    );
+
+  const [
+    mutationCount,
+    setMutationCount,
+  ] =
+    useState(
+      0,
+    );
+
+  const [
+    error,
+    setError,
+  ] =
+    useState<
+      string | null
+    >(
+      null,
+    );
+
+  const mountedRef =
+    useRef(
+      true,
+    );
+
+  const requestIdRef =
+    useRef(
+      0,
+    );
 
   useEffect(
     () => {
-      const storedAccounts =
-        loadStoredAccounts();
+      mountedRef.current =
+        true;
 
-      if (
-        storedAccounts
-      ) {
-        setAccounts(
-          storedAccounts,
-        );
-      }
-
-      setHasHydratedStorage(
-        true,
-      );
+      return () => {
+        mountedRef.current =
+          false;
+      };
     },
     [],
   );
 
-  useEffect(
-    () => {
-      try {
-        window.localStorage.removeItem(
-          LEGACY_ACCOUNTS_STORAGE_KEY,
-        );
-      } catch {
-        // Local storage may be unavailable.
-      }
-    },
-    [],
-  );
+  const loadAccounts =
+    useCallback(
+      async ({
+        showInitialLoading,
+      }: {
+        showInitialLoading:
+          boolean;
+      }): Promise<GetCaseBudgetAccountsResult> => {
+        const requestId =
+          requestIdRef.current +
+          1;
+
+        requestIdRef.current =
+          requestId;
+
+        if (
+          mountedRef.current
+        ) {
+          if (
+            showInitialLoading
+          ) {
+            setIsLoading(
+              true,
+            );
+          } else {
+            setIsRefreshing(
+              true,
+            );
+          }
+
+          setError(
+            null,
+          );
+        }
+
+        try {
+          const result =
+            await getAccountsAction();
+
+          if (
+            !mountedRef.current ||
+            requestId !==
+              requestIdRef.current
+          ) {
+            return result;
+          }
+
+          if (
+            result.success
+          ) {
+            setAllAccounts(
+              cloneAccounts(
+                result.accounts,
+              ),
+            );
+          } else {
+            setError(
+              result.error.message,
+            );
+          }
+
+          return result;
+        } catch (
+          loadError
+        ) {
+          const message =
+            getUnexpectedErrorMessage(
+              loadError,
+              "CASE Budget could not load accounts. Please try again.",
+            );
+
+          if (
+            mountedRef.current &&
+            requestId ===
+              requestIdRef.current
+          ) {
+            setError(
+              message,
+            );
+          }
+
+          return {
+            success:
+              false,
+
+            accounts:
+              [],
+
+            summary: {
+              ...EMPTY_SUMMARY,
+            },
+
+            error: {
+              code:
+                "unexpected-error",
+
+              message,
+            },
+          };
+        } finally {
+          if (
+            mountedRef.current &&
+            requestId ===
+              requestIdRef.current
+          ) {
+            setIsLoading(
+              false,
+            );
+
+            setIsRefreshing(
+              false,
+            );
+          }
+        }
+      },
+      [],
+    );
 
   useEffect(
     () => {
-      if (
-        !hasHydratedStorage
-      ) {
-        return;
-      }
-
-      try {
-        window.localStorage.setItem(
-          ACCOUNTS_STORAGE_KEY,
-          JSON.stringify(
-            accounts,
-          ),
-        );
-      } catch {
-        // Local storage may be unavailable or full.
-      }
+      void loadAccounts({
+        showInitialLoading:
+          initialAccounts.length ===
+          0,
+      });
     },
     [
-      accounts,
-      hasHydratedStorage,
+      initialAccounts.length,
+      loadAccounts,
     ],
   );
+
+  const refreshAccounts =
+    useCallback(
+      async () => {
+        return loadAccounts({
+          showInitialLoading:
+            false,
+        });
+      },
+      [
+        loadAccounts,
+      ],
+    );
+
+  const beginMutation =
+    useCallback(
+      () => {
+        if (
+          mountedRef.current
+        ) {
+          setMutationCount(
+            (
+              current,
+            ) =>
+              current +
+              1,
+          );
+
+          setError(
+            null,
+          );
+        }
+      },
+      [],
+    );
+
+  const endMutation =
+    useCallback(
+      () => {
+        if (
+          mountedRef.current
+        ) {
+          setMutationCount(
+            (
+              current,
+            ) =>
+              Math.max(
+                0,
+                current -
+                  1,
+              ),
+          );
+        }
+      },
+      [],
+    );
+
+  const addAccount =
+    useCallback(
+      async (
+        account:
+          CreateAccountData,
+      ): Promise<CreateCaseBudgetAccountResult> => {
+        beginMutation();
+
+        try {
+          const result =
+            await createAccountAction(
+              account,
+            );
+
+          if (
+            !mountedRef.current
+          ) {
+            return result;
+          }
+
+          if (
+            result.success &&
+            result.status ===
+              "created"
+          ) {
+            setAllAccounts(
+              (
+                current,
+              ) =>
+                upsertAccount(
+                  current,
+                  result.account,
+                ),
+            );
+          } else if (
+            !result.success
+          ) {
+            setError(
+              result.error.message,
+            );
+          }
+
+          return result;
+        } catch (
+          mutationError
+        ) {
+          const message =
+            getUnexpectedErrorMessage(
+              mutationError,
+              "CASE Budget could not create the account. Please try again.",
+            );
+
+          if (
+            mountedRef.current
+          ) {
+            setError(
+              message,
+            );
+          }
+
+          return {
+            success:
+              false,
+
+            status:
+              "error",
+
+            account:
+              null,
+
+            approvalRequired:
+              false,
+
+            approval:
+              null,
+
+            error: {
+              code:
+                "unexpected-error",
+
+              message,
+            },
+          };
+        } finally {
+          endMutation();
+        }
+      },
+      [
+        beginMutation,
+        endMutation,
+      ],
+    );
+
+  const updateAccount =
+    useCallback(
+      async (
+        accountId:
+          string,
+        updates:
+          UpdateAccountData,
+      ): Promise<UpdateCaseBudgetAccountResult> => {
+        beginMutation();
+
+        try {
+          const result =
+            await updateAccountAction({
+              accountId,
+              updates,
+            });
+
+          if (
+            !mountedRef.current
+          ) {
+            return result;
+          }
+
+          if (
+            result.success &&
+            result.status ===
+              "updated"
+          ) {
+            setAllAccounts(
+              (
+                current,
+              ) =>
+                upsertAccount(
+                  current,
+                  result.account,
+                ),
+            );
+          } else if (
+            !result.success
+          ) {
+            setError(
+              result.error.message,
+            );
+          }
+
+          return result;
+        } catch (
+          mutationError
+        ) {
+          const message =
+            getUnexpectedErrorMessage(
+              mutationError,
+              "CASE Budget could not update the account. Please try again.",
+            );
+
+          if (
+            mountedRef.current
+          ) {
+            setError(
+              message,
+            );
+          }
+
+          return {
+            success:
+              false,
+
+            status:
+              "error",
+
+            account:
+              null,
+
+            approvalRequired:
+              false,
+
+            approval:
+              null,
+
+            error: {
+              code:
+                "unexpected-error",
+
+              message,
+            },
+          };
+        } finally {
+          endMutation();
+        }
+      },
+      [
+        beginMutation,
+        endMutation,
+      ],
+    );
+
+  const changeArchiveState =
+    useCallback(
+      async ({
+        accountId,
+        archived,
+      }: {
+        accountId:
+          string;
+
+        archived:
+          boolean;
+      }): Promise<ArchiveCaseBudgetAccountResult> => {
+        beginMutation();
+
+        try {
+          const result =
+            await archiveAccountAction({
+              accountId,
+              archived,
+            });
+
+          if (
+            !mountedRef.current
+          ) {
+            return result;
+          }
+
+          if (
+            result.success &&
+            (
+              result.status ===
+                "archived" ||
+              result.status ===
+                "restored"
+            )
+          ) {
+            setAllAccounts(
+              (
+                current,
+              ) =>
+                upsertAccount(
+                  current,
+                  result.account,
+                ),
+            );
+          } else if (
+            !result.success
+          ) {
+            setError(
+              result.error.message,
+            );
+          }
+
+          return result;
+        } catch (
+          mutationError
+        ) {
+          const message =
+            getUnexpectedErrorMessage(
+              mutationError,
+              archived
+                ? "CASE Budget could not archive the account. Please try again."
+                : "CASE Budget could not restore the account. Please try again.",
+            );
+
+          if (
+            mountedRef.current
+          ) {
+            setError(
+              message,
+            );
+          }
+
+          return {
+            success:
+              false,
+
+            status:
+              "error",
+
+            account:
+              null,
+
+            approvalRequired:
+              false,
+
+            approval:
+              null,
+
+            error: {
+              code:
+                "unexpected-error",
+
+              message,
+            },
+          };
+        } finally {
+          endMutation();
+        }
+      },
+      [
+        beginMutation,
+        endMutation,
+      ],
+    );
+
+  /**
+   * Compatibility name retained for existing UI callers.
+   *
+   * "delete" now means archive. The database row is never destructively
+   * deleted, preserving transaction and reporting history.
+   */
+  const deleteAccount =
+    useCallback(
+      async (
+        accountId:
+          string,
+      ) => {
+        return changeArchiveState({
+          accountId,
+          archived:
+            true,
+        });
+      },
+      [
+        changeArchiveState,
+      ],
+    );
+
+  const archiveAccount =
+    deleteAccount;
+
+  const restoreAccount =
+    useCallback(
+      async (
+        accountId:
+          string,
+      ) => {
+        return changeArchiveState({
+          accountId,
+          archived:
+            false,
+        });
+      },
+      [
+        changeArchiveState,
+      ],
+    );
+
+  const getAccountById =
+    useCallback(
+      (
+        accountId:
+          string,
+      ) => {
+        return (
+          allAccounts.find(
+            (
+              account,
+            ) =>
+              account.id ===
+              accountId,
+          ) ??
+          null
+        );
+      },
+      [
+        allAccounts,
+      ],
+    );
+
+  const updateAccountBalance =
+    useCallback(
+      async (
+        accountId:
+          string,
+        balance:
+          number,
+        availableBalance?:
+          number,
+      ) => {
+        const updates:
+          UpdateAccountData = {
+            balance,
+          };
+
+        if (
+          availableBalance !==
+          undefined
+        ) {
+          updates.availableBalance =
+            availableBalance;
+        }
+
+        return updateAccount(
+          accountId,
+          updates,
+        );
+      },
+      [
+        updateAccount,
+      ],
+    );
+
+  const setAccountNetWorthInclusion =
+    useCallback(
+      async (
+        accountId:
+          string,
+        included:
+          boolean,
+      ) => {
+        return updateAccount(
+          accountId,
+          {
+            isIncludedInNetWorth:
+              included,
+          },
+        );
+      },
+      [
+        updateAccount,
+      ],
+    );
+
+  const clearError =
+    useCallback(
+      () => {
+        setError(
+          null,
+        );
+      },
+      [],
+    );
+
+  /**
+   * The public active account collection intentionally excludes archived and
+   * inactive records so existing account selectors and account screens do not
+   * suddenly expose historical rows.
+   *
+   * allAccounts/getAccountById retain historical records for transaction and
+   * reporting lookups.
+   */
+  const accounts =
+    useMemo(
+      () =>
+        allAccounts.filter(
+          (
+            account,
+          ) =>
+            account.isActive &&
+            !account.isArchived,
+        ),
+      [
+        allAccounts,
+      ],
+    );
+
+  const archivedAccounts =
+    useMemo(
+      () =>
+        allAccounts.filter(
+          (
+            account,
+          ) =>
+            account.isArchived,
+        ),
+      [
+        allAccounts,
+      ],
+    );
 
   const assetAccounts =
     useMemo(
@@ -625,25 +998,27 @@ export default function AccountsProvider({
   const totalAssets =
     useMemo(
       () =>
-        includedNetWorthAccounts
-          .filter(
-            (
-              account,
-            ) =>
-              account.classification ===
-              "asset",
-          )
-          .reduce(
-            (
-              total,
-              account,
-            ) =>
-              total +
-              Math.abs(
-                account.balance,
-              ),
-            0,
-          ),
+        normalizeBalance(
+          includedNetWorthAccounts
+            .filter(
+              (
+                account,
+              ) =>
+                account.classification ===
+                "asset",
+            )
+            .reduce(
+              (
+                total,
+                account,
+              ) =>
+                total +
+                Math.abs(
+                  account.balance,
+                ),
+              0,
+            ),
+        ),
       [
         includedNetWorthAccounts,
       ],
@@ -652,25 +1027,27 @@ export default function AccountsProvider({
   const totalLiabilities =
     useMemo(
       () =>
-        includedNetWorthAccounts
-          .filter(
-            (
-              account,
-            ) =>
-              account.classification ===
-              "liability",
-          )
-          .reduce(
-            (
-              total,
-              account,
-            ) =>
-              total +
-              Math.abs(
-                account.balance,
-              ),
-            0,
-          ),
+        normalizeBalance(
+          includedNetWorthAccounts
+            .filter(
+              (
+                account,
+              ) =>
+                account.classification ===
+                "liability",
+            )
+            .reduce(
+              (
+                total,
+                account,
+              ) =>
+                total +
+                Math.abs(
+                  account.balance,
+                ),
+              0,
+            ),
+        ),
       [
         includedNetWorthAccounts,
       ],
@@ -681,7 +1058,7 @@ export default function AccountsProvider({
       () =>
         normalizeBalance(
           totalAssets -
-          totalLiabilities,
+            totalLiabilities,
         ),
       [
         totalAssets,
@@ -689,280 +1066,122 @@ export default function AccountsProvider({
       ],
     );
 
-  const addAccount =
-    useCallback(
-      (
-        account:
-          CreateAccountData,
-      ) => {
-        const timestamp =
-          new Date().toISOString();
+  const summary =
+    useMemo<AccountSummary>(
+      () => {
+        let connectedAccountCount =
+          0;
 
-        const baseAccount:
-          Omit<
-            AccountData,
-            "id"
-          > = {
-            name:
-              account.name.trim(),
-            institution:
-              account.institution?.trim() ||
-              undefined,
-            type:
-              account.type,
-            classification:
-              account.classification,
-            balance:
-              normalizeBalance(
-                account.balance,
-              ),
-            availableBalance:
-              account.availableBalance ===
-              undefined
-                ? undefined
-                : normalizeBalance(
-                    account.availableBalance,
-                  ),
-            currency:
-              account.currency?.trim()
-                .toUpperCase() ||
-              "USD",
-            isIncludedInNetWorth:
-              account.isIncludedInNetWorth ??
-              true,
-            connectionStatus:
-              account.connectionStatus ??
-              "manual",
-            createdAt:
-              timestamp,
-            updatedAt:
-              timestamp,
-          };
+        let manualAccountCount =
+          0;
 
-        const preferredId =
-          createAccountId();
+        for (
+          const account of
+            allAccounts
+        ) {
+          if (
+            account.connectionStatus ===
+            "connected"
+          ) {
+            connectedAccountCount +=
+              1;
+          }
 
-        const newAccount:
-          AccountData = {
-            id:
-              preferredId,
-            ...baseAccount,
-          };
+          if (
+            account.source ===
+            "manual"
+          ) {
+            manualAccountCount +=
+              1;
+          }
+        }
 
-        setAccounts(
-          (
-            currentAccounts,
-          ) => {
-            const uniqueAccount: AccountData = {
-              ...newAccount,
-              id:
-                currentAccounts.some(
-                  (
-                    currentAccount,
-                  ) =>
-                    currentAccount.id ===
-                    preferredId,
-                )
-                  ? createUniqueAccountId(
-                      currentAccounts,
-                    )
-                  : preferredId,
-            };
+        return {
+          totalAssets,
+          totalLiabilities,
+          netWorth,
 
-            return [
-              uniqueAccount,
-              ...currentAccounts,
-            ];
-          },
-        );
+          activeAccountCount:
+            accounts.length,
 
-        return newAccount;
-      },
-      [],
-    );
+          archivedAccountCount:
+            archivedAccounts.length,
 
-  const updateAccount =
-    useCallback(
-      (
-        accountId: string,
-        updates:
-          UpdateAccountData,
-      ) => {
-        setAccounts(
-          (
-            currentAccounts,
-          ) =>
-            currentAccounts.map(
-              (
-                account,
-              ) => {
-                if (
-                  account.id !==
-                  accountId
-                ) {
-                  return account;
-                }
+          connectedAccountCount,
 
-                return {
-                  ...account,
-                  ...updates,
-                  id:
-                    account.id,
-                  name:
-                    updates.name?.trim() ||
-                    account.name,
-                  institution:
-                    updates.institution ===
-                    undefined
-                      ? account.institution
-                      : updates.institution.trim() ||
-                        undefined,
-                  balance:
-                    updates.balance ===
-                    undefined
-                      ? account.balance
-                      : normalizeBalance(
-                          updates.balance,
-                        ),
-                  availableBalance:
-                    updates.availableBalance ===
-                    undefined
-                      ? account.availableBalance
-                      : normalizeBalance(
-                          updates.availableBalance,
-                        ),
-                  currency:
-                    updates.currency?.trim()
-                      .toUpperCase() ||
-                    account.currency,
-                  createdAt:
-                    account.createdAt,
-                  updatedAt:
-                    new Date().toISOString(),
-                };
-              },
-            ),
-        );
-      },
-      [],
-    );
+          manualAccountCount,
 
-  const deleteAccount =
-    useCallback(
-      (
-        accountId: string,
-      ) => {
-        setAccounts(
-          (
-            currentAccounts,
-          ) =>
-            currentAccounts.filter(
-              (
-                account,
-              ) =>
-                account.id !==
-                accountId,
-            ),
-        );
-      },
-      [],
-    );
+          includedInNetWorthCount:
+            includedNetWorthAccounts.length,
 
-  const getAccountById =
-    useCallback(
-      (
-        accountId: string,
-      ) => {
-        return (
-          accounts.find(
-            (
-              account,
-            ) =>
-              account.id ===
-              accountId,
-          ) ??
-          null
-        );
+          totalCount:
+            allAccounts.length,
+        };
       },
       [
-        accounts,
+        accounts.length,
+        allAccounts,
+        archivedAccounts.length,
+        includedNetWorthAccounts.length,
+        netWorth,
+        totalAssets,
+        totalLiabilities,
       ],
     );
 
-  const updateAccountBalance =
-    useCallback(
-      (
-        accountId: string,
-        balance: number,
-        availableBalance?: number,
-      ) => {
-        updateAccount(
-          accountId,
-          {
-            balance,
-            availableBalance,
-            lastSyncedAt:
-              new Date().toISOString(),
-          },
-        );
-      },
-      [
-        updateAccount,
-      ],
-    );
-
-  const setAccountNetWorthInclusion =
-    useCallback(
-      (
-        accountId: string,
-        included: boolean,
-      ) => {
-        updateAccount(
-          accountId,
-          {
-            isIncludedInNetWorth:
-              included,
-          },
-        );
-      },
-      [
-        updateAccount,
-      ],
-    );
+  const isMutating =
+    mutationCount >
+    0;
 
   const value =
     useMemo<AccountsContextValue>(
       () => ({
         accounts,
+        allAccounts,
+        archivedAccounts,
         assetAccounts,
         liabilityAccounts,
         includedNetWorthAccounts,
-        totalAssets:
-          normalizeBalance(
-            totalAssets,
-          ),
-        totalLiabilities:
-          normalizeBalance(
-            totalLiabilities,
-          ),
+        totalAssets,
+        totalLiabilities,
         netWorth,
+        summary,
+        isLoading,
+        isRefreshing,
+        isMutating,
+        error,
+        refreshAccounts,
         addAccount,
         updateAccount,
         deleteAccount,
+        archiveAccount,
+        restoreAccount,
         getAccountById,
         updateAccountBalance,
         setAccountNetWorthInclusion,
+        clearError,
       }),
       [
         accounts,
         addAccount,
+        allAccounts,
+        archiveAccount,
+        archivedAccounts,
         assetAccounts,
+        clearError,
         deleteAccount,
+        error,
         getAccountById,
         includedNetWorthAccounts,
+        isLoading,
+        isMutating,
+        isRefreshing,
         liabilityAccounts,
         netWorth,
+        refreshAccounts,
+        restoreAccount,
         setAccountNetWorthInclusion,
+        summary,
         totalAssets,
         totalLiabilities,
         updateAccount,
@@ -972,7 +1191,9 @@ export default function AccountsProvider({
 
   return (
     <AccountsContext.Provider
-      value={value}
+      value={
+        value
+      }
     >
       {children}
     </AccountsContext.Provider>
@@ -985,11 +1206,160 @@ export function useAccounts() {
       AccountsContext,
     );
 
-  if (!context) {
+  if (
+    !context
+  ) {
     throw new Error(
       "useAccounts must be used within an AccountsProvider.",
     );
   }
 
   return context;
+}
+
+function upsertAccount(
+  accounts:
+    AccountData[],
+  account:
+    AccountData,
+) {
+  const existingIndex =
+    accounts.findIndex(
+      (
+        current,
+      ) =>
+        current.id ===
+        account.id,
+    );
+
+  if (
+    existingIndex ===
+    -1
+  ) {
+    return sortAccounts([
+      cloneAccount(
+        account,
+      ),
+      ...accounts,
+    ]);
+  }
+
+  const nextAccounts =
+    accounts.map(
+      (
+        current,
+        index,
+      ) =>
+        index ===
+        existingIndex
+          ? cloneAccount(
+              account,
+            )
+          : current,
+    );
+
+  return sortAccounts(
+    nextAccounts,
+  );
+}
+
+function sortAccounts(
+  accounts:
+    AccountData[],
+) {
+  return [
+    ...accounts,
+  ].sort(
+    (
+      left,
+      right,
+    ) => {
+      if (
+        left.isArchived !==
+        right.isArchived
+      ) {
+        return left.isArchived
+          ? 1
+          : -1;
+      }
+
+      if (
+        left.sortOrder !==
+        right.sortOrder
+      ) {
+        return (
+          left.sortOrder -
+          right.sortOrder
+        );
+      }
+
+      return left.name.localeCompare(
+        right.name,
+        undefined,
+        {
+          sensitivity:
+            "base",
+        },
+      );
+    },
+  );
+}
+
+function cloneAccount(
+  account:
+    AccountData,
+): AccountData {
+  return {
+    ...account,
+  };
+}
+
+function cloneAccounts(
+  accounts:
+    AccountData[],
+) {
+  return sortAccounts(
+    accounts.map(
+      cloneAccount,
+    ),
+  );
+}
+
+function normalizeBalance(
+  value:
+    number,
+) {
+  if (
+    !Number.isFinite(
+      value,
+    )
+  ) {
+    return 0;
+  }
+
+  return Math.round(
+    (
+      value +
+      Number.EPSILON
+    ) *
+      100,
+  ) /
+    100;
+}
+
+function getUnexpectedErrorMessage(
+  error:
+    unknown,
+  fallback:
+    string,
+) {
+  if (
+    error instanceof
+      Error &&
+    error.message.trim()
+  ) {
+    return error.message;
+  }
+
+  return fallback;
 }

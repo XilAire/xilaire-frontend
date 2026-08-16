@@ -356,7 +356,7 @@ export default function AddInvestmentAccountModal({
               ),
           };
 
-        updateInvestmentAccount(
+        await updateInvestmentAccount(
           account.id,
           updates,
         );
@@ -421,7 +421,7 @@ export default function AddInvestmentAccountModal({
           };
 
         const newAccount =
-          addInvestmentAccount(
+          await addInvestmentAccount(
             input,
           );
 

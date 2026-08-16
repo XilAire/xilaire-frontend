@@ -151,6 +151,24 @@ export default function DebtDetailsModal({
       {},
     );
 
+  const [
+    isSubmitting,
+    setIsSubmitting,
+  ] =
+    useState(
+      false,
+    );
+
+  const [
+    actionError,
+    setActionError,
+  ] =
+    useState<
+      string | null
+    >(
+      null,
+    );
+
   useEffect(
     () => {
       if (
@@ -174,6 +192,14 @@ export default function DebtDetailsModal({
 
       setEditErrors(
         {},
+      );
+
+      setIsSubmitting(
+        false,
+      );
+
+      setActionError(
+        null,
       );
 
       setEditFormState({
@@ -293,11 +319,17 @@ export default function DebtDetailsModal({
       resolvedDebt,
     );
 
-  function handlePaymentSubmit(
+  async function handlePaymentSubmit(
     event:
       React.FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
+
+    if (
+      isSubmitting
+    ) {
+      return;
+    }
 
     const amount =
       parseCurrencyValue(
@@ -317,29 +349,82 @@ export default function DebtDetailsModal({
       return;
     }
 
-    recordDebtPayment(
-      resolvedDebt.id,
-      amount,
-    );
+    if (
+      amount >
+      resolvedDebt.currentBalance
+    ) {
+      setPaymentError(
+        "Payment cannot be greater than the current balance.",
+      );
 
-    setPaymentAmount(
-      "",
+      return;
+    }
+
+    setIsSubmitting(
+      true,
     );
 
     setPaymentError(
       null,
     );
 
-    setCurrentView(
-      "overview",
+    setActionError(
+      null,
     );
+
+    try {
+      const result =
+        await recordDebtPayment(
+          resolvedDebt.id,
+          amount,
+        );
+
+      if (
+        !result.success
+      ) {
+        setPaymentError(
+          result.error,
+        );
+
+        return;
+      }
+
+      setPaymentAmount(
+        "",
+      );
+
+      setCurrentView(
+        "overview",
+      );
+    } catch (
+      caughtError
+    ) {
+      console.error(
+        "[CASE Budget DebtDetailsModal] Failed to record debt payment.",
+        caughtError,
+      );
+
+      setPaymentError(
+        "CASE Budget could not record the payment. Please try again.",
+      );
+    } finally {
+      setIsSubmitting(
+        false,
+      );
+    }
   }
 
-  function handleEditSubmit(
+  async function handleEditSubmit(
     event:
       React.FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
+
+    if (
+      isSubmitting
+    ) {
+      return;
+    }
 
     const nextErrors:
       EditDebtFormErrors =
@@ -437,6 +522,10 @@ export default function DebtDetailsModal({
       nextErrors,
     );
 
+    setActionError(
+      null,
+    );
+
     if (
       Object.keys(
         nextErrors,
@@ -446,65 +535,189 @@ export default function DebtDetailsModal({
       return;
     }
 
-    updateDebt(
-      resolvedDebt.id,
-      {
-        name:
-          editFormState.name.trim(),
-
-        lender:
-          editFormState.lender.trim() ||
-          undefined,
-
-        type:
-          editFormState.type,
-
-        originalBalance,
-
-        currentBalance,
-
-        interestRate,
-
-        minimumPayment,
-
-        dueDay:
-          editFormState.dueDay
-            ? Number(
-                editFormState.dueDay,
-              )
-            : undefined,
-
-        status:
-          currentBalance <= 0
-            ? "paid-off"
-            : "active",
-      },
+    setIsSubmitting(
+      true,
     );
 
-    setCurrentView(
-      "overview",
-    );
+    try {
+      const result =
+        await updateDebt(
+          resolvedDebt.id,
+          {
+            name:
+              editFormState.name.trim(),
+
+            lender:
+              editFormState.lender.trim() ||
+              undefined,
+
+            type:
+              editFormState.type,
+
+            originalBalance,
+
+            currentBalance,
+
+            interestRate,
+
+            minimumPayment,
+
+            dueDay:
+              editFormState.dueDay
+                ? Number(
+                    editFormState.dueDay,
+                  )
+                : undefined,
+
+            status:
+              currentBalance <= 0
+                ? "paid-off"
+                : "active",
+          },
+        );
+
+      if (
+        !result.success
+      ) {
+        setEditErrors(
+          (
+            currentErrors,
+          ) => ({
+            ...currentErrors,
+            ...(result.fieldErrors ??
+              {}),
+          }),
+        );
+
+        setActionError(
+          result.error,
+        );
+
+        return;
+      }
+
+      setCurrentView(
+        "overview",
+      );
+    } catch (
+      caughtError
+    ) {
+      console.error(
+        "[CASE Budget DebtDetailsModal] Failed to update debt.",
+        caughtError,
+      );
+
+      setActionError(
+        "CASE Budget could not update the debt. Please try again.",
+      );
+    } finally {
+      setIsSubmitting(
+        false,
+      );
+    }
   }
 
-  function handleMarkPaidOff() {
-    updateDebt(
-      resolvedDebt.id,
-      {
-        currentBalance:
-          0,
+  async function handleMarkPaidOff() {
+    if (
+      isSubmitting
+    ) {
+      return;
+    }
 
-        status:
-          "paid-off",
-      },
+    setIsSubmitting(
+      true,
     );
+
+    setActionError(
+      null,
+    );
+
+    try {
+      const result =
+        await updateDebt(
+          resolvedDebt.id,
+          {
+            currentBalance:
+              0,
+
+            status:
+              "paid-off",
+          },
+        );
+
+      if (
+        !result.success
+      ) {
+        setActionError(
+          result.error,
+        );
+      }
+    } catch (
+      caughtError
+    ) {
+      console.error(
+        "[CASE Budget DebtDetailsModal] Failed to mark debt paid off.",
+        caughtError,
+      );
+
+      setActionError(
+        "CASE Budget could not mark the debt as paid off. Please try again.",
+      );
+    } finally {
+      setIsSubmitting(
+        false,
+      );
+    }
   }
 
-  function handleDelete() {
-    deleteDebt(
-      resolvedDebt.id,
+  async function handleDelete() {
+    if (
+      isSubmitting
+    ) {
+      return;
+    }
+
+    setIsSubmitting(
+      true,
     );
 
-    onClose();
+    setActionError(
+      null,
+    );
+
+    try {
+      const result =
+        await deleteDebt(
+          resolvedDebt.id,
+        );
+
+      if (
+        !result.success
+      ) {
+        setActionError(
+          result.error,
+        );
+
+        return;
+      }
+
+      onClose();
+    } catch (
+      caughtError
+    ) {
+      console.error(
+        "[CASE Budget DebtDetailsModal] Failed to archive debt.",
+        caughtError,
+      );
+
+      setActionError(
+        "CASE Budget could not remove the debt. Please try again.",
+      );
+    } finally {
+      setIsSubmitting(
+        false,
+      );
+    }
   }
 
   function updateEditField(
@@ -533,6 +746,10 @@ export default function DebtDetailsModal({
         [field]:
           undefined,
       }),
+    );
+
+    setActionError(
+      null,
     );
   }
 
@@ -601,6 +818,9 @@ export default function DebtDetailsModal({
               onClick={
                 onClose
               }
+              disabled={
+                isSubmitting
+              }
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               aria-label="Close debt details"
             >
@@ -609,6 +829,15 @@ export default function DebtDetailsModal({
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
+            {actionError ? (
+              <div
+                role="alert"
+                className="mb-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700"
+              >
+                {actionError}
+              </div>
+            ) : null}
+
             {currentView ===
             "overview" ? (
               <div className="space-y-6">
@@ -711,7 +940,9 @@ export default function DebtDetailsModal({
                   >
                     <Plus className="h-5 w-5" />
 
-                    Record payment
+                    {isSubmitting
+                      ? "Recording..."
+                      : "Record payment"}
                   </button>
                 ) : null}
 
@@ -911,6 +1142,9 @@ export default function DebtDetailsModal({
 
                   <button
                     type="submit"
+                    disabled={
+                      isSubmitting
+                    }
                     className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-emerald-600 px-5 text-sm font-bold text-white transition hover:bg-emerald-700"
                   >
                     <Plus className="h-4.5 w-4.5" />
@@ -1227,9 +1461,14 @@ export default function DebtDetailsModal({
 
                   <button
                     type="submit"
+                    disabled={
+                      isSubmitting
+                    }
                     className="min-h-11 rounded-full bg-emerald-600 px-5 text-sm font-bold text-white transition hover:bg-emerald-700"
                   >
-                    Save changes
+                    {isSubmitting
+                      ? "Saving..."
+                      : "Save changes"}
                   </button>
                 </div>
               </form>
@@ -1244,12 +1483,11 @@ export default function DebtDetailsModal({
 
                 <div>
                   <h3 className="text-lg font-bold text-slate-950">
-                    Delete this debt?
+                    Remove this debt?
                   </h3>
 
                   <p className="mt-2 text-sm leading-6 text-slate-500">
-                    This permanently
-                    removes{" "}
+                    This removes{" "}
                     <span className="font-semibold text-slate-700">
                       {
                         resolvedDebt.name
@@ -1269,10 +1507,10 @@ export default function DebtDetailsModal({
                   </p>
 
                   <p className="mt-1 text-xs leading-5 text-rose-600">
-                    Deleting this debt
-                    removes its tracked
-                    balance and payoff
-                    progress from CASE
+                    Removing this debt hides it
+                    from your active payoff
+                    plan while preserving its
+                    stored history in CASE
                     Budget.
                   </p>
                 </div>
@@ -1295,11 +1533,16 @@ export default function DebtDetailsModal({
                     onClick={
                       handleDelete
                     }
+                    disabled={
+                      isSubmitting
+                    }
                     className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-rose-600 px-5 text-sm font-bold text-white transition hover:bg-rose-700"
                   >
                     <Trash2 className="h-4.5 w-4.5" />
 
-                    Delete debt
+                    {isSubmitting
+                      ? "Removing..."
+                      : "Delete debt"}
                   </button>
                 </div>
               </div>

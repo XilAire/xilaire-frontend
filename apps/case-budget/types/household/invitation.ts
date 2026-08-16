@@ -137,6 +137,7 @@ export type InviteHouseholdMemberErrorCode =
   | "permission-denied"
   | "cannot-invite-self"
   | "already-member"
+  | "member-blocked"
   | "invitation-already-pending"
   | "invite-user-missing"
   | "invite-email-failed"

@@ -53,6 +53,15 @@ export type HouseholdMemberRecord = {
   joinedAt:
     string | null;
 
+  suspendedAt:
+    string | null;
+
+  suspendedBy:
+    string | null;
+
+  suspensionReason:
+    string | null;
+
   createdAt:
     string;
 
@@ -112,6 +121,15 @@ type WorkspaceMemberRow = {
     string | null;
 
   joined_at:
+    string | null;
+
+  suspended_at:
+    string | null;
+
+  suspended_by:
+    string | null;
+
+  suspension_reason:
     string | null;
 
   created_at:
@@ -249,6 +267,18 @@ export async function getHouseholdMembers(
       };
     }
 
+    /**
+     * Show:
+     *
+     * - active members
+     * - pending invitations
+     * - suspended/blocked members
+     *
+     * Removed memberships intentionally remain hidden from the normal
+     * household member list. A removed membership remains in the database
+     * so that invitation history and re-invitation behavior can be
+     * preserved without presenting the user as a current workspace member.
+     */
     const {
       data:
         membershipData,
@@ -271,6 +301,9 @@ export async function getHouseholdMembers(
             "invited_at",
             "invitation_expires_at",
             "joined_at",
+            "suspended_at",
+            "suspended_by",
+            "suspension_reason",
             "created_at",
             "updated_at",
           ].join(
@@ -286,6 +319,7 @@ export async function getHouseholdMembers(
           [
             "active",
             "invited",
+            "suspended",
           ],
         )
         .order(
@@ -489,6 +523,15 @@ export async function getHouseholdMembers(
             joinedAt:
               membership.joined_at,
 
+            suspendedAt:
+              membership.suspended_at,
+
+            suspendedBy:
+              membership.suspended_by,
+
+            suspensionReason:
+              membership.suspension_reason,
+
             createdAt:
               membership.created_at,
 
@@ -503,6 +546,9 @@ export async function getHouseholdMembers(
         first,
         second,
       ) => {
+        /**
+         * Always keep the current user first.
+         */
         if (
           first.isCurrentUser !==
           second.isCurrentUser
@@ -512,6 +558,9 @@ export async function getHouseholdMembers(
             : 1;
         }
 
+        /**
+         * Then keep the owner above all other memberships.
+         */
         if (
           first.role ===
             "owner" &&
@@ -530,22 +579,27 @@ export async function getHouseholdMembers(
           return 1;
         }
 
-        if (
-          first.status ===
-            "active" &&
-          second.status !==
-            "active"
-        ) {
-          return -1;
-        }
+        /**
+         * Active members appear before invitations and blocked members.
+         */
+        const firstStatusOrder =
+          getMembershipStatusSortOrder(
+            first.status,
+          );
+
+        const secondStatusOrder =
+          getMembershipStatusSortOrder(
+            second.status,
+          );
 
         if (
-          second.status ===
-            "active" &&
-          first.status !==
-            "active"
+          firstStatusOrder !==
+          secondStatusOrder
         ) {
-          return 1;
+          return (
+            firstStatusOrder -
+            secondStatusOrder
+          );
         }
 
         return first.name.localeCompare(
@@ -577,6 +631,30 @@ export async function getHouseholdMembers(
       error:
         "Something went wrong while loading household members.",
     };
+  }
+}
+
+function getMembershipStatusSortOrder(
+  status:
+    WorkspaceMembershipStatusDatabaseEnum,
+): number {
+  switch (
+    status
+  ) {
+    case "active":
+      return 0;
+
+    case "invited":
+      return 1;
+
+    case "suspended":
+      return 2;
+
+    case "removed":
+      return 3;
+
+    default:
+      return 4;
   }
 }
 
@@ -624,6 +702,13 @@ function getFallbackEmail(
     )
   ) {
     return label;
+  }
+
+  if (
+    membership.status ===
+    "suspended"
+  ) {
+    return "Blocked member";
   }
 
   return "Invitation pending";

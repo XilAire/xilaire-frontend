@@ -12,8 +12,30 @@ import {
 } from "react";
 
 import {
+  archivePayCycle as archivePayCycleAction,
+} from "@/actions/pay-cycles/archive-pay-cycle";
+import {
+  createPayCycle as createPayCycleAction,
+} from "@/actions/pay-cycles/create-pay-cycle";
+import {
+  getPayCycles,
+} from "@/actions/pay-cycles/get-pay-cycles";
+import {
+  resetPayCyclePreferences as resetPayCyclePreferencesAction,
+} from "@/actions/pay-cycles/reset-pay-cycle-preferences";
+import {
+  updatePayCycle as updatePayCycleAction,
+} from "@/actions/pay-cycles/update-pay-cycle";
+import {
+  updatePayCyclePreferences as updatePayCyclePreferencesAction,
+} from "@/actions/pay-cycles/update-pay-cycle-preferences";
+
+import {
   useAccounts,
 } from "@/components/providers/AccountsProvider";
+import {
+  useApp,
+} from "@/components/providers/AppProvider";
 import {
   useBills,
 } from "@/components/providers/BillsProvider";
@@ -87,15 +109,15 @@ type PayCyclesContextValue = {
 
   addPayCycle: (
     input: CreatePayCycleData,
-  ) => PayCycleData;
+  ) => Promise<PayCycleData>;
 
   updatePayCycle: (
     input: UpdatePayCycleData,
-  ) => void;
+  ) => Promise<void>;
 
   deletePayCycle: (
     payCycleId: string,
-  ) => void;
+  ) => Promise<void>;
 
   getPayCycleById: (
     payCycleId: string,
@@ -104,20 +126,20 @@ type PayCyclesContextValue = {
   setPayCycleStatus: (
     payCycleId: string,
     status: PayCycleData["status"],
-  ) => void;
+  ) => Promise<void>;
 
   setPreferences: (
     preferences: Partial<
       PayCyclePlanningPreferences
     >,
-  ) => void;
+  ) => Promise<void>;
 
   updatePreferences: (
     preferences:
       PayCyclePlanningPreferences,
-  ) => void;
+  ) => Promise<void>;
 
-  resetPreferences: () => void;
+  resetPreferences: () => Promise<void>;
 
   regeneratePlans: () => void;
 };
@@ -130,18 +152,6 @@ export type PayCyclesProviderProps = {
   >;
   projectionCount?: number;
 };
-
-type StoredPayCyclesState = {
-  payCycles: PayCycleData[];
-  preferences:
-    PayCyclePlanningPreferences;
-};
-
-const PAY_CYCLES_STORAGE_KEY =
-  "case-budget:pay-cycles:v2";
-
-const LEGACY_PAY_CYCLES_STORAGE_KEY =
-  "case-budget:pay-cycles:v1";
 
 const DEFAULT_PROJECTION_COUNT =
   12;
@@ -180,6 +190,14 @@ export default function PayCyclesProvider({
     bills,
   } = useBills();
 
+  const {
+    activeWorkspaceId,
+  } = useApp();
+
+  const workspaceId =
+    activeWorkspaceId.trim() ||
+    null;
+
   const initialPreferencesValue =
     useMemo(
       () =>
@@ -212,13 +230,6 @@ export default function PayCyclesProvider({
     );
 
   const [
-    hasHydratedStorage,
-    setHasHydratedStorage,
-  ] = useState(
-    false,
-  );
-
-  const [
     regenerationVersion,
     setRegenerationVersion,
   ] = useState(
@@ -242,72 +253,99 @@ export default function PayCyclesProvider({
 
   useEffect(
     () => {
-      const storedState =
-        loadStoredPayCyclesState();
+      let cancelled =
+        false;
 
       if (
-        storedState
+        !workspaceId
       ) {
         setPayCycles(
-          sortPayCycles(
-            storedState.payCycles,
-          ),
+          [],
         );
 
         setPreferencesState(
-          storedState.preferences,
+          initialPreferencesValue,
         );
-      }
 
-      setHasHydratedStorage(
-        true,
-      );
-    },
-    [],
-  );
-
-  useEffect(
-    () => {
-      try {
-        window.localStorage.removeItem(
-          LEGACY_PAY_CYCLES_STORAGE_KEY,
-        );
-      } catch {
-        // Local storage may be unavailable.
-      }
-    },
-    [],
-  );
-
-  useEffect(
-    () => {
-      if (
-        !hasHydratedStorage
-      ) {
         return;
       }
 
-      const storedState:
-        StoredPayCyclesState = {
-          payCycles,
-          preferences,
-        };
+      void (
+        async () => {
+          try {
+            const result =
+              await getPayCycles({
+                workspaceId,
+              });
 
-      try {
-        window.localStorage.setItem(
-          PAY_CYCLES_STORAGE_KEY,
-          JSON.stringify(
-            storedState,
-          ),
-        );
-      } catch {
-        // Local storage may be unavailable or full.
-      }
+            if (
+              cancelled
+            ) {
+              return;
+            }
+
+            if (
+              !result.success
+            ) {
+              throw new Error(
+                result.error,
+              );
+            }
+
+            setPayCycles(
+              sortPayCycles(
+                result.payCycles.map(
+                  normalizePayCycle,
+                ),
+              ),
+            );
+
+            setPreferencesState(
+              resolvePlanningPreferences(
+                result.preferences,
+              ),
+            );
+
+            setRegenerationVersion(
+              (
+                currentVersion,
+              ) =>
+                currentVersion +
+                1,
+            );
+          } catch (
+            error
+          ) {
+            if (
+              cancelled
+            ) {
+              return;
+            }
+
+            console.error(
+              "Unable to load pay cycles for the active workspace.",
+              error,
+            );
+
+            setPayCycles(
+              [],
+            );
+
+            setPreferencesState(
+              initialPreferencesValue,
+            );
+          }
+        }
+      )();
+
+      return () => {
+        cancelled =
+          true;
+      };
     },
     [
-      hasHydratedStorage,
-      payCycles,
-      preferences,
+      initialPreferencesValue,
+      workspaceId,
     ],
   );
 
@@ -604,75 +642,37 @@ export default function PayCyclesProvider({
 
   const addPayCycle =
     useCallback(
-      (
+      async (
         input:
           CreatePayCycleData,
       ) => {
-        const timestamp =
-          new Date().toISOString();
+        if (
+          !workspaceId
+        ) {
+          throw new Error(
+            "A workspace is required to create a pay cycle.",
+          );
+        }
 
-        const preferredId =
-          createPayCycleId();
+        const result =
+          await createPayCycleAction({
+            workspaceId,
+            payCycle:
+              input,
+          });
+
+        if (
+          !result.success
+        ) {
+          throw new Error(
+            result.error,
+          );
+        }
 
         const payCycle =
-          normalizePayCycle({
-            id:
-              preferredId,
-            name:
-              input.name.trim(),
-            employerName:
-              normalizeOptionalText(
-                input.employerName,
-              ),
-            incomeType:
-              input.incomeType,
-            frequency:
-              input.frequency,
-            amountType:
-              input.amountType,
-            expectedNetAmount:
-              normalizeCurrency(
-                input.expectedNetAmount,
-              ),
-            minimumExpectedAmount:
-              normalizeOptionalCurrency(
-                input.minimumExpectedAmount,
-              ),
-            maximumExpectedAmount:
-              normalizeOptionalCurrency(
-                input.maximumExpectedAmount,
-              ),
-            startDate:
-              input.startDate,
-            nextPayDate:
-              input.nextPayDate,
-            lastPayDate:
-              undefined,
-            endDate:
-              input.endDate,
-            accountId:
-              input.accountId,
-            semimonthlyRule:
-              input.semimonthlyRule,
-            customRule:
-              input.customRule,
-            dayAdjustment:
-              input.dayAdjustment,
-            includeInBillPlanning:
-              input.includeInBillPlanning,
-            includeInBudgetIncome:
-              input.includeInBudgetIncome,
-            notes:
-              normalizeOptionalText(
-                input.notes,
-              ),
-            status:
-              "active",
-            createdAt:
-              timestamp,
-            updatedAt:
-              timestamp,
-          });
+          normalizePayCycle(
+            result.payCycle,
+          );
 
         assertValidPayCycle(
           payCycle,
@@ -681,86 +681,59 @@ export default function PayCyclesProvider({
         setPayCycles(
           (
             currentPayCycles,
-          ) => {
-            const storedPayCycle:
-              PayCycleData = {
-                ...payCycle,
-                id:
-                  currentPayCycles.some(
-                    (
-                      currentPayCycle,
-                    ) =>
-                      currentPayCycle.id ===
-                      preferredId,
-                  )
-                    ? createUniquePayCycleId(
-                        currentPayCycles,
-                      )
-                    : preferredId,
-              };
-
-            return sortPayCycles([
-              ...currentPayCycles,
-              storedPayCycle,
-            ]);
-          },
+          ) =>
+            sortPayCycles([
+              ...currentPayCycles.filter(
+                (
+                  currentPayCycle,
+                ) =>
+                  currentPayCycle.id !==
+                  payCycle.id,
+              ),
+              payCycle,
+            ]),
         );
 
         return payCycle;
       },
-      [],
+      [
+        workspaceId,
+      ],
     );
 
   const updatePayCycle =
     useCallback(
-      (
+      async (
         input:
           UpdatePayCycleData,
       ) => {
-        const existingPayCycle =
-          payCyclesRef.current.find(
-            (
-              payCycle,
-            ) =>
-              payCycle.id ===
-              input.id,
+        if (
+          !workspaceId
+        ) {
+          throw new Error(
+            "A workspace is required to update a pay cycle.",
           );
+        }
+
+        const result =
+          await updatePayCycleAction({
+            workspaceId,
+            payCycle:
+              input,
+          });
 
         if (
-          !existingPayCycle
+          !result.success
         ) {
-          return;
+          throw new Error(
+            result.error,
+          );
         }
 
         const updatedPayCycle =
-          normalizePayCycle({
-            ...existingPayCycle,
-            ...input,
-            name:
-              input.name.trim(),
-            employerName:
-              normalizeOptionalText(
-                input.employerName,
-              ),
-            expectedNetAmount:
-              normalizeCurrency(
-                input.expectedNetAmount,
-              ),
-            minimumExpectedAmount:
-              normalizeOptionalCurrency(
-                input.minimumExpectedAmount,
-              ),
-            maximumExpectedAmount:
-              normalizeOptionalCurrency(
-                input.maximumExpectedAmount,
-              ),
-            notes:
-              normalizeOptionalText(
-                input.notes,
-              ),
-            updatedAt:
-              new Date().toISOString(),
-          });
+          normalizePayCycle(
+            result.payCycle,
+          );
 
         assertValidPayCycle(
           updatedPayCycle,
@@ -776,36 +749,71 @@ export default function PayCyclesProvider({
                   payCycle,
                 ) =>
                   payCycle.id ===
-                  input.id
+                  updatedPayCycle.id
                     ? updatedPayCycle
                     : payCycle,
               ),
             ),
         );
       },
-      [],
+      [
+        workspaceId,
+      ],
     );
 
   const deletePayCycle =
     useCallback(
-      (
+      async (
         payCycleId:
           string,
       ) => {
+        if (
+          !workspaceId
+        ) {
+          throw new Error(
+            "A workspace is required to archive a pay cycle.",
+          );
+        }
+
+        const result =
+          await archivePayCycleAction({
+            workspaceId,
+            payCycleId,
+          });
+
+        if (
+          !result.success
+        ) {
+          throw new Error(
+            result.error,
+          );
+        }
+
+        const archivedPayCycle =
+          normalizePayCycle(
+            result.payCycle,
+          );
+
         setPayCycles(
           (
             currentPayCycles,
           ) =>
-            currentPayCycles.filter(
-              (
-                payCycle,
-              ) =>
-                payCycle.id !==
-                payCycleId,
+            sortPayCycles(
+              currentPayCycles.map(
+                (
+                  payCycle,
+                ) =>
+                  payCycle.id ===
+                  archivedPayCycle.id
+                    ? archivedPayCycle
+                    : payCycle,
+              ),
             ),
         );
       },
-      [],
+      [
+        workspaceId,
+      ],
     );
 
   const getPayCycleById =
@@ -827,93 +835,97 @@ export default function PayCyclesProvider({
 
   const setPayCycleStatus =
     useCallback(
-      (
+      async (
         payCycleId:
           string,
         status:
           PayCycleData["status"],
       ) => {
-        setPayCycles(
-          (
-            currentPayCycles,
-          ) =>
-            currentPayCycles.map(
-              (
-                payCycle,
-              ) =>
-                payCycle.id ===
-                payCycleId
-                  ? {
-                      ...payCycle,
-                      status,
-                      updatedAt:
-                        new Date().toISOString(),
-                    }
-                  : payCycle,
-            ),
-        );
+        if (
+          !workspaceId
+        ) {
+          throw new Error(
+            "A workspace is required to change a pay cycle status.",
+          );
+        }
+
+        const existingPayCycle =
+          payCyclesRef.current.find(
+            (
+              payCycle,
+            ) =>
+              payCycle.id ===
+              payCycleId,
+          );
+
+        if (
+          !existingPayCycle
+        ) {
+          throw new Error(
+            "The pay cycle could not be found.",
+          );
+        }
+
+        if (
+          status ===
+          "archived"
+        ) {
+          await deletePayCycle(
+            payCycleId,
+          );
+
+          return;
+        }
+
+        await updatePayCycle({
+          ...existingPayCycle,
+          status,
+        });
       },
-      [],
+      [
+        deletePayCycle,
+        updatePayCycle,
+        workspaceId,
+      ],
     );
 
-  const setPreferences =
+  const persistPreferences =
     useCallback(
-      (
-        updates:
-          Partial<
-            PayCyclePlanningPreferences
-          >,
-      ) => {
-        setPreferencesState(
-          (
-            currentPreferences,
-          ) =>
-            resolvePlanningPreferences({
-              ...currentPreferences,
-              ...updates,
-            }),
-        );
-
-        setRegenerationVersion(
-          (
-            currentVersion,
-          ) =>
-            currentVersion +
-            1,
-        );
-      },
-      [],
-    );
-
-  const updatePreferences =
-    useCallback(
-      (
+      async (
         nextPreferences:
           PayCyclePlanningPreferences,
       ) => {
-        setPreferencesState(
+        if (
+          !workspaceId
+        ) {
+          throw new Error(
+            "A workspace is required to update pay cycle preferences.",
+          );
+        }
+
+        const resolvedPreferences =
           resolvePlanningPreferences(
             nextPreferences,
-          ),
-        );
+          );
 
-        setRegenerationVersion(
-          (
-            currentVersion,
-          ) =>
-            currentVersion +
-            1,
-        );
-      },
-      [],
-    );
+        const result =
+          await updatePayCyclePreferencesAction({
+            workspaceId,
+            preferences:
+              resolvedPreferences,
+          });
 
-  const resetPreferences =
-    useCallback(
-      () => {
+        if (
+          !result.success
+        ) {
+          throw new Error(
+            result.error,
+          );
+        }
+
         setPreferencesState(
           resolvePlanningPreferences(
-            initialPreferences,
+            result.preferences,
           ),
         );
 
@@ -926,7 +938,89 @@ export default function PayCyclesProvider({
         );
       },
       [
-        initialPreferences,
+        workspaceId,
+      ],
+    );
+
+  const setPreferences =
+    useCallback(
+      async (
+        updates:
+          Partial<
+            PayCyclePlanningPreferences
+          >,
+      ) => {
+        const nextPreferences =
+          resolvePlanningPreferences({
+            ...preferences,
+            ...updates,
+          });
+
+        await persistPreferences(
+          nextPreferences,
+        );
+      },
+      [
+        persistPreferences,
+        preferences,
+      ],
+    );
+
+  const updatePreferences =
+    useCallback(
+      async (
+        nextPreferences:
+          PayCyclePlanningPreferences,
+      ) => {
+        await persistPreferences(
+          nextPreferences,
+        );
+      },
+      [
+        persistPreferences,
+      ],
+    );
+
+  const resetPreferences =
+    useCallback(
+      async () => {
+        if (
+          !workspaceId
+        ) {
+          throw new Error(
+            "A workspace is required to reset pay cycle preferences.",
+          );
+        }
+
+        const result =
+          await resetPayCyclePreferencesAction({
+            workspaceId,
+          });
+
+        if (
+          !result.success
+        ) {
+          throw new Error(
+            result.error,
+          );
+        }
+
+        setPreferencesState(
+          resolvePlanningPreferences(
+            result.preferences,
+          ),
+        );
+
+        setRegenerationVersion(
+          (
+            currentVersion,
+          ) =>
+            currentVersion +
+            1,
+        );
+      },
+      [
+        workspaceId,
       ],
     );
 
@@ -1226,208 +1320,6 @@ function assertValidPayCycle(
   }
 }
 
-function loadStoredPayCyclesState():
-  StoredPayCyclesState | null {
-  if (
-    typeof window ===
-    "undefined"
-  ) {
-    return null;
-  }
-
-  const currentState =
-    readStoredPayCyclesState(
-      PAY_CYCLES_STORAGE_KEY,
-    );
-
-  if (
-    currentState
-  ) {
-    return currentState;
-  }
-
-  const legacyState =
-    readStoredPayCyclesState(
-      LEGACY_PAY_CYCLES_STORAGE_KEY,
-    );
-
-  if (
-    !legacyState
-  ) {
-    return null;
-  }
-
-  try {
-    window.localStorage.setItem(
-      PAY_CYCLES_STORAGE_KEY,
-      JSON.stringify(
-        legacyState,
-      ),
-    );
-
-    window.localStorage.removeItem(
-      LEGACY_PAY_CYCLES_STORAGE_KEY,
-    );
-  } catch {
-    // Local storage may be unavailable or full.
-  }
-
-  return legacyState;
-}
-
-function readStoredPayCyclesState(
-  storageKey: string,
-):
-  StoredPayCyclesState | null {
-  try {
-    const rawValue =
-      window.localStorage.getItem(
-        storageKey,
-      );
-
-    if (
-      !rawValue
-    ) {
-      return null;
-    }
-
-    const parsedValue:
-      unknown =
-      JSON.parse(
-        rawValue,
-      );
-
-    if (
-      !isStoredPayCyclesState(
-        parsedValue,
-      )
-    ) {
-      window.localStorage.removeItem(
-        storageKey,
-      );
-
-      return null;
-    }
-
-    const validPayCycles =
-      parsedValue.payCycles
-        .map(
-          normalizePayCycle,
-        )
-        .filter(
-          (
-            payCycle,
-          ) =>
-            validatePayCycleDates(
-              payCycle,
-            ).isValid,
-        );
-
-    return {
-      payCycles:
-        sortPayCycles(
-          deduplicatePayCycles(
-            validPayCycles,
-          ),
-        ),
-      preferences:
-        resolvePlanningPreferences(
-          parsedValue.preferences,
-        ),
-    };
-  } catch {
-    return null;
-  }
-}
-
-function isStoredPayCyclesState(
-  value: unknown,
-): value is StoredPayCyclesState {
-  if (
-    !value ||
-    typeof value !==
-      "object" ||
-    Array.isArray(
-      value,
-    )
-  ) {
-    return false;
-  }
-
-  const candidate =
-    value as Partial<
-      StoredPayCyclesState
-    >;
-
-  return (
-    Array.isArray(
-      candidate.payCycles,
-    ) &&
-    candidate.payCycles.every(
-      isPayCycleData,
-    ) &&
-    Boolean(
-      candidate.preferences &&
-      typeof candidate.preferences ===
-        "object" &&
-      !Array.isArray(
-        candidate.preferences,
-      ),
-    )
-  );
-}
-
-function isPayCycleData(
-  value: unknown,
-): value is PayCycleData {
-  if (
-    !value ||
-    typeof value !==
-      "object" ||
-    Array.isArray(
-      value,
-    )
-  ) {
-    return false;
-  }
-
-  const candidate =
-    value as Partial<
-      PayCycleData
-    >;
-
-  return (
-    typeof candidate.id ===
-      "string" &&
-    typeof candidate.name ===
-      "string" &&
-    typeof candidate.frequency ===
-      "string" &&
-    typeof candidate.amountType ===
-      "string" &&
-    typeof candidate.incomeType ===
-      "string" &&
-    typeof candidate.expectedNetAmount ===
-      "number" &&
-    typeof candidate.startDate ===
-      "string" &&
-    typeof candidate.nextPayDate ===
-      "string" &&
-    typeof candidate.dayAdjustment ===
-      "string" &&
-    typeof candidate.includeInBillPlanning ===
-      "boolean" &&
-    typeof candidate.includeInBudgetIncome ===
-      "boolean" &&
-    typeof candidate.status ===
-      "string" &&
-    typeof candidate.createdAt ===
-      "string" &&
-    typeof candidate.updatedAt ===
-      "string"
-  );
-}
-
 function sortPayCycles(
   payCycles: PayCycleData[],
 ) {
@@ -1547,93 +1439,6 @@ function compareProjections(
   );
 }
 
-function createUniquePayCycleId(
-  payCycles: PayCycleData[],
-) {
-  const existingIds =
-    new Set(
-      payCycles.map(
-        (
-          payCycle,
-        ) =>
-          payCycle.id,
-      ),
-    );
-
-  let candidateId =
-    createPayCycleId();
-
-  while (
-    existingIds.has(
-      candidateId,
-    )
-  ) {
-    candidateId =
-      createPayCycleId();
-  }
-
-  return candidateId;
-}
-
-function deduplicatePayCycles(
-  payCycles: PayCycleData[],
-) {
-  const seenIds =
-    new Set<string>();
-
-  return payCycles.map(
-    (
-      payCycle,
-    ) => {
-      if (
-        !seenIds.has(
-          payCycle.id,
-        )
-      ) {
-        seenIds.add(
-          payCycle.id,
-        );
-
-        return payCycle;
-      }
-
-      const uniquePayCycle = {
-        ...payCycle,
-        id:
-          createUniquePayCycleId(
-            payCycles,
-          ),
-      };
-
-      seenIds.add(
-        uniquePayCycle.id,
-      );
-
-      return uniquePayCycle;
-    },
-  );
-}
-
-function createPayCycleId() {
-  if (
-    typeof crypto !==
-      "undefined" &&
-    typeof crypto.randomUUID ===
-      "function"
-  ) {
-    return `pay-cycle-${crypto.randomUUID()}`;
-  }
-
-  return `pay-cycle-${Date.now()}-${Math.random()
-    .toString(
-      36,
-    )
-    .slice(
-      2,
-      10,
-    )}`;
-}
-
 function normalizeProjectionCount(
   value: number,
 ) {
@@ -1674,32 +1479,6 @@ function normalizeCurrency(
     ) /
     100
   );
-}
-
-function normalizeOptionalCurrency(
-  value: number | undefined,
-) {
-  if (
-    value ===
-    undefined
-  ) {
-    return undefined;
-  }
-
-  return normalizeCurrency(
-    value,
-  );
-}
-
-function normalizeOptionalText(
-  value: string | undefined,
-) {
-  const normalizedValue =
-    value?.trim();
-
-  return normalizedValue
-    ? normalizedValue
-    : undefined;
 }
 
 function getTodayDateString() {

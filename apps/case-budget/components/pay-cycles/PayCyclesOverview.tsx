@@ -124,6 +124,22 @@ export default function PayCyclesOverview({
     false,
   );
 
+  const [
+    pendingActionKey,
+    setPendingActionKey,
+  ] =
+    useState<string | null>(
+      null,
+    );
+
+  const [
+    actionError,
+    setActionError,
+  ] =
+    useState<string | null>(
+      null,
+    );
+
   useEffect(
     () => {
       const requestedAction =
@@ -244,29 +260,95 @@ export default function PayCyclesOverview({
     );
   }
 
-  function handleDeleteConfirmed() {
+  async function handleDeleteConfirmed() {
     if (
-      !pendingDeleteId
+      !pendingDeleteId ||
+      pendingActionKey
     ) {
       return;
     }
 
-    deletePayCycle(
-      pendingDeleteId,
+    const payCycleId =
+      pendingDeleteId;
+
+    setActionError(
+      null,
     );
 
-    if (
-      expandedPayCycleId ===
-      pendingDeleteId
+    setPendingActionKey(
+      `delete:${payCycleId}`,
+    );
+
+    try {
+      await deletePayCycle(
+        payCycleId,
+      );
+
+      if (
+        expandedPayCycleId ===
+        payCycleId
+      ) {
+        setExpandedPayCycleId(
+          null,
+        );
+      }
+
+      setPendingDeleteId(
+        null,
+      );
+    } catch (
+      error
     ) {
-      setExpandedPayCycleId(
+      setActionError(
+        getActionErrorMessage(
+          error,
+          "Unable to delete the pay cycle.",
+        ),
+      );
+    } finally {
+      setPendingActionKey(
         null,
       );
     }
+  }
 
-    setPendingDeleteId(
+  async function handleSetPayCycleStatus(
+    payCycleId: string,
+    status: PayCycleData["status"],
+  ) {
+    if (
+      pendingActionKey
+    ) {
+      return;
+    }
+
+    setActionError(
       null,
     );
+
+    setPendingActionKey(
+      `status:${payCycleId}`,
+    );
+
+    try {
+      await setPayCycleStatus(
+        payCycleId,
+        status,
+      );
+    } catch (
+      error
+    ) {
+      setActionError(
+        getActionErrorMessage(
+          error,
+          "Unable to update the pay cycle status.",
+        ),
+      );
+    } finally {
+      setPendingActionKey(
+        null,
+      );
+    }
   }
 
   if (
@@ -392,6 +474,19 @@ export default function PayCyclesOverview({
         </section>
       ) : null}
 
+      {actionError ? (
+        <ActionErrorBanner
+          message={
+            actionError
+          }
+          onDismiss={() =>
+            setActionError(
+              null,
+            )
+          }
+        />
+      ) : null}
+
       <OverviewSummaryCards
         summary={
           summary
@@ -494,19 +589,27 @@ export default function PayCyclesOverview({
                         : payCycle.id,
                   )
                 }
+                isActionPending={
+                  pendingActionKey ===
+                    `status:${payCycle.id}`
+                }
                 onSetStatus={(
                   status,
                 ) =>
-                  setPayCycleStatus(
+                  handleSetPayCycleStatus(
                     payCycle.id,
                     status,
                   )
                 }
-                onDelete={() =>
+                onDelete={() => {
+                  setActionError(
+                    null,
+                  );
+
                   setPendingDeleteId(
                     payCycle.id,
-                  )
-                }
+                  );
+                }}
               />
             ),
           )}
@@ -525,11 +628,28 @@ export default function PayCyclesOverview({
             )?.name ??
             "this pay cycle"
           }
-          onCancel={() =>
+          isDeleting={
+            pendingActionKey ===
+              `delete:${pendingDeleteId}`
+          }
+          error={
+            actionError
+          }
+          onCancel={() => {
+            if (
+              pendingActionKey
+            ) {
+              return;
+            }
+
             setPendingDeleteId(
               null,
-            )
-          }
+            );
+
+            setActionError(
+              null,
+            );
+          }}
           onConfirm={
             handleDeleteConfirmed
           }
@@ -930,10 +1050,11 @@ type PayCycleCardProps = {
   billsHref: string;
   transactionsHref: string;
   onToggleExpanded: () => void;
+  isActionPending: boolean;
   onSetStatus: (
     status:
       PayCycleData["status"],
-  ) => void;
+  ) => Promise<void>;
   onDelete: () => void;
 };
 
@@ -947,6 +1068,7 @@ function PayCycleCard({
   billsHref,
   transactionsHref,
   onToggleExpanded,
+  isActionPending,
   onSetStatus,
   onDelete,
 }: PayCycleCardProps) {
@@ -1102,8 +1224,11 @@ function PayCycleCard({
                 icon={
                   <PauseIcon />
                 }
+                disabled={
+                  isActionPending
+                }
                 onClick={() =>
-                  onSetStatus(
+                  void onSetStatus(
                     "paused",
                   )
                 }
@@ -1114,8 +1239,11 @@ function PayCycleCard({
                 icon={
                   <PlayIcon />
                 }
+                disabled={
+                  isActionPending
+                }
                 onClick={() =>
-                  onSetStatus(
+                  void onSetStatus(
                     "active",
                   )
                 }
@@ -1129,8 +1257,11 @@ function PayCycleCard({
                 icon={
                   <ArchiveIcon />
                 }
+                disabled={
+                  isActionPending
+                }
                 onClick={() =>
-                  onSetStatus(
+                  void onSetStatus(
                     "archived",
                   )
                 }
@@ -1750,6 +1881,7 @@ function ActionButton({
   label,
   icon,
   tone = "default",
+  disabled = false,
   onClick,
 }: {
   label: string;
@@ -1757,6 +1889,7 @@ function ActionButton({
   tone?:
     | "default"
     | "danger";
+  disabled?: boolean;
   onClick: () => void;
 }) {
   return (
@@ -1765,8 +1898,11 @@ function ActionButton({
       onClick={
         onClick
       }
+      disabled={
+        disabled
+      }
       className={[
-        "inline-flex min-h-9 items-center justify-center gap-2 rounded-lg px-3 text-xs font-bold outline-none transition focus-visible:ring-2 focus-visible:ring-[var(--primary)]",
+        "inline-flex min-h-9 items-center justify-center gap-2 rounded-lg px-3 text-xs font-bold outline-none transition focus-visible:ring-2 focus-visible:ring-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-50",
         tone ===
         "danger"
           ? "text-[var(--danger)] hover:bg-[color-mix(in_srgb,var(--danger)_8%,transparent)]"
@@ -1879,12 +2015,16 @@ function InlineEmptyState({
 
 function DeleteConfirmation({
   payCycleName,
+  isDeleting,
+  error,
   onCancel,
   onConfirm,
 }: {
   payCycleName: string;
+  isDeleting: boolean;
+  error: string | null;
   onCancel: () => void;
-  onConfirm: () => void;
+  onConfirm: () => Promise<void>;
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
@@ -1912,32 +2052,92 @@ function DeleteConfirmation({
           this workspace.
         </p>
 
+        {error ? (
+          <div
+            role="alert"
+            className="mt-4 rounded-xl border border-[color-mix(in_srgb,var(--danger)_30%,var(--border-subtle))] bg-[color-mix(in_srgb,var(--danger)_8%,var(--surface-default))] px-4 py-3 text-sm font-semibold text-[var(--danger)]"
+          >
+            {error}
+          </div>
+        ) : null}
+
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <button
             type="button"
             onClick={
               onCancel
             }
-            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-4 text-sm font-bold text-[var(--text-primary)] outline-none transition hover:bg-[var(--surface-default)] focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
+            disabled={
+              isDeleting
+            }
+            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-4 text-sm font-bold text-[var(--text-primary)] outline-none transition hover:bg-[var(--surface-default)] focus-visible:ring-2 focus-visible:ring-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             Cancel
           </button>
 
           <button
             type="button"
-            onClick={
-              onConfirm
+            onClick={() =>
+              void onConfirm()
             }
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[var(--danger)] px-4 text-sm font-bold text-white outline-none transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--danger)] focus-visible:ring-offset-2"
+            disabled={
+              isDeleting
+            }
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[var(--danger)] px-4 text-sm font-bold text-white outline-none transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--danger)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <TrashIcon />
 
-            Delete pay cycle
+            {isDeleting
+              ? "Deleting..."
+              : "Delete pay cycle"}
           </button>
         </div>
       </section>
     </div>
   );
+}
+
+function ActionErrorBanner({
+  message,
+  onDismiss,
+}: {
+  message: string;
+  onDismiss: () => void;
+}) {
+  return (
+    <div
+      role="alert"
+      className="flex flex-col gap-3 rounded-2xl border border-[color-mix(in_srgb,var(--danger)_30%,var(--border-subtle))] bg-[color-mix(in_srgb,var(--danger)_8%,var(--surface-default))] px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+    >
+      <p className="text-sm font-semibold text-[var(--danger)]">
+        {message}
+      </p>
+
+      <button
+        type="button"
+        onClick={
+          onDismiss
+        }
+        className="self-start rounded-lg px-3 py-1.5 text-xs font-bold text-[var(--danger)] outline-none transition hover:bg-[color-mix(in_srgb,var(--danger)_8%,transparent)] focus-visible:ring-2 focus-visible:ring-[var(--danger)] sm:self-auto"
+      >
+        Dismiss
+      </button>
+    </div>
+  );
+}
+
+function getActionErrorMessage(
+  error: unknown,
+  fallback: string,
+) {
+  if (
+    error instanceof Error &&
+    error.message.trim()
+  ) {
+    return error.message.trim();
+  }
+
+  return fallback;
 }
 
 function createOverviewSummary(

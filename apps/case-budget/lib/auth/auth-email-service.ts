@@ -439,6 +439,58 @@ export async function sendPasswordRecoveryEmail({
     const supabase =
       createAdminClient();
 
+    /*
+     * Password-recovery enumeration protection:
+     *
+     * Verify that CASE Budget has an account record for the normalized
+     * email address before asking Supabase Auth to generate a recovery
+     * token. Unknown email addresses intentionally return a successful,
+     * empty result so callers can display the same neutral response
+     * without revealing whether the account exists.
+     */
+    const {
+      data:
+        existingProfile,
+      error:
+        accountLookupError,
+    } =
+      await supabase
+        .from(
+          "profiles",
+        )
+        .select(
+          "id",
+        )
+        .eq(
+          "email",
+          normalizedEmail,
+        )
+        .maybeSingle();
+
+    if (
+      accountLookupError
+    ) {
+      return mapSupabaseFailure(
+        accountLookupError,
+        "recovery-account-lookup-failed",
+      );
+    }
+
+    if (
+      !existingProfile
+    ) {
+      return success({
+        user:
+          null,
+
+        emailId:
+          null,
+
+        actionLink:
+          "",
+      });
+    }
+
     const {
       data,
       error,

@@ -483,7 +483,7 @@ export default function InvestmentActivityModal({
               ),
           };
 
-        updateActivity(
+        await updateActivity(
           activity.id,
           updates,
         );
@@ -537,7 +537,7 @@ export default function InvestmentActivityModal({
           };
 
         const newActivity =
-          addActivity(
+          await addActivity(
             input,
           );
 

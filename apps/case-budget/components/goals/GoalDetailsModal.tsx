@@ -106,6 +106,22 @@ export default function GoalDetailsModal({
       {},
     );
 
+  const [
+    mutationError,
+    setMutationError,
+  ] =
+    useState<string | null>(
+      null,
+    );
+
+  const [
+    isSubmitting,
+    setIsSubmitting,
+  ] =
+    useState(
+      false,
+    );
+
   useEffect(
     () => {
       if (
@@ -129,6 +145,14 @@ export default function GoalDetailsModal({
 
       setEditErrors(
         {},
+      );
+
+      setMutationError(
+        null,
+      );
+
+      setIsSubmitting(
+        false,
       );
 
       setEditFormState({
@@ -169,7 +193,8 @@ export default function GoalDetailsModal({
       ) {
         if (
           event.key !==
-          "Escape"
+            "Escape" ||
+          isSubmitting
         ) {
           return;
         }
@@ -202,6 +227,7 @@ export default function GoalDetailsModal({
     },
     [
       currentView,
+      isSubmitting,
       onClose,
       open,
     ],
@@ -264,11 +290,17 @@ export default function GoalDetailsModal({
   const resolvedGoal =
     goal;
 
-  function handleContributionSubmit(
+  async function handleContributionSubmit(
     event:
       React.FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
+
+    if (
+      isSubmitting
+    ) {
+      return;
+    }
 
     const amount =
       parseCurrencyValue(
@@ -288,29 +320,67 @@ export default function GoalDetailsModal({
       return;
     }
 
-    contributeToGoal(
-      resolvedGoal.id,
-      amount,
-    );
-
-    setContributionAmount(
-      "",
-    );
-
     setContributionError(
       null,
     );
-
-    setCurrentView(
-      "overview",
+    setMutationError(
+      null,
     );
+    setIsSubmitting(
+      true,
+    );
+
+    try {
+      const result =
+        await contributeToGoal(
+          resolvedGoal.id,
+          amount,
+        );
+
+      if (
+        !result.success
+      ) {
+        setMutationError(
+          result.error,
+        );
+        return;
+      }
+
+      setContributionAmount(
+        "",
+      );
+
+      setCurrentView(
+        "overview",
+      );
+    } catch (
+      error
+    ) {
+      console.error(
+        "[CASE Budget Goals] Contribution failed.",
+        error,
+      );
+      setMutationError(
+        "CASE Budget could not record this contribution. Please try again.",
+      );
+    } finally {
+      setIsSubmitting(
+        false,
+      );
+    }
   }
 
-  function handleEditSubmit(
+  async function handleEditSubmit(
     event:
       React.FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
+
+    if (
+      isSubmitting
+    ) {
+      return;
+    }
 
     const nextErrors:
       EditGoalFormErrors =
@@ -372,64 +442,212 @@ export default function GoalDetailsModal({
       return;
     }
 
-    updateGoal(
-      resolvedGoal.id,
-      {
-        name:
-          normalizedName,
-
-        targetAmount,
-
-        targetDate:
-          editFormState.targetDate ||
-          undefined,
-
-        notes:
-          editFormState.notes.trim() ||
-          undefined,
-      },
+    setMutationError(
+      null,
+    );
+    setIsSubmitting(
+      true,
     );
 
-    setCurrentView(
-      "overview",
-    );
+    try {
+      const result =
+        await updateGoal(
+          resolvedGoal.id,
+          {
+            name:
+              normalizedName,
+
+            targetAmount,
+
+            targetDate:
+              editFormState.targetDate ||
+              undefined,
+
+            notes:
+              editFormState.notes.trim() ||
+              undefined,
+          },
+        );
+
+      if (
+        !result.success
+      ) {
+        setMutationError(
+          result.error,
+        );
+        return;
+      }
+
+      setCurrentView(
+        "overview",
+      );
+    } catch (
+      error
+    ) {
+      console.error(
+        "[CASE Budget Goals] Update failed.",
+        error,
+      );
+      setMutationError(
+        "CASE Budget could not update this goal. Please try again.",
+      );
+    } finally {
+      setIsSubmitting(
+        false,
+      );
+    }
   }
 
-  function handlePauseResume() {
-    updateGoal(
-      resolvedGoal.id,
-      {
-        status:
-          resolvedGoal.status ===
-          "paused"
-            ? "active"
-            : "paused",
-      },
+  async function handlePauseResume() {
+    if (
+      isSubmitting
+    ) {
+      return;
+    }
+
+    setMutationError(
+      null,
     );
+    setIsSubmitting(
+      true,
+    );
+
+    try {
+      const result =
+        await updateGoal(
+          resolvedGoal.id,
+          {
+            status:
+              resolvedGoal.status ===
+              "paused"
+                ? "active"
+                : "paused",
+          },
+        );
+
+      if (
+        !result.success
+      ) {
+        setMutationError(
+          result.error,
+        );
+      }
+    } catch (
+      error
+    ) {
+      console.error(
+        "[CASE Budget Goals] Pause/resume failed.",
+        error,
+      );
+      setMutationError(
+        "CASE Budget could not update this goal. Please try again.",
+      );
+    } finally {
+      setIsSubmitting(
+        false,
+      );
+    }
   }
 
-  function handleMarkCompleted() {
-    updateGoal(
-      resolvedGoal.id,
-      {
-        currentAmount:
-          Math.max(
-            resolvedGoal.currentAmount,
-            resolvedGoal.targetAmount,
-          ),
+  async function handleMarkCompleted() {
+    if (
+      isSubmitting
+    ) {
+      return;
+    }
 
-        status:
-          "completed",
-      },
+    setMutationError(
+      null,
     );
+    setIsSubmitting(
+      true,
+    );
+
+    try {
+      const result =
+        await updateGoal(
+          resolvedGoal.id,
+          {
+            currentAmount:
+              Math.max(
+                resolvedGoal.currentAmount,
+                resolvedGoal.targetAmount,
+              ),
+
+            status:
+              "completed",
+          },
+        );
+
+      if (
+        !result.success
+      ) {
+        setMutationError(
+          result.error,
+        );
+      }
+    } catch (
+      error
+    ) {
+      console.error(
+        "[CASE Budget Goals] Complete goal failed.",
+        error,
+      );
+      setMutationError(
+        "CASE Budget could not mark this goal completed. Please try again.",
+      );
+    } finally {
+      setIsSubmitting(
+        false,
+      );
+    }
   }
 
-  function handleDelete() {
-    deleteGoal(
-      resolvedGoal.id,
+  async function handleDelete() {
+    if (
+      isSubmitting
+    ) {
+      return;
+    }
+
+    setMutationError(
+      null,
+    );
+    setIsSubmitting(
+      true,
     );
 
-    onClose();
+    try {
+      const result =
+        await deleteGoal(
+          resolvedGoal.id,
+        );
+
+      if (
+        !result.success
+      ) {
+        setMutationError(
+          result.error,
+        );
+        return;
+      }
+
+      onClose();
+    } catch (
+      error
+    ) {
+      console.error(
+        "[CASE Budget Goals] Archive goal failed.",
+        error,
+      );
+      setMutationError(
+        "CASE Budget could not archive this goal. Please try again.",
+      );
+    } finally {
+      setIsSubmitting(
+        false,
+      );
+    }
   }
 
   function updateEditField(
@@ -459,6 +677,10 @@ export default function GoalDetailsModal({
           undefined,
       }),
     );
+
+    setMutationError(
+      null,
+    );
   }
 
   return (
@@ -467,7 +689,16 @@ export default function GoalDetailsModal({
         type="button"
         aria-label="Close goal details"
         onClick={
-          onClose
+          () => {
+            if (
+              !isSubmitting
+            ) {
+              onClose();
+            }
+          }
+        }
+        disabled={
+          isSubmitting
         }
         className="absolute inset-0 cursor-default bg-slate-950/45 backdrop-blur-sm"
       />
@@ -528,7 +759,10 @@ export default function GoalDetailsModal({
               onClick={
                 onClose
               }
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              disabled={
+                isSubmitting
+              }
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
               aria-label="Close goal details"
             >
               <X className="h-5 w-5" />
@@ -536,6 +770,15 @@ export default function GoalDetailsModal({
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
+            {mutationError ? (
+              <div
+                role="alert"
+                className="mb-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700"
+              >
+                {mutationError}
+              </div>
+            ) : null}
+
             {currentView ===
             "overview" ? (
               <div className="space-y-6">
@@ -631,7 +874,9 @@ export default function GoalDetailsModal({
                   >
                     <Plus className="h-5 w-5" />
 
-                    Add contribution
+                    {isSubmitting
+                      ? "Adding..."
+                      : "Add contribution"}
                   </button>
                 ) : null}
 
@@ -679,6 +924,9 @@ export default function GoalDetailsModal({
                       onClick={
                         handlePauseResume
                       }
+                      disabled={
+                        isSubmitting
+                      }
                       className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
                     >
                       {resolvedGoal.status ===
@@ -705,6 +953,9 @@ export default function GoalDetailsModal({
                     type="button"
                     onClick={
                       handleMarkCompleted
+                    }
+                    disabled={
+                      isSubmitting
                     }
                     className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 text-sm font-bold text-emerald-700 transition hover:bg-emerald-100"
                   >
@@ -836,6 +1087,9 @@ export default function GoalDetailsModal({
 
                   <button
                     type="submit"
+                    disabled={
+                      isSubmitting
+                    }
                     className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-emerald-600 px-5 text-sm font-bold text-white transition hover:bg-emerald-700"
                   >
                     <Plus className="h-4.5 w-4.5" />
@@ -999,9 +1253,14 @@ export default function GoalDetailsModal({
 
                   <button
                     type="submit"
+                    disabled={
+                      isSubmitting
+                    }
                     className="min-h-11 rounded-full bg-emerald-600 px-5 text-sm font-bold text-white transition hover:bg-emerald-700"
                   >
-                    Save changes
+                    {isSubmitting
+                      ? "Saving..."
+                      : "Save changes"}
                   </button>
                 </div>
               </form>
@@ -1066,11 +1325,16 @@ export default function GoalDetailsModal({
                     onClick={
                       handleDelete
                     }
+                    disabled={
+                      isSubmitting
+                    }
                     className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-rose-600 px-5 text-sm font-bold text-white transition hover:bg-rose-700"
                   >
                     <Trash2 className="h-4.5 w-4.5" />
 
-                    Delete goal
+                    {isSubmitting
+                      ? "Archiving..."
+                      : "Delete goal"}
                   </button>
                 </div>
               </div>

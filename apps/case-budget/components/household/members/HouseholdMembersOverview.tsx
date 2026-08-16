@@ -4,8 +4,13 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
+
+import {
+  manageHouseholdMember,
+} from "@/actions/household/manage-member";
 
 import InviteMemberModal from "@/components/household/members/InviteMemberModal";
 
@@ -20,6 +25,10 @@ import {
 import type {
   HouseholdMemberRecord,
 } from "@/actions/household/get-household-members";
+
+import type {
+  HouseholdMemberManagementAction,
+} from "@/types/household/member-management";
 
 type MemberRole =
   | "Owner"
@@ -41,10 +50,29 @@ type HouseholdMember = {
     MemberRole;
 
   status:
-    "active" | "invited";
+    | "active"
+    | "invited"
+    | "suspended";
+
+  databaseRole:
+    HouseholdMemberRecord["role"];
+
+  memberLabel:
+    string | null;
+
+  suspensionReason:
+    string | null;
 
   isCurrentUser:
     boolean;
+};
+
+type MemberManagementSelection = {
+  member:
+    HouseholdMember;
+
+  action:
+    HouseholdMemberManagementAction;
 };
 
 export default function HouseholdMembersOverview() {
@@ -80,6 +108,16 @@ export default function HouseholdMembersOverview() {
   ] =
     useState<
       string | null
+    >(
+      null,
+    );
+
+  const [
+    managementSelection,
+    setManagementSelection,
+  ] =
+    useState<
+      MemberManagementSelection | null
     >(
       null,
     );
@@ -198,7 +236,9 @@ export default function HouseholdMembersOverview() {
                 member.status ===
                   "active" ||
                 member.status ===
-                  "invited",
+                  "invited" ||
+                member.status ===
+                  "suspended",
             )
             .map(
               (
@@ -218,11 +258,23 @@ export default function HouseholdMembersOverview() {
                     member.role,
                   ),
 
+                databaseRole:
+                  member.role,
+
                 status:
                   member.status ===
-                    "invited"
-                    ? "invited"
-                    : "active",
+                    "suspended"
+                    ? "suspended"
+                    : member.status ===
+                        "invited"
+                      ? "invited"
+                      : "active",
+
+                memberLabel:
+                  member.memberLabel,
+
+                suspensionReason:
+                  member.suspensionReason,
 
                 isCurrentUser:
                   member.isCurrentUser,
@@ -253,8 +305,19 @@ export default function HouseholdMembersOverview() {
                 ? "Owner"
                 : "Member",
 
+            databaseRole:
+              activeWorkspace?.isOwner
+                ? "owner"
+                : "member",
+
             status:
               "active",
+
+            memberLabel:
+              null,
+
+            suspensionReason:
+              null,
 
             isCurrentUser:
               true,
@@ -268,6 +331,27 @@ export default function HouseholdMembersOverview() {
         isLoadingMembers,
       ],
     );
+
+  const currentMembership =
+    members.find(
+      (
+        member,
+      ) =>
+        member.isCurrentUser,
+    ) ??
+    null;
+
+  const currentUserCanManageMembers =
+    currentMembership?.databaseRole ===
+      "owner" ||
+    currentMembership?.databaseRole ===
+      "admin";
+
+  const currentUserIsOwner =
+    currentMembership?.databaseRole ===
+      "owner" ||
+    activeWorkspace?.isOwner ===
+      true;
 
   const activeMemberCount =
     members.filter(
@@ -285,6 +369,15 @@ export default function HouseholdMembersOverview() {
       ) =>
         member.status ===
         "invited",
+    ).length;
+
+  const blockedMemberCount =
+    members.filter(
+      (
+        member,
+      ) =>
+        member.status ===
+        "suspended",
     ).length;
 
   const workspaceName =
@@ -312,10 +405,40 @@ export default function HouseholdMembersOverview() {
     void loadMembers();
   }
 
+  function handleOpenManagementConfirmation(
+    member:
+      HouseholdMember,
+
+    action:
+      HouseholdMemberManagementAction,
+  ) {
+    setManagementSelection({
+      member,
+      action,
+    });
+  }
+
+  function handleCloseManagementConfirmation() {
+    setManagementSelection(
+      null,
+    );
+  }
+
+  async function handleMemberManaged() {
+    setManagementSelection(
+      null,
+    );
+
+    await loadMembers();
+  }
+
   return (
     <>
       <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         <PageHeader
+          canInvite={
+            currentUserCanManageMembers
+          }
           onInviteMember={
             handleOpenInviteMemberModal
           }
@@ -334,6 +457,9 @@ export default function HouseholdMembersOverview() {
           pendingInviteCount={
             pendingInviteCount
           }
+          blockedMemberCount={
+            blockedMemberCount
+          }
         />
 
         <MembersSection
@@ -346,8 +472,17 @@ export default function HouseholdMembersOverview() {
           error={
             membersError
           }
+          canManageMembers={
+            currentUserCanManageMembers
+          }
+          currentUserIsOwner={
+            currentUserIsOwner
+          }
           onRetry={
             loadMembers
+          }
+          onManageMember={
+            handleOpenManagementConfirmation
           }
         />
 
@@ -370,13 +505,32 @@ export default function HouseholdMembersOverview() {
           handleInvitationSent
         }
       />
+
+      <MemberManagementConfirmationModal
+        selection={
+          managementSelection
+        }
+        workspaceName={
+          workspaceName
+        }
+        onClose={
+          handleCloseManagementConfirmation
+        }
+        onCompleted={
+          handleMemberManaged
+        }
+      />
     </>
   );
 }
 
 function PageHeader({
+  canInvite,
   onInviteMember,
 }: {
+  canInvite:
+    boolean;
+
   onInviteMember:
     () => void;
 }) {
@@ -397,17 +551,19 @@ function PageHeader({
         </p>
       </div>
 
-      <button
-        type="button"
-        onClick={
-          onInviteMember
-        }
-        className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-4 text-sm font-bold text-[var(--primary-foreground)] shadow-sm outline-none transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
-      >
-        <PlusIcon />
+      {canInvite ? (
+        <button
+          type="button"
+          onClick={
+            onInviteMember
+          }
+          className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-4 text-sm font-bold text-[var(--primary-foreground)] shadow-sm outline-none transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+        >
+          <PlusIcon />
 
-        Invite member
-      </button>
+          Invite member
+        </button>
+      ) : null}
     </header>
   );
 }
@@ -417,6 +573,7 @@ function HouseholdSummary({
   workspaceType,
   memberCount,
   pendingInviteCount,
+  blockedMemberCount,
 }: {
   workspaceName:
     string;
@@ -428,6 +585,9 @@ function HouseholdSummary({
     number;
 
   pendingInviteCount:
+    number;
+
+  blockedMemberCount:
     number;
 }) {
   return (
@@ -454,7 +614,7 @@ function HouseholdSummary({
         </span>
       </div>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-3">
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <SummaryMetric
           label="Members"
           value={
@@ -473,6 +633,16 @@ function HouseholdSummary({
             )
           }
           description="Waiting for acceptance"
+        />
+
+        <SummaryMetric
+          label="Blocked"
+          value={
+            String(
+              blockedMemberCount,
+            )
+          }
+          description="Access suspended"
         />
 
         <SummaryMetric
@@ -522,7 +692,10 @@ function MembersSection({
   members,
   isLoading,
   error,
+  canManageMembers,
+  currentUserIsOwner,
   onRetry,
+  onManageMember,
 }: {
   members:
     HouseholdMember[];
@@ -533,8 +706,23 @@ function MembersSection({
   error:
     string | null;
 
+  canManageMembers:
+    boolean;
+
+  currentUserIsOwner:
+    boolean;
+
   onRetry:
     () => void | Promise<void>;
+
+  onManageMember:
+    (
+      member:
+        HouseholdMember,
+
+      action:
+        HouseholdMemberManagementAction,
+    ) => void;
 }) {
   return (
     <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-default)]">
@@ -587,6 +775,15 @@ function MembersSection({
                 member={
                   member
                 }
+                canManageMembers={
+                  canManageMembers
+                }
+                currentUserIsOwner={
+                  currentUserIsOwner
+                }
+                onManageMember={
+                  onManageMember
+                }
               />
             ),
           )}
@@ -600,10 +797,39 @@ function MembersSection({
 
 function MemberRow({
   member,
+  canManageMembers,
+  currentUserIsOwner,
+  onManageMember,
 }: {
   member:
     HouseholdMember;
+
+  canManageMembers:
+    boolean;
+
+  currentUserIsOwner:
+    boolean;
+
+  onManageMember:
+    (
+      member:
+        HouseholdMember,
+
+      action:
+        HouseholdMemberManagementAction,
+    ) => void;
 }) {
+  const canManageThisMember =
+    canManageMembers &&
+    !member.isCurrentUser &&
+    member.databaseRole !==
+      "owner" &&
+    (
+      currentUserIsOwner ||
+      member.databaseRole !==
+        "admin"
+    );
+
   return (
     <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
       <div className="flex min-w-0 items-center gap-4">
@@ -635,6 +861,20 @@ function MemberRow({
           <p className="mt-1 truncate text-xs text-[var(--text-muted)]">
             {member.email}
           </p>
+
+          {member.memberLabel ? (
+            <p className="mt-1 truncate text-[11px] font-medium text-[var(--text-secondary)]">
+              {member.memberLabel}
+            </p>
+          ) : null}
+
+          {member.status ===
+            "suspended" &&
+          member.suspensionReason ? (
+            <p className="mt-1 max-w-xl text-[11px] leading-5 text-[var(--danger)]">
+              {member.suspensionReason}
+            </p>
+          ) : null}
         </div>
       </div>
 
@@ -645,16 +885,650 @@ function MemberRow({
           }
         />
 
-        <button
-          type="button"
-          aria-label={`Manage ${member.name}`}
-          className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--text-muted)] outline-none transition hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
-        >
-          <MoreIcon />
-        </button>
+        {canManageThisMember ? (
+          <MemberActionsMenu
+            member={
+              member
+            }
+            onManageMember={
+              onManageMember
+            }
+          />
+        ) : (
+          <div
+            className="h-9 w-9"
+            aria-hidden="true"
+          />
+        )}
       </div>
     </div>
   );
+}
+
+function MemberActionsMenu({
+  member,
+  onManageMember,
+}: {
+  member:
+    HouseholdMember;
+
+  onManageMember:
+    (
+      member:
+        HouseholdMember,
+
+      action:
+        HouseholdMemberManagementAction,
+    ) => void;
+}) {
+  const [
+    isOpen,
+    setIsOpen,
+  ] =
+    useState(
+      false,
+    );
+
+  const menuRef =
+    useRef<HTMLDivElement>(
+      null,
+    );
+
+  useEffect(
+    () => {
+      if (
+        !isOpen
+      ) {
+        return;
+      }
+
+      function handlePointerDown(
+        event:
+          MouseEvent,
+      ) {
+        if (
+          menuRef.current &&
+          !menuRef.current.contains(
+            event.target as Node,
+          )
+        ) {
+          setIsOpen(
+            false,
+          );
+        }
+      }
+
+      function handleKeyDown(
+        event:
+          KeyboardEvent,
+      ) {
+        if (
+          event.key ===
+          "Escape"
+        ) {
+          setIsOpen(
+            false,
+          );
+        }
+      }
+
+      document.addEventListener(
+        "mousedown",
+        handlePointerDown,
+      );
+
+      document.addEventListener(
+        "keydown",
+        handleKeyDown,
+      );
+
+      return () => {
+        document.removeEventListener(
+          "mousedown",
+          handlePointerDown,
+        );
+
+        document.removeEventListener(
+          "keydown",
+          handleKeyDown,
+        );
+      };
+    },
+    [
+      isOpen,
+    ],
+  );
+
+  function chooseAction(
+    action:
+      HouseholdMemberManagementAction,
+  ) {
+    setIsOpen(
+      false,
+    );
+
+    onManageMember(
+      member,
+      action,
+    );
+  }
+
+  return (
+    <div
+      ref={
+        menuRef
+      }
+      className="relative"
+    >
+      <button
+        type="button"
+        aria-label={`Manage ${member.name}`}
+        aria-haspopup="menu"
+        aria-expanded={
+          isOpen
+        }
+        onClick={() => {
+          setIsOpen(
+            (
+              current,
+            ) =>
+              !current,
+          );
+        }}
+        className="flex h-9 w-9 items-center justify-center rounded-lg text-[var(--text-muted)] outline-none transition hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+      >
+        <MoreIcon />
+      </button>
+
+      {isOpen ? (
+        <div
+          role="menu"
+          className="absolute right-0 top-[calc(100%+0.4rem)] z-40 min-w-56 overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-elevated)] p-1.5 shadow-[var(--shadow-xl)]"
+        >
+          {member.status ===
+          "suspended" ? (
+            <>
+              <MemberActionButton
+                label="Unblock member"
+                description="Allow this person to be invited again."
+                onClick={() => {
+                  chooseAction(
+                    "unblock",
+                  );
+                }}
+              />
+
+              <MemberActionButton
+                danger
+                label="Remove record"
+                description="Remove this blocked membership."
+                onClick={() => {
+                  chooseAction(
+                    "remove",
+                  );
+                }}
+              />
+            </>
+          ) : member.status ===
+            "invited" ? (
+            <>
+              <MemberActionButton
+                label="Cancel invitation"
+                description="Cancel this pending workspace invitation."
+                onClick={() => {
+                  chooseAction(
+                    "remove",
+                  );
+                }}
+              />
+
+              <MemberActionButton
+                danger
+                label="Block invitee"
+                description="Cancel access and prevent future invitations."
+                onClick={() => {
+                  chooseAction(
+                    "block",
+                  );
+                }}
+              />
+            </>
+          ) : (
+            <>
+              <MemberActionButton
+                label="Remove member"
+                description="Revoke access but allow a future invitation."
+                onClick={() => {
+                  chooseAction(
+                    "remove",
+                  );
+                }}
+              />
+
+              <MemberActionButton
+                danger
+                label="Block member"
+                description="Revoke access and prevent future invitations."
+                onClick={() => {
+                  chooseAction(
+                    "block",
+                  );
+                }}
+              />
+            </>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function MemberActionButton({
+  label,
+  description,
+  danger = false,
+  onClick,
+}: {
+  label:
+    string;
+
+  description:
+    string;
+
+  danger?:
+    boolean;
+
+  onClick:
+    () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      onClick={
+        onClick
+      }
+      className={[
+        "w-full rounded-lg px-3 py-2.5 text-left outline-none transition focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]",
+        danger
+          ? "hover:bg-[color-mix(in_srgb,var(--danger)_8%,transparent)]"
+          : "hover:bg-[var(--surface-muted)]",
+      ].join(
+        " ",
+      )}
+    >
+      <span
+        className={[
+          "block text-sm font-bold",
+          danger
+            ? "text-[var(--danger)]"
+            : "text-[var(--text-primary)]",
+        ].join(
+          " ",
+        )}
+      >
+        {label}
+      </span>
+
+      <span className="mt-0.5 block text-[11px] leading-4 text-[var(--text-muted)]">
+        {description}
+      </span>
+    </button>
+  );
+}
+
+function MemberManagementConfirmationModal({
+  selection,
+  workspaceName,
+  onClose,
+  onCompleted,
+}: {
+  selection:
+    MemberManagementSelection | null;
+
+  workspaceName:
+    string;
+
+  onClose:
+    () => void;
+
+  onCompleted:
+    () => void | Promise<void>;
+}) {
+  const [
+    reason,
+    setReason,
+  ] =
+    useState(
+      "",
+    );
+
+  const [
+    error,
+    setError,
+  ] =
+    useState<
+      string | null
+    >(
+      null,
+    );
+
+  const [
+    isSubmitting,
+    setIsSubmitting,
+  ] =
+    useState(
+      false,
+    );
+
+  useEffect(
+    () => {
+      setReason(
+        "",
+      );
+
+      setError(
+        null,
+      );
+    },
+    [
+      selection,
+    ],
+  );
+
+  if (
+    !selection
+  ) {
+    return null;
+  }
+
+  const {
+    member,
+    action,
+  } =
+    selection;
+
+  const copy =
+    getManagementModalCopy(
+      member,
+      action,
+      workspaceName,
+    );
+
+  async function handleConfirm() {
+    if (
+      isSubmitting
+    ) {
+      return;
+    }
+
+    setIsSubmitting(
+      true,
+    );
+
+    setError(
+      null,
+    );
+
+    try {
+      const result =
+        await manageHouseholdMember({
+          membershipId:
+            member.id,
+
+          action,
+
+          reason:
+            reason.trim() ||
+            undefined,
+        });
+
+      if (
+        !result.success
+      ) {
+        setError(
+          result.error.message,
+        );
+
+        return;
+      }
+
+      await onCompleted();
+    } catch (
+      submitError
+    ) {
+      console.error(
+        "[CASE Budget Household] Failed to manage workspace member.",
+        submitError,
+      );
+
+      setError(
+        "CASE Budget could not update this member. Please try again.",
+      );
+    } finally {
+      setIsSubmitting(
+        false,
+      );
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/45 px-4 py-6 backdrop-blur-[2px]"
+      onMouseDown={(
+        event,
+      ) => {
+        if (
+          event.target ===
+            event.currentTarget &&
+          !isSubmitting
+        ) {
+          onClose();
+        }
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="w-full max-w-lg overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-elevated)] shadow-[var(--shadow-xl)]"
+      >
+        <div className="p-5 sm:p-6">
+          <h2 className="text-xl font-bold text-[var(--text-primary)]">
+            {copy.title}
+          </h2>
+
+          <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">
+            {copy.description}
+          </p>
+
+          <div className="mt-5 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4">
+            <p className="text-sm font-bold text-[var(--text-primary)]">
+              {member.name}
+            </p>
+
+            <p className="mt-1 text-xs text-[var(--text-muted)]">
+              {member.email}
+            </p>
+          </div>
+
+          <label className="mt-5 block">
+            <span className="text-xs font-bold text-[var(--text-secondary)]">
+              Reason <span className="font-medium text-[var(--text-muted)]">(optional)</span>
+            </span>
+
+            <textarea
+              value={
+                reason
+              }
+              onChange={(
+                event,
+              ) => {
+                setReason(
+                  event.target.value.slice(
+                    0,
+                    500,
+                  ),
+                );
+              }}
+              rows={
+                3
+              }
+              maxLength={
+                500
+              }
+              disabled={
+                isSubmitting
+              }
+              placeholder={
+                copy.reasonPlaceholder
+              }
+              className="mt-2 w-full resize-none rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-default)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--focus-ring)]"
+            />
+          </label>
+
+          <div className="mt-4 rounded-xl bg-[color-mix(in_srgb,var(--warning)_8%,transparent)] p-3 text-xs leading-5 text-[var(--text-secondary)]">
+            {copy.warning}
+          </div>
+
+          {error ? (
+            <div className="mt-4 rounded-xl bg-[color-mix(in_srgb,var(--danger)_8%,transparent)] px-3 py-2.5 text-xs font-semibold text-[var(--danger)]">
+              {error}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="flex flex-col-reverse gap-2 border-t border-[var(--border-subtle)] p-4 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            disabled={
+              isSubmitting
+            }
+            onClick={
+              onClose
+            }
+            className="inline-flex min-h-10 items-center justify-center rounded-xl border border-[var(--border-subtle)] px-4 text-sm font-bold text-[var(--text-primary)]"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            disabled={
+              isSubmitting
+            }
+            onClick={() => {
+              void handleConfirm();
+            }}
+            className={[
+              "inline-flex min-h-10 items-center justify-center rounded-xl px-4 text-sm font-bold disabled:opacity-60",
+              copy.danger
+                ? "bg-[var(--danger)] text-white"
+                : "bg-[var(--primary)] text-[var(--primary-foreground)]",
+            ].join(
+              " ",
+            )}
+          >
+            {isSubmitting
+              ? copy.submittingLabel
+              : copy.confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function getManagementModalCopy(
+  member:
+    HouseholdMember,
+
+  action:
+    HouseholdMemberManagementAction,
+
+  workspaceName:
+    string,
+) {
+  if (
+    action ===
+    "block"
+  ) {
+    return {
+      title:
+        `Block ${member.name}?`,
+      description:
+        member.status ===
+        "invited"
+          ? `This will cancel the pending invitation to ${workspaceName} and prevent future invitations.`
+          : `This will revoke ${member.name}'s access to ${workspaceName} and prevent future invitations.`,
+      warning:
+        "The user cannot be invited again until the membership is explicitly unblocked.",
+      reasonPlaceholder:
+        "Why are you blocking this person?",
+      confirmLabel:
+        member.status ===
+        "invited"
+          ? "Block invitee"
+          : "Block member",
+      submittingLabel:
+        "Blocking...",
+      danger:
+        true,
+    };
+  }
+
+  if (
+    action ===
+    "unblock"
+  ) {
+    return {
+      title:
+        `Unblock ${member.name}?`,
+      description:
+        "This removes the block, but it does not restore workspace access automatically.",
+      warning:
+        "After unblocking, send a new invitation if you want this person to regain access.",
+      reasonPlaceholder:
+        "Why are you unblocking this person?",
+      confirmLabel:
+        "Unblock member",
+      submittingLabel:
+        "Unblocking...",
+      danger:
+        false,
+    };
+  }
+
+  return {
+    title:
+      member.status ===
+      "invited"
+        ? `Cancel ${member.name}'s invitation?`
+        : `Remove ${member.name}?`,
+    description:
+      member.status ===
+      "invited"
+        ? `This will cancel the pending invitation to ${workspaceName}.`
+        : `This will revoke ${member.name}'s access to ${workspaceName}.`,
+    warning:
+      "Removing does not permanently block this person. They can be invited again later.",
+    reasonPlaceholder:
+      member.status ===
+      "invited"
+        ? "Why are you canceling this invitation?"
+        : "Why are you removing this member?",
+    confirmLabel:
+      member.status ===
+      "invited"
+        ? "Cancel invitation"
+        : "Remove member",
+    submittingLabel:
+      member.status ===
+      "invited"
+        ? "Canceling..."
+        : "Removing...",
+    danger:
+      true,
+  };
 }
 
 function MembersLoadingState() {
@@ -765,26 +1639,42 @@ function MemberStatusBadge({
   status:
     HouseholdMember["status"];
 }) {
-  const active =
+  const statusConfig =
     status ===
-    "active";
+    "active"
+      ? {
+          label:
+            "Active",
+          className:
+            "bg-[color-mix(in_srgb,var(--success)_12%,transparent)] text-[var(--success)]",
+        }
+      : status ===
+          "suspended"
+        ? {
+            label:
+              "Blocked",
+            className:
+              "bg-[color-mix(in_srgb,var(--danger)_10%,transparent)] text-[var(--danger)]",
+          }
+        : {
+            label:
+              "Invited",
+            className:
+              "bg-[color-mix(in_srgb,var(--warning)_12%,transparent)] text-[var(--warning)]",
+          };
 
   return (
     <span
       className={[
         "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em]",
-        active
-          ? "bg-[color-mix(in_srgb,var(--success)_12%,transparent)] text-[var(--success)]"
-          : "bg-[color-mix(in_srgb,var(--warning)_12%,transparent)] text-[var(--warning)]",
+        statusConfig.className,
       ].join(
         " ",
       )}
     >
       <span className="h-1.5 w-1.5 rounded-full bg-current" />
 
-      {active
-        ? "Active"
-        : "Invited"}
+      {statusConfig.label}
     </span>
   );
 }

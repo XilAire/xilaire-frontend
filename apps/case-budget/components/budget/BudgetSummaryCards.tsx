@@ -5,8 +5,29 @@ import Card, {
 export type BudgetSummaryCardsProps = {
   plannedIncome: number;
   assignedAmount: number;
+
+  /**
+   * Planned income that has not yet been assigned.
+   */
   remainingAmount: number;
+
+  /**
+   * Canonical activity across budget items.
+   */
   spentAmount: number;
+
+  /**
+   * Canonical availability across budget items, including rollover.
+   */
+  availableAmount: number;
+
+  /**
+   * Canonical rollover across budget items.
+   *
+   * Accepted now so the summary contract stays aligned with BudgetTotals.
+   * The current four-card layout does not need a separate rollover card.
+   */
+  rolloverAmount: number;
 };
 
 type SummaryCardTone =
@@ -28,6 +49,7 @@ type SummaryCardIcon =
   | "income"
   | "assigned"
   | "remaining"
+  | "available"
   | "spent";
 
 const currencyFormatter = new Intl.NumberFormat(
@@ -158,11 +180,22 @@ export default function BudgetSummaryCards({
   assignedAmount,
   remainingAmount,
   spentAmount,
+  availableAmount,
+  rolloverAmount: _rolloverAmount,
 }: BudgetSummaryCardsProps) {
   const remainingCard =
     getRemainingCard(
       remainingAmount,
     );
+
+  /*
+   * spentAmount remains part of the summary contract because BudgetTotals
+   * exposes canonical activity and other summary surfaces may use it. The
+   * current four-card layout prioritizes Income, Assigned, Unassigned, and
+   * Available.
+   */
+  void spentAmount;
+  void _rolloverAmount;
 
   return (
     <section
@@ -190,7 +223,7 @@ export default function BudgetSummaryCards({
       />
 
       <SummaryCard
-        title="Remaining"
+        title="Unassigned"
         value={currencyFormatter.format(
           remainingAmount,
         )}
@@ -204,13 +237,17 @@ export default function BudgetSummaryCards({
       />
 
       <SummaryCard
-        title="Spent"
+        title="Available"
         value={currencyFormatter.format(
-          spentAmount,
+          availableAmount,
         )}
-        subtitle="Spent this month"
-        tone="info"
-        icon="spent"
+        subtitle="Available across budget items"
+        tone={
+          availableAmount < 0
+            ? "danger"
+            : "info"
+        }
+        icon="available"
       />
     </section>
   );
@@ -309,6 +346,9 @@ function SummaryIcon({
     case "remaining":
       return <RemainingIcon />;
 
+    case "available":
+      return <AvailableIcon />;
+
     case "spent":
       return <SpentIcon />;
   }
@@ -388,6 +428,33 @@ function RemainingIcon() {
         r="9"
       />
       <path d="M12 7v5l3 2" />
+    </svg>
+  );
+}
+
+function AvailableIcon() {
+  return (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect
+        x="3"
+        y="6"
+        width="18"
+        height="12"
+        rx="2"
+      />
+      <path d="M16 12h.01" />
+      <path d="M7 10h5" />
+      <path d="M7 14h3" />
     </svg>
   );
 }

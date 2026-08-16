@@ -252,6 +252,9 @@ const DEFAULT_APP_URL =
  *   status = "invited".
  * - CASE Budget's existing branded Supabase invitation-email flow is reused.
  * - The invitee's real display name is stored in Supabase Auth metadata.
+ * - Suspended memberships are treated as blocked memberships and cannot
+ *   receive another invitation until they are explicitly unblocked.
+ * - Removed memberships may be invited again.
  */
 export async function inviteHouseholdMember(
   input:
@@ -422,7 +425,7 @@ export async function inviteHouseholdMember(
     }
 
     const workspace =
-      workspaceData as
+      workspaceData as unknown as
         | WorkspaceRow
         | null;
 
@@ -505,7 +508,7 @@ export async function inviteHouseholdMember(
     }
 
     const callerMembership =
-      callerMembershipData as
+      callerMembershipData as unknown as
         | WorkspaceMembershipRow
         | null;
 
@@ -541,6 +544,10 @@ export async function inviteHouseholdMember(
     /**
      * If this email already belongs to a Supabase Auth user, inspect the
      * existing workspace membership before generating another invitation.
+     *
+     * This check is also the primary enforcement boundary for blocked
+     * memberships. A suspended member must never reach the invitation-email
+     * flow.
      */
     const existingAuthUserResult =
       await findAuthUserByEmail(
@@ -789,6 +796,10 @@ export async function inviteHouseholdMember(
     /**
      * If the invite link created a previously unknown Supabase Auth user,
      * inspect membership again now that we have its user ID.
+     *
+     * The same blocked-membership enforcement is deliberately repeated
+     * here. This protects against the Auth invitation service resolving
+     * an account that was not found during the initial email lookup.
      */
     if (
       !existingMembership
@@ -853,6 +864,15 @@ export async function inviteHouseholdMember(
     if (
       existingMembership
     ) {
+      /**
+       * At this point an existing membership can only be:
+       *
+       * - removed
+       * - an expired invitation
+       *
+       * Active, pending, and suspended memberships have already been
+       * rejected by getExistingMembershipFailure().
+       */
       membershipId =
         existingMembership.id;
 
@@ -915,6 +935,18 @@ export async function inviteHouseholdMember(
           .eq(
             "id",
             existingMembership.id,
+          )
+          .eq(
+            "workspace_id",
+            workspaceId,
+          )
+          .eq(
+            "user_id",
+            existingMembership.user_id,
+          )
+          .eq(
+            "status",
+            existingMembership.status,
           );
 
       if (
@@ -1337,7 +1369,7 @@ async function getWorkspaceMembership({
     return {
       membership:
         (
-          data as
+          data as unknown as
             | WorkspaceMembershipRow
             | null
         ) ??
@@ -1501,16 +1533,23 @@ function getExistingMembershipFailure(
     });
   }
 
+  /**
+   * A suspended membership is CASE Budget's blocked state.
+   *
+   * This must be checked before any invitation can reactivate or clear
+   * suspension metadata. The workspace owner/admin must explicitly unblock
+   * the member first.
+   */
   if (
     membership.status ===
     "suspended"
   ) {
     return failure({
       code:
-        "already-member",
+        "member-blocked",
 
       message:
-        "This user already belongs to the workspace but is currently suspended. Restore the existing membership instead of sending a new invitation.",
+        "This user is blocked from this workspace. Unblock the member before sending another invitation.",
 
       field:
         "email",
@@ -1536,6 +1575,10 @@ function getExistingMembershipFailure(
     });
   }
 
+  /**
+   * Removed memberships and expired invitations are intentionally allowed
+   * through so they can be converted back to a fresh invited membership.
+   */
   return null;
 }
 

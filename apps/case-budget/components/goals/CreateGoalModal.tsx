@@ -72,6 +72,14 @@ export default function CreateGoalModal({
     );
 
   const [
+    submitError,
+    setSubmitError,
+  ] =
+    useState<string | null>(
+      null,
+    );
+
+  const [
     isSubmitting,
     setIsSubmitting,
   ] =
@@ -131,6 +139,10 @@ export default function CreateGoalModal({
         {},
       );
 
+      setSubmitError(
+        null,
+      );
+
       setIsSubmitting(
         false,
       );
@@ -153,7 +165,8 @@ export default function CreateGoalModal({
       ) {
         if (
           event.key ===
-          "Escape"
+            "Escape" &&
+          !isSubmitting
         ) {
           onClose();
         }
@@ -172,6 +185,7 @@ export default function CreateGoalModal({
       };
     },
     [
+      isSubmitting,
       onClose,
       open,
     ],
@@ -209,6 +223,10 @@ export default function CreateGoalModal({
         [field]:
           undefined,
       }),
+    );
+
+    setSubmitError(
+      null,
     );
   }
 
@@ -286,43 +304,112 @@ export default function CreateGoalModal({
     );
   }
 
-  function handleSubmit(
+  async function handleSubmit(
     event:
       React.FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
 
     if (
+      isSubmitting ||
       !validateForm()
     ) {
       return;
     }
 
+    setSubmitError(
+      null,
+    );
+
     setIsSubmitting(
       true,
     );
 
-    addGoal({
-      name:
-        formState.name.trim(),
+    try {
+      const result =
+        await addGoal({
+          name:
+            formState.name.trim(),
 
-      targetAmount,
+          targetAmount,
 
-      currentAmount,
+          currentAmount,
 
-      targetDate:
-        formState.targetDate ||
-        undefined,
+          targetDate:
+            formState.targetDate ||
+            undefined,
 
-      notes:
-        formState.notes.trim() ||
-        undefined,
+          notes:
+            formState.notes.trim() ||
+            undefined,
 
-      status:
-        "active",
-    });
+          status:
+            "active",
+        });
 
-    onClose();
+      if (
+        !result.success
+      ) {
+        const nextErrors:
+          GoalFormErrors =
+          {};
+
+        if (
+          result.fieldErrors?.name
+        ) {
+          nextErrors.name =
+            result.fieldErrors.name;
+        }
+
+        if (
+          result.fieldErrors?.targetAmount
+        ) {
+          nextErrors.targetAmount =
+            result.fieldErrors.targetAmount;
+        }
+
+        if (
+          result.fieldErrors?.currentAmount
+        ) {
+          nextErrors.currentAmount =
+            result.fieldErrors.currentAmount;
+        }
+
+        if (
+          result.fieldErrors?.targetDate
+        ) {
+          nextErrors.targetDate =
+            result.fieldErrors.targetDate;
+        }
+
+        setErrors(
+          nextErrors,
+        );
+
+        setSubmitError(
+          result.error,
+        );
+
+        return;
+      }
+
+      onClose();
+    } catch (
+      submitFailure
+    ) {
+      console.error(
+        "[CASE Budget Goals] Create goal modal submission failed.",
+        submitFailure,
+      );
+
+      setSubmitError(
+        "CASE Budget could not create the goal. Please try again.",
+      );
+    } finally {
+      setIsSubmitting(
+        false,
+      );
+    }
   }
 
   return (
@@ -331,7 +418,16 @@ export default function CreateGoalModal({
         type="button"
         aria-label="Close create goal dialog"
         onClick={
-          onClose
+          () => {
+            if (
+              !isSubmitting
+            ) {
+              onClose();
+            }
+          }
+        }
+        disabled={
+          isSubmitting
         }
         className="absolute inset-0 cursor-default bg-slate-950/45 backdrop-blur-sm"
       />
@@ -373,7 +469,10 @@ export default function CreateGoalModal({
               onClick={
                 onClose
               }
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+              disabled={
+                isSubmitting
+              }
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
               aria-label="Close create goal dialog"
             >
               <X className="h-5 w-5" />
@@ -590,13 +689,25 @@ export default function CreateGoalModal({
             </div>
           </div>
 
+          {submitError ? (
+            <div
+              role="alert"
+              className="mx-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700 sm:mx-6"
+            >
+              {submitError}
+            </div>
+          ) : null}
+
           <div className="flex flex-col-reverse gap-3 border-t border-slate-200 bg-white px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
             <button
               type="button"
               onClick={
                 onClose
               }
-              className="min-h-11 rounded-full border border-slate-200 bg-white px-5 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+              disabled={
+                isSubmitting
+              }
+              className="min-h-11 rounded-full border border-slate-200 bg-white px-5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Cancel
             </button>

@@ -11,6 +11,22 @@ import ProgressBar from "@/components/ui/ProgressBar";
 export type RemainingBudgetCardProps = {
   income: number;
   assigned: number;
+
+  /**
+   * Planned income that has not yet been assigned to budget items.
+   */
+  unassignedAmount: number;
+
+  /**
+   * Canonical available_amount summed across active budget items.
+   * This already includes rollover and transaction activity.
+   */
+  availableAmount: number;
+
+  /**
+   * Canonical rollover_amount summed across active budget items.
+   */
+  rolloverAmount: number;
 };
 
 const currencyFormatter =
@@ -32,13 +48,6 @@ function joinClassNames(
   return classNames
     .filter(Boolean)
     .join(" ");
-}
-
-function getRemainingAmount(
-  income: number,
-  assigned: number,
-) {
-  return income - assigned;
 }
 
 function getProgressTone(
@@ -73,15 +82,12 @@ function getProgressTone(
 export default function RemainingBudgetCard({
   income,
   assigned,
+  unassignedAmount,
+  availableAmount,
+  rolloverAmount,
 }: RemainingBudgetCardProps) {
-  const remainingAmount =
-    getRemainingAmount(
-      income,
-      assigned,
-    );
-
   const isOverBudget =
-    remainingAmount < 0;
+    unassignedAmount < 0;
 
   const progressTone =
     getProgressTone(
@@ -106,7 +112,7 @@ export default function RemainingBudgetCard({
       <CardContent className="space-y-6">
         <div className="text-center">
           <p className="text-sm text-[var(--text-muted)]">
-            Available to Budget
+            Unassigned Income
           </p>
 
           <h2
@@ -116,23 +122,23 @@ export default function RemainingBudgetCard({
               "font-bold",
               isOverBudget
                 ? "text-[var(--danger)]"
-                : remainingAmount === 0
+                : unassignedAmount === 0
                   ? "text-[var(--success)]"
                   : "text-[var(--warning)]",
             )}
           >
             {currencyFormatter.format(
-              remainingAmount,
+              unassignedAmount,
             )}
           </h2>
 
           <p className="mt-3 text-sm text-[var(--text-muted)]">
             {isOverBudget
-              ? "You have assigned more than your available income."
-              : remainingAmount ===
+              ? "You have assigned more than your planned income."
+              : unassignedAmount ===
                   0
-                ? "Excellent! Every dollar has been assigned."
-                : "Assign the remaining dollars to categories before the month begins."}
+                ? "Excellent! Every planned dollar has been assigned."
+                : "Assign the remaining planned income to budget items before the month begins."}
           </p>
         </div>
 
@@ -163,9 +169,44 @@ export default function RemainingBudgetCard({
             label="Assigned"
             value={assigned}
           />
+
+          <SummaryItem
+            label="Available"
+            value={availableAmount}
+          />
+
+          <SummaryItem
+            label="Rollover"
+            value={rolloverAmount}
+          />
         </div>
 
-        {remainingAmount === 0 ? (
+        <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface)] p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">
+            Available to Spend
+          </p>
+
+          <p
+            className={joinClassNames(
+              "mt-2",
+              "text-2xl",
+              "font-bold",
+              availableAmount < 0
+                ? "text-[var(--danger)]"
+                : "text-[var(--text-primary)]",
+            )}
+          >
+            {currencyFormatter.format(
+              availableAmount,
+            )}
+          </p>
+
+          <p className="mt-2 text-sm text-[var(--text-muted)]">
+            Canonical availability across your budget items after rollover and spending activity.
+          </p>
+        </div>
+
+        {unassignedAmount === 0 ? (
           <div className="rounded-xl border border-[color-mix(in_srgb,var(--success)_20%,transparent)] bg-[color-mix(in_srgb,var(--success)_8%,transparent)] p-4">
             <div className="flex items-start gap-3">
               <SuccessIcon />
@@ -185,7 +226,7 @@ export default function RemainingBudgetCard({
           </div>
         ) : null}
 
-        {remainingAmount > 0 ? (
+        {unassignedAmount > 0 ? (
           <div className="rounded-xl border border-[color-mix(in_srgb,var(--warning)_20%,transparent)] bg-[color-mix(in_srgb,var(--warning)_8%,transparent)] p-4">
             <div className="flex items-start gap-3">
               <InfoIcon />
@@ -199,7 +240,7 @@ export default function RemainingBudgetCard({
                   Assign the remaining{" "}
                   <strong>
                     {currencyFormatter.format(
-                      remainingAmount,
+                      unassignedAmount,
                     )}
                   </strong>{" "}
                   to your budget categories.
@@ -224,9 +265,7 @@ export default function RemainingBudgetCard({
                   by{" "}
                   <strong>
                     {currencyFormatter.format(
-                      Math.abs(
-                        remainingAmount,
-                      ),
+                      -unassignedAmount,
                     )}
                   </strong>{" "}
                   to balance this budget.

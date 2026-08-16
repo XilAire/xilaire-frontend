@@ -17,10 +17,6 @@ import {
   generateNextBill,
 } from "@/lib/bills/recurring-bills";
 
-import {
-  useBudget,
-} from "@/components/providers/BudgetProvider";
-
 import type {
   BillData,
 } from "@/types/bill";
@@ -28,42 +24,25 @@ import type {
   BudgetCategoryData,
 } from "@/types/budget";
 
-export type BudgetItemSyncResult =
-  | {
-      status: "updated";
-      updatedBillIds: string[];
-    }
-  | {
-      status: "suggested";
-      suggestedBillIds: string[];
-    }
-  | {
-      status:
-        | "manual"
-        | "disabled"
-        | "unlinked";
-      affectedBillIds: string[];
-    };
-
 type BillsContextValue = {
   bills: BillData[];
 
   addBill: (
     bill: BillData,
-  ) => void;
+  ) => Promise<BillData | null>;
 
   updateBill: (
     bill: BillData,
-  ) => void;
+  ) => Promise<BillData | null>;
 
   deleteBill: (
     billId: string,
-  ) => void;
+  ) => Promise<boolean>;
 
   markBillPaid: (
     bill: BillData,
     paidDate: string,
-  ) => void;
+  ) => Promise<BillData | null>;
 
   getBillById: (
     billId: string,
@@ -76,11 +55,6 @@ type BillsContextValue = {
   getLinkedBillsForBudgetItem: (
     budgetItem: BudgetCategoryData,
   ) => BillData[];
-
-  syncBudgetItemUpdate: (
-    previousBudgetItem: BudgetCategoryData,
-    updatedBudgetItem: BudgetCategoryData,
-  ) => BudgetItemSyncResult;
 };
 
 export type BillsProviderProps = {
@@ -130,14 +104,6 @@ type BillCreateResponseData = {
     BillData;
 };
 
-type BillImportResponseData = {
-  bills:
-    BillData[];
-
-  importedCount:
-    number;
-};
-
 type BillUpdateResponseData = {
   bill:
     BillData;
@@ -151,249 +117,8 @@ type BillDeleteResponseData = {
 const BILLS_API_PATH =
   "/api/bills";
 
-const BILLS_STORAGE_KEY =
-  "case-budget:bills:v2";
-
-const LEGACY_BILLS_STORAGE_KEY =
-  "case-budget:bills:v1";
-
-const LEGACY_DEMO_BILL_IDS =
-  new Set([
-    "mortgage",
-    "electric",
-  ]);
-
 const defaultBills:
   BillData[] = [];
-
-function isStoredBillData(
-  value: unknown,
-): value is BillData {
-  if (
-    !value ||
-    typeof value !==
-      "object" ||
-    Array.isArray(
-      value,
-    )
-  ) {
-    return false;
-  }
-
-  const candidate =
-    value as Partial<BillData>;
-
-  return (
-    typeof candidate.id ===
-      "string" &&
-    typeof candidate.name ===
-      "string" &&
-    typeof candidate.amount ===
-      "number" &&
-    Number.isFinite(
-      candidate.amount,
-    ) &&
-    typeof candidate.dueDate ===
-      "string" &&
-    typeof candidate.status ===
-      "string" &&
-    typeof candidate.frequency ===
-      "string" &&
-    typeof candidate.paymentMethod ===
-      "string"
-  );
-}
-
-function loadStoredBills() {
-  if (
-    typeof window ===
-    "undefined"
-  ) {
-    return null;
-  }
-
-  const currentBills =
-    readStoredBills(
-      BILLS_STORAGE_KEY,
-    );
-
-  if (
-    currentBills
-  ) {
-    return currentBills;
-  }
-
-  const legacyBills =
-    readStoredBills(
-      LEGACY_BILLS_STORAGE_KEY,
-    );
-
-  if (
-    !legacyBills
-  ) {
-    return null;
-  }
-
-  const migratedBills =
-    legacyBills.filter(
-      (
-        bill,
-      ) =>
-        !isUntouchedLegacyDemoBill(
-          bill,
-        ),
-    );
-
-  try {
-    window.localStorage.setItem(
-      BILLS_STORAGE_KEY,
-      JSON.stringify(
-        migratedBills,
-      ),
-    );
-
-    window.localStorage.removeItem(
-      LEGACY_BILLS_STORAGE_KEY,
-    );
-  } catch {
-    // Local storage may be unavailable or full.
-  }
-
-  return refreshBillStatuses(
-    migratedBills,
-  );
-}
-
-function readStoredBills(
-  storageKey: string,
-) {
-  if (
-    typeof window ===
-    "undefined"
-  ) {
-    return null;
-  }
-
-  try {
-    const storedValue =
-      window.localStorage.getItem(
-        storageKey,
-      );
-
-    if (
-      !storedValue
-    ) {
-      return null;
-    }
-
-    const parsedValue:
-      unknown =
-      JSON.parse(
-        storedValue,
-      );
-
-    if (
-      !Array.isArray(
-        parsedValue,
-      ) ||
-      !parsedValue.every(
-        isStoredBillData,
-      )
-    ) {
-      window.localStorage.removeItem(
-        storageKey,
-      );
-
-      return null;
-    }
-
-    return refreshBillStatuses(
-      parsedValue,
-    );
-  } catch {
-    return null;
-  }
-}
-
-function clearLegacyBillStorage() {
-  if (
-    typeof window ===
-    "undefined"
-  ) {
-    return;
-  }
-
-  try {
-    window.localStorage.removeItem(
-      BILLS_STORAGE_KEY,
-    );
-
-    window.localStorage.removeItem(
-      LEGACY_BILLS_STORAGE_KEY,
-    );
-  } catch {
-    // Local storage may be unavailable.
-  }
-}
-
-function isUntouchedLegacyDemoBill(
-  bill: BillData,
-) {
-  if (
-    !LEGACY_DEMO_BILL_IDS.has(
-      bill.id,
-    )
-  ) {
-    return false;
-  }
-
-  switch (
-    bill.id
-  ) {
-    case "mortgage":
-      return (
-        bill.name ===
-          "Mortgage" &&
-        bill.payee ===
-          "Rocket Mortgage" &&
-        bill.amount ===
-          1850 &&
-        bill.dueDate ===
-          "2026-08-01" &&
-        bill.frequency ===
-          "monthly" &&
-        bill.paymentMethod ===
-          "autopay" &&
-        bill.account?.id ===
-          "checking" &&
-        bill.budgetItem?.id ===
-          "category-mortgage"
-      );
-
-    case "electric":
-      return (
-        bill.name ===
-          "Electric" &&
-        bill.payee ===
-          "Florida Power & Light" &&
-        bill.amount ===
-          182.55 &&
-        bill.dueDate ===
-          "2026-08-03" &&
-        bill.frequency ===
-          "monthly" &&
-        bill.paymentMethod ===
-          "manual" &&
-        bill.account?.id ===
-          "checking" &&
-        bill.budgetItem?.id ===
-          "category-electricity"
-      );
-
-    default:
-      return false;
-  }
-}
 
 const BillsContext =
   createContext<
@@ -453,60 +178,6 @@ function sortLinkedBills(
   );
 }
 
-function createUniqueBillId(
-  preferredId: string,
-  bills: BillData[],
-) {
-  const normalizedPreferredId =
-    preferredId.trim();
-
-  const existingIds =
-    new Set(
-      bills.map(
-        (
-          bill,
-        ) =>
-          bill.id,
-      ),
-    );
-
-  if (
-    normalizedPreferredId &&
-    !existingIds.has(
-      normalizedPreferredId,
-    )
-  ) {
-    return normalizedPreferredId;
-  }
-
-  if (
-    typeof crypto !==
-      "undefined" &&
-    typeof crypto.randomUUID ===
-      "function"
-  ) {
-    return `bill-${crypto.randomUUID()}`;
-  }
-
-  let candidateId =
-    `bill-${Date.now()}-${Math.random()
-      .toString(36)
-      .slice(2, 10)}`;
-
-  while (
-    existingIds.has(
-      candidateId,
-    )
-  ) {
-    candidateId =
-      `bill-${Date.now()}-${Math.random()
-        .toString(36)
-        .slice(2, 10)}`;
-  }
-
-  return candidateId;
-}
-
 function isBillLinkedToBudgetItem(
   bill: BillData,
   budgetItem: BudgetCategoryData,
@@ -550,10 +221,6 @@ export default function BillsProvider({
   children,
   initialBills = defaultBills,
 }: BillsProviderProps) {
-  const {
-    updateBudgetItemById,
-  } = useBudget();
-
   const [
     storedBills,
     setStoredBills,
@@ -633,7 +300,6 @@ export default function BillsProvider({
             serverBills,
           );
 
-          clearLegacyBillStorage();
         } catch (
           error
         ) {
@@ -657,9 +323,6 @@ export default function BillsProvider({
 
       const initializeBills =
         async () => {
-          const localBills =
-            loadStoredBills();
-
           try {
             const serverBills =
               await fetchBillsFromApi();
@@ -670,59 +333,9 @@ export default function BillsProvider({
               return;
             }
 
-            if (
-              serverBills.length >
-              0
-            ) {
-              replaceBills(
-                serverBills,
-              );
-
-              clearLegacyBillStorage();
-
-              return;
-            }
-
-            const migrationBills =
-              localBills ??
-              (
-                initialBills.length >
-                0
-                  ? refreshBillStatuses(
-                      initialBills,
-                    )
-                  : []
-              );
-
-            if (
-              migrationBills.length ===
-              0
-            ) {
-              replaceBills(
-                [],
-              );
-
-              clearLegacyBillStorage();
-
-              return;
-            }
-
-            const importedBills =
-              await importBillsToApi(
-                migrationBills,
-              );
-
-            if (
-              isCancelled
-            ) {
-              return;
-            }
-
             replaceBills(
-              importedBills,
+              serverBills,
             );
-
-            clearLegacyBillStorage();
           } catch (
             error
           ) {
@@ -730,14 +343,6 @@ export default function BillsProvider({
               isCancelled
             ) {
               return;
-            }
-
-            if (
-              localBills
-            ) {
-              replaceBills(
-                localBills,
-              );
             }
 
             logBillsProviderError({
@@ -757,7 +362,6 @@ export default function BillsProvider({
       };
     },
     [
-      initialBills,
       replaceBills,
     ],
   );
@@ -773,242 +377,100 @@ export default function BillsProvider({
 
   const addBill =
     useCallback(
-      (
+      async (
         bill: BillData,
       ) => {
-        const [normalizedInputBill] =
-          refreshBillStatuses([
-            bill,
-          ]);
+        try {
+          const savedBill =
+            await createBillViaApi(
+              bill,
+            );
 
-        if (
-          !normalizedInputBill
-        ) {
-          return;
-        }
-
-        const optimisticBill: BillData = {
-          ...normalizedInputBill,
-
-          id:
-            createUniqueBillId(
-              normalizedInputBill.id,
-              billsRef.current,
-            ),
-        };
-
-        updateBillsState(
-          (
-            currentBills,
-          ) => [
-            optimisticBill,
-            ...currentBills,
-          ],
-        );
-
-        if (
-          optimisticBill.budgetItem &&
-          optimisticBill.budgetSync
-            ?.enabled &&
-          optimisticBill.budgetSync
-            .mode ===
-            "automatic"
-        ) {
-          updateBudgetItemById(
-            optimisticBill.budgetItem.id,
-            {
-              name:
-                optimisticBill
-                  .budgetItem.name,
-
-              assignedAmount:
-                optimisticBill.amount,
-            },
+          updateBillsState(
+            (
+              currentBills,
+            ) => [
+              savedBill,
+              ...currentBills.filter(
+                (
+                  currentBill,
+                ) =>
+                  currentBill.id !==
+                  savedBill.id,
+              ),
+            ],
           );
+
+          return savedBill;
+        } catch (
+          error
+        ) {
+          logBillsProviderError({
+            operation:
+              "addBill",
+
+            error,
+          });
+
+          return null;
         }
-
-        void (
-          async () => {
-            try {
-              const savedBill =
-                await createBillViaApi(
-                  optimisticBill,
-                );
-
-              updateBillsState(
-                (
-                  currentBills,
-                ) =>
-                  currentBills.map(
-                    (
-                      currentBill,
-                    ) =>
-                      currentBill.id ===
-                      optimisticBill.id
-                        ? savedBill
-                        : currentBill,
-                  ),
-              );
-            } catch (
-              error
-            ) {
-              updateBillsState(
-                (
-                  currentBills,
-                ) =>
-                  currentBills.filter(
-                    (
-                      currentBill,
-                    ) =>
-                      currentBill.id !==
-                      optimisticBill.id,
-                  ),
-              );
-
-              logBillsProviderError({
-                operation:
-                  "addBill",
-
-                error,
-              });
-            }
-          }
-        )();
       },
       [
         updateBillsState,
-        updateBudgetItemById,
       ],
     );
 
   const updateBill =
     useCallback(
-      (
+      async (
         updatedBill: BillData,
       ) => {
-        const [normalizedBill] =
-          refreshBillStatuses([
-            updatedBill,
-          ]);
+        try {
+          const savedBill =
+            await updateBillViaApi(
+              updatedBill,
+            );
 
-        if (
-          !normalizedBill
-        ) {
-          return;
-        }
-
-        const previousBill =
-          billsRef.current.find(
+          updateBillsState(
             (
-              currentBill,
+              currentBills,
             ) =>
-              currentBill.id ===
-              normalizedBill.id,
-          ) ??
-          null;
-
-        updateBillsState(
-          (
-            currentBills,
-          ) =>
-            currentBills.map(
-              (
-                currentBill,
-              ) =>
-                currentBill.id ===
-                normalizedBill.id
-                  ? normalizedBill
-                  : currentBill,
-            ),
-        );
-
-        if (
-          normalizedBill.budgetItem &&
-          normalizedBill.budgetSync
-            ?.enabled &&
-          normalizedBill.budgetSync
-            .mode ===
-            "automatic"
-        ) {
-          updateBudgetItemById(
-            normalizedBill.budgetItem.id,
-            {
-              name:
-                normalizedBill
-                  .budgetItem.name,
-
-              assignedAmount:
-                normalizedBill.amount,
-            },
-          );
-        }
-
-        void (
-          async () => {
-            try {
-              const savedBill =
-                await updateBillViaApi(
-                  normalizedBill,
-                );
-
-              updateBillsState(
+              currentBills.map(
                 (
-                  currentBills,
+                  currentBill,
                 ) =>
-                  currentBills.map(
-                    (
-                      currentBill,
-                    ) =>
-                      currentBill.id ===
-                      normalizedBill.id
-                        ? savedBill
-                        : currentBill,
-                  ),
-              );
-            } catch (
-              error
-            ) {
-              if (
-                previousBill
-              ) {
-                updateBillsState(
-                  (
-                    currentBills,
-                  ) =>
-                    currentBills.map(
-                      (
-                        currentBill,
-                      ) =>
-                        currentBill.id ===
-                        normalizedBill.id
-                          ? previousBill
-                          : currentBill,
-                    ),
-                );
-              } else {
-                await reloadBillsFromServer();
-              }
+                  currentBill.id ===
+                  savedBill.id
+                    ? savedBill
+                    : currentBill,
+              ),
+          );
 
-              logBillsProviderError({
-                operation:
-                  "updateBill",
+          return savedBill;
+        } catch (
+          error
+        ) {
+          logBillsProviderError({
+            operation:
+              "updateBill",
 
-                error,
-              });
-            }
-          }
-        )();
+            error,
+          });
+
+          await reloadBillsFromServer();
+
+          return null;
+        }
       },
       [
         reloadBillsFromServer,
         updateBillsState,
-        updateBudgetItemById,
       ],
     );
 
   const deleteBill =
     useCallback(
-      (
+      async (
         billId: string,
       ) => {
         const normalizedBillId =
@@ -1017,79 +479,42 @@ export default function BillsProvider({
         if (
           !normalizedBillId
         ) {
-          return;
+          return false;
         }
 
-        const deletedBill =
-          billsRef.current.find(
+        try {
+          await deleteBillViaApi(
+            normalizedBillId,
+          );
+
+          updateBillsState(
             (
-              bill,
+              currentBills,
             ) =>
-              bill.id ===
-              normalizedBillId,
-          ) ??
-          null;
+              currentBills.filter(
+                (
+                  currentBill,
+                ) =>
+                  currentBill.id !==
+                  normalizedBillId,
+              ),
+          );
 
-        updateBillsState(
-          (
-            currentBills,
-          ) =>
-            currentBills.filter(
-              (
-                currentBill,
-              ) =>
-                currentBill.id !==
-                normalizedBillId,
-            ),
-        );
+          return true;
+        } catch (
+          error
+        ) {
+          logBillsProviderError({
+            operation:
+              "deleteBill",
 
-        void (
-          async () => {
-            try {
-              await deleteBillViaApi(
-                normalizedBillId,
-              );
-            } catch (
-              error
-            ) {
-              if (
-                deletedBill
-              ) {
-                updateBillsState(
-                  (
-                    currentBills,
-                  ) => {
-                    if (
-                      currentBills.some(
-                        (
-                          currentBill,
-                        ) =>
-                          currentBill.id ===
-                          deletedBill.id,
-                      )
-                    ) {
-                      return currentBills;
-                    }
+            error,
+          });
 
-                    return [
-                      deletedBill,
-                      ...currentBills,
-                    ];
-                  },
-                );
-              } else {
-                await reloadBillsFromServer();
-              }
+          await reloadBillsFromServer();
 
-              logBillsProviderError({
-                operation:
-                  "deleteBill",
-
-                error,
-              });
-            }
-          }
-        )();
+          return false;
+        }
       },
       [
         reloadBillsFromServer,
@@ -1099,7 +524,7 @@ export default function BillsProvider({
 
   const markBillPaid =
     useCallback(
-      (
+      async (
         bill: BillData,
         paidDate: string,
       ) => {
@@ -1118,148 +543,50 @@ export default function BillsProvider({
             timestamp,
         };
 
-        const generatedNextBill =
-          generateNextBill(
-            paidBill,
-          );
+        try {
+          const savedPaidBill =
+            await updateBillViaApi(
+              paidBill,
+            );
 
-        const currentBillsSnapshot =
-          billsRef.current;
+          const generatedNextBill =
+            generateNextBill(
+              savedPaidBill,
+            );
 
-        const matchingNextBillExists =
-          generatedNextBill
-            ? currentBillsSnapshot.some(
+          let savedNextBill:
+            BillData | null =
+            null;
+
+          if (
+            generatedNextBill
+          ) {
+            const matchingNextBillExists =
+              billsRef.current.some(
                 (
                   currentBill,
                 ) =>
                   currentBill.id !==
-                    paidBill.id &&
+                    savedPaidBill.id &&
                   currentBill.name ===
                     generatedNextBill.name &&
                   currentBill.dueDate ===
                     generatedNextBill.dueDate &&
                   currentBill.status !==
                     "paid",
-              )
-            : false;
-
-        const optimisticNextBill =
-          generatedNextBill &&
-          !matchingNextBillExists
-            ? {
-                ...generatedNextBill,
-
-                id:
-                  createUniqueBillId(
-                    generatedNextBill.id,
-                    currentBillsSnapshot,
-                  ),
-              }
-            : null;
-
-        const previousBill =
-          currentBillsSnapshot.find(
-            (
-              currentBill,
-            ) =>
-              currentBill.id ===
-              paidBill.id,
-          ) ??
-          null;
-
-        updateBillsState(
-          (
-            currentBills,
-          ) => {
-            const updatedBills =
-              currentBills.map(
-                (
-                  currentBill,
-                ) =>
-                  currentBill.id ===
-                  paidBill.id
-                    ? paidBill
-                    : currentBill,
               );
 
             if (
-              !optimisticNextBill
+              !matchingNextBillExists
             ) {
-              return updatedBills;
-            }
-
-            return [
-              ...updatedBills,
-              optimisticNextBill,
-            ];
-          },
-        );
-
-        void (
-          async () => {
-            try {
-              const savedPaidBill =
-                await updateBillViaApi(
-                  paidBill,
-                );
-
-              updateBillsState(
-                (
-                  currentBills,
-                ) =>
-                  currentBills.map(
-                    (
-                      currentBill,
-                    ) =>
-                      currentBill.id ===
-                      paidBill.id
-                        ? savedPaidBill
-                        : currentBill,
-                  ),
-              );
-
-              if (
-                !optimisticNextBill
-              ) {
-                return;
-              }
-
               try {
-                const savedNextBill =
+                savedNextBill =
                   await createBillViaApi(
-                    optimisticNextBill,
+                    generatedNextBill,
                   );
-
-                updateBillsState(
-                  (
-                    currentBills,
-                  ) =>
-                    currentBills.map(
-                      (
-                        currentBill,
-                      ) =>
-                        currentBill.id ===
-                        optimisticNextBill.id
-                          ? savedNextBill
-                          : currentBill,
-                    ),
-                );
               } catch (
                 error
               ) {
-                updateBillsState(
-                  (
-                    currentBills,
-                  ) =>
-                    currentBills.filter(
-                      (
-                        currentBill,
-                      ) =>
-                        currentBill.id !==
-                        optimisticNextBill.id,
-                    ),
-                );
-
                 logBillsProviderError({
                   operation:
                     "markBillPaid.createNextBill",
@@ -1267,53 +594,62 @@ export default function BillsProvider({
                   error,
                 });
               }
-            } catch (
-              error
-            ) {
-              updateBillsState(
-                (
-                  currentBills,
-                ) => {
-                  const withoutOptimisticNext =
-                    optimisticNextBill
-                      ? currentBills.filter(
-                          (
-                            currentBill,
-                          ) =>
-                            currentBill.id !==
-                            optimisticNextBill.id,
-                        )
-                      : currentBills;
-
-                  if (
-                    !previousBill
-                  ) {
-                    return withoutOptimisticNext;
-                  }
-
-                  return withoutOptimisticNext.map(
-                    (
-                      currentBill,
-                    ) =>
-                      currentBill.id ===
-                      paidBill.id
-                        ? previousBill
-                        : currentBill,
-                  );
-                },
-              );
-
-              logBillsProviderError({
-                operation:
-                  "markBillPaid.updatePaidBill",
-
-                error,
-              });
             }
           }
-        )();
+
+          updateBillsState(
+            (
+              currentBills,
+            ) => {
+              const updatedBills =
+                currentBills.map(
+                  (
+                    currentBill,
+                  ) =>
+                    currentBill.id ===
+                    savedPaidBill.id
+                      ? savedPaidBill
+                      : currentBill,
+                );
+
+              if (
+                !savedNextBill ||
+                updatedBills.some(
+                  (
+                    currentBill,
+                  ) =>
+                    currentBill.id ===
+                    savedNextBill?.id,
+                )
+              ) {
+                return updatedBills;
+              }
+
+              return [
+                ...updatedBills,
+                savedNextBill,
+              ];
+            },
+          );
+
+          return savedPaidBill;
+        } catch (
+          error
+        ) {
+          logBillsProviderError({
+            operation:
+              "markBillPaid",
+
+            error,
+          });
+
+          await reloadBillsFromServer();
+
+          return null;
+        }
       },
       [
+        reloadBillsFromServer,
         updateBillsState,
       ],
     );
@@ -1378,300 +714,6 @@ export default function BillsProvider({
       ],
     );
 
-  const syncBudgetItemUpdate =
-    useCallback(
-      (
-        previousBudgetItem:
-          BudgetCategoryData,
-        updatedBudgetItem:
-          BudgetCategoryData,
-      ): BudgetItemSyncResult => {
-        const linkedBills =
-          bills.filter(
-            (
-              bill,
-            ) =>
-              isBillLinkedToBudgetItem(
-                bill,
-                previousBudgetItem,
-              ),
-          );
-
-        if (
-          linkedBills.length ===
-          0
-        ) {
-          return {
-            status:
-              "unlinked",
-
-            affectedBillIds:
-              [],
-          };
-        }
-
-        const enabledBills =
-          linkedBills.filter(
-            (
-              bill,
-            ) =>
-              bill.budgetSync
-                ?.enabled,
-          );
-
-        if (
-          enabledBills.length ===
-          0
-        ) {
-          return {
-            status:
-              "disabled",
-
-            affectedBillIds:
-              linkedBills.map(
-                (
-                  bill,
-                ) =>
-                  bill.id,
-              ),
-          };
-        }
-
-        const automaticBills =
-          enabledBills.filter(
-            (
-              bill,
-            ) =>
-              bill.budgetSync
-                ?.mode ===
-              "automatic",
-          );
-
-        const suggestedBills =
-          enabledBills.filter(
-            (
-              bill,
-            ) =>
-              bill.budgetSync
-                ?.mode ===
-              "suggest",
-          );
-
-        const manualBills =
-          enabledBills.filter(
-            (
-              bill,
-            ) =>
-              bill.budgetSync
-                ?.mode ===
-              "manual",
-          );
-
-        if (
-          automaticBills.length >
-          0
-        ) {
-          const timestamp =
-            new Date().toISOString();
-
-          const updatedAutomaticBills =
-            automaticBills.map(
-              (
-                bill,
-              ): BillData => {
-                const updatedBudgetReference =
-                  bill.budgetItem
-                    ? {
-                        ...bill.budgetItem,
-
-                        id:
-                          updatedBudgetItem.id,
-
-                        name:
-                          updatedBudgetItem.name,
-                      }
-                    : undefined;
-
-                return {
-                  ...bill,
-
-                  name:
-                    updatedBudgetItem.name,
-
-                  budgetItem:
-                    updatedBudgetReference,
-
-                  updatedAt:
-                    timestamp,
-                };
-              },
-            );
-
-          const updatedBillById =
-            new Map(
-              updatedAutomaticBills.map(
-                (
-                  bill,
-                ) => [
-                  bill.id,
-                  bill,
-                ],
-              ),
-            );
-
-          updateBillsState(
-            (
-              currentBills,
-            ) =>
-              currentBills.map(
-                (
-                  bill,
-                ) =>
-                  updatedBillById.get(
-                    bill.id,
-                  ) ??
-                  bill,
-              ),
-          );
-
-          void (
-            async () => {
-              const results =
-                await Promise.allSettled(
-                  updatedAutomaticBills.map(
-                    (
-                      bill,
-                    ) =>
-                      updateBillViaApi(
-                        bill,
-                      ),
-                  ),
-                );
-
-              const hasFailure =
-                results.some(
-                  (
-                    result,
-                  ) =>
-                    result.status ===
-                    "rejected",
-                );
-
-              if (
-                hasFailure
-              ) {
-                logBillsProviderError({
-                  operation:
-                    "syncBudgetItemUpdate",
-
-                  error:
-                    new Error(
-                      "One or more automatic bill synchronization updates could not be persisted.",
-                    ),
-                });
-
-                await reloadBillsFromServer();
-
-                return;
-              }
-
-              const savedBills =
-                results
-                  .filter(
-                    (
-                      result,
-                    ): result is PromiseFulfilledResult<BillData> =>
-                      result.status ===
-                      "fulfilled",
-                  )
-                  .map(
-                    (
-                      result,
-                    ) =>
-                      result.value,
-                  );
-
-              const savedBillById =
-                new Map(
-                  savedBills.map(
-                    (
-                      bill,
-                    ) => [
-                      bill.id,
-                      bill,
-                    ],
-                  ),
-                );
-
-              updateBillsState(
-                (
-                  currentBills,
-                ) =>
-                  currentBills.map(
-                    (
-                      bill,
-                    ) =>
-                      savedBillById.get(
-                        bill.id,
-                      ) ??
-                      bill,
-                  ),
-              );
-            }
-          )();
-
-          return {
-            status:
-              "updated",
-
-            updatedBillIds:
-              updatedAutomaticBills.map(
-                (
-                  bill,
-                ) =>
-                  bill.id,
-              ),
-          };
-        }
-
-        if (
-          suggestedBills.length >
-          0
-        ) {
-          return {
-            status:
-              "suggested",
-
-            suggestedBillIds:
-              suggestedBills.map(
-                (
-                  bill,
-                ) =>
-                  bill.id,
-              ),
-          };
-        }
-
-        return {
-          status:
-            "manual",
-
-          affectedBillIds:
-            manualBills.map(
-              (
-                bill,
-              ) =>
-                bill.id,
-            ),
-        };
-      },
-      [
-        bills,
-        reloadBillsFromServer,
-        updateBillsState,
-      ],
-    );
-
   const value =
     useMemo<BillsContextValue>(
       () => ({
@@ -1683,7 +725,6 @@ export default function BillsProvider({
         getBillById,
         getLinkedBillForBudgetItem,
         getLinkedBillsForBudgetItem,
-        syncBudgetItemUpdate,
       }),
       [
         addBill,
@@ -1693,7 +734,6 @@ export default function BillsProvider({
         getLinkedBillForBudgetItem,
         getLinkedBillsForBudgetItem,
         markBillPaid,
-        syncBudgetItemUpdate,
         updateBill,
       ],
     );
@@ -1798,51 +838,6 @@ async function createBillViaApi(
     );
 
   return result.bill;
-}
-
-async function importBillsToApi(
-  bills:
-    BillData[],
-) {
-  const response =
-    await fetch(
-      BILLS_API_PATH,
-      {
-        method:
-          "POST",
-
-        credentials:
-          "same-origin",
-
-        cache:
-          "no-store",
-
-        headers: {
-          Accept:
-            "application/json",
-
-          "Content-Type":
-            "application/json",
-        },
-
-        body:
-          JSON.stringify({
-            action:
-              "import",
-
-            bills,
-          }),
-      },
-    );
-
-  const result =
-    await readBillsApiResponse<
-      BillImportResponseData
-    >(
-      response,
-    );
-
-  return result.bills;
 }
 
 async function updateBillViaApi(

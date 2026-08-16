@@ -54,13 +54,62 @@ function joinClassNames(
     .join(" ");
 }
 
-function getRemainingAmount(
-  category: BudgetCategoryData,
-) {
-  return (
-    category.assignedAmount -
-    category.spentAmount
-  );
+type BudgetItemFinancialPresentation = {
+  assignedAmount:
+    number;
+
+  spentAmount:
+    number;
+
+  remainingAmount:
+    number;
+
+  isOverspent:
+    boolean;
+};
+
+/**
+ * Builds read-only presentation values from the canonical budget item
+ * returned by getBudget().
+ *
+ * Production boundary:
+ *
+ * - assignedAmount is the persisted planned amount.
+ * - spentAmount is the canonical persisted activity amount.
+ * - This component never reads or sums transactions.
+ * - This component never mutates budget activity.
+ * - remainingAmount is presentation-only because the current
+ *   BudgetCategoryData contract does not yet expose canonical
+ *   available_amount / rollover_amount.
+ *
+ * When BudgetCategoryData is extended with availableAmount, this helper
+ * should use that canonical field instead of deriving remainingAmount here.
+ */
+function getBudgetItemFinancialPresentation(
+  category:
+    BudgetCategoryData,
+): BudgetItemFinancialPresentation {
+  const assignedAmount =
+    category.assignedAmount;
+
+  const spentAmount =
+    category.spentAmount;
+
+  const remainingAmount =
+    assignedAmount -
+    spentAmount;
+
+  return {
+    assignedAmount,
+
+    spentAmount,
+
+    remainingAmount,
+
+    isOverspent:
+      remainingAmount <
+      0,
+  };
 }
 
 function getRemainingLabel(
@@ -217,13 +266,15 @@ export default function BudgetCategoryCard({
   onEdit,
   onOpenBill,
 }: BudgetCategoryCardProps) {
-  const remainingAmount =
-    getRemainingAmount(
+  const {
+    assignedAmount,
+    spentAmount,
+    remainingAmount,
+    isOverspent,
+  } =
+    getBudgetItemFinancialPresentation(
       category,
     );
-
-  const isOverspent =
-    remainingAmount < 0;
 
   const sortedLinkedBills =
     [...linkedBills].sort(
@@ -343,10 +394,13 @@ export default function BudgetCategoryCard({
         <div className="mt-5">
           <BudgetProgress
             assignedAmount={
-              category.assignedAmount
+              assignedAmount
             }
             spentAmount={
-              category.spentAmount
+              spentAmount
+            }
+            availableAmount={
+              remainingAmount
             }
           />
         </div>
@@ -355,14 +409,14 @@ export default function BudgetCategoryCard({
           <AmountMetric
             label="Assigned"
             amount={
-              category.assignedAmount
+              assignedAmount
             }
           />
 
           <AmountMetric
             label="Spent"
             amount={
-              category.spentAmount
+              spentAmount
             }
           />
 

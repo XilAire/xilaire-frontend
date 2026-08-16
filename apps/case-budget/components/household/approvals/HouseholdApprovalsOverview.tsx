@@ -1,65 +1,52 @@
 "use client";
 
 import {
+  useCallback,
+  useEffect,
   useMemo,
   useState,
 } from "react";
 
 import {
+  cancelHouseholdApproval,
+} from "@/actions/household/cancel-approval";
+
+import {
+  decideHouseholdApproval,
+} from "@/actions/household/decide-approval";
+
+import {
+  getHouseholdApprovals,
+} from "@/actions/household/get-approvals";
+
+import {
   useApp,
 } from "@/components/providers/AppProvider";
 
-type ApprovalStatus =
-  | "pending"
-  | "approved"
-  | "rejected"
-  | "cancelled";
+import type {
+  HouseholdApprovalDecision,
+  HouseholdApprovalFilter,
+  HouseholdApprovalRequest,
+  HouseholdApprovalStatus,
+  HouseholdApprovalType,
+} from "@/types/household/household-approval";
 
-type ApprovalType =
-  | "transaction"
-  | "budget"
-  | "bill"
-  | "goal"
-  | "account"
-  | "member"
-  | "security"
-  | "other";
+type ApprovalAction =
+  | "approve"
+  | "reject"
+  | "cancel";
 
-type HouseholdApproval = {
-  id:
-    string;
+type ApprovalActionSelection = {
+  approval:
+    HouseholdApprovalRequest;
 
-  title:
-    string;
-
-  description:
-    string;
-
-  type:
-    ApprovalType;
-
-  status:
-    ApprovalStatus;
-
-  requestedBy:
-    string;
-
-  requestedAt:
-    Date;
-
-  amount?:
-    number;
+  action:
+    ApprovalAction;
 };
-
-type ApprovalFilter =
-  | "pending"
-  | "all"
-  | "approved"
-  | "rejected";
 
 const approvalFilters: {
   id:
-    ApprovalFilter;
+    HouseholdApprovalFilter;
 
   label:
     string;
@@ -71,6 +58,7 @@ const approvalFilters: {
     label:
       "Pending",
   },
+
   {
     id:
       "all",
@@ -78,6 +66,7 @@ const approvalFilters: {
     label:
       "All approvals",
   },
+
   {
     id:
       "approved",
@@ -85,12 +74,21 @@ const approvalFilters: {
     label:
       "Approved",
   },
+
   {
     id:
       "rejected",
 
     label:
       "Rejected",
+  },
+
+  {
+    id:
+      "cancelled",
+
+    label:
+      "Cancelled",
   },
 ];
 
@@ -105,29 +103,144 @@ export default function HouseholdApprovalsOverview() {
     selectedFilter,
     setSelectedFilter,
   ] =
-    useState<ApprovalFilter>(
+    useState<HouseholdApprovalFilter>(
       "pending",
     );
 
-  /*
-   * Approval persistence is not connected yet.
-   *
-   * Keep the initial collection empty rather than displaying
-   * fake household approval requests.
-   */
-  const approvals =
-    useMemo<
-      HouseholdApproval[]
+  const [
+    approvals,
+    setApprovals,
+  ] =
+    useState<
+      HouseholdApprovalRequest[]
     >(
-      () => {
-        void currentUser;
+      [],
+    );
 
-        return [];
+  const [
+    isLoading,
+    setIsLoading,
+  ] =
+    useState(
+      true,
+    );
+
+  const [
+    loadError,
+    setLoadError,
+  ] =
+    useState<
+      string | null
+    >(
+      null,
+    );
+
+  const [
+    actionSelection,
+    setActionSelection,
+  ] =
+    useState<
+      ApprovalActionSelection | null
+    >(
+      null,
+    );
+
+  const workspaceId =
+    activeWorkspace?.id ??
+    null;
+
+  const workspaceName =
+    activeWorkspace?.name ??
+    "Personal workspace";
+
+  const currentUserId =
+    currentUser?.id ??
+    null;
+
+  const loadApprovals =
+    useCallback(
+      async () => {
+        if (
+          !workspaceId
+        ) {
+          setApprovals(
+            [],
+          );
+
+          setLoadError(
+            null,
+          );
+
+          setIsLoading(
+            false,
+          );
+
+          return;
+        }
+
+        setIsLoading(
+          true,
+        );
+
+        setLoadError(
+          null,
+        );
+
+        try {
+          const result =
+            await getHouseholdApprovals();
+
+          if (
+            !result.success
+          ) {
+            setApprovals(
+              [],
+            );
+
+            setLoadError(
+              result.error,
+            );
+
+            return;
+          }
+
+          setApprovals(
+            result.approvals,
+          );
+        } catch (
+          error
+        ) {
+          console.error(
+            "[CASE Budget Household Approvals] Failed to load approval requests.",
+            error,
+          );
+
+          setApprovals(
+            [],
+          );
+
+          setLoadError(
+            "Unable to load household approval requests.",
+          );
+        } finally {
+          setIsLoading(
+            false,
+          );
+        }
       },
       [
-        currentUser,
+        workspaceId,
       ],
     );
+
+  useEffect(
+    () => {
+      void loadApprovals();
+    },
+    [
+      loadApprovals,
+    ],
+  );
 
   const filteredApprovals =
     useMemo(
@@ -180,61 +293,187 @@ export default function HouseholdApprovalsOverview() {
         "rejected",
     ).length;
 
-  const workspaceName =
-    activeWorkspace?.name ??
-    "Personal workspace";
+  const cancelledCount =
+    approvals.filter(
+      (
+        approval,
+      ) =>
+        approval.status ===
+        "cancelled",
+    ).length;
+
+  function handleOpenAction(
+    approval:
+      HouseholdApprovalRequest,
+
+    action:
+      ApprovalAction,
+  ) {
+    setActionSelection({
+      approval,
+      action,
+    });
+  }
+
+  function handleCloseAction() {
+    setActionSelection(
+      null,
+    );
+  }
+
+  function handleApprovalUpdated(
+    updatedApproval:
+      HouseholdApprovalRequest,
+  ) {
+    setApprovals(
+      (
+        currentApprovals,
+      ) =>
+        currentApprovals.map(
+          (
+            approval,
+          ) =>
+            approval.id ===
+            updatedApproval.id
+              ? updatedApproval
+              : approval,
+        ),
+    );
+
+    setActionSelection(
+      null,
+    );
+  }
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-      <PageHeader />
+    <>
+      <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <PageHeader
+          isRefreshing={
+            isLoading
+          }
+          onRefresh={
+            loadApprovals
+          }
+        />
 
-      <ApprovalSummary
+        <ApprovalSummary
+          workspaceName={
+            workspaceName
+          }
+          pendingCount={
+            pendingCount
+          }
+          approvedCount={
+            approvedCount
+          }
+          rejectedCount={
+            rejectedCount
+          }
+          cancelledCount={
+            cancelledCount
+          }
+        />
+
+        <ApprovalQueue
+          approvals={
+            filteredApprovals
+          }
+          selectedFilter={
+            selectedFilter
+          }
+          currentUserId={
+            currentUserId
+          }
+          isWorkspaceOwner={
+            activeWorkspace?.isOwner ===
+            true
+          }
+          isLoading={
+            isLoading
+          }
+          error={
+            loadError
+          }
+          onFilterChange={
+            setSelectedFilter
+          }
+          onRetry={
+            loadApprovals
+          }
+          onAction={
+            handleOpenAction
+          }
+        />
+
+        <ApprovalPolicySection />
+      </div>
+
+      <ApprovalActionModal
+        selection={
+          actionSelection
+        }
         workspaceName={
           workspaceName
         }
-        pendingCount={
-          pendingCount
+        onClose={
+          handleCloseAction
         }
-        approvedCount={
-          approvedCount
-        }
-        rejectedCount={
-          rejectedCount
+        onCompleted={
+          handleApprovalUpdated
         }
       />
-
-      <ApprovalQueue
-        approvals={
-          filteredApprovals
-        }
-        selectedFilter={
-          selectedFilter
-        }
-        onFilterChange={
-          setSelectedFilter
-        }
-      />
-
-      <ApprovalPolicySection />
-    </div>
+    </>
   );
 }
 
-function PageHeader() {
+function PageHeader({
+  isRefreshing,
+  onRefresh,
+}: {
+  isRefreshing:
+    boolean;
+
+  onRefresh:
+    () => void | Promise<void>;
+}) {
   return (
-    <header>
-      <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--primary)]">
-        Household
-      </p>
+    <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--primary)]">
+          Household
+        </p>
 
-      <h1 className="mt-3 text-3xl font-bold tracking-tight text-[var(--text-primary)]">
-        Approvals
-      </h1>
+        <h1 className="mt-3 text-3xl font-bold tracking-tight text-[var(--text-primary)]">
+          Approvals
+        </h1>
 
-      <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--text-muted)]">
-        Review household financial requests that require authorization before
-        changes are applied to the shared workspace.
-      </p>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--text-muted)]">
+          Review household financial requests that require authorization before
+          changes are applied to the shared workspace.
+        </p>
+      </div>
+
+      <button
+        type="button"
+        disabled={
+          isRefreshing
+        }
+        onClick={() => {
+          void onRefresh();
+        }}
+        className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-default)] px-4 text-sm font-bold text-[var(--text-primary)] outline-none transition hover:bg-[var(--surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <RefreshIcon
+          spinning={
+            isRefreshing
+          }
+        />
+
+        {isRefreshing
+          ? "Refreshing..."
+          : "Refresh"}
+      </button>
     </header>
   );
 }
@@ -244,6 +483,7 @@ function ApprovalSummary({
   pendingCount,
   approvedCount,
   rejectedCount,
+  cancelledCount,
 }: {
   workspaceName:
     string;
@@ -255,6 +495,9 @@ function ApprovalSummary({
     number;
 
   rejectedCount:
+    number;
+
+  cancelledCount:
     number;
 }) {
   return (
@@ -299,7 +542,7 @@ function ApprovalSummary({
         </span>
       </div>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-3">
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <SummaryMetric
           label="Pending"
           value={
@@ -328,6 +571,16 @@ function ApprovalSummary({
             )
           }
           description="Requests declined"
+        />
+
+        <SummaryMetric
+          label="Cancelled"
+          value={
+            String(
+              cancelledCount,
+            )
+          }
+          description="Requests withdrawn"
         />
       </div>
     </section>
@@ -368,18 +621,48 @@ function SummaryMetric({
 function ApprovalQueue({
   approvals,
   selectedFilter,
+  currentUserId,
+  isWorkspaceOwner,
+  isLoading,
+  error,
   onFilterChange,
+  onRetry,
+  onAction,
 }: {
   approvals:
-    HouseholdApproval[];
+    HouseholdApprovalRequest[];
 
   selectedFilter:
-    ApprovalFilter;
+    HouseholdApprovalFilter;
+
+  currentUserId:
+    string | null;
+
+  isWorkspaceOwner:
+    boolean;
+
+  isLoading:
+    boolean;
+
+  error:
+    string | null;
 
   onFilterChange:
     (
       filter:
-        ApprovalFilter,
+        HouseholdApprovalFilter,
+    ) => void;
+
+  onRetry:
+    () => void | Promise<void>;
+
+  onAction:
+    (
+      approval:
+        HouseholdApprovalRequest,
+
+      action:
+        ApprovalAction,
     ) => void;
 }) {
   return (
@@ -433,8 +716,29 @@ function ApprovalQueue({
         </div>
       </div>
 
-      {approvals.length >
-      0 ? (
+      {error &&
+      approvals.length >
+        0 ? (
+        <div className="border-b border-[var(--border-subtle)] bg-[color-mix(in_srgb,var(--warning)_8%,transparent)] px-5 py-3 text-xs font-semibold text-[var(--warning)] sm:px-6">
+          {error}
+        </div>
+      ) : null}
+
+      {isLoading ? (
+        <ApprovalsLoadingState />
+      ) : error &&
+        approvals.length ===
+          0 ? (
+        <ApprovalsErrorState
+          message={
+            error
+          }
+          onRetry={
+            onRetry
+          }
+        />
+      ) : approvals.length >
+        0 ? (
         <div className="divide-y divide-[var(--border-subtle)]">
           {approvals.map(
             (
@@ -446,6 +750,15 @@ function ApprovalQueue({
                 }
                 approval={
                   approval
+                }
+                currentUserId={
+                  currentUserId
+                }
+                isWorkspaceOwner={
+                  isWorkspaceOwner
+                }
+                onAction={
+                  onAction
                 }
               />
             ),
@@ -464,10 +777,52 @@ function ApprovalQueue({
 
 function ApprovalRow({
   approval,
+  currentUserId,
+  isWorkspaceOwner,
+  onAction,
 }: {
   approval:
-    HouseholdApproval;
+    HouseholdApprovalRequest;
+
+  currentUserId:
+    string | null;
+
+  isWorkspaceOwner:
+    boolean;
+
+  onAction:
+    (
+      approval:
+        HouseholdApprovalRequest,
+
+      action:
+        ApprovalAction,
+    ) => void;
 }) {
+  const isOwnRequest =
+    Boolean(
+      currentUserId,
+    ) &&
+    approval.requestedByUserId ===
+      currentUserId;
+
+  /*
+   * The server action remains the authorization boundary.
+   *
+   * The AppProvider currently exposes ownership but not the active member's
+   * complete workspace role. Owners get the cleanest UI immediately. For
+   * non-owner accounts, review controls remain available for requests created
+   * by someone else so administrators can still use the feature; the server
+   * rejects Members/Viewers if they attempt a decision.
+   */
+  const canAttemptDecision =
+    !isOwnRequest;
+
+  const canAttemptCancel =
+    isOwnRequest ||
+    isWorkspaceOwner ||
+    !isOwnRequest;
+
   return (
     <article className="p-5 sm:p-6">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
@@ -491,6 +846,12 @@ function ApprovalRow({
                   approval.status
                 }
               />
+
+              {isOwnRequest ? (
+                <span className="rounded-full bg-[var(--surface-muted)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-[var(--text-muted)]">
+                  Your request
+                </span>
+              ) : null}
             </div>
 
             <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">
@@ -501,9 +862,24 @@ function ApprovalRow({
               <span>
                 Requested by{" "}
                 <strong className="font-semibold text-[var(--text-primary)]">
-                  {approval.requestedBy}
+                  {approval.requestedByName ??
+                    "Household member"}
                 </strong>
               </span>
+
+              {approval.requestedByRole ? (
+                <>
+                  <span>
+                    ·
+                  </span>
+
+                  <span>
+                    {formatRole(
+                      approval.requestedByRole,
+                    )}
+                  </span>
+                </>
+              ) : null}
 
               <span>
                 ·
@@ -511,7 +887,7 @@ function ApprovalRow({
 
               <time
                 dateTime={
-                  approval.requestedAt.toISOString()
+                  approval.requestedAt
                 }
               >
                 {formatApprovalDate(
@@ -520,7 +896,7 @@ function ApprovalRow({
               </time>
 
               {approval.amount !==
-              undefined ? (
+              null ? (
                 <>
                   <span>
                     ·
@@ -534,27 +910,85 @@ function ApprovalRow({
                 </>
               ) : null}
             </div>
+
+            {approval.target ? (
+              <div className="mt-3 rounded-lg bg-[var(--surface-muted)] px-3 py-2 text-[11px] text-[var(--text-muted)]">
+                <span className="font-bold text-[var(--text-secondary)]">
+                  Target:
+                </span>{" "}
+                {approval.target.entityType}
+                {" · "}
+                {approval.target.entityId}
+              </div>
+            ) : null}
+
+            {approval.status !==
+              "pending" ? (
+              <ApprovalDecisionDetails
+                approval={
+                  approval
+                }
+              />
+            ) : approval.expiresAt ? (
+              <p className="mt-3 text-[11px] text-[var(--text-muted)]">
+                Expires{" "}
+                {formatApprovalDate(
+                  approval.expiresAt,
+                )}
+              </p>
+            ) : null}
           </div>
         </div>
 
         {approval.status ===
         "pending" ? (
-          <div className="flex shrink-0 gap-2">
-            <button
-              type="button"
-              className="inline-flex min-h-10 items-center justify-center rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-default)] px-4 text-sm font-bold text-[var(--text-primary)] outline-none transition hover:bg-[var(--surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
-            >
-              Reject
-            </button>
+          <div className="flex shrink-0 flex-wrap gap-2">
+            {canAttemptCancel ? (
+              <button
+                type="button"
+                onClick={() => {
+                  onAction(
+                    approval,
+                    "cancel",
+                  );
+                }}
+                className="inline-flex min-h-10 items-center justify-center rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-default)] px-4 text-sm font-bold text-[var(--text-muted)] outline-none transition hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+              >
+                Cancel
+              </button>
+            ) : null}
 
-            <button
-              type="button"
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-4 text-sm font-bold text-[var(--primary-foreground)] outline-none transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
-            >
-              <CheckIcon />
+            {canAttemptDecision ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onAction(
+                      approval,
+                      "reject",
+                    );
+                  }}
+                  className="inline-flex min-h-10 items-center justify-center rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-default)] px-4 text-sm font-bold text-[var(--text-primary)] outline-none transition hover:bg-[color-mix(in_srgb,var(--danger)_6%,var(--surface-default))] hover:text-[var(--danger)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+                >
+                  Reject
+                </button>
 
-              Approve
-            </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onAction(
+                      approval,
+                      "approve",
+                    );
+                  }}
+                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] px-4 text-sm font-bold text-[var(--primary-foreground)] outline-none transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+                >
+                  <CheckIcon />
+
+                  Approve
+                </button>
+              </>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -562,21 +996,614 @@ function ApprovalRow({
   );
 }
 
+function ApprovalDecisionDetails({
+  approval,
+}: {
+  approval:
+    HouseholdApprovalRequest;
+}) {
+  if (
+    approval.status ===
+    "cancelled"
+  ) {
+    return (
+      <div className="mt-3 rounded-lg bg-[var(--surface-muted)] px-3 py-2 text-[11px] leading-5 text-[var(--text-muted)]">
+        <span className="font-bold text-[var(--text-secondary)]">
+          Cancelled
+        </span>
+
+        {approval.cancelledAt
+          ? ` · ${formatApprovalDate(
+              approval.cancelledAt,
+            )}`
+          : ""}
+
+        {approval.cancellationReason
+          ? ` · ${approval.cancellationReason}`
+          : ""}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 rounded-lg bg-[var(--surface-muted)] px-3 py-2 text-[11px] leading-5 text-[var(--text-muted)]">
+      <span className="font-bold text-[var(--text-secondary)]">
+        {approval.status ===
+        "approved"
+          ? "Approved"
+          : "Rejected"}
+      </span>
+
+      {approval.decisionByName
+        ? ` by ${approval.decisionByName}`
+        : ""}
+
+      {approval.decidedAt
+        ? ` · ${formatApprovalDate(
+            approval.decidedAt,
+          )}`
+        : ""}
+
+      {approval.decisionReason
+        ? ` · ${approval.decisionReason}`
+        : ""}
+    </div>
+  );
+}
+
+function ApprovalActionModal({
+  selection,
+  workspaceName,
+  onClose,
+  onCompleted,
+}: {
+  selection:
+    ApprovalActionSelection | null;
+
+  workspaceName:
+    string;
+
+  onClose:
+    () => void;
+
+  onCompleted:
+    (
+      approval:
+        HouseholdApprovalRequest,
+    ) => void;
+}) {
+  const [
+    reason,
+    setReason,
+  ] =
+    useState(
+      "",
+    );
+
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] =
+    useState<
+      string | null
+    >(
+      null,
+    );
+
+  const [
+    isSubmitting,
+    setIsSubmitting,
+  ] =
+    useState(
+      false,
+    );
+
+  useEffect(
+    () => {
+      setReason(
+        "",
+      );
+
+      setErrorMessage(
+        null,
+      );
+
+      setIsSubmitting(
+        false,
+      );
+    },
+    [
+      selection,
+    ],
+  );
+
+  useEffect(
+    () => {
+      if (
+        !selection
+      ) {
+        return;
+      }
+
+      function handleKeyDown(
+        event:
+          KeyboardEvent,
+      ) {
+        if (
+          event.key ===
+            "Escape" &&
+          !isSubmitting
+        ) {
+          onClose();
+        }
+      }
+
+      document.addEventListener(
+        "keydown",
+        handleKeyDown,
+      );
+
+      return () => {
+        document.removeEventListener(
+          "keydown",
+          handleKeyDown,
+        );
+      };
+    },
+    [
+      isSubmitting,
+      onClose,
+      selection,
+    ],
+  );
+
+  if (
+    !selection
+  ) {
+    return null;
+  }
+
+  const {
+    approval,
+    action,
+  } =
+    selection;
+
+  const copy =
+    getApprovalActionCopy({
+      approval,
+      action,
+      workspaceName,
+    });
+
+  async function handleSubmit() {
+    if (
+      isSubmitting
+    ) {
+      return;
+    }
+
+    setIsSubmitting(
+      true,
+    );
+
+    setErrorMessage(
+      null,
+    );
+
+    try {
+      if (
+        action ===
+        "cancel"
+      ) {
+        const result =
+          await cancelHouseholdApproval({
+            approvalId:
+              approval.id,
+
+            reason:
+              reason.trim() ||
+              undefined,
+          });
+
+        if (
+          !result.success
+        ) {
+          setErrorMessage(
+            result.error.message,
+          );
+
+          return;
+        }
+
+        onCompleted(
+          result.approval,
+        );
+
+        return;
+      }
+
+      const decision:
+        Extract<
+          HouseholdApprovalDecision,
+          "approve" | "reject"
+        > =
+        action;
+
+      const result =
+        await decideHouseholdApproval({
+          approvalId:
+            approval.id,
+
+          decision,
+
+          reason:
+            reason.trim() ||
+            undefined,
+        });
+
+      if (
+        !result.success
+      ) {
+        setErrorMessage(
+          result.error.message,
+        );
+
+        return;
+      }
+
+      onCompleted(
+        result.approval,
+      );
+    } catch (
+      error
+    ) {
+      console.error(
+        "[CASE Budget Household Approvals] Approval action failed.",
+        error,
+      );
+
+      setErrorMessage(
+        "CASE Budget could not complete this approval action. Please try again.",
+      );
+    } finally {
+      setIsSubmitting(
+        false,
+      );
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/45 px-4 py-6 backdrop-blur-[2px]"
+      role="presentation"
+      onMouseDown={(
+        event,
+      ) => {
+        if (
+          event.target ===
+            event.currentTarget &&
+          !isSubmitting
+        ) {
+          onClose();
+        }
+      }}
+    >
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="approval-action-title"
+        aria-describedby="approval-action-description"
+        className="w-full max-w-lg overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-elevated)] shadow-[var(--shadow-xl)]"
+      >
+        <div className="p-5 sm:p-6">
+          <div className="flex items-start gap-4">
+            <div
+              className={[
+                "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
+                copy.danger
+                  ? "bg-[color-mix(in_srgb,var(--danger)_10%,transparent)] text-[var(--danger)]"
+                  : "bg-[var(--primary-soft)] text-[var(--primary)]",
+              ].join(
+                " ",
+              )}
+            >
+              {copy.icon}
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-[var(--text-muted)]">
+                Household approval
+              </p>
+
+              <h2
+                id="approval-action-title"
+                className="mt-1 text-xl font-bold text-[var(--text-primary)]"
+              >
+                {copy.title}
+              </h2>
+
+              <p
+                id="approval-action-description"
+                className="mt-2 text-sm leading-6 text-[var(--text-muted)]"
+              >
+                {copy.description}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              aria-label="Close"
+              disabled={
+                isSubmitting
+              }
+              onClick={
+                onClose
+              }
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[var(--text-muted)] outline-none transition hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <CloseIcon />
+            </button>
+          </div>
+
+          <div className="mt-5 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4">
+            <div className="flex items-start gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-default)] text-[var(--primary)]">
+                <ApprovalTypeIcon
+                  type={
+                    approval.type
+                  }
+                />
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-[var(--text-primary)]">
+                  {approval.title}
+                </p>
+
+                <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
+                  {approval.description}
+                </p>
+
+                {approval.amount !==
+                null ? (
+                  <p className="mt-2 text-sm font-extrabold text-[var(--text-primary)]">
+                    {formatCurrency(
+                      approval.amount,
+                    )}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          </div>
+
+          <label className="mt-5 block">
+            <span className="text-xs font-bold text-[var(--text-secondary)]">
+              Reason{" "}
+              <span className="font-medium text-[var(--text-muted)]">
+                (optional)
+              </span>
+            </span>
+
+            <textarea
+              value={
+                reason
+              }
+              onChange={(
+                event,
+              ) => {
+                setReason(
+                  event.target.value.slice(
+                    0,
+                    1000,
+                  ),
+                );
+              }}
+              rows={
+                3
+              }
+              maxLength={
+                1000
+              }
+              disabled={
+                isSubmitting
+              }
+              placeholder={
+                copy.placeholder
+              }
+              className="mt-2 w-full resize-none rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-default)] px-3 py-2.5 text-sm text-[var(--text-primary)] outline-none transition placeholder:text-[var(--text-muted)] focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--focus-ring)] disabled:cursor-not-allowed disabled:opacity-60"
+            />
+
+            <span className="mt-1 block text-right text-[10px] font-medium text-[var(--text-muted)]">
+              {reason.length}/1000
+            </span>
+          </label>
+
+          {copy.warning ? (
+            <div className="mt-4 flex items-start gap-3 rounded-xl border border-[color-mix(in_srgb,var(--warning)_22%,transparent)] bg-[color-mix(in_srgb,var(--warning)_8%,transparent)] p-3">
+              <span className="mt-0.5 shrink-0 text-[var(--warning)]">
+                <WarningIcon />
+              </span>
+
+              <p className="text-xs leading-5 text-[var(--text-secondary)]">
+                {copy.warning}
+              </p>
+            </div>
+          ) : null}
+
+          {errorMessage ? (
+            <div
+              role="alert"
+              className="mt-4 rounded-xl border border-[color-mix(in_srgb,var(--danger)_20%,transparent)] bg-[color-mix(in_srgb,var(--danger)_8%,transparent)] px-3 py-2.5 text-xs font-semibold leading-5 text-[var(--danger)]"
+            >
+              {errorMessage}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="flex flex-col-reverse gap-2 border-t border-[var(--border-subtle)] bg-[var(--surface-default)] p-4 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            disabled={
+              isSubmitting
+            }
+            onClick={
+              onClose
+            }
+            className="inline-flex min-h-10 items-center justify-center rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-default)] px-4 text-sm font-bold text-[var(--text-primary)] outline-none transition hover:bg-[var(--surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Back
+          </button>
+
+          <button
+            type="button"
+            disabled={
+              isSubmitting
+            }
+            onClick={() => {
+              void handleSubmit();
+            }}
+            className={[
+              "inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold outline-none transition focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] disabled:cursor-not-allowed disabled:opacity-60",
+              copy.danger
+                ? "bg-[var(--danger)] text-white hover:opacity-90"
+                : "bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90",
+            ].join(
+              " ",
+            )}
+          >
+            {isSubmitting ? (
+              <LoadingSpinner />
+            ) : copy.icon}
+
+            {isSubmitting
+              ? copy.submittingLabel
+              : copy.confirmLabel}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function getApprovalActionCopy({
+  approval,
+  action,
+  workspaceName,
+}: {
+  approval:
+    HouseholdApprovalRequest;
+
+  action:
+    ApprovalAction;
+
+  workspaceName:
+    string;
+}) {
+  if (
+    action ===
+    "approve"
+  ) {
+    return {
+      title:
+        "Approve this request?",
+
+      description:
+        `Approve "${approval.title}" for ${workspaceName}.`,
+
+      warning:
+        "This records the authorization decision. Protected financial actions are executed only by their own trusted server workflow.",
+
+      placeholder:
+        "Add an optional approval note.",
+
+      confirmLabel:
+        "Approve request",
+
+      submittingLabel:
+        "Approving...",
+
+      danger:
+        false,
+
+      icon:
+        <CheckIcon />,
+    };
+  }
+
+  if (
+    action ===
+    "reject"
+  ) {
+    return {
+      title:
+        "Reject this request?",
+
+      description:
+        `Reject "${approval.title}" for ${workspaceName}.`,
+
+      warning:
+        "A rejected request cannot be approved later. A new approval request would need to be created.",
+
+      placeholder:
+        "Explain why this request is being rejected.",
+
+      confirmLabel:
+        "Reject request",
+
+      submittingLabel:
+        "Rejecting...",
+
+      danger:
+        true,
+
+      icon:
+        <RejectIcon />,
+    };
+  }
+
+  return {
+    title:
+      "Cancel this request?",
+
+    description:
+      `Cancel "${approval.title}" for ${workspaceName}.`,
+
+    warning:
+      "Only pending requests can be cancelled. The server verifies whether your workspace role is allowed to cancel this request.",
+
+    placeholder:
+      "Add an optional cancellation note.",
+
+    confirmLabel:
+      "Cancel request",
+
+    submittingLabel:
+      "Cancelling...",
+
+    danger:
+      true,
+
+    icon:
+      <CancelIcon />,
+  };
+}
+
 function ApprovalStatusBadge({
   status,
 }: {
   status:
-    ApprovalStatus;
+    HouseholdApprovalStatus;
 }) {
   const className =
     status ===
     "approved"
       ? "bg-[color-mix(in_srgb,var(--success)_12%,transparent)] text-[var(--success)]"
       : status ===
-        "rejected"
+          "rejected"
         ? "bg-[color-mix(in_srgb,var(--danger)_10%,transparent)] text-[var(--danger)]"
         : status ===
-          "pending"
+            "pending"
           ? "bg-[color-mix(in_srgb,var(--warning)_14%,transparent)] text-[var(--warning)]"
           : "bg-[var(--surface-muted)] text-[var(--text-muted)]";
 
@@ -600,7 +1627,7 @@ function EmptyApprovalsState({
   selectedFilter,
 }: {
   selectedFilter:
-    ApprovalFilter;
+    HouseholdApprovalFilter;
 }) {
   const isPending =
     selectedFilter ===
@@ -626,11 +1653,81 @@ function EmptyApprovalsState({
 
       <p className="mt-2 max-w-md text-sm leading-6 text-[var(--text-muted)]">
         {isPending
-          ? "There are no household requests waiting for your approval."
+          ? "There are no household requests waiting for a decision."
           : isAll
             ? "Household requests and their decisions will appear here once approval rules are in use."
             : `There are no household requests with a ${selectedFilter} status yet.`}
       </p>
+    </div>
+  );
+}
+
+function ApprovalsLoadingState() {
+  return (
+    <div className="divide-y divide-[var(--border-subtle)]">
+      {[
+        1,
+        2,
+        3,
+      ].map(
+        (
+          item,
+        ) => (
+          <div
+            key={
+              item
+            }
+            className="flex animate-pulse gap-4 p-5 sm:p-6"
+          >
+            <div className="h-11 w-11 shrink-0 rounded-xl bg-[var(--surface-muted)]" />
+
+            <div className="min-w-0 flex-1">
+              <div className="h-4 w-48 rounded bg-[var(--surface-muted)]" />
+
+              <div className="mt-3 h-3 w-full max-w-xl rounded bg-[var(--surface-muted)]" />
+
+              <div className="mt-2 h-3 w-72 max-w-full rounded bg-[var(--surface-muted)]" />
+            </div>
+          </div>
+        ),
+      )}
+    </div>
+  );
+}
+
+function ApprovalsErrorState({
+  message,
+  onRetry,
+}: {
+  message:
+    string;
+
+  onRetry:
+    () => void | Promise<void>;
+}) {
+  return (
+    <div className="flex flex-col items-center px-5 py-14 text-center sm:px-6">
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[color-mix(in_srgb,var(--danger)_10%,transparent)] text-[var(--danger)]">
+        <WarningIcon />
+      </div>
+
+      <h3 className="mt-4 text-base font-bold text-[var(--text-primary)]">
+        Unable to load approvals
+      </h3>
+
+      <p className="mt-2 max-w-md text-sm leading-6 text-[var(--text-muted)]">
+        {message}
+      </p>
+
+      <button
+        type="button"
+        onClick={() => {
+          void onRetry();
+        }}
+        className="mt-5 inline-flex min-h-10 items-center justify-center rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-default)] px-4 text-sm font-bold text-[var(--text-primary)] outline-none transition hover:bg-[var(--surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+      >
+        Try again
+      </button>
     </div>
   );
 }
@@ -687,6 +1784,14 @@ function ApprovalPolicySection() {
           description="Add an extra authorization step for membership, security, and other high-impact workspace changes."
         />
       </div>
+
+      <div className="mt-5 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-4 py-3">
+        <p className="text-xs leading-5 text-[var(--text-muted)]">
+          Approval history is now persisted. Policy configuration is the next
+          layer: these cards describe supported controls but do not yet change
+          enforcement settings.
+        </p>
+      </div>
     </section>
   );
 }
@@ -730,7 +1835,7 @@ function ApprovalTypeIcon({
   type,
 }: {
   type:
-    ApprovalType;
+    HouseholdApprovalType;
 }) {
   switch (
     type
@@ -766,15 +1871,8 @@ function ApprovalTypeIcon({
 
 function formatApprovalStatus(
   status:
-    ApprovalStatus,
+    HouseholdApprovalStatus,
 ) {
-  if (
-    status ===
-    "cancelled"
-  ) {
-    return "Cancelled";
-  }
-
   return `${status
     .charAt(
       0,
@@ -784,10 +1882,36 @@ function formatApprovalStatus(
   )}`;
 }
 
-function formatApprovalDate(
-  date:
-    Date,
+function formatRole(
+  role:
+    string,
 ) {
+  return `${role
+    .charAt(
+      0,
+    )
+    .toUpperCase()}${role.slice(
+    1,
+  )}`;
+}
+
+function formatApprovalDate(
+  value:
+    string,
+) {
+  const date =
+    new Date(
+      value,
+    );
+
+  if (
+    Number.isNaN(
+      date.getTime(),
+    )
+  ) {
+    return "Unknown date";
+  }
+
   return new Intl.DateTimeFormat(
     "en-US",
     {
@@ -826,6 +1950,35 @@ function formatCurrency(
     },
   ).format(
     amount,
+  );
+}
+
+function LoadingSpinner() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      className="animate-spin"
+      aria-hidden="true"
+    >
+      <circle
+        cx="12"
+        cy="12"
+        r="9"
+        stroke="currentColor"
+        strokeWidth="2"
+        opacity="0.25"
+      />
+
+      <path
+        d="M21 12a9 9 0 0 0-9-9"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }
 
@@ -886,6 +2039,35 @@ function CheckIcon() {
       aria-hidden="true"
     >
       <path d="m6 12 4 4 8-8" />
+    </svg>
+  );
+}
+
+function RefreshIcon({
+  spinning,
+}: {
+  spinning:
+    boolean;
+}) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={
+        spinning
+          ? "animate-spin"
+          : ""
+      }
+      aria-hidden="true"
+    >
+      <path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 5v4h4" />
+      <path d="M4 13a8.1 8.1 0 0 0 15.5 2M20 19v-4h-4" />
     </svg>
   );
 }
@@ -997,6 +2179,87 @@ function SecurityIcon() {
     >
       <path d="M12 3 5 6v5c0 4.5 2.8 8.2 7 10 4.2-1.8 7-5.5 7-10V6Z" />
       <path d="m9 12 2 2 4-4" />
+    </svg>
+  );
+}
+
+function RejectIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M6 6l12 12" />
+      <path d="M18 6 6 18" />
+    </svg>
+  );
+}
+
+function CancelIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle
+        cx="12"
+        cy="12"
+        r="9"
+      />
+      <path d="M8 12h8" />
+    </svg>
+  );
+}
+
+function WarningIcon() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M10.3 3.7 2.5 17.2A2 2 0 0 0 4.2 20h15.6a2 2 0 0 0 1.7-2.8L13.7 3.7a2 2 0 0 0-3.4 0Z" />
+      <path d="M12 9v4" />
+      <path d="M12 17h.01" />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M6 6l12 12" />
+      <path d="M18 6 6 18" />
     </svg>
   );
 }

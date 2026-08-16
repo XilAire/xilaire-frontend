@@ -18,6 +18,15 @@ export type WorkspaceManagerType =
   | "household"
   | "business";
 
+type WorkspaceManagerPlan =
+  | "free"
+  | "plus"
+  | "pro";
+
+type WorkspaceManagerBillingInterval =
+  | "monthly"
+  | "annual";
+
 export type WorkspaceManagerWorkspace = {
   id:
     string;
@@ -94,6 +103,15 @@ type WorkspaceApiData = {
 
   updatedAt:
     string;
+
+  selectedPlan:
+    WorkspaceManagerPlan;
+
+  billingInterval:
+    WorkspaceManagerBillingInterval | null;
+
+  requiresCheckout:
+    boolean;
 };
 
 type WorkspaceCreateApiData = {
@@ -148,6 +166,43 @@ type WorkspaceApiSuccess =
 
         activeWorkspaceId:
           string | null;
+
+        checkout: {
+          required:
+            boolean;
+
+          plan:
+            WorkspaceManagerPlan;
+
+          billingInterval:
+            WorkspaceManagerBillingInterval | null;
+
+          workspaceId:
+            string;
+        };
+
+        workspaceUsage: {
+          plan:
+            string;
+
+          currentWorkspaceCount:
+            number;
+
+          includedWorkspaceLimit:
+            number;
+
+          additionalWorkspaceLimit:
+            number;
+
+          workspaceLimit:
+            number;
+
+          remainingWorkspaceCount:
+            number;
+
+          allowsAdditionalWorkspacePurchases:
+            boolean;
+        };
       };
 
       error:
@@ -206,6 +261,86 @@ const WORKSPACE_NAME_MAX_LENGTH =
 const WORKSPACE_DESCRIPTION_MAX_LENGTH =
   240;
 
+type WorkspacePlanOption = {
+  value:
+    WorkspaceManagerPlan;
+
+  label:
+    string;
+
+  description:
+    string;
+
+  workspaceAllowance:
+    string;
+
+  features:
+    string[];
+};
+
+const workspacePlanOptions:
+  WorkspacePlanOption[] = [
+    {
+      value:
+        "free",
+
+      label:
+        "Free",
+
+      description:
+        "Start with manual budgeting and no subscription charge.",
+
+      workspaceAllowance:
+        "1 owned workspace",
+
+      features: [
+        "Manual monthly budgeting",
+        "No bank connections",
+        "No AI features",
+      ],
+    },
+
+    {
+      value:
+        "plus",
+
+      label:
+        "Plus",
+
+      description:
+        "Unlock paid financial tools for your independent workspace.",
+
+      workspaceAllowance:
+        "Up to 2 owned workspaces",
+
+      features: [
+        "Paid financial features",
+        "Bank and account connections",
+        "Separate workspace subscription",
+      ],
+    },
+
+    {
+      value:
+        "pro",
+
+      label:
+        "Pro",
+
+      description:
+        "Use the full CASE Budget experience with the highest included workspace allowance.",
+
+      workspaceAllowance:
+        "Up to 5 owned workspaces",
+
+      features: [
+        "Full paid feature set",
+        "AI Coach access",
+        "Additional workspace capacity eligible",
+      ],
+    },
+  ];
+
 const workspaceTypeOptions:
   WorkspaceTypeOption[] = [
     {
@@ -254,6 +389,18 @@ export default function WorkspaceManagerModal({
     updateWorkspace,
   } = useApp();
 
+  /*
+   * A member of a workspace they do not own is creating an independent
+   * CASE Budget workspace. The API remains the authority for ownership
+   * and plan workspace limits.
+   */
+  const isInvitedWorkspaceMember =
+    Boolean(
+      workspace,
+    ) &&
+    workspace?.isOwner !==
+      true;
+
   const [
     mounted,
     setMounted,
@@ -287,6 +434,20 @@ export default function WorkspaceManagerModal({
     setDescription,
   ] = useState(
     "",
+  );
+
+  const [
+    selectedPlan,
+    setSelectedPlan,
+  ] = useState<WorkspaceManagerPlan>(
+    "free",
+  );
+
+  const [
+    billingInterval,
+    setBillingInterval,
+  ] = useState<WorkspaceManagerBillingInterval>(
+    "monthly",
   );
 
   const [
@@ -625,6 +786,14 @@ export default function WorkspaceManagerModal({
     setInitialEditDescription(
       "",
     );
+
+    setSelectedPlan(
+      "free",
+    );
+
+    setBillingInterval(
+      "monthly",
+    );
   }
 
   function returnToManage() {
@@ -785,6 +954,16 @@ export default function WorkspaceManagerModal({
                     normalizedDescription ||
                     null,
 
+                  plan:
+                    selectedPlan,
+
+                  ...(selectedPlan ===
+                  "free"
+                    ? {}
+                    : {
+                        billingInterval,
+                      }),
+
                   makeActive:
                     true,
                 },
@@ -806,6 +985,101 @@ export default function WorkspaceManagerModal({
             ? "CASE Budget could not create the workspace."
             : payload.error.message,
         );
+      }
+
+      if (
+        !(
+          "checkout"
+          in payload.data
+        )
+      ) {
+        throw new Error(
+          "CASE Budget created the workspace but did not return checkout information.",
+        );
+      }
+
+      const checkout =
+        payload.data.checkout;
+
+      if (
+        checkout.required
+      ) {
+        if (
+          checkout.plan ===
+            "free" ||
+          !checkout.billingInterval
+        ) {
+          throw new Error(
+            "CASE Budget could not determine the paid plan checkout details.",
+          );
+        }
+
+        const checkoutResponse =
+          await fetch(
+            "/api/subscriptions/checkout",
+            {
+              method:
+                "POST",
+
+              headers: {
+                Accept:
+                  "application/json",
+
+                "Content-Type":
+                  "application/json",
+              },
+
+              cache:
+                "no-store",
+
+              body:
+                JSON.stringify(
+                  {
+                    plan:
+                      checkout.plan,
+
+                    interval:
+                      checkout.billingInterval,
+                  },
+                ),
+            },
+          );
+
+        const checkoutPayload =
+          await readCheckoutApiResponse(
+            checkoutResponse,
+          );
+
+        if (
+          !checkoutResponse.ok
+        ) {
+          throw new Error(
+            getCheckoutErrorMessage(
+              checkoutPayload,
+            ),
+          );
+        }
+
+        const checkoutUrl =
+          getCheckoutRedirectUrl(
+            checkoutPayload,
+          );
+
+        if (
+          checkoutUrl
+        ) {
+          window.location.assign(
+            checkoutUrl,
+          );
+
+          return;
+        }
+
+        window.location.assign(
+          "/dashboard/settings/billing",
+        );
+
+        return;
       }
 
       window.location.assign(
@@ -1044,6 +1318,9 @@ export default function WorkspaceManagerModal({
             isSubmitting={
               isSubmitting
             }
+            isInvitedWorkspaceMember={
+              isInvitedWorkspaceMember
+            }
             onBack={
               view ===
                 "manage"
@@ -1060,6 +1337,9 @@ export default function WorkspaceManagerModal({
             <ManageView
               workspace={
                 workspace
+              }
+              isInvitedWorkspaceMember={
+                isInvitedWorkspaceMember
               }
               onOpenSettings={
                 handleOpenSettings
@@ -1080,6 +1360,9 @@ export default function WorkspaceManagerModal({
             "create" ? (
             <WorkspaceFormView
               mode="create"
+              isInvitedWorkspaceMember={
+                isInvitedWorkspaceMember
+              }
               workspaceName={
                 workspaceName
               }
@@ -1088,6 +1371,12 @@ export default function WorkspaceManagerModal({
               }
               description={
                 description
+              }
+              selectedPlan={
+                selectedPlan
+              }
+              billingInterval={
+                billingInterval
               }
               isSubmitting={
                 isSubmitting
@@ -1107,6 +1396,12 @@ export default function WorkspaceManagerModal({
               onDescriptionChange={
                 setDescription
               }
+              onPlanChange={
+                setSelectedPlan
+              }
+              onBillingIntervalChange={
+                setBillingInterval
+              }
               onSubmit={
                 handleCreateWorkspace
               }
@@ -1120,6 +1415,9 @@ export default function WorkspaceManagerModal({
             "edit" ? (
             <WorkspaceFormView
               mode="edit"
+              isInvitedWorkspaceMember={
+                false
+              }
               workspaceName={
                 workspaceName
               }
@@ -1129,6 +1427,8 @@ export default function WorkspaceManagerModal({
               description={
                 description
               }
+              selectedPlan="free"
+              billingInterval="monthly"
               isSubmitting={
                 isSubmitting
               }
@@ -1146,6 +1446,12 @@ export default function WorkspaceManagerModal({
               }
               onDescriptionChange={
                 setDescription
+              }
+              onPlanChange={
+                setSelectedPlan
+              }
+              onBillingIntervalChange={
+                setBillingInterval
               }
               onSubmit={
                 handleEditWorkspace
@@ -1199,6 +1505,7 @@ function WorkspaceManagerHeader({
   view,
   workspace,
   isSubmitting,
+  isInvitedWorkspaceMember,
   onBack,
   onClose,
 }: {
@@ -1211,6 +1518,9 @@ function WorkspaceManagerHeader({
   isSubmitting:
     boolean;
 
+  isInvitedWorkspaceMember:
+    boolean;
+
   onBack?:
     () => void;
 
@@ -1220,7 +1530,9 @@ function WorkspaceManagerHeader({
   const title =
     view ===
       "create"
-      ? "Create workspace"
+      ? isInvitedWorkspaceMember
+        ? "Create your workspace"
+        : "Create workspace"
       : view ===
           "edit"
         ? "Edit workspace"
@@ -1235,7 +1547,9 @@ function WorkspaceManagerHeader({
       ? "Destructive action"
       : view ===
           "create"
-        ? "New workspace"
+        ? isInvitedWorkspaceMember
+          ? "Independent workspace"
+          : "New workspace"
         : "Workspace management";
 
   return (
@@ -1286,7 +1600,9 @@ function WorkspaceManagerHeader({
           <p className="mt-1 max-w-lg truncate text-sm text-[var(--text-muted)]">
             {view ===
               "create"
-              ? "Create a separate CASE Budget workspace."
+              ? isInvitedWorkspaceMember
+                ? "Create a workspace you own, separate from the workspace that invited you."
+                : "Create a separate CASE Budget workspace."
               : workspace?.name ??
                 "CASE Budget workspace"}
           </p>
@@ -1312,6 +1628,7 @@ function WorkspaceManagerHeader({
 
 function ManageView({
   workspace,
+  isInvitedWorkspaceMember,
   onOpenSettings,
   onCreate,
   onEdit,
@@ -1319,6 +1636,9 @@ function ManageView({
 }: {
   workspace:
     WorkspaceManagerWorkspace | null;
+
+  isInvitedWorkspaceMember:
+    boolean;
 
   onOpenSettings:
     () => void;
@@ -1381,8 +1701,16 @@ function ManageView({
           />
 
           <ManagerAction
-            title="Create another workspace"
-            description="Create another personal, household, or business workspace."
+            title={
+              isInvitedWorkspaceMember
+                ? "Create your own workspace"
+                : "Create another workspace"
+            }
+            description={
+              isInvitedWorkspaceMember
+                ? "Start an independent personal, household, or business workspace that you own. Your membership in this workspace will stay unchanged."
+                : "Create another personal, household, or business workspace."
+            }
             icon={
               <PlusIcon />
             }
@@ -1424,20 +1752,28 @@ function ManageView({
 
 function WorkspaceFormView({
   mode,
+  isInvitedWorkspaceMember,
   workspaceName,
   workspaceType,
   description,
+  selectedPlan,
+  billingInterval,
   isSubmitting,
   canSubmit,
   errorMessage,
   onWorkspaceNameChange,
   onWorkspaceTypeChange,
   onDescriptionChange,
+  onPlanChange,
+  onBillingIntervalChange,
   onSubmit,
   onCancel,
 }: {
   mode:
     "create" | "edit";
+
+  isInvitedWorkspaceMember:
+    boolean;
 
   workspaceName:
     string;
@@ -1447,6 +1783,12 @@ function WorkspaceFormView({
 
   description:
     string;
+
+  selectedPlan:
+    WorkspaceManagerPlan;
+
+  billingInterval:
+    WorkspaceManagerBillingInterval;
 
   isSubmitting:
     boolean;
@@ -1475,6 +1817,18 @@ function WorkspaceFormView({
         string,
     ) => void;
 
+  onPlanChange:
+    (
+      value:
+        WorkspaceManagerPlan,
+    ) => void;
+
+  onBillingIntervalChange:
+    (
+      value:
+        WorkspaceManagerBillingInterval,
+    ) => void;
+
   onSubmit:
     (
       event:
@@ -1493,6 +1847,23 @@ function WorkspaceFormView({
     >
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6 sm:py-6">
         <div className="space-y-6">
+          {mode ===
+            "create" &&
+          isInvitedWorkspaceMember ? (
+            <div className="rounded-2xl border border-[color-mix(in_srgb,var(--primary)_22%,var(--border-subtle))] bg-[color-mix(in_srgb,var(--primary)_7%,var(--surface-default))] p-4">
+              <p className="text-sm font-extrabold text-[var(--text-primary)]">
+                This workspace will belong to you.
+              </p>
+
+              <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">
+                Your new workspace is independent from the workspace that invited
+                you. You will be its owner, it will have its own plan and billing,
+                and you can invite your own members. Your existing membership will
+                remain unchanged.
+              </p>
+            </div>
+          ) : null}
+
           {errorMessage ? (
             <ErrorBanner
               message={
@@ -1602,6 +1973,181 @@ function WorkspaceFormView({
             </div>
           </div>
 
+          {mode ===
+            "create" ? (
+            <div>
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+                <div>
+                  <p className="text-sm font-bold text-[var(--text-primary)]">
+                    Choose your plan
+                  </p>
+
+                  <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
+                    This plan belongs to the workspace you are creating. It does
+                    not change the subscription or permissions of any workspace
+                    you joined as a member.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-3 grid gap-3 lg:grid-cols-3">
+                {workspacePlanOptions.map(
+                  (
+                    option,
+                  ) => {
+                    const selected =
+                      option.value ===
+                      selectedPlan;
+
+                    return (
+                      <button
+                        key={
+                          option.value
+                        }
+                        type="button"
+                        disabled={
+                          isSubmitting
+                        }
+                        onClick={() =>
+                          onPlanChange(
+                            option.value,
+                          )
+                        }
+                        className={[
+                          "rounded-2xl border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-60",
+                          selected
+                            ? "border-[var(--primary)] bg-[var(--primary-soft)]"
+                            : "border-[var(--border-subtle)] hover:bg-[var(--surface-muted)]",
+                        ].join(
+                          " ",
+                        )}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-extrabold text-[var(--text-primary)]">
+                            {option.label}
+                          </span>
+
+                          <span
+                            className={[
+                              "flex h-5 w-5 items-center justify-center rounded-full border",
+                              selected
+                                ? "border-[var(--primary)] bg-[var(--primary)] text-white"
+                                : "border-[var(--border-subtle)] text-transparent",
+                            ].join(
+                              " ",
+                            )}
+                          >
+                            <CheckIcon />
+                          </span>
+                        </div>
+
+                        <p className="mt-2 text-xs font-bold text-[var(--text-secondary)]">
+                          {option.workspaceAllowance}
+                        </p>
+
+                        <p className="mt-2 text-xs leading-5 text-[var(--text-muted)]">
+                          {option.description}
+                        </p>
+
+                        <ul className="mt-3 space-y-1.5">
+                          {option.features.map(
+                            (
+                              feature,
+                            ) => (
+                              <li
+                                key={
+                                  feature
+                                }
+                                className="flex items-start gap-2 text-[11px] leading-5 text-[var(--text-muted)]"
+                              >
+                                <span className="mt-1 flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-[var(--surface-default)] text-[var(--primary)]">
+                                  <CheckIcon />
+                                </span>
+
+                                <span>
+                                  {feature}
+                                </span>
+                              </li>
+                            ),
+                          )}
+                        </ul>
+                      </button>
+                    );
+                  },
+                )}
+              </div>
+
+              {selectedPlan !==
+                "free" ? (
+                <div className="mt-4 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-extrabold text-[var(--text-primary)]">
+                        Billing interval
+                      </p>
+
+                      <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
+                        Stripe checkout will open after the workspace is created.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-default)] p-1">
+                      {(
+                        [
+                          "monthly",
+                          "annual",
+                        ] as const
+                      ).map(
+                        (
+                          interval,
+                        ) => {
+                          const selected =
+                            billingInterval ===
+                            interval;
+
+                          return (
+                            <button
+                              key={
+                                interval
+                              }
+                              type="button"
+                              disabled={
+                                isSubmitting
+                              }
+                              onClick={() =>
+                                onBillingIntervalChange(
+                                  interval,
+                                )
+                              }
+                              className={[
+                                "min-h-9 rounded-lg px-4 text-xs font-extrabold capitalize transition disabled:cursor-not-allowed disabled:opacity-60",
+                                selected
+                                  ? "bg-[var(--primary)] text-white"
+                                  : "text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]",
+                              ].join(
+                                " ",
+                              )}
+                            >
+                              {interval}
+                            </button>
+                          );
+                        },
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-4 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-4 py-3">
+                  <p className="text-xs leading-5 text-[var(--text-muted)]">
+                    Free creates the workspace immediately with no Stripe
+                    checkout. You can upgrade this workspace later from Billing
+                    &amp; Subscription.
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : null}
+
           <div>
             <div className="flex items-center justify-between gap-3">
               <label
@@ -1669,7 +2215,12 @@ function WorkspaceFormView({
                 : "Saving..."
               : mode ===
                   "create"
-                ? "Create workspace"
+                ? selectedPlan ===
+                    "free"
+                  ? isInvitedWorkspaceMember
+                    ? "Create my workspace"
+                    : "Create workspace"
+                  : `Create & continue to ${selectedPlan === "plus" ? "Plus" : "Pro"} checkout`
                 : "Save changes"}
           </button>
         </div>
@@ -1996,6 +2547,158 @@ async function readWorkspaceApiResponse(
       `CASE Budget received an invalid workspace API response (HTTP ${response.status}).`,
     );
   }
+}
+
+type CheckoutApiPayload =
+  Record<string, unknown>;
+
+async function readCheckoutApiResponse(
+  response:
+    Response,
+): Promise<CheckoutApiPayload> {
+  const body =
+    await response.text();
+
+  if (
+    !body.trim()
+  ) {
+    if (
+      response.ok
+    ) {
+      return {};
+    }
+
+    throw new Error(
+      `CASE Budget received an empty response from the subscription checkout API (HTTP ${response.status}).`,
+    );
+  }
+
+  try {
+    const parsed =
+      JSON.parse(
+        body,
+      ) as unknown;
+
+    return isRecord(
+      parsed,
+    )
+      ? parsed
+      : {};
+  } catch {
+    throw new Error(
+      `CASE Budget received an invalid subscription checkout API response (HTTP ${response.status}).`,
+    );
+  }
+}
+
+function getCheckoutErrorMessage(
+  payload:
+    CheckoutApiPayload,
+) {
+  const error =
+    payload.error;
+
+  if (
+    typeof error ===
+      "string" &&
+    error.trim()
+  ) {
+    return error;
+  }
+
+  if (
+    isRecord(
+      error,
+    ) &&
+    typeof error.message ===
+      "string" &&
+    error.message.trim()
+  ) {
+    return error.message;
+  }
+
+  if (
+    typeof payload.message ===
+      "string" &&
+    payload.message.trim()
+  ) {
+    return payload.message;
+  }
+
+  return "CASE Budget created the workspace but could not start subscription checkout.";
+}
+
+function getCheckoutRedirectUrl(
+  payload:
+    CheckoutApiPayload,
+) {
+  const directKeys = [
+    "url",
+    "checkoutUrl",
+    "checkout_url",
+  ];
+
+  for (
+    const key of
+      directKeys
+  ) {
+    const value =
+      payload[
+        key
+      ];
+
+    if (
+      typeof value ===
+        "string" &&
+      value.trim()
+    ) {
+      return value;
+    }
+  }
+
+  if (
+    isRecord(
+      payload.data,
+    )
+  ) {
+    for (
+      const key of
+        directKeys
+    ) {
+      const value =
+        payload.data[
+          key
+        ];
+
+      if (
+        typeof value ===
+          "string" &&
+        value.trim()
+      ) {
+        return value;
+      }
+    }
+  }
+
+  return null;
+}
+
+function isRecord(
+  value:
+    unknown,
+): value is Record<
+  string,
+  unknown
+> {
+  return (
+    typeof value ===
+      "object" &&
+    value !==
+      null &&
+    !Array.isArray(
+      value,
+    )
+  );
 }
 
 function getErrorMessage(
