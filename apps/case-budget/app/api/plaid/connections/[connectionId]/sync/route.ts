@@ -10,6 +10,13 @@ import {
 } from "@/lib/auth/server-auth";
 
 import {
+  getSubscriptionAccessErrorMessage,
+  getSubscriptionAccessErrorStatus,
+  isSubscriptionAccessError,
+  resolveAuthenticatedFeatureAccess,
+} from "@/lib/subscriptions/subscription-access";
+
+import {
   plaidAccountSyncStore,
   AccountRepositoryError,
 } from "@/lib/repositories/accounts";
@@ -79,6 +86,42 @@ export async function POST(
       workspaceId,
     } =
       await requireCaseBudgetServerAuth();
+
+    /*
+     * Plaid synchronization is part of CASE Budget's Pro-only bank
+     * connection capability.
+     *
+     * Enforce the entitlement against the authenticated user's active
+     * workspace before resolving the connection, parsing synchronization
+     * options, or making any Plaid provider request.
+     *
+     * resolveAuthenticatedFeatureAccess() also validates active membership
+     * in the supplied workspace before resolving its subscription access.
+     */
+    const featureAccess =
+      await resolveAuthenticatedFeatureAccess({
+        feature:
+          "bank-connections",
+
+        workspaceId,
+      });
+
+    if (
+      !featureAccess
+        .access
+        .allowed
+    ) {
+      throw new RouteError({
+        code:
+          "bank-connections-not-available",
+
+        message:
+          "Bank connections require the CASE Budget Pro plan.",
+
+        status:
+          403,
+      });
+    }
 
     const {
       connectionId,
@@ -585,6 +628,37 @@ function createErrorResponse(
       {
         status:
           authErrorResponse.status,
+      },
+    );
+  }
+
+  if (
+    isSubscriptionAccessError(
+      error,
+    )
+  ) {
+    return noStoreJson(
+      {
+        error: {
+          code:
+            error.code
+              .toLowerCase()
+              .replaceAll(
+                "_",
+                "-",
+              ),
+
+          message:
+            getSubscriptionAccessErrorMessage(
+              error,
+            ),
+        },
+      },
+      {
+        status:
+          getSubscriptionAccessErrorStatus(
+            error,
+          ),
       },
     );
   }

@@ -312,24 +312,26 @@ async function findSubscription({
       workspaceId,
     );
 
+  /*
+   * Workspace-scoped entitlement resolution is intentionally strict.
+   *
+   * When workspaceId is present, only a subscription explicitly assigned to
+   * that workspace may grant paid access. A user's personal Plus/Pro
+   * subscription must never bleed into another workspace that has no paid
+   * subscription of its own.
+   *
+   * This guarantees that switching from a paid workspace into a Free
+   * workspace correctly resolves that workspace as Free.
+   *
+   * Personal subscriptions are used only when no workspace context is
+   * supplied, such as account-level workspace-capacity checks.
+   */
   if (
     normalizedWorkspaceId
   ) {
-    const workspaceSubscription =
-      await findLatestWorkspaceSubscription({
-        workspaceId:
-          normalizedWorkspaceId,
-      });
-
-    if (
-      workspaceSubscription
-    ) {
-      return workspaceSubscription;
-    }
-
-    return findLatestPersonalSubscription({
-      userId:
-        normalizedUserId,
+    return findLatestWorkspaceSubscription({
+      workspaceId:
+        normalizedWorkspaceId,
     });
   }
 

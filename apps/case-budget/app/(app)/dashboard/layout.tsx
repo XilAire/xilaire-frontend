@@ -14,7 +14,7 @@ import {
 
 import {
   getSupabaseSubscriptionRepository,
-} from "@/lib/subscriptions/supabase-subscription-repository";
+} from "@/lib/subscriptions/subscription-storage";
 
 type DashboardLayoutProps = {
   children:

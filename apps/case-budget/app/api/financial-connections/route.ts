@@ -10,6 +10,13 @@ import {
 } from "@/lib/auth/server-auth";
 
 import {
+  getSubscriptionAccessErrorMessage,
+  getSubscriptionAccessErrorStatus,
+  isSubscriptionAccessError,
+  resolveAuthenticatedFeatureAccess,
+} from "@/lib/subscriptions/subscription-access";
+
+import {
   listFinancialConnections,
   FinancialConnectionRepositoryError,
 } from "@/lib/repositories/financial-connections";
@@ -54,6 +61,43 @@ export async function GET(
       workspaceId,
     } =
       await requireCaseBudgetServerAuth();
+
+    /*
+     * Financial connection metadata belongs to CASE Budget's Pro-only bank
+     * connection capability.
+     *
+     * Enforce the entitlement against the active workspace before reading
+     * filters or querying connection metadata. This prevents Free and Plus
+     * workspaces from bypassing UI gating and directly enumerating persisted
+     * provider connections through this API.
+     *
+     * resolveAuthenticatedFeatureAccess() also validates active membership
+     * in the supplied workspace before resolving its subscription access.
+     */
+    const featureAccess =
+      await resolveAuthenticatedFeatureAccess({
+        feature:
+          "bank-connections",
+
+        workspaceId,
+      });
+
+    if (
+      !featureAccess
+        .access
+        .allowed
+    ) {
+      throw new RouteError({
+        code:
+          "bank-connections-not-available",
+
+        message:
+          "Bank connections require the CASE Budget Pro plan.",
+
+        status:
+          403,
+      });
+    }
 
     const query =
       readQueryParameters(
@@ -431,6 +475,37 @@ function createErrorResponse(
       {
         status:
           authErrorResponse.status,
+      },
+    );
+  }
+
+  if (
+    isSubscriptionAccessError(
+      error,
+    )
+  ) {
+    return noStoreJson(
+      {
+        error: {
+          code:
+            error.code
+              .toLowerCase()
+              .replaceAll(
+                "_",
+                "-",
+              ),
+
+          message:
+            getSubscriptionAccessErrorMessage(
+              error,
+            ),
+        },
+      },
+      {
+        status:
+          getSubscriptionAccessErrorStatus(
+            error,
+          ),
       },
     );
   }

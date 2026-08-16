@@ -22,7 +22,7 @@ import {
 } from "@/lib/subscriptions/subscription-service";
 import {
   getSupabaseSubscriptionRepository,
-} from "@/lib/subscriptions/supabase-subscription-repository";
+} from "@/lib/subscriptions/subscription-storage";
 
 export const runtime =
   "nodejs";
