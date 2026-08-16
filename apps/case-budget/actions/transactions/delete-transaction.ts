@@ -10,6 +10,10 @@ import {
 } from "@/lib/auth/server-auth";
 
 import {
+  resolveAuthenticatedFeatureAccess,
+} from "@/lib/subscriptions/subscription-access";
+
+import {
   enforceHouseholdApproval,
 } from "@/lib/household/approval-enforcement";
 
@@ -166,6 +170,7 @@ export type DeleteCaseBudgetTransactionResult =
           | "workspace-not-found"
           | "workspace-inactive"
           | "permission-denied"
+          | "feature-not-available"
           | "transaction-not-found"
           | "transaction-already-deleted"
           | "provider-managed"
@@ -253,6 +258,32 @@ export async function deleteTransaction(
       workspaceId,
     } =
       await requireCaseBudgetServerAuth();
+
+    const featureAccess =
+      await resolveAuthenticatedFeatureAccess({
+        feature:
+          "transactions",
+
+        workspaceId,
+      });
+
+    if (
+      !featureAccess.access.allowed
+    ) {
+      return failure({
+        code:
+          "feature-not-available",
+
+        message:
+          getTransactionFeatureAccessMessage({
+            reason:
+              featureAccess.access.reason,
+
+            requiredPlan:
+              featureAccess.access.requiredPlan,
+          }),
+      });
+    }
 
     const admin =
       createWorkspaceAdminClient();
@@ -1758,6 +1789,55 @@ function revalidateTransactionPaths() {
   revalidatePath(
     HOUSEHOLD_APPROVALS_PATH,
   );
+}
+
+function getTransactionFeatureAccessMessage({
+  reason,
+  requiredPlan,
+}: {
+  reason:
+    | "allowed"
+    | "requires-plus"
+    | "requires-pro"
+    | "inactive-subscription";
+
+  requiredPlan:
+    | "free"
+    | "plus"
+    | "pro"
+    | null;
+}) {
+  switch (
+    reason
+  ) {
+    case "inactive-subscription":
+      return "Transactions are unavailable because this workspace subscription is inactive. Please reactivate the subscription to continue.";
+
+    case "requires-pro":
+      return "Transactions require the CASE Budget Pro plan for this workspace.";
+
+    case "requires-plus":
+      return "Transactions require the CASE Budget Plus plan or higher for this workspace.";
+
+    case "allowed":
+    default: {
+      if (
+        requiredPlan ===
+        "pro"
+      ) {
+        return "Transactions require the CASE Budget Pro plan for this workspace.";
+      }
+
+      if (
+        requiredPlan ===
+        "plus"
+      ) {
+        return "Transactions require the CASE Budget Plus plan or higher for this workspace.";
+      }
+
+      return "Transactions are not available for the current workspace subscription.";
+    }
+  }
 }
 
 function failure({
