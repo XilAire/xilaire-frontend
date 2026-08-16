@@ -1,12 +1,12 @@
 import "server-only";
 
 import {
-  createClient,
-} from "@/lib/supabase/server";
-
-import {
   createWorkspaceAdminClient,
 } from "@/lib/supabase/admin";
+
+import {
+  requireCaseBudgetUser,
+} from "@/lib/auth/server-auth";
 
 import {
   getAiCoachMonthlyQuestionLimit,
@@ -169,8 +169,21 @@ export async function resolveAuthenticatedSubscriptionAccess({
   now =
     new Date(),
 }: ResolveAuthenticatedSubscriptionAccessInput = {}): Promise<ResolvedSubscriptionAccess> {
-  const identity =
-    await requireAuthenticatedSubscriptionIdentity();
+  const {
+    user,
+    userId,
+  } =
+    await requireCaseBudgetUser();
+
+  const identity:
+    AuthenticatedSubscriptionIdentity = {
+      userId,
+
+      email:
+        normalizeOptionalText(
+          user.email,
+        ),
+    };
 
   const normalizedWorkspaceId =
     normalizeOptionalId(
@@ -378,85 +391,6 @@ export async function resolveAuthenticatedAiCoachAccess({
       resolved.aiUsagePeriod,
 
     access,
-  };
-}
-
-export async function requireAuthenticatedSubscriptionIdentity(): Promise<AuthenticatedSubscriptionIdentity> {
-  const supabase =
-    await createClient();
-
-  const {
-    data,
-    error,
-  } =
-    await supabase
-      .auth
-      .getUser();
-
-  if (
-    error
-  ) {
-    if (
-      process.env.NODE_ENV !==
-      "production"
-    ) {
-      console.error(
-        "[CASE Budget Subscription Access] Supabase getUser() failed.",
-        {
-          name:
-            error.name,
-
-          message:
-            error.message,
-
-          status:
-            error.status,
-        },
-      );
-    }
-
-    throw new SubscriptionAccessError({
-      code:
-        "UNAUTHENTICATED",
-
-      message:
-        "You must be signed in to access this feature.",
-
-      status:
-        401,
-    });
-  }
-
-  const user =
-    data.user;
-
-  if (
-    !user
-  ) {
-    throw new SubscriptionAccessError({
-      code:
-        "UNAUTHENTICATED",
-
-      message:
-        "You must be signed in to access this feature.",
-
-      status:
-        401,
-    });
-  }
-
-  const userId =
-    normalizeRequiredId(
-      user.id,
-    );
-
-  return {
-    userId,
-
-    email:
-      normalizeOptionalText(
-        user.email,
-      ),
   };
 }
 
