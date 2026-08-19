@@ -114,17 +114,17 @@ export default function UpdatePasswordForm() {
       const supabase =
         createClient();
 
-      const {
-        data: sessionData,
-        error: sessionError,
+            const {
+        data: userData,
+        error: userError,
       } =
-        await supabase.auth.getSession();
+        await supabase.auth.getUser();
 
       if (
-        sessionError
+        userError
       ) {
         setErrorMessage(
-          sessionError.message ||
+          userError.message ||
             "Unable to verify your password recovery session.",
         );
 
@@ -132,7 +132,7 @@ export default function UpdatePasswordForm() {
       }
 
       if (
-        !sessionData.session
+        !userData.user
       ) {
         setErrorMessage(
           "Your password recovery session has expired or is invalid. Please request a new password reset link.",
