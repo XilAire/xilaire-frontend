@@ -77,11 +77,6 @@ export class AccountRepositoryError extends Error {
   }
 }
 
-type AccountProvider =
-  | "manual"
-  | "plaid"
-  | "snaptrade";
-
 type AccountConnectionStatus =
   | "manual"
   | "connected"
@@ -90,7 +85,146 @@ type AccountConnectionStatus =
   | "disconnected"
   | "reauthentication-required";
 
-type AccountRow = {
+type CaseBudgetAccountType =
+  | "checking"
+  | "savings"
+  | "credit-card"
+  | "cash"
+  | "loan"
+  | "investment"
+  | "other";
+
+type CaseBudgetAccountRow = {
+  id:
+    string;
+
+  workspace_id:
+    string;
+
+  created_by_user_id:
+    string;
+
+  updated_by_user_id:
+    string;
+
+  name:
+    string;
+
+  account_type:
+    CaseBudgetAccountType;
+
+  account_subtype:
+    string | null;
+
+  institution_name:
+    string | null;
+
+  mask:
+    string | null;
+
+  source:
+    "manual" | "plaid" | "system";
+
+  provider:
+    string | null;
+
+  provider_record_id:
+    string | null;
+
+  provider_account_id:
+    string | null;
+
+  current_balance:
+    number | string;
+
+  available_balance:
+    number | string | null;
+
+  credit_limit:
+    number | string | null;
+
+  currency_code:
+    string;
+
+  include_in_net_worth:
+    boolean;
+
+  is_active:
+    boolean;
+
+  is_archived:
+    boolean;
+
+  archived_at:
+    string | null;
+
+  archived_by_user_id:
+    string | null;
+
+  sort_order:
+    number;
+
+  note:
+    string | null;
+
+  balance_last_synced_at:
+    string | null;
+
+  provider_last_synced_at:
+    string | null;
+
+  created_at:
+    string;
+
+  updated_at:
+    string;
+};
+
+type PlaidItemAccountRow = {
+  id:
+    string;
+
+  plaid_item_id:
+    string;
+
+  connection_id:
+    string;
+
+  workspace_id:
+    string;
+
+  user_id:
+    string;
+
+  provider_account_id:
+    string;
+
+  account_name:
+    string | null;
+
+  account_mask:
+    string | null;
+
+  account_type:
+    string | null;
+
+  account_subtype:
+    string | null;
+
+  is_selected:
+    boolean;
+
+  is_active:
+    boolean;
+
+  created_at:
+    string;
+
+  updated_at:
+    string;
+};
+
+type FinancialConnectionRow = {
   id:
     string;
 
@@ -100,100 +234,65 @@ type AccountRow = {
   user_id:
     string;
 
-  connection_id:
-    string | null;
-
   provider:
-    AccountProvider;
-
-  provider_account_id:
-    string | null;
+    string;
 
   provider_institution_id:
     string | null;
 
   institution_name:
-    string | null;
-
-  name:
     string;
 
-  official_name:
-    string | null;
-
-  mask:
-    string | null;
-
-  type:
-    PlaidStoredAccountType;
-
-  provider_type:
-    string | null;
-
-  provider_subtype:
-    string | null;
-
-  balance:
-    number | string;
-
-  available_balance:
-    number | string | null;
-
-  credit_limit:
-    number | string | null;
-
-  currency:
-    string;
-
-  is_debt:
-    boolean;
-
-  is_active:
-    boolean;
-
-  connection_status:
-    AccountConnectionStatus;
-
-  last_synced_at:
-    string | null;
-
-  deactivated_at:
-    string | null;
-
-  metadata:
-    Record<
-      string,
-      string | number | boolean | null
-    >;
-
-  created_at:
-    string;
-
-  updated_at:
+  status:
     string;
 };
 
-type AccountInsertRow = Omit<
-  AccountRow,
+type CaseBudgetAccountInsertRow = Omit<
+  CaseBudgetAccountRow,
   | "id"
   | "created_at"
   | "updated_at"
 >;
 
-type AccountUpdateRow = Partial<
+type CaseBudgetAccountUpdateRow = Partial<
   Omit<
-    AccountRow,
+    CaseBudgetAccountRow,
     | "id"
     | "workspace_id"
-    | "user_id"
+    | "created_by_user_id"
+    | "source"
     | "provider"
+    | "provider_record_id"
     | "provider_account_id"
     | "created_at"
   >
 >;
 
-const ACCOUNTS_TABLE =
-  "accounts";
+type ProviderContext = {
+  connection:
+    FinancialConnectionRow;
+
+  linkByProviderAccountId:
+    Map<
+      string,
+      PlaidItemAccountRow
+    >;
+
+  linkById:
+    Map<
+      string,
+      PlaidItemAccountRow
+    >;
+};
+
+const CASE_BUDGET_ACCOUNTS_TABLE =
+  "case_budget_accounts";
+
+const PLAID_ITEM_ACCOUNTS_TABLE =
+  "plaid_item_accounts";
+
+const FINANCIAL_CONNECTIONS_TABLE =
+  "financial_connections";
 
 const SUPABASE_URL_ENV_NAME =
   "NEXT_PUBLIC_SUPABASE_URL_CASE_BUDGET";
@@ -207,13 +306,16 @@ let cachedSupabaseAdminClient:
 /**
  * Server-only account repository implementing PlaidAccountSyncStore.
  *
- * Imported provider accounts are always scoped by:
+ * Canonical account records are stored in public.case_budget_accounts.
  *
- * - workspace_id
- * - user_id
- * - connection_id
- * - provider
- * - provider_account_id
+ * Plaid ownership and connection scoping are resolved through
+ * public.plaid_item_accounts:
+ *
+ * case_budget_accounts.provider_record_id
+ *   -> plaid_item_accounts.id
+ *
+ * case_budget_accounts.provider_account_id
+ *   -> Plaid provider account_id
  *
  * Manual accounts are never modified by this repository.
  */
@@ -233,10 +335,10 @@ export const plaidAccountSyncStore:
   };
 
 /**
- * Returns active and inactive Plaid-backed accounts for one owned connection.
+ * Returns canonical CASE Budget Plaid accounts for one owned connection.
  *
- * Returning inactive accounts allows a later provider response to reactivate
- * them without creating duplicates.
+ * The connection is first validated against financial_connections, and the
+ * allowed provider-record IDs are then loaded from plaid_item_accounts.
  */
 export async function listPlaidAccountsByConnection(
   scope:
@@ -255,13 +357,34 @@ export async function listPlaidAccountsByConnection(
     const supabase =
       getSupabaseAdminClient();
 
+    const providerContext =
+      await loadProviderContext({
+        supabase,
+        scope:
+          normalizedScope,
+        operation,
+      });
+
+    const providerRecordIds = [
+      ...providerContext
+        .linkById
+        .keys(),
+    ];
+
+    if (
+      providerRecordIds.length ===
+      0
+    ) {
+      return [];
+    }
+
     const {
       data,
       error,
     } =
       await supabase
         .from(
-          ACCOUNTS_TABLE,
+          CASE_BUDGET_ACCOUNTS_TABLE,
         )
         .select(
           "*",
@@ -271,16 +394,16 @@ export async function listPlaidAccountsByConnection(
           normalizedScope.workspaceId,
         )
         .eq(
-          "user_id",
-          normalizedScope.userId,
-        )
-        .eq(
-          "connection_id",
-          normalizedScope.connectionId,
+          "source",
+          "plaid",
         )
         .eq(
           "provider",
           "plaid",
+        )
+        .in(
+          "provider_record_id",
+          providerRecordIds,
         )
         .order(
           "created_at",
@@ -290,7 +413,7 @@ export async function listPlaidAccountsByConnection(
           },
         )
         .returns<
-          AccountRow[]
+          CaseBudgetAccountRow[]
         >();
 
     if (
@@ -306,7 +429,16 @@ export async function listPlaidAccountsByConnection(
       data ??
       []
     ).map(
-      mapAccountRow,
+      (
+        row,
+      ) =>
+        mapAccountRow({
+          row,
+          scope:
+            normalizedScope,
+          providerContext,
+          operation,
+        }),
     );
   } catch (
     error
@@ -314,15 +446,16 @@ export async function listPlaidAccountsByConnection(
     throw normalizeRepositoryError(
       error,
       operation,
-      "Unable to load Plaid-backed accounts.",
+      "Unable to load Plaid-backed CASE Budget accounts.",
     );
   }
 }
 
 /**
- * Creates one Plaid-backed account.
+ * Creates one canonical Plaid-backed CASE Budget account.
  *
- * This method never creates or alters manual accounts.
+ * A matching plaid_item_accounts record must already exist for the owned
+ * connection. Its UUID is persisted as provider_record_id.
  */
 export async function createPlaidAccount(
   input:
@@ -337,88 +470,136 @@ export async function createPlaidAccount(
       operation,
     );
 
-  const insertRow:
-    AccountInsertRow = {
-      workspace_id:
-        normalizedInput.workspaceId,
-
-      user_id:
-        normalizedInput.userId,
-
-      connection_id:
-        normalizedInput.connectionId,
-
-      provider:
-        "plaid",
-
-      provider_account_id:
-        normalizedInput.providerAccountId,
-
-      provider_institution_id:
-        normalizedInput.providerInstitutionId ??
-        null,
-
-      institution_name:
-        normalizedInput.institutionName ??
-        null,
-
-      name:
-        normalizedInput.name,
-
-      official_name:
-        normalizedInput.officialName ??
-        null,
-
-      mask:
-        normalizedInput.mask ??
-        null,
-
-      type:
-        normalizedInput.type,
-
-      provider_type:
-        normalizedInput.providerType,
-
-      provider_subtype:
-        normalizedInput.providerSubtype ??
-        null,
-
-      balance:
-        normalizedInput.balance,
-
-      available_balance:
-        normalizedInput.availableBalance ??
-        null,
-
-      credit_limit:
-        normalizedInput.limit ??
-        null,
-
-      currency:
-        normalizedInput.currency,
-
-      is_debt:
-        normalizedInput.isDebt,
-
-      is_active:
-        true,
-
-      connection_status:
-        "connected",
-
-      last_synced_at:
-        normalizedInput.lastSyncedAt,
-
-      deactivated_at:
-        null,
-
-      metadata:
-        normalizedInput.metadata,
-    };
-
   try {
     const supabase =
       getSupabaseAdminClient();
+
+    const providerContext =
+      await loadProviderContext({
+        supabase,
+        scope:
+          normalizedInput,
+        operation,
+      });
+
+    const providerRecord =
+      providerContext
+        .linkByProviderAccountId
+        .get(
+          normalizedInput.providerAccountId,
+        );
+
+    if (
+      !providerRecord
+    ) {
+      throw new AccountRepositoryError({
+        message:
+          "The selected Plaid provider account is not associated with this connection.",
+
+        code:
+          "not-found",
+
+        operation,
+      });
+    }
+
+    const accountType =
+      mapStoredTypeToDatabaseType(
+        normalizedInput.type,
+      );
+
+    const accountSubtype =
+      resolveDatabaseSubtype({
+        type:
+          normalizedInput.type,
+
+        providerSubtype:
+          normalizedInput.providerSubtype,
+      });
+
+    const insertRow:
+      CaseBudgetAccountInsertRow = {
+        workspace_id:
+          normalizedInput.workspaceId,
+
+        created_by_user_id:
+          normalizedInput.userId,
+
+        updated_by_user_id:
+          normalizedInput.userId,
+
+        name:
+          normalizedInput.name,
+
+        account_type:
+          accountType,
+
+        account_subtype:
+          accountSubtype,
+
+        institution_name:
+          normalizedInput.institutionName ??
+          providerContext.connection.institution_name ??
+          null,
+
+        mask:
+          normalizedInput.mask ??
+          providerRecord.account_mask ??
+          null,
+
+        source:
+          "plaid",
+
+        provider:
+          "plaid",
+
+        provider_record_id:
+          providerRecord.id,
+
+        provider_account_id:
+          normalizedInput.providerAccountId,
+
+        current_balance:
+          normalizedInput.balance,
+
+        available_balance:
+          normalizedInput.availableBalance ??
+          null,
+
+        credit_limit:
+          normalizedInput.limit ??
+          null,
+
+        currency_code:
+          normalizedInput.currency,
+
+        include_in_net_worth:
+          true,
+
+        is_active:
+          true,
+
+        is_archived:
+          false,
+
+        archived_at:
+          null,
+
+        archived_by_user_id:
+          null,
+
+        sort_order:
+          0,
+
+        note:
+          null,
+
+        balance_last_synced_at:
+          normalizedInput.lastSyncedAt,
+
+        provider_last_synced_at:
+          normalizedInput.lastSyncedAt,
+      };
 
     const {
       data,
@@ -426,7 +607,7 @@ export async function createPlaidAccount(
     } =
       await supabase
         .from(
-          ACCOUNTS_TABLE,
+          CASE_BUDGET_ACCOUNTS_TABLE,
         )
         .insert(
           insertRow,
@@ -434,7 +615,9 @@ export async function createPlaidAccount(
         .select(
           "*",
         )
-        .single<AccountRow>();
+        .single<
+          CaseBudgetAccountRow
+        >();
 
     if (
       error
@@ -452,7 +635,7 @@ export async function createPlaidAccount(
     ) {
       throw new AccountRepositoryError({
         message:
-          "The Plaid account was created but no record was returned.",
+          "The Plaid account was created but no canonical account record was returned.",
 
         code:
           "database-error",
@@ -461,23 +644,31 @@ export async function createPlaidAccount(
       });
     }
 
-    return mapAccountRow(
-      data,
-    );
+    return mapAccountRow({
+      row:
+        data,
+      scope:
+        normalizedInput,
+      providerContext,
+      operation,
+    });
   } catch (
     error
   ) {
     throw normalizeRepositoryError(
       error,
       operation,
-      "Unable to create the Plaid account.",
+      "Unable to create the Plaid-backed CASE Budget account.",
     );
   }
 }
 
 /**
- * Updates one Plaid-backed account after enforcing provider, user, workspace,
- * and connection ownership.
+ * Updates one canonical Plaid-backed account.
+ *
+ * Provider identity fields remain immutable. This method only updates
+ * provider-managed presentation and balance fields after validating the
+ * account's provider-record ownership through plaid_item_accounts.
  */
 export async function updatePlaidAccount(
   input:
@@ -492,76 +683,141 @@ export async function updatePlaidAccount(
       operation,
     );
 
-  const updateRow:
-    AccountUpdateRow = {
-      connection_id:
-        normalizedInput.connectionId,
-
-      provider_institution_id:
-        normalizedInput.providerInstitutionId ??
-        null,
-
-      institution_name:
-        normalizedInput.institutionName ??
-        null,
-
-      name:
-        normalizedInput.name,
-
-      official_name:
-        normalizedInput.officialName ??
-        null,
-
-      mask:
-        normalizedInput.mask ??
-        null,
-
-      type:
-        normalizedInput.type,
-
-      provider_type:
-        normalizedInput.providerType,
-
-      provider_subtype:
-        normalizedInput.providerSubtype ??
-        null,
-
-      balance:
-        normalizedInput.balance,
-
-      available_balance:
-        normalizedInput.availableBalance ??
-        null,
-
-      credit_limit:
-        normalizedInput.limit ??
-        null,
-
-      currency:
-        normalizedInput.currency,
-
-      is_debt:
-        normalizedInput.isDebt,
-
-      is_active:
-        true,
-
-      connection_status:
-        "connected",
-
-      last_synced_at:
-        normalizedInput.lastSyncedAt,
-
-      deactivated_at:
-        null,
-
-      metadata:
-        normalizedInput.metadata,
-    };
-
   try {
     const supabase =
       getSupabaseAdminClient();
+
+    const providerContext =
+      await loadProviderContext({
+        supabase,
+        scope:
+          normalizedInput,
+        operation,
+      });
+
+    const existingRow =
+      await getRequiredCanonicalPlaidAccountRow({
+        supabase,
+        accountId:
+          normalizedInput.accountId,
+        scope:
+          normalizedInput,
+        providerContext,
+        operation,
+      });
+
+    const providerRecordId =
+      requireRowValue(
+        existingRow.provider_record_id,
+        "provider_record_id",
+        operation,
+      );
+
+    const providerRecord =
+      providerContext
+        .linkById
+        .get(
+          providerRecordId,
+        );
+
+    if (
+      !providerRecord
+    ) {
+      throw new AccountRepositoryError({
+        message:
+          "The Plaid account provider record does not belong to this connection.",
+
+        code:
+          "ownership-mismatch",
+
+        operation,
+      });
+    }
+
+    if (
+      providerRecord.provider_account_id !==
+      requireRowValue(
+        existingRow.provider_account_id,
+        "provider_account_id",
+        operation,
+      )
+    ) {
+      throw new AccountRepositoryError({
+        message:
+          "The stored Plaid account identifiers are inconsistent.",
+
+        code:
+          "database-error",
+
+        operation,
+      });
+    }
+
+    const updateRow:
+      CaseBudgetAccountUpdateRow = {
+        updated_by_user_id:
+          normalizedInput.userId,
+
+        name:
+          normalizedInput.name,
+
+        account_type:
+          mapStoredTypeToDatabaseType(
+            normalizedInput.type,
+          ),
+
+        account_subtype:
+          resolveDatabaseSubtype({
+            type:
+              normalizedInput.type,
+
+            providerSubtype:
+              normalizedInput.providerSubtype,
+          }),
+
+        institution_name:
+          normalizedInput.institutionName ??
+          providerContext.connection.institution_name ??
+          null,
+
+        mask:
+          normalizedInput.mask ??
+          providerRecord.account_mask ??
+          null,
+
+        current_balance:
+          normalizedInput.balance,
+
+        available_balance:
+          normalizedInput.availableBalance ??
+          null,
+
+        credit_limit:
+          normalizedInput.limit ??
+          null,
+
+        currency_code:
+          normalizedInput.currency,
+
+        /*
+         * Preserve a user's explicit archive state. Provider synchronization
+         * may reactivate a non-archived provider account, but must not restore
+         * an account the user intentionally archived.
+         */
+        is_active:
+          existingRow.is_archived
+            ? false
+            : true,
+
+        balance_last_synced_at:
+          normalizedInput.lastSyncedAt,
+
+        provider_last_synced_at:
+          normalizedInput.lastSyncedAt,
+
+        updated_at:
+          normalizedInput.lastSyncedAt,
+      };
 
     const {
       data,
@@ -569,7 +825,7 @@ export async function updatePlaidAccount(
     } =
       await supabase
         .from(
-          ACCOUNTS_TABLE,
+          CASE_BUDGET_ACCOUNTS_TABLE,
         )
         .update(
           updateRow,
@@ -583,21 +839,27 @@ export async function updatePlaidAccount(
           normalizedInput.workspaceId,
         )
         .eq(
-          "user_id",
-          normalizedInput.userId,
-        )
-        .eq(
-          "connection_id",
-          normalizedInput.connectionId,
+          "source",
+          "plaid",
         )
         .eq(
           "provider",
           "plaid",
         )
+        .eq(
+          "provider_record_id",
+          providerRecord.id,
+        )
+        .eq(
+          "provider_account_id",
+          providerRecord.provider_account_id,
+        )
         .select(
           "*",
         )
-        .maybeSingle<AccountRow>();
+        .maybeSingle<
+          CaseBudgetAccountRow
+        >();
 
     if (
       error
@@ -613,7 +875,7 @@ export async function updatePlaidAccount(
     ) {
       throw new AccountRepositoryError({
         message:
-          "The Plaid account could not be found or is not owned by this user and workspace.",
+          "The Plaid account could not be found or is not owned by this connection.",
 
         code:
           "not-found",
@@ -622,22 +884,28 @@ export async function updatePlaidAccount(
       });
     }
 
-    return mapAccountRow(
-      data,
-    );
+    return mapAccountRow({
+      row:
+        data,
+      scope:
+        normalizedInput,
+      providerContext,
+      operation,
+    });
   } catch (
     error
   ) {
     throw normalizeRepositoryError(
       error,
       operation,
-      "Unable to update the Plaid account.",
+      "Unable to update the Plaid-backed CASE Budget account.",
     );
   }
 }
 
 /**
- * Marks one Plaid-backed account inactive while preserving all historical data.
+ * Marks one canonical Plaid-backed account inactive while preserving all
+ * historical account data.
  */
 export async function deactivatePlaidAccount(
   input:
@@ -652,67 +920,56 @@ export async function deactivatePlaidAccount(
       operation,
     );
 
-  const updateRow:
-    AccountUpdateRow = {
-      is_active:
-        false,
-
-      connection_status:
-        "disconnected",
-
-      deactivated_at:
-        normalizedInput.deactivatedAt,
-
-      last_synced_at:
-        normalizedInput.deactivatedAt,
-
-      metadata: {
-        deactivationReason:
-          normalizedInput.reason,
-
-        deactivatedAt:
-          normalizedInput.deactivatedAt,
-      },
-    };
-
   try {
-    const existingAccount =
-      await getPlaidAccountById({
-        accountId:
-          normalizedInput.accountId,
+    const supabase =
+      getSupabaseAdminClient();
 
-        workspaceId:
-          normalizedInput.workspaceId,
-
-        userId:
-          normalizedInput.userId,
-
-        connectionId:
-          normalizedInput.connectionId,
+    const providerContext =
+      await loadProviderContext({
+        supabase,
+        scope:
+          normalizedInput,
+        operation,
       });
 
+    const existingRow =
+      await getRequiredCanonicalPlaidAccountRow({
+        supabase,
+        accountId:
+          normalizedInput.accountId,
+        scope:
+          normalizedInput,
+        providerContext,
+        operation,
+      });
+
+    const providerRecordId =
+      requireRowValue(
+        existingRow.provider_record_id,
+        "provider_record_id",
+        operation,
+      );
+
+    const providerRecord =
+      providerContext
+        .linkById
+        .get(
+          providerRecordId,
+        );
+
     if (
-      !existingAccount
+      !providerRecord
     ) {
       throw new AccountRepositoryError({
         message:
-          "The Plaid account could not be found or is not owned by this user and workspace.",
+          "The Plaid account provider record does not belong to this connection.",
 
         code:
-          "not-found",
+          "ownership-mismatch",
 
         operation,
       });
     }
-
-    const mergedMetadata = {
-      ...existingAccount.metadata,
-
-      ...updateRow.metadata,
-    };
-
-    const supabase =
-      getSupabaseAdminClient();
 
     const {
       data,
@@ -720,13 +977,20 @@ export async function deactivatePlaidAccount(
     } =
       await supabase
         .from(
-          ACCOUNTS_TABLE,
+          CASE_BUDGET_ACCOUNTS_TABLE,
         )
         .update({
-          ...updateRow,
+          updated_by_user_id:
+            normalizedInput.userId,
 
-          metadata:
-            mergedMetadata,
+          is_active:
+            false,
+
+          provider_last_synced_at:
+            normalizedInput.deactivatedAt,
+
+          updated_at:
+            normalizedInput.deactivatedAt,
         })
         .eq(
           "id",
@@ -737,21 +1001,23 @@ export async function deactivatePlaidAccount(
           normalizedInput.workspaceId,
         )
         .eq(
-          "user_id",
-          normalizedInput.userId,
-        )
-        .eq(
-          "connection_id",
-          normalizedInput.connectionId,
+          "source",
+          "plaid",
         )
         .eq(
           "provider",
           "plaid",
         )
+        .eq(
+          "provider_record_id",
+          providerRecord.id,
+        )
         .select(
           "*",
         )
-        .maybeSingle<AccountRow>();
+        .maybeSingle<
+          CaseBudgetAccountRow
+        >();
 
     if (
       error
@@ -776,22 +1042,28 @@ export async function deactivatePlaidAccount(
       });
     }
 
-    return mapAccountRow(
-      data,
-    );
+    return mapAccountRow({
+      row:
+        data,
+      scope:
+        normalizedInput,
+      providerContext,
+      operation,
+    });
   } catch (
     error
   ) {
     throw normalizeRepositoryError(
       error,
       operation,
-      "Unable to deactivate the Plaid account.",
+      "Unable to deactivate the Plaid-backed CASE Budget account.",
     );
   }
 }
 
 /**
- * Returns one Plaid-backed account after ownership enforcement.
+ * Returns one canonical Plaid account by CASE Budget account ID after
+ * enforcing workspace, user, and connection ownership.
  */
 export async function getPlaidAccountById({
   accountId,
@@ -835,13 +1107,21 @@ export async function getPlaidAccountById({
     const supabase =
       getSupabaseAdminClient();
 
+    const providerContext =
+      await loadProviderContext({
+        supabase,
+        scope:
+          normalizedScope,
+        operation,
+      });
+
     const {
       data,
       error,
     } =
       await supabase
         .from(
-          ACCOUNTS_TABLE,
+          CASE_BUDGET_ACCOUNTS_TABLE,
         )
         .select(
           "*",
@@ -855,18 +1135,16 @@ export async function getPlaidAccountById({
           normalizedScope.workspaceId,
         )
         .eq(
-          "user_id",
-          normalizedScope.userId,
-        )
-        .eq(
-          "connection_id",
-          normalizedScope.connectionId,
+          "source",
+          "plaid",
         )
         .eq(
           "provider",
           "plaid",
         )
-        .maybeSingle<AccountRow>();
+        .maybeSingle<
+          CaseBudgetAccountRow
+        >();
 
     if (
       error
@@ -877,24 +1155,49 @@ export async function getPlaidAccountById({
       });
     }
 
-    return data
-      ? mapAccountRow(
-          data,
+    if (
+      !data
+    ) {
+      return null;
+    }
+
+    const providerRecordId =
+      normalizeOptionalText(
+        data.provider_record_id,
+      );
+
+    if (
+      !providerRecordId ||
+      !providerContext
+        .linkById
+        .has(
+          providerRecordId,
         )
-      : null;
+    ) {
+      return null;
+    }
+
+    return mapAccountRow({
+      row:
+        data,
+      scope:
+        normalizedScope,
+      providerContext,
+      operation,
+    });
   } catch (
     error
   ) {
     throw normalizeRepositoryError(
       error,
       operation,
-      "Unable to retrieve the Plaid account.",
+      "Unable to retrieve the Plaid-backed CASE Budget account.",
     );
   }
 }
 
 /**
- * Returns one Plaid-backed account by provider account ID.
+ * Returns one canonical Plaid account by external Plaid account_id.
  */
 export async function getPlaidAccountByProviderAccountId({
   providerAccountId,
@@ -926,13 +1229,34 @@ export async function getPlaidAccountByProviderAccountId({
     const supabase =
       getSupabaseAdminClient();
 
+    const providerContext =
+      await loadProviderContext({
+        supabase,
+        scope:
+          normalizedScope,
+        operation,
+      });
+
+    const providerRecord =
+      providerContext
+        .linkByProviderAccountId
+        .get(
+          normalizedProviderAccountId,
+        );
+
+    if (
+      !providerRecord
+    ) {
+      return null;
+    }
+
     const {
       data,
       error,
     } =
       await supabase
         .from(
-          ACCOUNTS_TABLE,
+          CASE_BUDGET_ACCOUNTS_TABLE,
         )
         .select(
           "*",
@@ -942,22 +1266,24 @@ export async function getPlaidAccountByProviderAccountId({
           normalizedScope.workspaceId,
         )
         .eq(
-          "user_id",
-          normalizedScope.userId,
-        )
-        .eq(
-          "connection_id",
-          normalizedScope.connectionId,
+          "source",
+          "plaid",
         )
         .eq(
           "provider",
           "plaid",
         )
         .eq(
+          "provider_record_id",
+          providerRecord.id,
+        )
+        .eq(
           "provider_account_id",
           normalizedProviderAccountId,
         )
-        .maybeSingle<AccountRow>();
+        .maybeSingle<
+          CaseBudgetAccountRow
+        >();
 
     if (
       error
@@ -969,9 +1295,14 @@ export async function getPlaidAccountByProviderAccountId({
     }
 
     return data
-      ? mapAccountRow(
-          data,
-        )
+      ? mapAccountRow({
+          row:
+            data,
+          scope:
+            normalizedScope,
+          providerContext,
+          operation,
+        })
       : null;
   } catch (
     error
@@ -979,15 +1310,19 @@ export async function getPlaidAccountByProviderAccountId({
     throw normalizeRepositoryError(
       error,
       operation,
-      "Unable to retrieve the Plaid account.",
+      "Unable to retrieve the Plaid-backed CASE Budget account.",
     );
   }
 }
 
 /**
- * Marks all Plaid accounts under one connection with a connection-level status.
+ * Applies the connection's effective availability state to canonical Plaid
+ * accounts without introducing a duplicate connection_status column.
  *
- * Manual accounts are excluded by provider filtering.
+ * The canonical CASE Budget account model derives connection state from
+ * source/provider/is_active. Therefore only explicit connected/disconnected
+ * transitions alter is_active here. Other connection-level states remain on
+ * financial_connections.
  */
 export async function updatePlaidAccountsConnectionStatus({
   scope,
@@ -1012,39 +1347,84 @@ export async function updatePlaidAccountsConnectionStatus({
     const supabase =
       getSupabaseAdminClient();
 
+    const providerContext =
+      await loadProviderContext({
+        supabase,
+        scope:
+          normalizedScope,
+        operation,
+      });
+
+    const providerRecordIds = [
+      ...providerContext
+        .linkById
+        .keys(),
+    ];
+
+    if (
+      providerRecordIds.length ===
+      0
+    ) {
+      return [];
+    }
+
+    if (
+      status !==
+        "connected" &&
+      status !==
+        "disconnected"
+    ) {
+      return listPlaidAccountsByConnection(
+        normalizedScope,
+      );
+    }
+
+    const now =
+      new Date().toISOString();
+
     const {
       data,
       error,
     } =
       await supabase
         .from(
-          ACCOUNTS_TABLE,
+          CASE_BUDGET_ACCOUNTS_TABLE,
         )
         .update({
-          connection_status:
-            status,
+          updated_by_user_id:
+            normalizedScope.userId,
+
+          is_active:
+            status ===
+            "connected",
+
+          provider_last_synced_at:
+            now,
+
+          updated_at:
+            now,
         })
         .eq(
           "workspace_id",
           normalizedScope.workspaceId,
         )
         .eq(
-          "user_id",
-          normalizedScope.userId,
-        )
-        .eq(
-          "connection_id",
-          normalizedScope.connectionId,
+          "source",
+          "plaid",
         )
         .eq(
           "provider",
           "plaid",
         )
+        .in(
+          "provider_record_id",
+          providerRecordIds,
+        )
         .select(
           "*",
         )
         .returns<
-          AccountRow[]
+          CaseBudgetAccountRow[]
         >();
 
     if (
@@ -1060,7 +1440,16 @@ export async function updatePlaidAccountsConnectionStatus({
       data ??
       []
     ).map(
-      mapAccountRow,
+      (
+        row,
+      ) =>
+        mapAccountRow({
+          row,
+          scope:
+            normalizedScope,
+          providerContext,
+          operation,
+        }),
     );
   } catch (
     error
@@ -1068,9 +1457,263 @@ export async function updatePlaidAccountsConnectionStatus({
     throw normalizeRepositoryError(
       error,
       operation,
-      "Unable to update Plaid account connection statuses.",
+      "Unable to update Plaid account availability.",
     );
   }
+}
+
+async function loadProviderContext({
+  supabase,
+  scope,
+  operation,
+}: {
+  supabase:
+    SupabaseClient;
+
+  scope:
+    PlaidAccountStoreScope;
+
+  operation:
+    string;
+}): Promise<ProviderContext> {
+  const {
+    data:
+      connectionData,
+    error:
+      connectionError,
+  } =
+    await supabase
+      .from(
+        FINANCIAL_CONNECTIONS_TABLE,
+      )
+      .select(
+        "id,workspace_id,user_id,provider,provider_institution_id,institution_name,status",
+      )
+      .eq(
+        "id",
+        scope.connectionId,
+      )
+      .eq(
+        "workspace_id",
+        scope.workspaceId,
+      )
+      .eq(
+        "user_id",
+        scope.userId,
+      )
+      .eq(
+        "provider",
+        "plaid",
+      )
+      .maybeSingle<
+        FinancialConnectionRow
+      >();
+
+  if (
+    connectionError
+  ) {
+    throw mapSupabaseError({
+      error:
+        connectionError,
+      operation,
+    });
+  }
+
+  if (
+    !connectionData
+  ) {
+    throw new AccountRepositoryError({
+      message:
+        "The Plaid financial connection could not be found or is not owned by this user and workspace.",
+
+      code:
+        "ownership-mismatch",
+
+      operation,
+    });
+  }
+
+  const {
+    data:
+      linkData,
+    error:
+      linkError,
+  } =
+    await supabase
+      .from(
+        PLAID_ITEM_ACCOUNTS_TABLE,
+      )
+      .select(
+        "*",
+      )
+      .eq(
+        "connection_id",
+        scope.connectionId,
+      )
+      .eq(
+        "workspace_id",
+        scope.workspaceId,
+      )
+      .eq(
+        "user_id",
+        scope.userId,
+      )
+      .order(
+        "created_at",
+        {
+          ascending:
+            true,
+        },
+      )
+      .returns<
+        PlaidItemAccountRow[]
+      >();
+
+  if (
+    linkError
+  ) {
+    throw mapSupabaseError({
+      error:
+        linkError,
+      operation,
+    });
+  }
+
+  const links =
+    linkData ??
+    [];
+
+  return {
+    connection:
+      connectionData,
+
+    linkByProviderAccountId:
+      new Map(
+        links.map(
+          (
+            row,
+          ) => [
+            row.provider_account_id,
+            row,
+          ],
+        ),
+      ),
+
+    linkById:
+      new Map(
+        links.map(
+          (
+            row,
+          ) => [
+            row.id,
+            row,
+          ],
+        ),
+      ),
+  };
+}
+
+async function getRequiredCanonicalPlaidAccountRow({
+  supabase,
+  accountId,
+  scope,
+  providerContext,
+  operation,
+}: {
+  supabase:
+    SupabaseClient;
+
+  accountId:
+    string;
+
+  scope:
+    PlaidAccountStoreScope;
+
+  providerContext:
+    ProviderContext;
+
+  operation:
+    string;
+}) {
+  const {
+    data,
+    error,
+  } =
+    await supabase
+      .from(
+        CASE_BUDGET_ACCOUNTS_TABLE,
+      )
+      .select(
+        "*",
+      )
+      .eq(
+        "id",
+        accountId,
+      )
+      .eq(
+        "workspace_id",
+        scope.workspaceId,
+      )
+      .eq(
+        "source",
+        "plaid",
+      )
+      .eq(
+        "provider",
+        "plaid",
+      )
+      .maybeSingle<
+        CaseBudgetAccountRow
+      >();
+
+  if (
+    error
+  ) {
+    throw mapSupabaseError({
+      error,
+      operation,
+    });
+  }
+
+  if (
+    !data
+  ) {
+    throw new AccountRepositoryError({
+      message:
+        "The Plaid-backed CASE Budget account could not be found.",
+
+      code:
+        "not-found",
+
+      operation,
+    });
+  }
+
+  const providerRecordId =
+    normalizeOptionalText(
+      data.provider_record_id,
+    );
+
+  if (
+    !providerRecordId ||
+    !providerContext
+      .linkById
+      .has(
+        providerRecordId,
+      )
+  ) {
+    throw new AccountRepositoryError({
+      message:
+        "The Plaid-backed CASE Budget account does not belong to this connection.",
+
+      code:
+        "ownership-mismatch",
+
+      operation,
+    });
+  }
+
+  return data;
 }
 
 function normalizeCreateInput(
@@ -1132,7 +1775,10 @@ function normalizeCreateInput(
       ),
 
     type:
-      input.type,
+      normalizeStoredAccountType(
+        input.type,
+        operation,
+      ),
 
     providerType:
       requireNonEmptyString(
@@ -1198,8 +1844,8 @@ function normalizeUpdateInput(
   operation:
     string,
 ) {
-  const createShape =
-    normalizeCreateInput(
+  const scope =
+    normalizeScope(
       {
         workspaceId:
           input.workspaceId,
@@ -1209,79 +1855,107 @@ function normalizeUpdateInput(
 
         connectionId:
           input.connectionId,
-
-        provider:
-          "plaid",
-
-        providerAccountId:
-          "placeholder",
-
-        providerInstitutionId:
-          input.providerInstitutionId,
-
-        institutionName:
-          input.institutionName,
-
-        name:
-          input.name,
-
-        officialName:
-          input.officialName,
-
-        mask:
-          input.mask,
-
-        type:
-          input.type,
-
-        providerType:
-          input.providerType,
-
-        providerSubtype:
-          input.providerSubtype,
-
-        balance:
-          input.balance,
-
-        availableBalance:
-          input.availableBalance,
-
-        limit:
-          input.limit,
-
-        currency:
-          input.currency,
-
-        isDebt:
-          input.isDebt,
-
-        isActive:
-          true,
-
-        lastSyncedAt:
-          input.lastSyncedAt,
-
-        metadata:
-          input.metadata,
       },
       operation,
     );
 
-  const {
-    providerAccountId:
-      _providerAccountId,
-    ...normalized
-  } =
-    createShape;
-
   return {
-    ...normalized,
+    ...scope,
 
     accountId:
       requireNonEmptyString(
         input.accountId,
         "accountId",
         operation,
+      ),
+
+    providerInstitutionId:
+      normalizeOptionalText(
+        input.providerInstitutionId,
+      ),
+
+    institutionName:
+      normalizeOptionalText(
+        input.institutionName,
+      ),
+
+    name:
+      requireNonEmptyString(
+        input.name,
+        "name",
+        operation,
+      ),
+
+    officialName:
+      normalizeOptionalText(
+        input.officialName,
+      ),
+
+    mask:
+      normalizeOptionalText(
+        input.mask,
+      ),
+
+    type:
+      normalizeStoredAccountType(
+        input.type,
+        operation,
+      ),
+
+    providerType:
+      requireNonEmptyString(
+        input.providerType,
+        "providerType",
+        operation,
+      ),
+
+    providerSubtype:
+      normalizeOptionalText(
+        input.providerSubtype,
+      ),
+
+    balance:
+      requireFiniteNumber(
+        input.balance,
+        "balance",
+        operation,
+      ),
+
+    availableBalance:
+      normalizeOptionalFiniteNumber(
+        input.availableBalance,
+        "availableBalance",
+        operation,
+      ),
+
+    limit:
+      normalizeOptionalFiniteNumber(
+        input.limit,
+        "limit",
+        operation,
+      ),
+
+    currency:
+      normalizeCurrency(
+        input.currency,
+        operation,
+      ),
+
+    isDebt:
+      Boolean(
+        input.isDebt,
+      ),
+
+    lastSyncedAt:
+      normalizeRequiredIsoDate(
+        input.lastSyncedAt,
+        "lastSyncedAt",
+        operation,
+      ),
+
+    metadata:
+      normalizeMetadata(
+        input.metadata,
       ),
   };
 }
@@ -1359,10 +2033,93 @@ function normalizeScope(
   };
 }
 
-function mapAccountRow(
+function mapAccountRow({
+  row,
+  scope,
+  providerContext,
+  operation,
+}: {
   row:
-    AccountRow,
-): PlaidStoredAccount {
+    CaseBudgetAccountRow;
+
+  scope:
+    PlaidAccountStoreScope;
+
+  providerContext:
+    ProviderContext;
+
+  operation:
+    string;
+}): PlaidStoredAccount {
+  const providerRecordId =
+    requireRowValue(
+      row.provider_record_id,
+      "provider_record_id",
+      operation,
+    );
+
+  const providerAccountId =
+    requireRowValue(
+      row.provider_account_id,
+      "provider_account_id",
+      operation,
+    );
+
+  const providerRecord =
+    providerContext
+      .linkById
+      .get(
+        providerRecordId,
+      );
+
+  if (
+    !providerRecord
+  ) {
+    throw new AccountRepositoryError({
+      message:
+        "The stored CASE Budget account provider record is not part of this Plaid connection.",
+
+      code:
+        "ownership-mismatch",
+
+      operation,
+    });
+  }
+
+  if (
+    providerRecord.provider_account_id !==
+    providerAccountId
+  ) {
+    throw new AccountRepositoryError({
+      message:
+        "The stored CASE Budget account provider identifiers are inconsistent.",
+
+      code:
+        "database-error",
+
+      operation,
+    });
+  }
+
+  const type =
+    mapDatabaseTypeToStoredType({
+      accountType:
+        row.account_type,
+
+      accountSubtype:
+        row.account_subtype,
+
+      providerRecord,
+    });
+
+  const lastSyncedAt =
+    getLatestIsoDate(
+      row.balance_last_synced_at,
+      row.provider_last_synced_at,
+      row.updated_at,
+    ) ??
+    row.updated_at;
+
   return {
     id:
       row.id,
@@ -1371,83 +2128,92 @@ function mapAccountRow(
       row.workspace_id,
 
     userId:
-      row.user_id,
+      scope.userId,
 
     connectionId:
-      requireRowValue(
-        row.connection_id,
-        "connection_id",
-      ),
+      scope.connectionId,
 
     provider:
       "plaid",
 
-    providerAccountId:
-      requireRowValue(
-        row.provider_account_id,
-        "provider_account_id",
-      ),
+    providerAccountId,
 
     providerInstitutionId:
-      row.provider_institution_id ??
+      providerContext
+        .connection
+        .provider_institution_id ??
       undefined,
 
     institutionName:
       row.institution_name ??
+      providerContext
+        .connection
+        .institution_name ??
       undefined,
 
     name:
       row.name,
 
     officialName:
-      row.official_name ??
       undefined,
 
     mask:
       row.mask ??
       undefined,
 
-    type:
-      row.type,
+    type,
 
     providerType:
-      row.provider_type ??
-      row.type,
+      providerRecord.account_type ??
+      mapStoredTypeToProviderType(
+        type,
+      ),
 
     providerSubtype:
-      row.provider_subtype ??
+      providerRecord.account_subtype ??
+      row.account_subtype ??
       undefined,
 
     balance:
       parseDatabaseNumber(
-        row.balance,
-        "balance",
+        row.current_balance,
+        "current_balance",
+        operation,
       ),
 
     availableBalance:
       parseOptionalDatabaseNumber(
         row.available_balance,
         "available_balance",
+        operation,
       ),
 
     limit:
       parseOptionalDatabaseNumber(
         row.credit_limit,
         "credit_limit",
+        operation,
       ),
 
     currency:
-      row.currency,
+      normalizeCurrency(
+        row.currency_code,
+        operation,
+      ),
 
     isDebt:
-      row.is_debt,
+      type ===
+        "credit-card" ||
+      type ===
+        "loan" ||
+      type ===
+        "mortgage",
 
     isActive:
-      row.is_active,
+      row.is_active &&
+      !row.is_archived,
 
-    lastSyncedAt:
-      row.last_synced_at ??
-      row.updated_at,
+    lastSyncedAt,
 
     createdAt:
       row.created_at,
@@ -1455,10 +2221,209 @@ function mapAccountRow(
     updatedAt:
       row.updated_at,
 
-    metadata:
-      row.metadata ??
-      {},
+    metadata: {
+      providerRecordId,
+
+      providerAccountId,
+
+      connectionId:
+        scope.connectionId,
+
+      plaidItemDatabaseId:
+        providerRecord.plaid_item_id,
+
+      selected:
+        providerRecord.is_selected,
+
+      providerRecordActive:
+        providerRecord.is_active,
+    },
   };
+}
+
+function mapStoredTypeToDatabaseType(
+  type:
+    PlaidStoredAccountType,
+): CaseBudgetAccountType {
+  switch (
+    type
+  ) {
+    case "checking":
+      return "checking";
+
+    case "savings":
+      return "savings";
+
+    case "cash":
+      return "cash";
+
+    case "credit-card":
+      return "credit-card";
+
+    case "loan":
+    case "mortgage":
+      return "loan";
+
+    case "investment":
+    case "retirement":
+      return "investment";
+
+    case "other":
+    default:
+      return "other";
+  }
+}
+
+function mapDatabaseTypeToStoredType({
+  accountType,
+  accountSubtype,
+  providerRecord,
+}: {
+  accountType:
+    CaseBudgetAccountType;
+
+  accountSubtype:
+    string | null;
+
+  providerRecord:
+    PlaidItemAccountRow;
+}): PlaidStoredAccountType {
+  const normalizedSubtype =
+    (
+      accountSubtype ??
+      providerRecord.account_subtype ??
+      ""
+    )
+      .trim()
+      .toLowerCase();
+
+  if (
+    accountType ===
+      "loan" &&
+    normalizedSubtype ===
+      "mortgage"
+  ) {
+    return "mortgage";
+  }
+
+  if (
+    accountType ===
+      "investment" &&
+    normalizedSubtype ===
+      "retirement"
+  ) {
+    return "retirement";
+  }
+
+  return accountType;
+}
+
+function resolveDatabaseSubtype({
+  type,
+  providerSubtype,
+}: {
+  type:
+    PlaidStoredAccountType;
+
+  providerSubtype:
+    string | undefined;
+}) {
+  if (
+    type ===
+    "mortgage"
+  ) {
+    return "mortgage";
+  }
+
+  if (
+    type ===
+    "retirement"
+  ) {
+    return "retirement";
+  }
+
+  return providerSubtype ??
+    null;
+}
+
+function mapStoredTypeToProviderType(
+  type:
+    PlaidStoredAccountType,
+) {
+  switch (
+    type
+  ) {
+    case "credit-card":
+      return "credit";
+
+    case "loan":
+    case "mortgage":
+      return "loan";
+
+    case "investment":
+    case "retirement":
+      return "investment";
+
+    case "checking":
+    case "savings":
+    case "cash":
+      return "depository";
+
+    case "other":
+    default:
+      return "other";
+  }
+}
+
+function getLatestIsoDate(
+  ...values:
+    Array<
+      string | null
+    >
+) {
+  let latest:
+    string | null =
+    null;
+
+  let latestTimestamp =
+    Number.NEGATIVE_INFINITY;
+
+  for (
+    const value of
+      values
+  ) {
+    if (
+      !value
+    ) {
+      continue;
+    }
+
+    const timestamp =
+      Date.parse(
+        value,
+      );
+
+    if (
+      Number.isNaN(
+        timestamp,
+      )
+    ) {
+      continue;
+    }
+
+    if (
+      timestamp >
+      latestTimestamp
+    ) {
+      latest =
+        value;
+
+      latestTimestamp =
+        timestamp;
+    }
+  }
+
+  return latest;
 }
 
 function getSupabaseAdminClient() {
@@ -1612,6 +2577,39 @@ function normalizeOptionalFiniteNumber(
   );
 }
 
+function normalizeStoredAccountType(
+  value:
+    PlaidStoredAccountType,
+  operation:
+    string,
+): PlaidStoredAccountType {
+  switch (
+    value
+  ) {
+    case "checking":
+    case "savings":
+    case "cash":
+    case "credit-card":
+    case "loan":
+    case "mortgage":
+    case "investment":
+    case "retirement":
+    case "other":
+      return value;
+
+    default:
+      throw new AccountRepositoryError({
+        message:
+          "The Plaid account type is not supported.",
+
+        code:
+          "invalid-input",
+
+        operation,
+      });
+  }
+}
+
 function normalizeCurrency(
   value:
     string,
@@ -1626,12 +2624,13 @@ function normalizeCurrency(
     ).toUpperCase();
 
   if (
-    normalizedValue.length >
-    12
+    !/^[A-Z]{3}$/.test(
+      normalizedValue,
+    )
   ) {
     throw new AccountRepositoryError({
       message:
-        "currency must be 12 characters or fewer.",
+        "currency must be a three-letter currency code.",
 
       code:
         "invalid-input",
@@ -1684,7 +2683,7 @@ function normalizeRequiredIsoDate(
 
 function normalizeOptionalText(
   value:
-    string | undefined,
+    string | undefined | null,
 ) {
   const normalizedValue =
     value?.trim();
@@ -1731,6 +2730,8 @@ function parseDatabaseNumber(
     number | string,
   fieldName:
     string,
+  operation:
+    string,
 ) {
   const parsedValue =
     typeof value ===
@@ -1755,8 +2756,7 @@ function parseDatabaseNumber(
     code:
       "database-error",
 
-    operation:
-      "mapAccountRow",
+    operation,
   });
 }
 
@@ -1764,6 +2764,8 @@ function parseOptionalDatabaseNumber(
   value:
     number | string | null,
   fieldName:
+    string,
+  operation:
     string,
 ) {
   if (
@@ -1776,6 +2778,7 @@ function parseOptionalDatabaseNumber(
   return parseDatabaseNumber(
     value,
     fieldName,
+    operation,
   );
 }
 
@@ -1784,11 +2787,18 @@ function requireRowValue(
     string | null,
   fieldName:
     string,
+  operation:
+    string,
 ) {
+  const normalizedValue =
+    normalizeOptionalText(
+      value,
+    );
+
   if (
-    value
+    normalizedValue
   ) {
-    return value;
+    return normalizedValue;
   }
 
   throw new AccountRepositoryError({
@@ -1798,8 +2808,7 @@ function requireRowValue(
     code:
       "database-error",
 
-    operation:
-      "mapAccountRow",
+    operation,
   });
 }
 
