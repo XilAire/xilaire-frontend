@@ -23,6 +23,7 @@ import {
 } from "@/lib/integrations/plaid/link";
 
 import {
+  disconnectFinancialConnection,
   getFinancialConnectionById,
   FinancialConnectionRepositoryError,
   type FinancialConnectionOwner,
@@ -74,10 +75,11 @@ type StoredPlaidConnection = {
 /**
  * Creates a Plaid Link token for the authenticated CASE Budget user.
  *
- * Authentication is resolved from the trusted Supabase server session.
+ * Authentication is resolved from trusted server-side Supabase
+ * authentication state.
  *
- * The active workspace is resolved from the CASE Budget workspace cookie.
- * The browser never supplies user or workspace IDs through custom headers.
+ * The active workspace is resolved server-side. The browser never supplies
+ * user or workspace IDs for authorization.
  */
 export async function POST(
   request:
@@ -93,12 +95,9 @@ export async function POST(
     /*
      * Bank connections are a Pro-only CASE Budget capability.
      *
-     * Enforcement happens on the server against the active workspace.
+     * Enforcement happens server-side against the active workspace.
      * The browser is never trusted to determine whether the current
      * workspace may create or update a Plaid connection.
-     *
-     * resolveAuthenticatedFeatureAccess() also verifies active workspace
-     * membership before resolving that workspace's subscription.
      */
     const featureAccess =
       await resolveAuthenticatedFeatureAccess({
@@ -141,15 +140,12 @@ export async function POST(
       "create";
 
     /*
-     * IMPORTANT:
+     * These asynchronous operations must be awaited inside this try block.
      *
-     * These async operations must be awaited inside this try block.
-     *
-     * Returning their unresolved promises directly would allow an
-     * asynchronous rejection to escape the surrounding try/catch.
-     * That would cause Next.js to return a generic 500 instead of
-     * allowing createErrorResponse() to safely translate known
-     * Plaid, repository, authentication, and route errors.
+     * Returning an unresolved promise directly would allow a later
+     * asynchronous rejection to escape this try/catch and cause Next.js
+     * to return a generic 500 response instead of the safe structured
+     * error responses below.
      */
     if (
       mode ===
@@ -247,51 +243,119 @@ async function createUpdateModeLinkToken({
       context,
     });
 
-  const result =
-    await createPlaidUpdateLinkToken({
-      userId:
-        createPlaidClientUserId(
-          context,
-        ),
+  try {
+    const result =
+      await createPlaidUpdateLinkToken({
+        userId:
+          createPlaidClientUserId(
+            context,
+          ),
 
-      accessToken:
-        connection.accessToken,
+        accessToken:
+          connection.accessToken,
 
-      clientName:
-        normalizeOptionalText(
-          body.clientName,
-        ),
+        clientName:
+          normalizeOptionalText(
+            body.clientName,
+          ),
 
-      redirectUri:
-        normalizeOptionalText(
-          body.redirectUri,
-        ),
+        redirectUri:
+          normalizeOptionalText(
+            body.redirectUri,
+          ),
 
-      webhookUrl:
-        normalizeOptionalText(
-          body.webhookUrl,
-        ),
+        webhookUrl:
+          normalizeOptionalText(
+            body.webhookUrl,
+          ),
 
-      updateReason:
-        "reauthentication",
-    });
+        updateReason:
+          "reauthentication",
+      });
 
-  return noStoreJson(
-    {
-      linkToken:
-        result.linkToken,
+    return noStoreJson(
+      {
+        linkToken:
+          result.linkToken,
 
-      expiration:
-        result.expiration,
+        expiration:
+          result.expiration,
 
-      requestId:
-        result.requestId,
-    },
-    {
-      status:
-        200,
-    },
-  );
+        requestId:
+          result.requestId,
+      },
+      {
+        status:
+          200,
+      },
+    );
+  } catch (
+    error
+  ) {
+    /*
+     * ITEM_NOT_FOUND is fundamentally different from
+     * ITEM_LOGIN_REQUIRED.
+     *
+     * ITEM_LOGIN_REQUIRED means the existing Plaid Item still exists and
+     * may be repaired through update-mode Link.
+     *
+     * ITEM_NOT_FOUND means Plaid no longer recognizes the Item. The Item
+     * may have been removed, access may have been revoked, or the provider
+     * relationship may otherwise no longer exist.
+     *
+     * Update-mode Link cannot repair an Item that no longer exists.
+     *
+     * Preserve the CASE Budget financial connection for historical
+     * purposes, mark it disconnected, and tell the client that a brand-new
+     * Plaid connection must be created instead.
+     */
+    if (
+      error instanceof
+        PlaidServiceError &&
+      error.code ===
+        "item-not-found"
+    ) {
+      const owner:
+        FinancialConnectionOwner = {
+          userId:
+            context.userId,
+
+          workspaceId:
+            context.workspaceId,
+        };
+
+      await disconnectFinancialConnection({
+        connectionId:
+          connection.id,
+
+        owner,
+      });
+
+      return noStoreJson(
+        {
+          error: {
+            code:
+              "connection-relink-required",
+
+            message:
+              "This financial institution connection is no longer available through Plaid. Connect the institution again to restore access.",
+
+            requestId:
+              error.requestId,
+
+            requiresNewConnection:
+              true,
+          },
+        },
+        {
+          status:
+            409,
+        },
+      );
+    }
+
+    throw error;
+  }
 }
 
 /**
@@ -365,7 +429,7 @@ async function getStoredPlaidConnectionForUpdate({
         "connection-disconnected",
 
       message:
-        "This Plaid connection has been disconnected.",
+        "This Plaid connection has been disconnected and must be connected again.",
 
       status:
         409,
@@ -907,9 +971,17 @@ function createErrorResponse(
     );
   }
 
+  /*
+   * Never serialize unknown error objects into the HTTP response.
+   *
+   * Provider SDK and Axios error objects may contain request metadata,
+   * credentials, tokens, headers, or other sensitive server-only data.
+   */
   console.error(
     "Unexpected Plaid Link token route error.",
-    error,
+    getSafeUnexpectedErrorLog(
+      error,
+    ),
   );
 
   return noStoreJson(
@@ -1135,6 +1207,32 @@ function getPlaidErrorHttpStatus(
         ? error.statusCode
         : 500;
   }
+}
+
+function getSafeUnexpectedErrorLog(
+  error:
+    unknown,
+) {
+  if (
+    error instanceof
+    Error
+  ) {
+    return {
+      name:
+        error.name,
+
+      message:
+        error.message,
+    };
+  }
+
+  return {
+    type:
+      typeof error,
+
+    message:
+      "An unexpected non-Error value was thrown.",
+  };
 }
 
 function noStoreJson(

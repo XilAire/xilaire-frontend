@@ -124,11 +124,15 @@ export class ConnectPlaidAccountModalError extends Error {
   readonly plaidErrorCode?:
     string;
 
+  readonly apiErrorCode?:
+    string;
+
   constructor({
     message,
     code,
     requestId,
     plaidErrorCode,
+    apiErrorCode,
     cause,
   }: {
     message:
@@ -141,6 +145,9 @@ export class ConnectPlaidAccountModalError extends Error {
       string;
 
     plaidErrorCode?:
+      string;
+
+    apiErrorCode?:
       string;
 
     cause?:
@@ -164,6 +171,9 @@ export class ConnectPlaidAccountModalError extends Error {
 
     this.plaidErrorCode =
       plaidErrorCode;
+
+    this.apiErrorCode =
+      apiErrorCode;
   }
 }
 
@@ -329,10 +339,23 @@ export default function ConnectPlaidAccountModal({
     null,
   );
 
+  const [
+    requiresNewConnection,
+    setRequiresNewConnection,
+  ] = useState(
+    false,
+  );
+
+  const effectiveMode:
+    ConnectPlaidAccountMode =
+      requiresNewConnection
+        ? "create"
+        : mode;
+
   const resolvedTitle =
     title ??
     (
-      mode ===
+      effectiveMode ===
       "update"
         ? "Reconnect financial institution"
         : "Connect a bank account"
@@ -341,7 +364,7 @@ export default function ConnectPlaidAccountModal({
   const resolvedDescription =
     description ??
     (
-      mode ===
+      effectiveMode ===
       "update"
         ? "Securely restore access to your connected financial institution through Plaid."
         : "Securely connect checking, savings, credit card, loan, and supported investment accounts through Plaid."
@@ -388,6 +411,10 @@ export default function ConnectPlaidAccountModal({
 
         setLastPlaidEvent(
           null,
+        );
+
+        setRequiresNewConnection(
+          false,
         );
       },
       [],
@@ -685,9 +712,13 @@ export default function ConnectPlaidAccountModal({
 
   const loadLinkToken =
     useCallback(
-      async () => {
+      async (
+        requestedMode:
+          ConnectPlaidAccountMode =
+            effectiveMode,
+      ) => {
         if (
-          mode ===
+          requestedMode ===
             "update" &&
           !connectionId
         ) {
@@ -749,10 +780,11 @@ export default function ConnectPlaidAccountModal({
 
                 body:
                   JSON.stringify({
-                    mode,
+                    mode:
+                      requestedMode,
 
                     connectionId:
-                      mode ===
+                      requestedMode ===
                       "update"
                         ? connectionId
                         : undefined,
@@ -810,7 +842,7 @@ export default function ConnectPlaidAccountModal({
             return;
           }
 
-          reportError(
+          const normalizedError =
             normalizeModalError({
               error,
 
@@ -819,7 +851,43 @@ export default function ConnectPlaidAccountModal({
 
               fallbackCode:
                 "link-token-failed",
-            }),
+            });
+
+          if (
+            requestedMode ===
+              "update" &&
+            isRelinkRequiredError(
+              normalizedError,
+            )
+          ) {
+            setRequiresNewConnection(
+              true,
+            );
+
+            reportError(
+              new ConnectPlaidAccountModalError({
+                message:
+                  "The previous Plaid connection is no longer available. Connect the institution again to create a new secure connection.",
+
+                code:
+                  "link-token-failed",
+
+                requestId:
+                  normalizedError.requestId,
+
+                apiErrorCode:
+                  normalizedError.apiErrorCode,
+
+                cause:
+                  normalizedError,
+              }),
+            );
+
+            return;
+          }
+
+          reportError(
+            normalizedError,
           );
         } finally {
           if (
@@ -833,7 +901,7 @@ export default function ConnectPlaidAccountModal({
       },
       [
         connectionId,
-        mode,
+        effectiveMode,
         reportError,
       ],
     );
@@ -903,10 +971,21 @@ export default function ConnectPlaidAccountModal({
   const handleRetry =
     useCallback(
       () => {
+        if (
+          requiresNewConnection
+        ) {
+          void loadLinkToken(
+            "create",
+          );
+
+          return;
+        }
+
         void loadLinkToken();
       },
       [
         loadLinkToken,
+        requiresNewConnection,
       ],
     );
 
@@ -954,11 +1033,13 @@ export default function ConnectPlaidAccountModal({
         return;
       }
 
-      void loadLinkToken();
+      void loadLinkToken(
+        mode,
+      );
     },
     [
       isOpen,
-      loadLinkToken,
+      mode,
       resetModalState,
     ],
   );
@@ -1244,6 +1325,11 @@ export default function ConnectPlaidAccountModal({
               onRetry={
                 handleRetry
               }
+              retryLabel={
+                requiresNewConnection
+                  ? "Connect again"
+                  : "Restart connection"
+              }
             />
           ) : (
             <ConnectionState
@@ -1251,7 +1337,7 @@ export default function ConnectPlaidAccountModal({
                 step
               }
               mode={
-                mode
+                effectiveMode
               }
               ready={
                 ready
@@ -1295,7 +1381,9 @@ export default function ConnectPlaidAccountModal({
                 }
                 className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[var(--primary)] px-5 text-sm font-bold text-white outline-none transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2"
               >
-                Try again
+                {requiresNewConnection
+                  ? "Connect again"
+                  : "Try again"}
               </button>
             </div>
           ) : (
@@ -1333,7 +1421,7 @@ export default function ConnectPlaidAccountModal({
 
                 {getPrimaryButtonLabel(
                   step,
-                  mode,
+                  effectiveMode,
                 )}
               </button>
             </div>
@@ -1522,11 +1610,15 @@ function SuccessState({
 function ErrorState({
   error,
   onRetry,
+  retryLabel,
 }: {
   error:
     ConnectPlaidAccountModalError;
 
   onRetry: () => void;
+
+  retryLabel:
+    string;
 }) {
   return (
     <div className="flex min-h-72 flex-col items-center justify-center text-center">
@@ -1558,7 +1650,7 @@ function ErrorState({
       >
         <RefreshIcon />
 
-        Restart connection
+        {retryLabel}
       </button>
     </div>
   );
@@ -1787,7 +1879,24 @@ function createApiResponseError({
 
     requestId:
       apiError?.requestId,
+
+    apiErrorCode:
+      apiError?.code,
   });
+}
+
+function isRelinkRequiredError(
+  error:
+    ConnectPlaidAccountModalError,
+) {
+  return (
+    error.apiErrorCode ===
+      "connection-relink-required" ||
+    error.apiErrorCode ===
+      "item-not-found" ||
+    error.apiErrorCode ===
+      "plaid-item-revoked"
+  );
 }
 
 function normalizeModalError({
