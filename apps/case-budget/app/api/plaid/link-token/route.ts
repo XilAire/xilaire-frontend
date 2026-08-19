@@ -140,17 +140,28 @@ export async function POST(
       body.mode ??
       "create";
 
+    /*
+     * IMPORTANT:
+     *
+     * These async operations must be awaited inside this try block.
+     *
+     * Returning their unresolved promises directly would allow an
+     * asynchronous rejection to escape the surrounding try/catch.
+     * That would cause Next.js to return a generic 500 instead of
+     * allowing createErrorResponse() to safely translate known
+     * Plaid, repository, authentication, and route errors.
+     */
     if (
       mode ===
       "update"
     ) {
-      return createUpdateModeLinkToken({
+      return await createUpdateModeLinkToken({
         context,
         body,
       });
     }
 
-    return createNewConnectionLinkToken({
+    return await createNewConnectionLinkToken({
       context,
       body,
     });
@@ -578,7 +589,7 @@ function readOptionalMode(
 ): PlaidLinkTokenMode | undefined {
   if (
     value ===
-    undefined
+      undefined
   ) {
     return undefined;
   }
@@ -780,12 +791,7 @@ function createErrorResponse(
       {
         error: {
           code:
-            error.code
-              .toLowerCase()
-              .replaceAll(
-                "_",
-                "-",
-              ),
+            error.code,
 
           message:
             getSubscriptionAccessErrorMessage(
