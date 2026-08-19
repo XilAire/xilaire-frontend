@@ -178,10 +178,10 @@ const DEFAULT_UPDATE_REASON =
   "reauthentication";
 
 /**
- * Creates a Link token for a new Plaid connection.
+ * Creates a Plaid Link token for a new financial connection.
  *
- * The returned link token is safe to send to the authenticated browser session.
- * Plaid credentials and access tokens remain server-side.
+ * Only the short-lived Link token is returned to the calling server route.
+ * Plaid credentials remain entirely server-side.
  */
 export async function createPlaidLinkToken(
   input:
@@ -199,10 +199,10 @@ export async function createPlaidLinkToken(
 }
 
 /**
- * Creates a Link token in update mode for an existing Plaid Item.
+ * Creates a Plaid Link token in update mode for an existing Item.
  *
- * Use update mode when an Item requires reauthentication, account selection
- * changes, or consent renewal. Never send the access token to the browser.
+ * The Plaid access token must only come from encrypted server-side
+ * persistence. It must never be supplied by or returned to the browser.
  */
 export async function createPlaidUpdateLinkToken(
   input:
@@ -231,7 +231,8 @@ export async function createPlaidUpdateLinkToken(
  * Exchanges the short-lived public token returned by Plaid Link for a
  * permanent Item access token.
  *
- * Store the returned access token only in encrypted server-side persistence.
+ * The resulting access token must immediately be stored in encrypted,
+ * server-side persistence and must never be returned to the browser.
  */
 export async function exchangePlaidPublicToken(
   publicToken:
@@ -274,7 +275,7 @@ export async function exchangePlaidPublicToken(
 }
 
 /**
- * Retrieves current Item metadata and error state for a connected institution.
+ * Retrieves the current Plaid Item metadata and provider error state.
  */
 export async function getPlaidItemStatus(
   accessToken:
@@ -312,8 +313,8 @@ export async function getPlaidItemStatus(
 /**
  * Removes a Plaid Item and invalidates its access token.
  *
- * Call this only after confirming the authenticated user owns the associated
- * CASE Budget financial connection.
+ * Ownership and workspace authorization must be enforced by the calling
+ * server route or repository before this function is called.
  */
 export async function removePlaidItem(
   accessToken:
@@ -366,7 +367,9 @@ async function createLinkToken(
     );
 
   const clientName =
-    input.clientName?.trim() ||
+    normalizeOptionalValue(
+      input.clientName,
+    ) ??
     DEFAULT_CLIENT_NAME;
 
   const accessToken =
@@ -403,8 +406,22 @@ async function createLinkToken(
         client_user_id:
           userId,
       },
-  };
+    };
 
+  /*
+   * Plaid Link has two fundamentally different token modes:
+   *
+   * CREATE MODE
+   * - products are supplied.
+   * - no access token is supplied.
+   *
+   * UPDATE MODE
+   * - the existing Item access token is supplied.
+   * - products are not supplied.
+   *
+   * Keeping these branches separate prevents accidentally sending an
+   * incompatible request payload to Plaid.
+   */
   if (
     accessToken
   ) {
@@ -416,9 +433,25 @@ async function createLinkToken(
         true,
     };
   } else {
-    request.products =
+    const products =
       input.products ??
       configuration.products;
+
+    if (
+      products.length ===
+      0
+    ) {
+      throw new PlaidServiceError({
+        message:
+          "At least one Plaid product must be configured when creating a new Link token.",
+
+        code:
+          "configuration-error",
+      });
+    }
+
+    request.products =
+      products;
   }
 
   if (
@@ -470,15 +503,30 @@ function mapLinkTokenResponse(
   response:
     LinkTokenCreateResponse,
 ): PlaidLinkTokenResult {
-  return {
-    linkToken:
+  const linkToken =
+    requirePlaidResponseValue(
       response.link_token,
-
-    expiration:
-      response.expiration,
-
-    requestId:
+      "Plaid Link token",
       response.request_id,
+    );
+
+  const expiration =
+    requirePlaidResponseValue(
+      response.expiration,
+      "Plaid Link token expiration",
+      response.request_id,
+    );
+
+  const requestId =
+    requirePlaidResponseValue(
+      response.request_id,
+      "Plaid request ID",
+    );
+
+  return {
+    linkToken,
+    expiration,
+    requestId,
   };
 }
 
@@ -728,6 +776,34 @@ function mapPlaidErrorCode(
   return "unknown";
 }
 
+function requirePlaidResponseValue(
+  value:
+    string | null | undefined,
+  label:
+    string,
+  requestId?:
+    string,
+) {
+  const normalizedValue =
+    value?.trim();
+
+  if (
+    normalizedValue
+  ) {
+    return normalizedValue;
+  }
+
+  throw new PlaidServiceError({
+    message:
+      `${label} was missing from the Plaid response.`,
+
+    code:
+      "provider-error",
+
+    requestId,
+  });
+}
+
 function requireNonEmptyValue(
   value:
     string,
@@ -866,8 +942,9 @@ function getOptionalString(
     unknown,
 ) {
   return typeof value ===
-    "string"
-    ? value
+    "string" &&
+    value.trim()
+    ? value.trim()
     : undefined;
 }
 
