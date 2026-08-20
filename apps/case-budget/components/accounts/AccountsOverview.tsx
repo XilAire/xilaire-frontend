@@ -122,6 +122,19 @@ export type AccountsOverviewProps = {
   className?: string;
 };
 
+type RemoveConnectionModalState = {
+  isOpen: boolean;
+
+  connection?: AccountConnectionSummary;
+};
+
+type RemoveConnectionApiError = {
+  error?: {
+    code?: string;
+    message?: string;
+  };
+};
+
 type PlaidModalState = {
   isOpen: boolean;
 
@@ -141,6 +154,15 @@ const DEFAULT_PLAID_MODAL_STATE:
       "create",
 
     connectionId:
+      undefined,
+  };
+
+const DEFAULT_REMOVE_CONNECTION_MODAL_STATE:
+  RemoveConnectionModalState = {
+    isOpen:
+      false,
+
+    connection:
       undefined,
   };
 
@@ -169,6 +191,30 @@ export default function AccountsOverview({
   const [
     connectionError,
     setConnectionError,
+  ] =
+    useState<string | null>(
+      null,
+    );
+
+  const [
+    removeConnectionModalState,
+    setRemoveConnectionModalState,
+  ] =
+    useState<RemoveConnectionModalState>(
+      DEFAULT_REMOVE_CONNECTION_MODAL_STATE,
+    );
+
+  const [
+    isRemovingConnection,
+    setIsRemovingConnection,
+  ] =
+    useState(
+      false,
+    );
+
+  const [
+    removeConnectionError,
+    setRemoveConnectionError,
   ] =
     useState<string | null>(
       null,
@@ -301,6 +347,137 @@ export default function AccountsOverview({
       [],
     );
 
+  const openRemoveConnectionModal =
+    useCallback(
+      (
+        connection:
+          AccountConnectionSummary,
+      ) => {
+        setConnectionError(
+          null,
+        );
+
+        setRemoveConnectionError(
+          null,
+        );
+
+        setRemoveConnectionModalState({
+          isOpen:
+            true,
+
+          connection,
+        });
+      },
+      [],
+    );
+
+  const closeRemoveConnectionModal =
+    useCallback(
+      () => {
+        if (
+          isRemovingConnection
+        ) {
+          return;
+        }
+
+        setRemoveConnectionError(
+          null,
+        );
+
+        setRemoveConnectionModalState(
+          DEFAULT_REMOVE_CONNECTION_MODAL_STATE,
+        );
+      },
+      [
+        isRemovingConnection,
+      ],
+    );
+
+  const handleRemoveConnection =
+    useCallback(
+      async () => {
+        const connection =
+          removeConnectionModalState.connection;
+
+        if (
+          !connection ||
+          isRemovingConnection
+        ) {
+          return;
+        }
+
+        setConnectionError(
+          null,
+        );
+
+        setRemoveConnectionError(
+          null,
+        );
+
+        setIsRemovingConnection(
+          true,
+        );
+
+        try {
+          const response =
+            await fetch(
+              `/api/financial-connections/${encodeURIComponent(
+                connection.id,
+              )}`,
+              {
+                method:
+                  "DELETE",
+
+                headers: {
+                  Accept:
+                    "application/json",
+                },
+              },
+            );
+
+          const payload =
+            (await response
+              .json()
+              .catch(
+                () =>
+                  null,
+              )) as RemoveConnectionApiError | null;
+
+          if (
+            !response.ok
+          ) {
+            throw new Error(
+              payload?.error?.message ??
+                "CASE Budget could not remove this financial connection.",
+            );
+          }
+
+          setRemoveConnectionModalState(
+            DEFAULT_REMOVE_CONNECTION_MODAL_STATE,
+          );
+
+          router.refresh();
+        } catch (
+          error
+        ) {
+          setRemoveConnectionError(
+            error instanceof Error
+              ? error.message
+              : "CASE Budget could not remove this financial connection.",
+          );
+        } finally {
+          setIsRemovingConnection(
+            false,
+          );
+        }
+      },
+      [
+        isRemovingConnection,
+        removeConnectionModalState.connection,
+        router,
+      ],
+    );
+
   const rootClassName =
     [
       "mx-auto w-full max-w-[1600px] space-y-6 px-4 py-5 sm:px-6 lg:px-8 lg:py-7",
@@ -369,6 +546,9 @@ export default function AccountsOverview({
           }
           onReconnect={
             openPlaidReauthentication
+          }
+          onRemove={
+            openRemoveConnectionModal
           }
         />
 
@@ -460,6 +640,27 @@ export default function AccountsOverview({
         }
         onError={
           handlePlaidError
+        }
+      />
+
+      <RemoveConnectionModal
+        isOpen={
+          removeConnectionModalState.isOpen
+        }
+        connection={
+          removeConnectionModalState.connection
+        }
+        isRemoving={
+          isRemovingConnection
+        }
+        errorMessage={
+          removeConnectionError
+        }
+        onClose={
+          closeRemoveConnectionModal
+        }
+        onConfirm={
+          handleRemoveConnection
         }
       />
     </>
@@ -650,6 +851,7 @@ function ConnectedInstitutions({
   onConnectBank,
   onConnectionSelect,
   onReconnect,
+  onRemove,
 }: {
   connections:
     AccountConnectionSummary[];
@@ -662,6 +864,11 @@ function ConnectedInstitutions({
   ) => void;
 
   onReconnect: (
+    connection:
+      AccountConnectionSummary,
+  ) => void;
+
+  onRemove: (
     connection:
       AccountConnectionSummary,
   ) => void;
@@ -712,6 +919,9 @@ function ConnectedInstitutions({
                 onReconnect={
                   onReconnect
                 }
+                onRemove={
+                  onRemove
+                }
               />
             ),
           )}
@@ -739,6 +949,7 @@ function ConnectionRow({
   connection,
   onSelect,
   onReconnect,
+  onRemove,
 }: {
   connection:
     AccountConnectionSummary;
@@ -749,6 +960,11 @@ function ConnectionRow({
   ) => void;
 
   onReconnect: (
+    connection:
+      AccountConnectionSummary,
+  ) => void;
+
+  onRemove: (
     connection:
       AccountConnectionSummary,
   ) => void;
@@ -823,6 +1039,25 @@ function ConnectionRow({
             Reconnect
           </button>
         ) : null}
+
+        <button
+          type="button"
+          onClick={
+            () =>
+              onRemove(
+                connection,
+              )
+          }
+          className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg border border-[color-mix(in_srgb,var(--danger)_30%,transparent)] bg-[var(--surface-default)] px-3 text-xs font-bold text-[var(--danger)] outline-none transition hover:bg-[color-mix(in_srgb,var(--danger)_8%,transparent)] focus-visible:ring-2 focus-visible:ring-[var(--danger)]"
+          aria-label={`Remove ${
+            connection.displayName ??
+            connection.institutionName
+          } connection`}
+        >
+          <TrashIcon />
+
+          Remove
+        </button>
       </div>
     </div>
   );
@@ -1059,14 +1294,188 @@ function AccountsEmptyState({
   );
 }
 
+function RemoveConnectionModal({
+  isOpen,
+  connection,
+  isRemoving,
+  errorMessage,
+  onClose,
+  onConfirm,
+}: {
+  isOpen:
+    boolean;
+
+  connection?:
+    AccountConnectionSummary;
+
+  isRemoving:
+    boolean;
+
+  errorMessage:
+    string | null;
+
+  onClose: () => void;
+
+  onConfirm: () => void;
+}) {
+  if (
+    !isOpen ||
+    !connection
+  ) {
+    return null;
+  }
+
+  const institutionName =
+    connection.displayName ??
+    connection.institutionName;
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 px-4 py-6"
+      role="presentation"
+      onMouseDown={
+        (event) => {
+          if (
+            event.target ===
+              event.currentTarget &&
+            !isRemoving
+          ) {
+            onClose();
+          }
+        }
+      }
+    >
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="remove-connection-title"
+        aria-describedby="remove-connection-description"
+        className="w-full max-w-lg rounded-3xl border border-[var(--border-subtle)] bg-[var(--surface-default)] p-6 shadow-2xl sm:p-7"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex min-w-0 items-start gap-4">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[color-mix(in_srgb,var(--danger)_10%,transparent)] text-[var(--danger)]">
+              <TrashIcon
+                size={
+                  20
+                }
+              />
+            </span>
+
+            <div className="min-w-0">
+              <h2
+                id="remove-connection-title"
+                className="text-xl font-bold tracking-tight text-[var(--text-primary)]"
+              >
+                Remove financial connection?
+              </h2>
+
+              <p
+                id="remove-connection-description"
+                className="mt-2 text-sm leading-6 text-[var(--text-muted)]"
+              >
+                CASE Budget will disconnect
+                {" "}
+                <strong className="font-bold text-[var(--text-primary)]">
+                  {institutionName}
+                </strong>
+                {" "}
+                and stop future Plaid synchronization for this connection. Historical CASE Budget account records are preserved by the server-side removal flow.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={
+              onClose
+            }
+            disabled={
+              isRemoving
+            }
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[var(--text-muted)] outline-none transition hover:bg-[var(--surface-muted)] hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label="Close remove connection dialog"
+          >
+            <CloseIcon />
+          </button>
+        </div>
+
+        <div className="mt-5 rounded-2xl border border-[color-mix(in_srgb,var(--warning)_28%,transparent)] bg-[color-mix(in_srgb,var(--warning)_8%,transparent)] px-4 py-3">
+          <p className="text-sm leading-6 text-[var(--text-primary)]">
+            You will need to connect the institution again if you want CASE Budget to resume importing live balances and transactions.
+          </p>
+        </div>
+
+        {errorMessage ? (
+          <div className="mt-4">
+            <InlineAlert
+              message={
+                errorMessage
+              }
+              onDismiss={
+                () => undefined
+              }
+              hideDismiss
+            />
+          </div>
+        ) : null}
+
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={
+              onClose
+            }
+            disabled={
+              isRemoving
+            }
+            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-[var(--border-default)] bg-[var(--surface-default)] px-4 text-sm font-bold text-[var(--text-primary)] outline-none transition hover:bg-[var(--surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            onClick={
+              onConfirm
+            }
+            disabled={
+              isRemoving
+            }
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[var(--danger)] px-4 text-sm font-bold text-white outline-none transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--danger)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isRemoving ? (
+              <>
+                <SpinnerIcon />
+
+                Removing...
+              </>
+            ) : (
+              <>
+                <TrashIcon />
+
+                Remove connection
+              </>
+            )}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function InlineAlert({
   message,
   onDismiss,
+  hideDismiss = false,
 }: {
   message:
     string;
 
   onDismiss: () => void;
+
+  hideDismiss?:
+    boolean;
 }) {
   return (
     <div
@@ -1083,16 +1492,18 @@ function InlineAlert({
         </p>
       </div>
 
-      <button
-        type="button"
-        onClick={
-          onDismiss
-        }
-        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[var(--text-muted)] outline-none transition hover:bg-[var(--surface-default)] hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
-        aria-label="Dismiss connection error"
-      >
-        <CloseIcon />
-      </button>
+      {!hideDismiss ? (
+        <button
+          type="button"
+          onClick={
+            onDismiss
+          }
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[var(--text-muted)] outline-none transition hover:bg-[var(--surface-default)] hover:text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
+          aria-label="Dismiss connection error"
+        >
+          <CloseIcon />
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -1732,6 +2143,55 @@ function WarningIcon() {
       <path d="M10.3 2.9 1.8 17a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 2.9a2 2 0 0 0-3.4 0Z" />
       <path d="M12 9v4" />
       <path d="M12 17h.01" />
+    </svg>
+  );
+}
+
+function TrashIcon({
+  size = 16,
+}: {
+  size?:
+    number;
+}) {
+  return (
+    <svg
+      width={
+        size
+      }
+      height={
+        size
+      }
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M3 6h18" />
+      <path d="M8 6V4h8v2" />
+      <path d="M19 6 18 20H6L5 6" />
+      <path d="M10 11v5" />
+      <path d="M14 11v5" />
+    </svg>
+  );
+}
+
+function SpinnerIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      aria-hidden="true"
+      className="animate-spin"
+    >
+      <path d="M21 12a9 9 0 1 1-6.2-8.56" />
     </svg>
   );
 }
