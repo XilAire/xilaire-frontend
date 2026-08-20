@@ -220,14 +220,60 @@ export default function AccountsOverview({
       null,
     );
 
+  const [
+    removedConnectionIds,
+    setRemovedConnectionIds,
+  ] =
+    useState<
+      Set<string>
+    >(
+      () =>
+        new Set(),
+    );
+
+  const visibleConnections =
+    useMemo(
+      () =>
+        connections.filter(
+          (
+            connection,
+          ) =>
+            !removedConnectionIds.has(
+              connection.id,
+            ),
+        ),
+      [
+        connections,
+        removedConnectionIds,
+      ],
+    );
+
+  const visibleAccounts =
+    useMemo(
+      () =>
+        accounts.filter(
+          (
+            account,
+          ) =>
+            !account.connectionId ||
+            !removedConnectionIds.has(
+              account.connectionId,
+            ),
+        ),
+      [
+        accounts,
+        removedConnectionIds,
+      ],
+    );
+
   const accountSummary =
     useMemo(
       () =>
         calculateAccountSummary(
-          accounts,
+          visibleAccounts,
         ),
       [
-        accounts,
+        visibleAccounts,
       ],
     );
 
@@ -235,17 +281,17 @@ export default function AccountsOverview({
     useMemo(
       () =>
         groupAccounts(
-          accounts,
+          visibleAccounts,
         ),
       [
-        accounts,
+        visibleAccounts,
       ],
     );
 
   const activeConnections =
     useMemo(
       () =>
-        connections.filter(
+        visibleConnections.filter(
           (
             connection,
           ) =>
@@ -253,7 +299,7 @@ export default function AccountsOverview({
             "disconnected",
         ),
       [
-        connections,
+        visibleConnections,
       ],
     );
 
@@ -452,6 +498,23 @@ export default function AccountsOverview({
             );
           }
 
+          setRemovedConnectionIds(
+            (
+              currentIds,
+            ) => {
+              const nextIds =
+                new Set(
+                  currentIds,
+                );
+
+              nextIds.add(
+                connection.id,
+              );
+
+              return nextIds;
+            },
+          );
+
           setRemoveConnectionModalState(
             DEFAULT_REMOVE_CONNECTION_MODAL_STATE,
           );
@@ -552,7 +615,7 @@ export default function AccountsOverview({
           }
         />
 
-        {accounts.length >
+        {visibleAccounts.length >
         0 ? (
           <div className="space-y-5">
             <AccountGroup
