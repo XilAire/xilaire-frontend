@@ -18,6 +18,9 @@ import {
   createPayCycle as createPayCycleAction,
 } from "@/actions/pay-cycles/create-pay-cycle";
 import {
+  deletePayCycle as deletePayCycleAction,
+} from "@/actions/pay-cycles/delete-pay-cycle";
+import {
   getPayCycles,
 } from "@/actions/pay-cycles/get-pay-cycles";
 import {
@@ -771,14 +774,26 @@ export default function PayCyclesProvider({
           !workspaceId
         ) {
           throw new Error(
-            "A workspace is required to archive a pay cycle.",
+            "A workspace is required to delete a pay cycle.",
+          );
+        }
+
+        const normalizedPayCycleId =
+          payCycleId.trim();
+
+        if (
+          !normalizedPayCycleId
+        ) {
+          throw new Error(
+            "A valid pay cycle ID is required.",
           );
         }
 
         const result =
-          await archivePayCycleAction({
+          await deletePayCycleAction({
             workspaceId,
-            payCycleId,
+            payCycleId:
+              normalizedPayCycleId,
           });
 
         if (
@@ -789,33 +804,31 @@ export default function PayCyclesProvider({
           );
         }
 
-        const archivedPayCycle =
-          normalizePayCycle(
-            result.payCycle,
-          );
-
         setPayCycles(
           (
             currentPayCycles,
           ) =>
-            sortPayCycles(
-              currentPayCycles.map(
-                (
-                  payCycle,
-                ) =>
-                  payCycle.id ===
-                  archivedPayCycle.id
-                    ? archivedPayCycle
-                    : payCycle,
-              ),
+            currentPayCycles.filter(
+              (
+                payCycle,
+              ) =>
+                payCycle.id !==
+                result.payCycleId,
             ),
+        );
+
+        setRegenerationVersion(
+          (
+            currentVersion,
+          ) =>
+            currentVersion +
+            1,
         );
       },
       [
         workspaceId,
       ],
     );
-
   const getPayCycleById =
     useCallback(
       (
@@ -870,8 +883,52 @@ export default function PayCyclesProvider({
           status ===
           "archived"
         ) {
-          await deletePayCycle(
-            payCycleId,
+          const result =
+            await archivePayCycleAction({
+              workspaceId,
+              payCycleId,
+            });
+
+          if (
+            !result.success
+          ) {
+            throw new Error(
+              result.error,
+            );
+          }
+
+          const archivedPayCycle =
+            normalizePayCycle(
+              result.payCycle,
+            );
+
+          assertValidPayCycle(
+            archivedPayCycle,
+          );
+
+          setPayCycles(
+            (
+              currentPayCycles,
+            ) =>
+              sortPayCycles(
+                currentPayCycles.map(
+                  (
+                    payCycle,
+                  ) =>
+                    payCycle.id ===
+                    archivedPayCycle.id
+                      ? archivedPayCycle
+                      : payCycle,
+                ),
+              ),
+          );
+
+          setRegenerationVersion(
+            (
+              currentVersion,
+            ) =>
+              currentVersion +
+              1,
           );
 
           return;
@@ -883,7 +940,6 @@ export default function PayCyclesProvider({
         });
       },
       [
-        deletePayCycle,
         updatePayCycle,
         workspaceId,
       ],

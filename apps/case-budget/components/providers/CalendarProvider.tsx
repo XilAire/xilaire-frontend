@@ -42,6 +42,9 @@ import {
   useTransactions,
 } from "@/components/providers/TransactionsProvider";
 import {
+  getPreviousPayDate,
+} from "@/lib/pay-cycles/pay-cycle-utils";
+import {
   DEFAULT_CALENDAR_FILTERS,
   DEFAULT_CALENDAR_PREFERENCES,
   applyCalendarPreferences,
@@ -74,6 +77,9 @@ import type {
   FinancialCalendarView,
   UpdateFinancialCalendarEventData,
 } from "@/types/calendar";
+import type {
+  PayCycleData,
+} from "@/types/pay-cycle";
 
 type CalendarContextValue = {
   manualEvents: FinancialCalendarEvent[];
@@ -278,11 +284,12 @@ export default function CalendarProvider({
           const persisted =
             preferencesResult.preferences;
 
+          // Always open the calendar on the current date when the provider
+          // mounts. A previously persisted selected date can belong to an
+          // older month and make the current calendar appear empty until the
+          // user manually navigates back.
           setSelectedDateState(
-            normalizeCalendarDate(
-              persisted.selectedDate ??
-                today,
-            ),
+            today,
           );
 
           setViewState(
@@ -330,6 +337,22 @@ export default function CalendarProvider({
     ],
   );
 
+  const visibleRange =
+    useMemo(
+      () =>
+        getCalendarVisibleRange({
+          selectedDate,
+          view,
+          weekStartsOn:
+            preferences.weekStartsOn,
+        }),
+      [
+        preferences.weekStartsOn,
+        selectedDate,
+        view,
+      ],
+    );
+
   const generatedEvents =
     useMemo(
       () =>
@@ -338,12 +361,14 @@ export default function CalendarProvider({
           payCycles,
           projectedPayPeriodsByCycle,
           transactions,
+          visibleRange,
         }),
       [
         bills,
         payCycles,
         projectedPayPeriodsByCycle,
         transactions,
+        visibleRange,
       ],
     );
 
@@ -374,22 +399,6 @@ export default function CalendarProvider({
         events,
         filters,
         preferences,
-      ],
-    );
-
-  const visibleRange =
-    useMemo(
-      () =>
-        getCalendarVisibleRange({
-          selectedDate,
-          view,
-          weekStartsOn:
-            preferences.weekStartsOn,
-        }),
-      [
-        preferences.weekStartsOn,
-        selectedDate,
-        view,
       ],
     );
 
@@ -1240,11 +1249,13 @@ function createGeneratedCalendarEvents({
   payCycles,
   projectedPayPeriodsByCycle,
   transactions,
+  visibleRange,
 }: {
   bills: unknown[];
   payCycles: unknown[];
   projectedPayPeriodsByCycle: Record<string, unknown[]>;
   transactions: unknown[];
+  visibleRange: FinancialCalendarDateRange;
 }) {
   return [
     ...createBillCalendarEvents(
@@ -1253,6 +1264,7 @@ function createGeneratedCalendarEvents({
     ...createPaycheckCalendarEvents({
       payCycles,
       projectedPayPeriodsByCycle,
+      visibleRange,
     }),
     ...createTransactionCalendarEvents(
       transactions,
@@ -1435,9 +1447,11 @@ function createBillCalendarEvents(
 function createPaycheckCalendarEvents({
   payCycles,
   projectedPayPeriodsByCycle,
+  visibleRange,
 }: {
   payCycles: unknown[];
   projectedPayPeriodsByCycle: Record<string, unknown[]>;
+  visibleRange: FinancialCalendarDateRange;
 }): FinancialCalendarEvent[] {
   return payCycles.flatMap(
     (
@@ -1472,11 +1486,23 @@ function createPaycheckCalendarEvents({
         ) ??
         "Paycheck";
 
-      const payPeriods =
+      const projectedPayPeriods =
         projectedPayPeriodsByCycle[
           payCycleId
         ] ??
         [];
+
+      const historicalPayPeriods =
+        createHistoricalPayPeriodsForCalendar({
+          payCycle,
+          visibleRange,
+        });
+
+      const payPeriods =
+        deduplicatePayPeriodsByDate([
+          ...historicalPayPeriods,
+          ...projectedPayPeriods,
+        ]);
 
       if (
         payPeriods.length ===
@@ -1607,6 +1633,205 @@ function createPaycheckCalendarEvents({
         },
       );
     },
+  );
+}
+
+function createHistoricalPayPeriodsForCalendar({
+  payCycle,
+  visibleRange,
+}: {
+  payCycle: unknown;
+  visibleRange: FinancialCalendarDateRange;
+}) {
+  const record =
+    asRecord(
+      payCycle,
+    );
+
+  const payCycleId =
+    getString(
+      record,
+      [
+        "id",
+      ],
+    );
+
+  const nextPayDate =
+    getString(
+      record,
+      [
+        "nextPayDate",
+      ],
+    );
+
+  const startDate =
+    getString(
+      record,
+      [
+        "startDate",
+      ],
+    );
+
+  if (
+    !payCycleId ||
+    !nextPayDate ||
+    !startDate
+  ) {
+    return [];
+  }
+
+  const rangeStart =
+    normalizeCalendarDate(
+      visibleRange.startDate,
+    );
+
+  const rangeEnd =
+    normalizeCalendarDate(
+      visibleRange.endDate,
+    );
+
+  const normalizedStartDate =
+    normalizeCalendarDate(
+      startDate,
+    );
+
+  const normalizedNextPayDate =
+    normalizeCalendarDate(
+      nextPayDate,
+    );
+
+  if (
+    normalizedNextPayDate <=
+    rangeStart
+  ) {
+    return [];
+  }
+
+  const typedPayCycle =
+    payCycle as PayCycleData;
+
+  const historicalPeriods:
+    Record<string, unknown>[] =
+      [];
+
+  let currentPayDate =
+    normalizedNextPayDate;
+
+  let guardCount =
+    0;
+
+  while (
+    guardCount <
+      260
+  ) {
+    guardCount +=
+      1;
+
+    const previousPayDate =
+      getPreviousPayDate(
+        typedPayCycle,
+        currentPayDate,
+      );
+
+    if (
+      previousPayDate ===
+      currentPayDate
+    ) {
+      break;
+    }
+
+    if (
+      previousPayDate <
+      normalizedStartDate
+    ) {
+      break;
+    }
+
+    if (
+      previousPayDate <
+      rangeStart
+    ) {
+      break;
+    }
+
+    if (
+      previousPayDate <=
+      rangeEnd
+    ) {
+      historicalPeriods.push({
+        id:
+          `historical-${payCycleId}-${previousPayDate}`,
+        payCycleId,
+        expectedPayDate:
+          previousPayDate,
+        expectedAmount:
+          getFiniteNumber(
+            record,
+            [
+              "expectedNetAmount",
+            ],
+            0,
+          ),
+        destinationAccountId:
+          getString(
+            record,
+            [
+              "accountId",
+            ],
+          ),
+        status:
+          "completed",
+      });
+    }
+
+    currentPayDate =
+      previousPayDate;
+  }
+
+  return historicalPeriods;
+}
+
+function deduplicatePayPeriodsByDate(
+  payPeriods: unknown[],
+) {
+  const payPeriodMap =
+    new Map<string, unknown>();
+
+  payPeriods.forEach(
+    (
+      payPeriod,
+    ) => {
+      const record =
+        asRecord(
+          payPeriod,
+        );
+
+      const payDate =
+        getString(
+          record,
+          [
+            "actualPayDate",
+            "expectedPayDate",
+          ],
+        );
+
+      if (
+        !payDate
+      ) {
+        return;
+      }
+
+      payPeriodMap.set(
+        normalizeCalendarDate(
+          payDate,
+        ),
+        payPeriod,
+      );
+    },
+  );
+
+  return Array.from(
+    payPeriodMap.values(),
   );
 }
 
