@@ -347,48 +347,43 @@ export default function DashboardOverview({
 
   const financialSnapshotData =
     useMemo(
-      () => {
-        const receivedMonthlyIncome =
-          totals.receivedIncome;
-
-        return {
-          monthlyIncome:
-            receivedMonthlyIncome,
-          monthlyAssigned:
-            totals.assignedAmount,
-          monthlyExpenses:
-            liveMonthlyExpenses,
-          monthlySavings:
-            receivedMonthlyIncome -
-            liveMonthlyExpenses,
-          billsTotal:
-            currentMonthBills.reduce(
-              (
-                total,
-                bill,
-              ) =>
-                total +
-                bill.amount,
-              0,
-            ),
-          upcomingBillsTotal:
-            upcomingBills.reduce(
-              (
-                total,
-                bill,
-              ) =>
-                total +
-                bill.amount,
-              0,
-            ),
-          upcomingBillsCount:
-            upcomingBills.length,
-        };
-      },
+      () => ({
+        plannedIncome:
+          totals.plannedIncome,
+        receivedIncome:
+          totals.receivedIncome,
+        monthlyAssigned:
+          totals.assignedAmount,
+        monthlyExpenses:
+          liveMonthlyExpenses,
+        billsTotal:
+          currentMonthBills.reduce(
+            (
+              total,
+              bill,
+            ) =>
+              total +
+              bill.amount,
+            0,
+          ),
+        upcomingBillsTotal:
+          upcomingBills.reduce(
+            (
+              total,
+              bill,
+            ) =>
+              total +
+              bill.amount,
+            0,
+          ),
+        upcomingBillsCount:
+          upcomingBills.length,
+      }),
       [
         currentMonthBills,
         liveMonthlyExpenses,
         totals.assignedAmount,
+        totals.plannedIncome,
         totals.receivedIncome,
         upcomingBills,
       ],

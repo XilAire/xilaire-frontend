@@ -37,6 +37,11 @@ import {
   type PlaidAccountSyncMode,
 } from "@/lib/services/plaid/account-sync";
 
+import {
+  syncPlaidTransactions,
+  PlaidTransactionSyncServiceError,
+} from "@/lib/services/plaid/transaction-sync";
+
 export const runtime =
   "nodejs";
 
@@ -234,6 +239,18 @@ export async function POST(
           plaidAccountSyncStore,
       });
 
+    /*
+     * Synchronize transactions only after accounts have been synchronized so
+     * every Plaid account ID can resolve to a canonical CASE Budget account.
+     */
+    const transactionResult =
+      await syncPlaidTransactions({
+        connectionId:
+          connection.id,
+
+        owner,
+      });
+
     return noStoreJson(
       {
         connection: {
@@ -295,6 +312,50 @@ export async function POST(
 
           skippedProviderAccountIds:
             result.skippedProviderAccountIds,
+        },
+
+        transactions: {
+          startedAt:
+            transactionResult.startedAt,
+
+          completedAt:
+            transactionResult.completedAt,
+
+          previousCursor:
+            transactionResult.previousCursor,
+
+          nextCursor:
+            transactionResult.nextCursor,
+
+          addedCount:
+            transactionResult.addedCount,
+
+          modifiedCount:
+            transactionResult.modifiedCount,
+
+          removedCount:
+            transactionResult.removedCount,
+
+          insertedCount:
+            transactionResult.insertedCount,
+
+          updatedCount:
+            transactionResult.updatedCount,
+
+          softDeletedCount:
+            transactionResult.softDeletedCount,
+
+          skippedCount:
+            transactionResult.skippedCount,
+
+          affectedBudgetItemCount:
+            transactionResult.affectedBudgetItemCount,
+
+          pageCount:
+            transactionResult.pageCount,
+
+          paginationRestartCount:
+            transactionResult.paginationRestartCount,
         },
 
         item: {
@@ -712,6 +773,34 @@ function createErrorResponse(
 
   if (
     error instanceof
+    PlaidTransactionSyncServiceError
+  ) {
+    return noStoreJson(
+      {
+        error: {
+          code:
+            error.code,
+
+          message:
+            getSafePlaidTransactionSyncMessage(
+              error,
+            ),
+
+          requestId:
+            error.providerRequestId,
+        },
+      },
+      {
+        status:
+          getPlaidTransactionSyncHttpStatus(
+            error,
+          ),
+      },
+    );
+  }
+
+  if (
+    error instanceof
     PlaidServiceError
   ) {
     return noStoreJson(
@@ -830,6 +919,76 @@ function getPlaidAccountSyncHttpStatus(
     case "provider-error":
       return 502;
 
+    case "unknown":
+    default:
+      return 500;
+  }
+}
+
+function getSafePlaidTransactionSyncMessage(
+  error:
+    PlaidTransactionSyncServiceError,
+) {
+  switch (
+    error.code
+  ) {
+    case "invalid-input":
+      return "The Plaid transaction synchronization request is invalid.";
+
+    case "item-not-found":
+      return "The Plaid Item for this financial connection could not be found.";
+
+    case "item-revoked":
+      return "This Plaid connection has been revoked and must be reconnected.";
+
+    case "account-map-failed":
+      return "CASE Budget could not map the connected accounts for transaction synchronization.";
+
+    case "transaction-write-failed":
+      return "CASE Budget could not save one or more synchronized transactions.";
+
+    case "transaction-delete-failed":
+      return "CASE Budget could not remove a transaction that Plaid marked as removed.";
+
+    case "budget-sync-failed":
+      return "Transactions were synchronized, but CASE Budget could not update the affected budget activity.";
+
+    case "cursor-save-failed":
+      return "Transactions were synchronized, but CASE Budget could not save the Plaid synchronization checkpoint.";
+
+    case "provider-error":
+      return "Plaid could not synchronize transactions at this time.";
+
+    case "unknown":
+    default:
+      return "Unable to synchronize Plaid transactions.";
+  }
+}
+
+function getPlaidTransactionSyncHttpStatus(
+  error:
+    PlaidTransactionSyncServiceError,
+) {
+  switch (
+    error.code
+  ) {
+    case "invalid-input":
+      return 400;
+
+    case "item-not-found":
+      return 404;
+
+    case "item-revoked":
+      return 409;
+
+    case "provider-error":
+      return 502;
+
+    case "account-map-failed":
+    case "transaction-write-failed":
+    case "transaction-delete-failed":
+    case "budget-sync-failed":
+    case "cursor-save-failed":
     case "unknown":
     default:
       return 500;

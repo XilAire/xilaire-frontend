@@ -40,6 +40,12 @@ export const runtime =
 export const dynamic =
   "force-dynamic";
 
+const CASE_BUDGET_PRODUCTION_ORIGIN =
+  "https://www.casebudgets.com";
+
+const CASE_BUDGET_PLAID_WEBHOOK_PATH =
+  "/api/plaid/webhook";
+
 type PlaidLinkTokenMode =
   | "create"
   | "update";
@@ -198,7 +204,7 @@ async function createNewConnectionLinkToken({
         ),
 
       webhookUrl:
-        normalizeOptionalText(
+        resolvePlaidWebhookUrl(
           body.webhookUrl,
         ),
     });
@@ -806,6 +812,57 @@ function readOptionalAbsoluteUrl({
       status:
         400,
     });
+  }
+
+  return parsedUrl.toString();
+}
+
+/**
+ * Resolves the server-controlled Plaid webhook URL.
+ *
+ * Production always uses the canonical CASE Budget HTTPS endpoint.
+ * Local development intentionally omits localhost because Plaid cannot
+ * deliver webhooks to a local-only address.
+ *
+ * A request-supplied webhook URL may be used outside production for
+ * externally reachable development/test environments.
+ */
+function resolvePlaidWebhookUrl(
+  requestedWebhookUrl:
+    string | undefined,
+) {
+  if (
+    process.env.NODE_ENV ===
+      "production"
+  ) {
+    return new URL(
+      CASE_BUDGET_PLAID_WEBHOOK_PATH,
+      CASE_BUDGET_PRODUCTION_ORIGIN,
+    ).toString();
+  }
+
+  const normalizedRequestedWebhookUrl =
+    normalizeOptionalText(
+      requestedWebhookUrl,
+    );
+
+  if (
+    !normalizedRequestedWebhookUrl
+  ) {
+    return undefined;
+  }
+
+  const parsedUrl =
+    new URL(
+      normalizedRequestedWebhookUrl,
+    );
+
+  if (
+    isLocalDevelopmentUrl(
+      parsedUrl,
+    )
+  ) {
+    return undefined;
   }
 
   return parsedUrl.toString();

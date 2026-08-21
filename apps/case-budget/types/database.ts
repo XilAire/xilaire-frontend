@@ -931,6 +931,206 @@ export type CaseBudgetTransactionDatabaseTable =
     CaseBudgetTransactionDatabaseUpdate
   >;
 
+
+/**
+ * public.plaid_items
+ *
+ * Canonical encrypted Plaid Item credential and synchronization-state table.
+ *
+ * Confirmed production columns:
+ *
+ * id
+ * connection_id
+ * workspace_id
+ * user_id
+ * plaid_item_id
+ * access_token_ciphertext
+ * access_token_iv
+ * access_token_auth_tag
+ * encryption_key_version
+ * institution_id
+ * available_products
+ * billed_products
+ * consented_products
+ * consent_expiration_time
+ * update_type
+ * selected_accounts
+ * link_session_id
+ * token_fingerprint
+ * last_verified_at
+ * revoked_at
+ * created_at
+ * updated_at
+ * transactions_sync_cursor
+ * transactions_initial_sync_completed_at
+ * transactions_last_synced_at
+ */
+export type PlaidItemDatabaseRow = {
+  id:
+    string;
+
+  connection_id:
+    string;
+
+  workspace_id:
+    string;
+
+  user_id:
+    string;
+
+  plaid_item_id:
+    string;
+
+  access_token_ciphertext:
+    string;
+
+  access_token_iv:
+    string;
+
+  access_token_auth_tag:
+    string;
+
+  encryption_key_version:
+    number;
+
+  institution_id:
+    string | null;
+
+  available_products:
+    string[];
+
+  billed_products:
+    string[];
+
+  consented_products:
+    string[];
+
+  consent_expiration_time:
+    string | null;
+
+  update_type:
+    string | null;
+
+  selected_accounts:
+    Json;
+
+  link_session_id:
+    string | null;
+
+  token_fingerprint:
+    string;
+
+  last_verified_at:
+    string | null;
+
+  revoked_at:
+    string | null;
+
+  created_at:
+    string;
+
+  updated_at:
+    string;
+
+  transactions_sync_cursor:
+    string | null;
+
+  transactions_initial_sync_completed_at:
+    string | null;
+
+  transactions_last_synced_at:
+    string | null;
+};
+
+export type PlaidItemDatabaseInsert = {
+  id?:
+    string;
+
+  connection_id:
+    string;
+
+  workspace_id:
+    string;
+
+  user_id:
+    string;
+
+  plaid_item_id:
+    string;
+
+  access_token_ciphertext:
+    string;
+
+  access_token_iv:
+    string;
+
+  access_token_auth_tag:
+    string;
+
+  encryption_key_version?:
+    number;
+
+  institution_id?:
+    string | null;
+
+  available_products?:
+    string[];
+
+  billed_products?:
+    string[];
+
+  consented_products?:
+    string[];
+
+  consent_expiration_time?:
+    string | null;
+
+  update_type?:
+    string | null;
+
+  selected_accounts?:
+    Json;
+
+  link_session_id?:
+    string | null;
+
+  token_fingerprint:
+    string;
+
+  last_verified_at?:
+    string | null;
+
+  revoked_at?:
+    string | null;
+
+  created_at?:
+    string;
+
+  updated_at?:
+    string;
+
+  transactions_sync_cursor?:
+    string | null;
+
+  transactions_initial_sync_completed_at?:
+    string | null;
+
+  transactions_last_synced_at?:
+    string | null;
+};
+
+export type PlaidItemDatabaseUpdate =
+  Partial<
+    PlaidItemDatabaseInsert
+  >;
+
+export type PlaidItemDatabaseTable =
+  SupabaseTableDefinition<
+    PlaidItemDatabaseRow,
+    PlaidItemDatabaseInsert,
+    PlaidItemDatabaseUpdate
+  >;
+
 /**
  * public.case_budget_pay_cycles
  */
@@ -2298,6 +2498,9 @@ export type Database = {
       case_budget_transactions:
         CaseBudgetTransactionDatabaseTable;
 
+      plaid_items:
+        PlaidItemDatabaseTable;
+
       case_budget_pay_cycles:
         CaseBudgetPayCycleDatabaseTable;
 
@@ -2454,6 +2657,7 @@ export type Database = {
  * - public.case_budget_budget_groups
  * - public.case_budget_budget_items
  * - public.case_budget_transactions
+ * - public.plaid_items
  * - public.case_budget_pay_cycles
  * - public.case_budget_pay_cycle_preferences
  * - public.case_budget_debts
@@ -2499,6 +2703,9 @@ export type WorkspaceDatabase = {
 
       case_budget_transactions:
         CaseBudgetTransactionDatabaseTable;
+
+      plaid_items:
+        PlaidItemDatabaseTable;
 
       case_budget_pay_cycles:
         CaseBudgetPayCycleDatabaseTable;

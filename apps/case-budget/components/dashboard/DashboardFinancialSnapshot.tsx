@@ -6,10 +6,10 @@ import {
 } from "react";
 
 export type DashboardFinancialSnapshotData = {
-  monthlyIncome: number;
+  plannedIncome: number;
+  receivedIncome: number;
   monthlyAssigned: number;
   monthlyExpenses: number;
-  monthlySavings: number;
   billsTotal: number;
   upcomingBillsTotal: number;
   upcomingBillsCount: number;
@@ -62,10 +62,10 @@ type ProgressMetric = {
 
 const fallbackSnapshotData:
   DashboardFinancialSnapshotData = {
-    monthlyIncome: 0,
+    plannedIncome: 0,
+    receivedIncome: 0,
     monthlyAssigned: 0,
     monthlyExpenses: 0,
-    monthlySavings: 0,
     billsTotal: 0,
     upcomingBillsTotal: 0,
     upcomingBillsCount: 0,
@@ -84,9 +84,13 @@ export default function DashboardFinancialSnapshot({
       DashboardFinancialSnapshotData
     >(
       () => ({
-        monthlyIncome:
+        plannedIncome:
           normalizeNonNegativeCurrency(
-            data.monthlyIncome,
+            data.plannedIncome,
+          ),
+        receivedIncome:
+          normalizeNonNegativeCurrency(
+            data.receivedIncome,
           ),
         monthlyAssigned:
           normalizeNonNegativeCurrency(
@@ -95,10 +99,6 @@ export default function DashboardFinancialSnapshot({
         monthlyExpenses:
           normalizeNonNegativeCurrency(
             data.monthlyExpenses,
-          ),
-        monthlySavings:
-          normalizeCurrency(
-            data.monthlySavings,
           ),
         billsTotal:
           normalizeNonNegativeCurrency(
@@ -134,13 +134,13 @@ export default function DashboardFinancialSnapshot({
       () => [
         {
           id: "income",
-          label: "Monthly Income",
+          label: "Planned Income",
           value:
             formatCurrency(
-              safeData.monthlyIncome,
+              safeData.plannedIncome,
             ),
           supportingText:
-            `${monthLabel} income`,
+            `${monthLabel} expected income`,
           icon: "income",
           tone: "primary",
         },
@@ -154,7 +154,7 @@ export default function DashboardFinancialSnapshot({
           supportingText:
             `${formatPercentage(
               calculations.assignedPercentage,
-            )} of income`,
+            )} of planned income`,
           icon: "assigned",
           tone:
             calculations.isOverassigned
@@ -196,7 +196,7 @@ export default function DashboardFinancialSnapshot({
           supportingText:
             `${formatPercentage(
               calculations.expensePercentage,
-            )} of income`,
+            )} of received income`,
           icon: "expenses",
           tone:
             calculations.expensePercentage >
@@ -215,19 +215,19 @@ export default function DashboardFinancialSnapshot({
               calculations.savingsRate,
             ),
           supportingText:
-            safeData.monthlySavings >=
+            calculations.actualSavings >=
             0
               ? `${formatCurrency(
-                  safeData.monthlySavings,
+                  calculations.actualSavings,
                 )} retained`
               : `${formatCurrency(
                   Math.abs(
-                    safeData.monthlySavings,
+                    calculations.actualSavings,
                   ),
                 )} shortfall`,
           icon: "savings",
           tone:
-            safeData.monthlySavings <
+            calculations.actualSavings <
             0
               ? "danger"
               : calculations.savingsRate >=
@@ -303,20 +303,26 @@ export default function DashboardFinancialSnapshot({
       () => [
         {
           id: "income-progress",
-          label: "Income",
+          label: "Income Received",
           value:
-            safeData.monthlyIncome,
+            safeData.receivedIncome,
           total:
-            safeData.monthlyIncome,
+            safeData.plannedIncome,
           formattedValue:
             formatCurrency(
-              safeData.monthlyIncome,
+              safeData.receivedIncome,
             ),
           formattedTotal:
             formatCurrency(
-              safeData.monthlyIncome,
+              safeData.plannedIncome,
             ),
-          tone: "primary",
+          tone:
+            safeData.receivedIncome >=
+            safeData.plannedIncome &&
+            safeData.plannedIncome >
+            0
+              ? "success"
+              : "primary",
         },
         {
           id: "assigned-progress",
@@ -325,7 +331,7 @@ export default function DashboardFinancialSnapshot({
             safeData.monthlyAssigned,
           total:
             Math.max(
-              safeData.monthlyIncome,
+              safeData.plannedIncome,
               safeData.monthlyAssigned,
             ),
           formattedValue:
@@ -334,7 +340,7 @@ export default function DashboardFinancialSnapshot({
             ),
           formattedTotal:
             formatCurrency(
-              safeData.monthlyIncome,
+              safeData.plannedIncome,
             ),
           tone:
             calculations.isOverassigned
@@ -350,7 +356,7 @@ export default function DashboardFinancialSnapshot({
             safeData.monthlyExpenses,
           total:
             Math.max(
-              safeData.monthlyIncome,
+              safeData.receivedIncome,
               safeData.monthlyExpenses,
             ),
           formattedValue:
@@ -359,7 +365,7 @@ export default function DashboardFinancialSnapshot({
             ),
           formattedTotal:
             formatCurrency(
-              safeData.monthlyIncome,
+              safeData.receivedIncome,
             ),
           tone:
             calculations.expensePercentage >
@@ -373,33 +379,33 @@ export default function DashboardFinancialSnapshot({
         {
           id: "savings-progress",
           label:
-            safeData.monthlySavings >=
+            calculations.actualSavings >=
             0
               ? "Retained"
               : "Shortfall",
           value:
             Math.abs(
-              safeData.monthlySavings,
+              calculations.actualSavings,
             ),
           total:
             Math.max(
-              safeData.monthlyIncome,
+              safeData.receivedIncome,
               Math.abs(
-                safeData.monthlySavings,
+                calculations.actualSavings,
               ),
             ),
           formattedValue:
             formatCurrency(
               Math.abs(
-                safeData.monthlySavings,
+                calculations.actualSavings,
               ),
             ),
           formattedTotal:
             formatCurrency(
-              safeData.monthlyIncome,
+              safeData.receivedIncome,
             ),
           tone:
-            safeData.monthlySavings >=
+            calculations.actualSavings >=
             0
               ? "success"
               : "danger",
@@ -432,8 +438,8 @@ export default function DashboardFinancialSnapshot({
           remainingToAssign={
             calculations.remainingToAssign
           }
-          monthlyIncome={
-            safeData.monthlyIncome
+          plannedIncome={
+            safeData.plannedIncome
           }
           monthlyAssigned={
             safeData.monthlyAssigned
@@ -474,14 +480,17 @@ export default function DashboardFinancialSnapshot({
           />
 
           <SnapshotSummaryCard
-            monthlyIncome={
-              safeData.monthlyIncome
+            plannedIncome={
+              safeData.plannedIncome
+            }
+            receivedIncome={
+              safeData.receivedIncome
             }
             monthlyExpenses={
               safeData.monthlyExpenses
             }
-            monthlySavings={
-              safeData.monthlySavings
+            actualSavings={
+              calculations.actualSavings
             }
             netCashFlow={
               calculations.netCashFlow
@@ -548,7 +557,7 @@ function FinancialSnapshotHeader({
 
 type BudgetHealthBannerProps = {
   remainingToAssign: number;
-  monthlyIncome: number;
+  plannedIncome: number;
   monthlyAssigned: number;
   isBudgetComplete: boolean;
   isOverassigned: boolean;
@@ -557,14 +566,14 @@ type BudgetHealthBannerProps = {
 
 function BudgetHealthBanner({
   remainingToAssign,
-  monthlyIncome,
+  plannedIncome,
   monthlyAssigned,
   isBudgetComplete,
   isOverassigned,
   budgetHref,
 }: BudgetHealthBannerProps) {
   if (
-    monthlyIncome <=
+    plannedIncome <=
       0 &&
     monthlyAssigned <=
       0
@@ -583,9 +592,9 @@ function BudgetHealthBanner({
             </p>
 
             <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
-              Record cleared income,
-              then assign it across your
-              budget items.
+              Add the income you expect
+              this month, then assign it
+              across your budget items.
             </p>
           </div>
         </div>
@@ -887,9 +896,10 @@ function FinancialProgressRow({
 }
 
 type SnapshotSummaryCardProps = {
-  monthlyIncome: number;
+  plannedIncome: number;
+  receivedIncome: number;
   monthlyExpenses: number;
-  monthlySavings: number;
+  actualSavings: number;
   netCashFlow: number;
   savingsRate: number;
   billsHref: string;
@@ -897,9 +907,10 @@ type SnapshotSummaryCardProps = {
 };
 
 function SnapshotSummaryCard({
-  monthlyIncome,
+  plannedIncome,
+  receivedIncome,
   monthlyExpenses,
-  monthlySavings,
+  actualSavings,
   netCashFlow,
   savingsRate,
   billsHref,
@@ -925,10 +936,23 @@ function SnapshotSummaryCard({
 
       <dl className="mt-5 space-y-4">
         <SummaryRow
-          label="Income"
+          label="Planned income"
           value={formatCurrency(
-            monthlyIncome,
+            plannedIncome,
           )}
+        />
+
+        <SummaryRow
+          label="Income received"
+          value={formatCurrency(
+            receivedIncome,
+          )}
+          valueTone={
+            receivedIncome >
+            0
+              ? "success"
+              : "default"
+          }
         />
 
         <SummaryRow
@@ -940,16 +964,16 @@ function SnapshotSummaryCard({
 
         <SummaryRow
           label={
-            monthlySavings >=
+            actualSavings >=
             0
               ? "Monthly retained"
               : "Monthly shortfall"
           }
           value={formatCurrency(
-            monthlySavings,
+            actualSavings,
           )}
           valueTone={
-            monthlySavings >=
+            actualSavings >=
             0
               ? "success"
               : "danger"
@@ -1048,6 +1072,7 @@ function SummaryRow({
 type SnapshotCalculation = {
   remainingToAssign: number;
   netCashFlow: number;
+  actualSavings: number;
   assignedPercentage: number;
   expensePercentage: number;
   savingsRate: number;
@@ -1060,52 +1085,59 @@ function calculateSnapshot(
 ): SnapshotCalculation {
   const remainingToAssign =
     normalizeCurrency(
-      data.monthlyIncome -
+      data.plannedIncome -
         data.monthlyAssigned,
     );
 
   const netCashFlow =
     normalizeCurrency(
-      data.monthlyIncome -
+      data.receivedIncome -
         data.monthlyExpenses,
     );
 
   const assignedPercentage =
     calculatePercentage(
       data.monthlyAssigned,
-      data.monthlyIncome,
+      data.plannedIncome,
     );
 
   const expensePercentage =
     calculatePercentage(
       data.monthlyExpenses,
-      data.monthlyIncome,
+      data.receivedIncome,
+    );
+
+  const actualSavings =
+    normalizeCurrency(
+      data.receivedIncome -
+        data.monthlyExpenses,
     );
 
   const savingsRate =
     calculatePercentage(
-      data.monthlySavings,
-      data.monthlyIncome,
+      actualSavings,
+      data.receivedIncome,
     );
 
-  const hasIncome =
-    data.monthlyIncome >
+  const hasPlannedIncome =
+    data.plannedIncome >
     0;
 
   return {
     remainingToAssign,
     netCashFlow,
+    actualSavings,
     assignedPercentage,
     expensePercentage,
     savingsRate,
     isBudgetComplete:
-      hasIncome &&
+      hasPlannedIncome &&
       Math.abs(
         remainingToAssign,
       ) < 0.01,
     isOverassigned:
       data.monthlyAssigned >
-      data.monthlyIncome +
+      data.plannedIncome +
         0.01,
   };
 }

@@ -12,6 +12,10 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 
+import {
+  usePathname,
+} from "next/navigation";
+
 export type CaseBudgetTheme =
   | "light"
   | "dark"
@@ -110,11 +114,46 @@ export function useCaseBudgetTheme() {
   return context;
 }
 
+function isPublicAuthPath(
+  pathname: string,
+) {
+  return (
+    pathname === "/sign-in" ||
+    pathname.startsWith(
+      "/sign-in/",
+    ) ||
+    pathname === "/sign-up" ||
+    pathname.startsWith(
+      "/sign-up/",
+    ) ||
+    pathname === "/forgot-password" ||
+    pathname.startsWith(
+      "/forgot-password/",
+    ) ||
+    pathname === "/reset-password" ||
+    pathname.startsWith(
+      "/reset-password/",
+    ) ||
+    pathname === "/verify-email" ||
+    pathname.startsWith(
+      "/verify-email/",
+    )
+  );
+}
+
 export default function CaseBudgetThemeProvider({
   children,
   defaultTheme = DEFAULT_THEME,
   showGlobalToggle = true,
 }: CaseBudgetThemeProviderProps) {
+  const pathname =
+    usePathname();
+
+  const canUseAuthenticatedPreferences =
+    !isPublicAuthPath(
+      pathname,
+    );
+
   const [
     theme,
     setThemeState,
@@ -166,6 +205,12 @@ export default function CaseBudgetThemeProvider({
         nextTheme:
           CaseBudgetTheme,
       ) => {
+        if (
+          !canUseAuthenticatedPreferences
+        ) {
+          return;
+        }
+
         try {
           const response =
             await fetch(
@@ -197,7 +242,9 @@ export default function CaseBudgetThemeProvider({
             );
 
           if (
-            !response.ok
+            !response.ok &&
+            response.status !==
+              401
           ) {
             console.error(
               "[CASE Budget Theme] Could not persist theme preference.",
@@ -216,7 +263,9 @@ export default function CaseBudgetThemeProvider({
           );
         }
       },
-      [],
+      [
+        canUseAuthenticatedPreferences,
+      ],
     );
 
   const setTheme =
@@ -339,7 +388,11 @@ export default function CaseBudgetThemeProvider({
 
       {showGlobalToggle &&
       isMounted ? (
-        <GlobalThemeSwitcher />
+        <GlobalThemeSwitcher
+          canUseAuthenticatedPreferences={
+            canUseAuthenticatedPreferences
+          }
+        />
       ) : null}
     </CaseBudgetThemeContext.Provider>
   );
@@ -382,7 +435,14 @@ const FLOATING_CONTROL_DESKTOP_BREAKPOINT =
 const FLOATING_CONTROL_DRAG_THRESHOLD =
   4;
 
-function GlobalThemeSwitcher() {
+type GlobalThemeSwitcherProps = {
+  canUseAuthenticatedPreferences:
+    boolean;
+};
+
+function GlobalThemeSwitcher({
+  canUseAuthenticatedPreferences,
+}: GlobalThemeSwitcherProps) {
   const {
     theme,
     resolvedTheme,
@@ -655,6 +715,12 @@ function GlobalThemeSwitcher() {
         nextPosition:
           FloatingControlPosition,
       ) => {
+        if (
+          !canUseAuthenticatedPreferences
+        ) {
+          return;
+        }
+
         const normalized =
           pixelsToNormalized(
             nextPosition,
@@ -694,7 +760,9 @@ function GlobalThemeSwitcher() {
             );
 
           if (
-            !response.ok
+            !response.ok &&
+            response.status !==
+              401
           ) {
             console.error(
               "[CASE Budget Theme] Could not persist floating-control position.",
@@ -714,6 +782,7 @@ function GlobalThemeSwitcher() {
         }
       },
       [
+        canUseAuthenticatedPreferences,
         pixelsToNormalized,
       ],
     );
@@ -724,6 +793,24 @@ function GlobalThemeSwitcher() {
         false;
 
       async function loadPosition() {
+        if (
+          !canUseAuthenticatedPreferences
+        ) {
+          if (
+            !cancelled
+          ) {
+            setPosition(
+              getDefaultPosition(),
+            );
+
+            setHasLoadedPosition(
+              true,
+            );
+          }
+
+          return;
+        }
+
         try {
           const response =
             await fetch(
@@ -838,6 +925,7 @@ function GlobalThemeSwitcher() {
       };
     },
     [
+      canUseAuthenticatedPreferences,
       getDefaultPosition,
       normalizedToPixels,
     ],
@@ -1124,9 +1212,19 @@ function GlobalThemeSwitcher() {
     useCallback(
       async () => {
         /*
-         * null/null is the canonical "use the default placement" state.
-         * Updating local state first makes the control jump back immediately.
+         * null/null is the canonical authenticated "use the default placement"
+         * state. Public auth pages never call the protected preferences API.
          */
+        if (
+          !canUseAuthenticatedPreferences
+        ) {
+          setPosition(
+            getDefaultPosition(),
+          );
+
+          return;
+        }
+
         setPosition(
           null,
         );
@@ -1165,7 +1263,9 @@ function GlobalThemeSwitcher() {
             );
 
           if (
-            !response.ok
+            !response.ok &&
+            response.status !==
+              401
           ) {
             console.error(
               "[CASE Budget Theme] Could not reset floating-control position.",
@@ -1184,7 +1284,10 @@ function GlobalThemeSwitcher() {
           );
         }
       },
-      [],
+      [
+        canUseAuthenticatedPreferences,
+        getDefaultPosition,
+      ],
     );
 
   return (

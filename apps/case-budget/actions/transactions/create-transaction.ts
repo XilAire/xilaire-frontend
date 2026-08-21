@@ -21,6 +21,11 @@ import {
   createWorkspaceAdminClient,
 } from "@/lib/supabase/admin";
 
+import {
+  BudgetActivitySyncError,
+  recalculateBudgetActivity,
+} from "@/lib/transactions/budget-activity-sync";
+
 import type {
   CaseBudgetAccountTypeDatabaseEnum,
   CaseBudgetTransactionDatabaseRow,
@@ -202,6 +207,8 @@ export type CreateCaseBudgetTransactionResult =
           | "budget-month-mismatch"
           | "approval-check-failed"
           | "transaction-create-failed"
+          | "budget-activity-sync-failed"
+          | "transaction-rollback-failed"
           | "unexpected-error";
 
         message:
@@ -1102,6 +1109,131 @@ export async function createTransaction(
       transactionData as unknown as
         CaseBudgetTransactionDatabaseRow;
 
+    const affectedBudgetItemId =
+      transaction.transaction_type ===
+        "expense"
+        ? transaction.budget_item_id
+        : null;
+
+    if (
+      affectedBudgetItemId
+    ) {
+      try {
+        await recalculateBudgetActivity({
+          userId,
+          workspaceId,
+
+          budgetItemIds: [
+            affectedBudgetItemId,
+          ],
+        });
+      } catch (
+        syncError
+      ) {
+        console.error(
+          "[CASE Budget Transactions] Budget activity synchronization failed after transaction creation.",
+          {
+            workspaceId,
+            userId,
+
+            transactionId:
+              transaction.id,
+
+            budgetItemId:
+              affectedBudgetItemId,
+
+            error:
+              syncError,
+          },
+        );
+
+        const rollbackResult =
+          await rollbackCreatedTransaction({
+            transaction,
+            userId,
+            workspaceId,
+          });
+
+        if (
+          !rollbackResult.success
+        ) {
+          console.error(
+            "[CASE Budget Transactions] Failed to roll back transaction after budget activity synchronization failure.",
+            {
+              workspaceId,
+              userId,
+
+              transactionId:
+                transaction.id,
+
+              budgetItemId:
+                affectedBudgetItemId,
+
+              rollbackError:
+                rollbackResult.error,
+            },
+          );
+
+          return failure({
+            code:
+              "transaction-rollback-failed",
+
+            message:
+              "The transaction was created, but CASE Budget could not synchronize the budget or safely roll back the transaction. Refresh your data before making additional changes.",
+          });
+        }
+
+        try {
+          await recalculateBudgetActivity({
+            userId,
+            workspaceId,
+
+            budgetItemIds: [
+              affectedBudgetItemId,
+            ],
+          });
+        } catch (
+          repairError
+        ) {
+          console.error(
+            "[CASE Budget Transactions] Budget activity repair failed after transaction creation rollback.",
+            {
+              workspaceId,
+              userId,
+
+              transactionId:
+                transaction.id,
+
+              budgetItemId:
+                affectedBudgetItemId,
+
+              error:
+                repairError,
+            },
+          );
+
+          return failure({
+            code:
+              "budget-activity-sync-failed",
+
+            message:
+              "CASE Budget rolled back the transaction, but could not verify the budget activity repair. Refresh your data before trying again.",
+          });
+        }
+
+        return failure({
+          code:
+            "budget-activity-sync-failed",
+
+          message:
+            syncError instanceof
+              BudgetActivitySyncError
+              ? `The transaction was rolled back because CASE Budget could not synchronize the budget: ${syncError.message}`
+              : "The transaction was rolled back because CASE Budget could not synchronize the budget.",
+        });
+      }
+    }
+
     revalidateTransactionPaths();
 
     return {
@@ -1154,6 +1286,101 @@ export async function createTransaction(
         "CASE Budget could not create the transaction. Please try again.",
     });
   }
+}
+
+async function rollbackCreatedTransaction({
+  transaction,
+  userId,
+  workspaceId,
+}: {
+  transaction:
+    CaseBudgetTransactionDatabaseRow;
+
+  userId:
+    string;
+
+  workspaceId:
+    string;
+}):
+  Promise<
+    | {
+        success:
+          true;
+      }
+    | {
+        success:
+          false;
+
+        error:
+          unknown;
+      }
+  > {
+  const admin =
+    createWorkspaceAdminClient();
+
+  const {
+    data,
+    error,
+  } =
+    await admin
+      .from(
+        "case_budget_transactions",
+      )
+      .delete()
+      .eq(
+        "id",
+        transaction.id,
+      )
+      .eq(
+        "workspace_id",
+        workspaceId,
+      )
+      .eq(
+        "created_by_user_id",
+        userId,
+      )
+      .eq(
+        "source",
+        "manual",
+      )
+      .eq(
+        "updated_at",
+        transaction.updated_at,
+      )
+      .select(
+        "id",
+      )
+      .maybeSingle();
+
+  if (
+    error
+  ) {
+    return {
+      success:
+        false,
+
+      error,
+    };
+  }
+
+  if (
+    !data
+  ) {
+    return {
+      success:
+        false,
+
+      error:
+        new Error(
+          "The created transaction changed before rollback could complete.",
+        ),
+    };
+  }
+
+  return {
+    success:
+      true,
+  };
 }
 
 async function loadAvailableAccount({
