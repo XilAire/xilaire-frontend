@@ -94,12 +94,42 @@ export default function usePagination<
     normalizedInitialPageSize,
   );
 
+  const onPageChangeRef =
+    useRef(
+      onPageChange,
+    );
+
+  const onPageSizeChangeRef =
+    useRef(
+      onPageSizeChange,
+    );
+
   const previousResetDependenciesRef =
     useRef<
       readonly unknown[]
     >(
       resetDependencies,
     );
+
+  useEffect(
+    () => {
+      onPageChangeRef.current =
+        onPageChange;
+    },
+    [
+      onPageChange,
+    ],
+  );
+
+  useEffect(
+    () => {
+      onPageSizeChangeRef.current =
+        onPageSizeChange;
+    },
+    [
+      onPageSizeChange,
+    ],
+  );
 
   const totalItems =
     items.length;
@@ -167,13 +197,10 @@ export default function usePagination<
           ) *
           pageSize;
 
-        const endIndex =
-          startIndex +
-          pageSize;
-
         return items.slice(
           startIndex,
-          endIndex,
+          startIndex +
+            pageSize,
         );
       },
       [
@@ -194,7 +221,8 @@ export default function usePagination<
   const setCurrentPage =
     useCallback(
       (
-        page: number,
+        page:
+          number,
       ) => {
         const normalizedPage =
           Math.min(
@@ -211,12 +239,11 @@ export default function usePagination<
           normalizedPage,
         );
 
-        onPageChange?.(
+        onPageChangeRef.current?.(
           normalizedPage,
         );
       },
       [
-        onPageChange,
         totalPages,
       ],
     );
@@ -240,18 +267,11 @@ export default function usePagination<
           1,
         );
 
-        onPageSizeChange?.(
+        onPageSizeChangeRef.current?.(
           normalizedPageSize,
         );
-
-        onPageChange?.(
-          1,
-        );
       },
-      [
-        onPageChange,
-        onPageSizeChange,
-      ],
+      [],
     );
 
   const goToFirstPage =
@@ -318,40 +338,39 @@ export default function usePagination<
           normalizedInitialPageSize,
         );
 
-        onPageChange?.(
+        onPageChangeRef.current?.(
           normalizedInitialPage,
         );
 
-        onPageSizeChange?.(
+        onPageSizeChangeRef.current?.(
           normalizedInitialPageSize,
         );
       },
       [
         normalizedInitialPage,
         normalizedInitialPageSize,
-        onPageChange,
-        onPageSizeChange,
       ],
     );
 
   useEffect(
     () => {
       if (
-        currentPage !==
+        currentPage ===
         safeCurrentPage
       ) {
-        setCurrentPageState(
-          safeCurrentPage,
-        );
-
-        onPageChange?.(
-          safeCurrentPage,
-        );
+        return;
       }
+
+      setCurrentPageState(
+        safeCurrentPage,
+      );
+
+      onPageChangeRef.current?.(
+        safeCurrentPage,
+      );
     },
     [
       currentPage,
-      onPageChange,
       safeCurrentPage,
     ],
   );
@@ -380,12 +399,11 @@ export default function usePagination<
         1,
       );
 
-      onPageChange?.(
+      onPageChangeRef.current?.(
         1,
       );
     },
     [
-      onPageChange,
       resetDependencies,
     ],
   );

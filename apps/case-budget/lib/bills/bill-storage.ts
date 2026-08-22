@@ -190,6 +190,9 @@ type CaseBudgetBillRow = {
   paid_date:
     string | null;
 
+  payment_transaction_id:
+    string | null;
+
   created_at:
     string;
 
@@ -268,6 +271,9 @@ type CaseBudgetBillInsertRow = {
     string | null;
 
   paid_date:
+    string | null;
+
+  payment_transaction_id:
     string | null;
 };
 
@@ -1035,6 +1041,11 @@ function mapBillDataToDatabaseValues(
             bill.dueDate,
           )
         : null,
+
+    payment_transaction_id:
+      normalizeOptionalText(
+        bill.paymentTransactionId,
+      ),
   };
 }
 
@@ -1152,6 +1163,13 @@ function mapBillRowToBillData(
       ? {
           paidDate:
             row.paid_date,
+        }
+      : {}),
+
+    ...(row.payment_transaction_id
+      ? {
+          paymentTransactionId:
+            row.payment_transaction_id,
         }
       : {}),
 

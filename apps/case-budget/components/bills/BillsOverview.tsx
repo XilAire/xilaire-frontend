@@ -226,6 +226,19 @@ export default function BillsOverview() {
       filters,
     ]);
 
+  const orderedFilteredBills =
+    useMemo(
+      () =>
+        [
+          ...filteredBills,
+        ].sort(
+          compareBillsForDisplay,
+        ),
+      [
+        filteredBills,
+      ],
+    );
+
   const {
     currentPage,
     pageSize,
@@ -236,7 +249,7 @@ export default function BillsOverview() {
     setPageSize,
   } = usePagination({
     items:
-      filteredBills,
+      orderedFilteredBills,
     initialPage,
     initialPageSize,
     resetDependencies: [
@@ -256,8 +269,6 @@ export default function BillsOverview() {
         router,
         searchParams,
         page,
-        pageSize:
-          undefined,
       });
     },
     onPageSizeChange: (
@@ -335,39 +346,22 @@ export default function BillsOverview() {
   const hasFilteredBills =
     filteredBills.length > 0;
 
-  useEffect(
-    () => {
-      const requestedPage =
-        parsePositiveInteger(
-          searchParams.get(
-            "page",
-          ),
-          1,
-        );
-
-      if (
-        requestedPage !==
-        currentPage
-      ) {
-        setCurrentPage(
-          requestedPage,
-        );
-      }
-    },
-    [
-      currentPage,
-      searchParams,
-      setCurrentPage,
-    ],
-  );
-
   useEffect(() => {
     const billId =
       searchParams.get(
         "billId",
       );
 
-    if (!billId) {
+    /*
+     * The billId query parameter is only used to deep-link the details
+     * drawer. While Edit or Mark Paid is open, never allow this effect to
+     * reopen the details drawer behind that modal.
+     */
+    if (
+      !billId ||
+      editBillOpen ||
+      markPaidOpen
+    ) {
       return;
     }
 
@@ -397,7 +391,9 @@ export default function BillsOverview() {
     );
   }, [
     detailsDrawerOpen,
+    editBillOpen,
     getBillById,
+    markPaidOpen,
     searchParams,
     selectedBillId,
   ]);
@@ -416,7 +412,46 @@ export default function BillsOverview() {
     );
   }
 
+  function clearBillIdFromUrl() {
+    const params =
+      new URLSearchParams(
+        searchParams.toString(),
+      );
+
+    if (
+      !params.has(
+        "billId",
+      )
+    ) {
+      return;
+    }
+
+    params.delete(
+      "billId",
+    );
+
+    const queryString =
+      params.toString();
+
+    router.replace(
+      queryString
+        ? `/dashboard/bills?${queryString}`
+        : "/dashboard/bills",
+      {
+        scroll:
+          false,
+      },
+    );
+  }
+
   function closeAllBillOverlays() {
+    /*
+     * Clear the deep-link before changing overlay state. Otherwise the billId
+     * effect can observe the stale query parameter during the same render
+     * cycle and immediately reopen the drawer.
+     */
+    clearBillIdFromUrl();
+
     setDetailsDrawerOpen(
       false,
     );
@@ -444,31 +479,36 @@ export default function BillsOverview() {
     );
   }
 
-  function handleUpdateBill(
+  async function handleUpdateBill(
     updatedBill: BillData,
   ) {
-    updateBill(
+    await updateBill(
       updatedBill,
     );
 
     closeAllBillOverlays();
   }
 
-  function handleDeleteBill(
+  async function handleDeleteBill(
     billId: string,
   ) {
-    deleteBill(
+    await deleteBill(
       billId,
     );
 
     closeAllBillOverlays();
   }
 
-  function handleMarkBillPaid(
+  async function handleMarkBillPaid(
     bill: BillData,
     paidDate: string,
   ) {
-    markBillPaid(
+    /*
+     * Wait for the provider/API mutation to finish before clearing selection
+     * and closing overlays. Closing early races the provider state update and
+     * can leave a stale backdrop/drawer mounted.
+     */
+    await markBillPaid(
       bill,
       paidDate,
     );
@@ -511,26 +551,10 @@ export default function BillsOverview() {
   }
 
   function handleCloseBillDetails() {
+    clearBillIdFromUrl();
+
     setDetailsDrawerOpen(
       false,
-    );
-
-    const params =
-      new URLSearchParams(
-        searchParams.toString(),
-      );
-
-    params.delete(
-      "billId",
-    );
-
-    const queryString =
-      params.toString();
-
-    router.replace(
-      queryString
-        ? `/dashboard/bills?${queryString}`
-        : "/dashboard/bills",
     );
 
     clearSelectedBill();
@@ -539,6 +563,12 @@ export default function BillsOverview() {
   function handleOpenEditBill(
     bill: BillData,
   ) {
+    /*
+     * billId represents the details drawer only. Remove it before switching
+     * overlays so the URL effect cannot reopen the drawer behind Edit.
+     */
+    clearBillIdFromUrl();
+
     setSelectedBillId(
       bill.id,
     );
@@ -557,6 +587,8 @@ export default function BillsOverview() {
   }
 
   function handleCloseEditBill() {
+    clearBillIdFromUrl();
+
     setEditBillOpen(
       false,
     );
@@ -573,6 +605,13 @@ export default function BillsOverview() {
     ) {
       return;
     }
+
+    /*
+     * Remove the details deep-link before opening Mark Paid. This is the key
+     * guard against the drawer reopening while the payment mutation is
+     * completing.
+     */
+    clearBillIdFromUrl();
 
     setSelectedBillId(
       bill.id,
@@ -592,6 +631,8 @@ export default function BillsOverview() {
   }
 
   function handleCloseMarkPaid() {
+    clearBillIdFromUrl();
+
     setMarkPaidOpen(
       false,
     );
@@ -773,6 +814,48 @@ export default function BillsOverview() {
         }
       />
     </>
+  );
+}
+
+function compareBillsForDisplay(
+  firstBill:
+    BillData,
+  secondBill:
+    BillData,
+) {
+  const firstIsPaid =
+    firstBill.status ===
+    "paid";
+
+  const secondIsPaid =
+    secondBill.status ===
+    "paid";
+
+  if (
+    firstIsPaid !==
+    secondIsPaid
+  ) {
+    return firstIsPaid
+      ? 1
+      : -1;
+  }
+
+  const dateComparison =
+    firstBill.dueDate.localeCompare(
+      secondBill.dueDate,
+    );
+
+  if (
+    dateComparison !==
+    0
+  ) {
+    return firstIsPaid
+      ? -dateComparison
+      : dateComparison;
+  }
+
+  return firstBill.name.localeCompare(
+    secondBill.name,
   );
 }
 

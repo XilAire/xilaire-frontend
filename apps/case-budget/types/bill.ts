@@ -93,6 +93,7 @@ export type BillData = {
   reminder: BillReminder;
   note?: string;
   paidDate?: string;
+  paymentTransactionId?: string;
   createdAt?: string;
   updatedAt?: string;
 };

@@ -6,6 +6,14 @@ import {
 } from "next/server";
 
 import {
+  createTransaction,
+} from "@/actions/transactions/create-transaction";
+
+import {
+  deleteTransaction,
+} from "@/actions/transactions/delete-transaction";
+
+import {
   BillStorageError,
   deleteBill,
   getBill,
@@ -21,7 +29,6 @@ import {
 import {
   resolveAuthenticatedFeatureAccess,
 } from "@/lib/subscriptions/subscription-access";
-
 
 import type {
   BillData,
@@ -119,7 +126,6 @@ export async function GET(
           featureAccess.access.requiredPlan,
       });
     }
-
 
     const {
       billId,
@@ -221,8 +227,10 @@ export async function GET(
  *
  * Replaces the persisted bill values using the supplied BillData.
  *
- * The bill ID in the route is authoritative. If the body contains a
- * different bill.id, the request is rejected.
+ * When a bill transitions to paid and has both an account and budget item,
+ * CASE Budget creates one canonical cleared expense and stores its ID on
+ * paymentTransactionId. The persisted paymentTransactionId is authoritative
+ * so stale browser payloads cannot clear the link or create duplicates.
  */
 export async function PUT(
   request:
@@ -293,7 +301,6 @@ export async function DELETE(
           featureAccess.access.requiredPlan,
       });
     }
-
 
     const {
       billId,
@@ -394,7 +401,6 @@ async function handleUpdateBillRequest({
       });
     }
 
-
     const {
       billId,
     } =
@@ -442,42 +448,353 @@ async function handleUpdateBillRequest({
       );
     }
 
-    const savedBill =
-      await updateBill({
+    /*
+     * Reload the persisted bill before every update.
+     *
+     * The database is authoritative for paymentTransactionId. This prevents
+     * an older browser snapshot from clearing the payment link and causing a
+     * duplicate expense on a later retry.
+     */
+    const existingBill =
+      await getBill({
         userId,
         workspaceId,
-        bill:
-          requestBody.bill,
+        billId:
+          normalizedBillId,
       });
 
-    return NextResponse.json<
-      BillsApiResponse<{
-        bill:
-          BillData;
-      }>
-    >(
-      {
-        success:
-          true,
+    if (
+      !existingBill
+    ) {
+      return NextResponse.json<
+        BillsApiErrorResponse
+      >(
+        {
+          success:
+            false,
 
-        data: {
+          data:
+            null,
+
+          error: {
+            code:
+              "not-found",
+
+            message:
+              "The requested CASE Budget bill could not be found.",
+          },
+        },
+        {
+          status:
+            404,
+
+          headers: {
+            "Cache-Control":
+              "no-store",
+          },
+        },
+      );
+    }
+
+    const requestedBill:
+      BillData = {
+        ...requestBody.bill,
+
+        /*
+         * Never trust the browser to create, replace, or clear the canonical
+         * payment transaction relationship.
+         */
+        ...(existingBill.paymentTransactionId
+          ? {
+              paymentTransactionId:
+                existingBill.paymentTransactionId,
+            }
+          : {
+              paymentTransactionId:
+                undefined,
+            }),
+      };
+
+    const isPaidTransition =
+      existingBill.status !==
+        "paid" &&
+      requestedBill.status ===
+        "paid";
+
+    /*
+     * Only budget-synced bills create canonical categorized expenses here.
+     *
+     * A bill without budget sync can still be marked paid without creating
+     * a budget transaction. This preserves the existing Bills behavior for
+     * reminders/tracking-only bills.
+     */
+    const shouldCreatePaymentTransaction =
+      isPaidTransition &&
+      !existingBill.paymentTransactionId &&
+      requestedBill.budgetSync?.enabled ===
+        true;
+
+    if (
+      !shouldCreatePaymentTransaction
+    ) {
+      const savedBill =
+        await updateBill({
+          userId,
+          workspaceId,
           bill:
-            savedBill,
-        },
+            requestedBill,
+        });
 
-        error:
-          null,
-      },
-      {
+      return createBillSuccessResponse(
+        savedBill,
+      );
+    }
+
+    const accountId =
+      normalizeRequiredText(
+        requestedBill.account?.id,
+      );
+
+    if (
+      !accountId
+    ) {
+      return createBillPaymentErrorResponse({
+        code:
+          "payment-account-required",
+
+        message:
+          "Select an account before marking this budget-synced bill as paid.",
+
         status:
-          200,
+          400,
+      });
+    }
 
-        headers: {
-          "Cache-Control":
-            "no-store",
+    const budgetItemId =
+      normalizeRequiredText(
+        requestedBill.budgetItem?.id,
+      );
+
+    if (
+      !budgetItemId
+    ) {
+      return createBillPaymentErrorResponse({
+        code:
+          "payment-budget-item-required",
+
+        message:
+          "Select a budget item before marking this budget-synced bill as paid.",
+
+        status:
+          400,
+      });
+    }
+
+    const paidDate =
+      normalizeRequiredText(
+        requestedBill.paidDate,
+      ) ||
+      normalizeRequiredText(
+        requestedBill.dueDate,
+      );
+
+    if (
+      !paidDate
+    ) {
+      return createBillPaymentErrorResponse({
+        code:
+          "payment-date-required",
+
+        message:
+          "A valid paid date is required before this bill can be marked paid.",
+
+        status:
+          400,
+      });
+    }
+
+    const merchant =
+      normalizeRequiredText(
+        requestedBill.payee,
+      ) ||
+      normalizeRequiredText(
+        requestedBill.name,
+      );
+
+    if (
+      !merchant
+    ) {
+      return createBillPaymentErrorResponse({
+        code:
+          "payment-merchant-required",
+
+        message:
+          "A bill name or payee is required before this bill can be marked paid.",
+
+        status:
+          400,
+      });
+    }
+
+    const transactionResult =
+      await createTransaction({
+        date:
+          paidDate,
+
+        merchant,
+
+        note:
+          buildBillPaymentTransactionNote(
+            requestedBill,
+          ),
+
+        amount:
+          requestedBill.amount,
+
+        type:
+          "expense",
+
+        status:
+          "cleared",
+
+        accountId,
+
+        categoryId:
+          budgetItemId,
+      });
+
+    if (
+      !transactionResult.success
+    ) {
+      return createBillPaymentErrorResponse({
+        code:
+          `transaction-${transactionResult.error.code}`,
+
+        message:
+          transactionResult.error.message,
+
+        status:
+          400,
+      });
+    }
+
+    if (
+      transactionResult.status ===
+        "approval-required"
+    ) {
+      /*
+       * createTransaction intentionally inserts no transaction when household
+       * approval is required. Therefore the bill must remain unpaid and must
+       * not receive a paymentTransactionId yet.
+       */
+      return createBillPaymentErrorResponse({
+        code:
+          "payment-approval-required",
+
+        message:
+          "This bill payment requires household approval. The bill was not marked paid because the expense transaction has not been created yet.",
+
+        status:
+          409,
+      });
+    }
+
+    const createdTransaction =
+      transactionResult.transaction;
+
+    const billWithPayment:
+      BillData = {
+        ...requestedBill,
+
+        status:
+          "paid",
+
+        paidDate,
+
+        paymentTransactionId:
+          createdTransaction.id,
+      };
+
+    try {
+      const savedBill =
+        await updateBill({
+          userId,
+          workspaceId,
+          bill:
+            billWithPayment,
+        });
+
+      return createBillSuccessResponse(
+        savedBill,
+      );
+    } catch (
+      billUpdateError
+    ) {
+      console.error(
+        "[CASE Budget Bill API] Bill update failed after payment transaction creation. Attempting transaction rollback.",
+        {
+          userId,
+          workspaceId,
+
+          billId:
+            normalizedBillId,
+
+          transactionId:
+            createdTransaction.id,
+
+          error:
+            serializeUnknownError(
+              billUpdateError,
+            ),
         },
-      },
-    );
+      );
+
+      const rollbackResult =
+        await deleteTransaction({
+          transactionId:
+            createdTransaction.id,
+        });
+
+      if (
+        !rollbackResult.success ||
+        rollbackResult.status !==
+          "deleted"
+      ) {
+        console.error(
+          "[CASE Budget Bill API] Payment transaction rollback failed after bill update failure.",
+          {
+            userId,
+            workspaceId,
+
+            billId:
+              normalizedBillId,
+
+            transactionId:
+              createdTransaction.id,
+
+            rollbackResult,
+          },
+        );
+
+        return createBillPaymentErrorResponse({
+          code:
+            "payment-link-rollback-failed",
+
+          message:
+            "CASE Budget created the payment transaction but could not save its link to the bill or safely roll the transaction back. Refresh your data before trying again.",
+
+          status:
+            500,
+        });
+      }
+
+      /*
+       * The canonical delete action recalculates Budget activity after the
+       * compensating delete, so it is safe to surface the original bill
+       * storage error after rollback succeeds.
+       */
+      throw billUpdateError;
+    }
   } catch (
     error
   ) {
@@ -485,6 +802,96 @@ async function handleUpdateBillRequest({
       error,
     );
   }
+}
+
+function createBillSuccessResponse(
+  bill:
+    BillData,
+) {
+  return NextResponse.json<
+    BillsApiResponse<{
+      bill:
+        BillData;
+    }>
+  >(
+    {
+      success:
+        true,
+
+      data: {
+        bill,
+      },
+
+      error:
+        null,
+    },
+    {
+      status:
+        200,
+
+      headers: {
+        "Cache-Control":
+          "no-store",
+      },
+    },
+  );
+}
+
+function createBillPaymentErrorResponse({
+  code,
+  message,
+  status,
+}: {
+  code:
+    string;
+
+  message:
+    string;
+
+  status:
+    number;
+}) {
+  return NextResponse.json<
+    BillsApiErrorResponse
+  >(
+    {
+      success:
+        false,
+
+      data:
+        null,
+
+      error: {
+        code,
+        message,
+      },
+    },
+    {
+      status,
+
+      headers: {
+        "Cache-Control":
+          "no-store",
+      },
+    },
+  );
+}
+
+function buildBillPaymentTransactionNote(
+  bill:
+    BillData,
+) {
+  const billNote =
+    normalizeRequiredText(
+      bill.note,
+    );
+
+  const systemNote =
+    `CASE Budget bill payment: ${bill.id}`;
+
+  return billNote
+    ? `${systemNote} — ${billNote}`
+    : systemNote;
 }
 
 async function readJsonRequestBody(

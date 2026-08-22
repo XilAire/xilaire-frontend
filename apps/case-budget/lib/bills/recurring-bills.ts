@@ -60,18 +60,32 @@ export function generateNextBill(
         ? crypto.randomUUID()
         : `bill-${Date.now()}`,
 
-    dueDate: nextDueDate,
+    dueDate:
+      nextDueDate,
 
     status:
       determineBillStatus(
         nextDueDate,
       ),
 
-    paidDate: undefined,
+    /*
+     * A recurring occurrence is a brand-new unpaid obligation.
+     *
+     * Payment state belongs only to the occurrence that was actually paid.
+     * Never carry the prior bill's paid date or canonical payment transaction
+     * relationship forward to the next recurring bill.
+     */
+    paidDate:
+      undefined,
 
-    createdAt: timestamp,
+    paymentTransactionId:
+      undefined,
 
-    updatedAt: timestamp,
+    createdAt:
+      timestamp,
+
+    updatedAt:
+      timestamp,
   };
 }
 

@@ -21,6 +21,11 @@ import {
   createWorkspaceAdminClient,
 } from "@/lib/supabase/admin";
 
+import {
+  BudgetActivitySyncError,
+  recalculateBudgetActivity,
+} from "@/lib/transactions/budget-activity-sync";
+
 import type {
   CaseBudgetAccountTypeDatabaseEnum,
   CaseBudgetTransactionDatabaseRow,
@@ -208,6 +213,8 @@ export type UpdateCaseBudgetTransactionResult =
           | "approval-check-failed"
           | "transaction-update-conflict"
           | "transaction-update-failed"
+          | "budget-activity-sync-failed"
+          | "transaction-rollback-failed"
           | "unexpected-error";
 
         message:
@@ -267,6 +274,11 @@ const NOTE_MAX_LENGTH =
  * - The update uses the previously loaded updated_at timestamp as an
  *   optimistic-concurrency condition so stale edits cannot silently
  *   overwrite a newer server-side change.
+ * - Any old/new budget items affected by an expense mutation are
+ *   recalculated from the canonical transaction ledger after the update.
+ * - If budget synchronization fails, the transaction update is rolled back
+ *   with optimistic concurrency and affected budget items are recalculated
+ *   again from the restored ledger state.
  * - No localStorage is involved.
  */
 export async function updateTransaction(
@@ -1127,6 +1139,157 @@ export async function updateTransaction(
       updatedData as unknown as
         CaseBudgetTransactionDatabaseRow;
 
+    /*
+     * Budget activity is derived from the canonical transaction ledger.
+     *
+     * Recalculate both sides of a category/type change:
+     *
+     * - expense A -> expense B: recalculate A and B
+     * - expense A -> income/transfer: recalculate A
+     * - income/transfer -> expense B: recalculate B
+     * - expense amount/status/account/date edit: recalculate the attached item
+     *
+     * Status does not currently change whether an expense contributes to
+     * activity, but recalculating here keeps the mutation path consistent and
+     * future-proofs the derived totals.
+     */
+    const affectedBudgetItemIds =
+      getAffectedBudgetItemIds({
+        previous:
+          existing,
+
+        next:
+          updatedTransaction,
+      });
+
+    if (
+      affectedBudgetItemIds.length >
+      0
+    ) {
+      try {
+        await recalculateBudgetActivity({
+          userId,
+          workspaceId,
+
+          budgetItemIds:
+            affectedBudgetItemIds,
+        });
+      } catch (
+        syncError
+      ) {
+        console.error(
+          "[CASE Budget Transactions] Budget activity synchronization failed after transaction update.",
+          {
+            workspaceId,
+            userId,
+
+            transactionId:
+              updatedTransaction.id,
+
+            budgetItemIds:
+              affectedBudgetItemIds,
+
+            error:
+              syncError,
+          },
+        );
+
+        const rollbackResult =
+          await rollbackUpdatedTransaction({
+            previous:
+              existing,
+
+            updated:
+              updatedTransaction,
+
+            userId,
+            workspaceId,
+          });
+
+        if (
+          !rollbackResult.success
+        ) {
+          console.error(
+            "[CASE Budget Transactions] Failed to roll back transaction after budget activity synchronization failure.",
+            {
+              workspaceId,
+              userId,
+
+              transactionId:
+                updatedTransaction.id,
+
+              budgetItemIds:
+                affectedBudgetItemIds,
+
+              rollbackError:
+                rollbackResult.error,
+            },
+          );
+
+          return failure({
+            code:
+              "transaction-rollback-failed",
+
+            message:
+              "The transaction was updated, but CASE Budget could not synchronize the budget or safely roll back the transaction. Refresh your data before making additional changes.",
+          });
+        }
+
+        /*
+         * The rollback restored the previous transaction state. Recalculate
+         * the same union of affected items again so both the old and attempted
+         * new categories are repaired from canonical ledger state.
+         */
+        try {
+          await recalculateBudgetActivity({
+            userId,
+            workspaceId,
+
+            budgetItemIds:
+              affectedBudgetItemIds,
+          });
+        } catch (
+          repairError
+        ) {
+          console.error(
+            "[CASE Budget Transactions] Budget activity repair failed after transaction update rollback.",
+            {
+              workspaceId,
+              userId,
+
+              transactionId:
+                updatedTransaction.id,
+
+              budgetItemIds:
+                affectedBudgetItemIds,
+
+              error:
+                repairError,
+            },
+          );
+
+          return failure({
+            code:
+              "budget-activity-sync-failed",
+
+            message:
+              "CASE Budget restored the transaction, but could not verify the budget activity repair. Refresh your data before trying again.",
+          });
+        }
+
+        return failure({
+          code:
+            "budget-activity-sync-failed",
+
+          message:
+            syncError instanceof
+              BudgetActivitySyncError
+              ? `The transaction update was rolled back because CASE Budget could not synchronize the budget: ${syncError.message}`
+              : "The transaction update was rolled back because CASE Budget could not synchronize the budget.",
+        });
+      }
+    }
+
     revalidateTransactionPaths();
 
     return {
@@ -1180,6 +1343,195 @@ export async function updateTransaction(
         "CASE Budget could not update the transaction. Please try again.",
     });
   }
+}
+
+function getAffectedBudgetItemIds({
+  previous,
+  next,
+}: {
+  previous:
+    CaseBudgetTransactionDatabaseRow;
+
+  next:
+    CaseBudgetTransactionDatabaseRow;
+}) {
+  const budgetItemIds = [
+    previous.transaction_type ===
+      "expense"
+      ? previous.budget_item_id
+      : null,
+
+    next.transaction_type ===
+      "expense"
+      ? next.budget_item_id
+      : null,
+  ];
+
+  return Array.from(
+    new Set(
+      budgetItemIds.filter(
+        (
+          budgetItemId,
+        ): budgetItemId is string =>
+          Boolean(
+            budgetItemId,
+          ),
+      ),
+    ),
+  );
+}
+
+async function rollbackUpdatedTransaction({
+  previous,
+  updated,
+  userId,
+  workspaceId,
+}: {
+  previous:
+    CaseBudgetTransactionDatabaseRow;
+
+  updated:
+    CaseBudgetTransactionDatabaseRow;
+
+  userId:
+    string;
+
+  workspaceId:
+    string;
+}):
+  Promise<
+    | {
+        success:
+          true;
+
+        transaction:
+          CaseBudgetTransactionDatabaseRow;
+      }
+    | {
+        success:
+          false;
+
+        error:
+          unknown;
+      }
+  > {
+  const admin =
+    createWorkspaceAdminClient();
+
+  const rollbackAt =
+    new Date().toISOString();
+
+  /*
+   * Roll back only if the row is still exactly the version produced by this
+   * update. This prevents a compensating write from overwriting a newer
+   * concurrent mutation.
+   */
+  const {
+    data,
+    error,
+  } =
+    await admin
+      .from(
+        "case_budget_transactions",
+      )
+      .update({
+        updated_by_user_id:
+          previous.updated_by_user_id,
+
+        account_id:
+          previous.account_id,
+
+        transfer_account_id:
+          previous.transfer_account_id,
+
+        budget_item_id:
+          previous.budget_item_id,
+
+        transaction_type:
+          previous.transaction_type,
+
+        status:
+          previous.status,
+
+        transaction_date:
+          previous.transaction_date,
+
+        merchant:
+          previous.merchant,
+
+        description:
+          previous.description,
+
+        note:
+          previous.note,
+
+        amount:
+          previous.amount,
+
+        currency_code:
+          previous.currency_code,
+
+        updated_at:
+          rollbackAt,
+      })
+      .eq(
+        "id",
+        updated.id,
+      )
+      .eq(
+        "workspace_id",
+        workspaceId,
+      )
+      .eq(
+        "is_deleted",
+        false,
+      )
+      .eq(
+        "source",
+        "manual",
+      )
+      .eq(
+        "updated_at",
+        updated.updated_at,
+      )
+      .select(
+        "id,workspace_id,created_by_user_id,updated_by_user_id,account_id,transfer_account_id,budget_item_id,transaction_type,status,source,transaction_date,merchant,description,note,amount,currency_code,provider,provider_transaction_id,provider_account_id,provider_pending_transaction_id,is_deleted,deleted_at,deleted_by_user_id,reconciled_at,reconciled_by_user_id,created_at,updated_at",
+      )
+      .maybeSingle();
+
+  if (
+    error
+  ) {
+    return {
+      success:
+        false,
+
+      error,
+    };
+  }
+
+  if (
+    !data
+  ) {
+    return {
+      success:
+        false,
+
+      error:
+        new Error(
+          "The updated transaction changed before rollback could complete.",
+        ),
+    };
+  }
+
+  return {
+    success:
+      true,
+
+    transaction:
+      data as unknown as
+        CaseBudgetTransactionDatabaseRow,
+  };
 }
 
 async function loadWorkspace({
