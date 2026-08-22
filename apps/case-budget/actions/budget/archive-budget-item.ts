@@ -18,6 +18,7 @@ import {
 } from "@/lib/supabase/admin";
 
 import type {
+  BudgetAmountType,
   BudgetCategoryData,
 } from "@/types/budget";
 
@@ -237,6 +238,7 @@ const ITEM_SELECT =
     "name",
     "description",
     "planned_amount",
+    "amount_type",
     "activity_amount",
     "available_amount",
     "rollover_amount",
@@ -1477,6 +1479,16 @@ function mapBudgetItemRecord({
       row.planned_amount,
     );
 
+  const amountType =
+    normalizeBudgetAmountType(
+      (
+        row as CaseBudgetBudgetItemDatabaseRow & {
+          amount_type?:
+            unknown;
+        }
+      ).amount_type,
+    );
+
   const activityAmount =
     normalizeDatabaseMoney(
       row.activity_amount,
@@ -1525,6 +1537,7 @@ function mapBudgetItemRecord({
     !name ||
     plannedAmount ===
       null ||
+    !amountType ||
     activityAmount ===
       null ||
     availableAmount ===
@@ -1548,6 +1561,8 @@ function mapBudgetItemRecord({
       id,
 
       name,
+
+      amountType,
 
       assignedAmount:
         plannedAmount,
@@ -1674,6 +1689,20 @@ function buildApprovalDescription({
   )} budget. The item has ${formatCurrency(
     plannedAmount,
   )} assigned.${activityText}`;
+}
+
+function normalizeBudgetAmountType(
+  value:
+    unknown,
+): BudgetAmountType | null {
+  return value ===
+      "fixed" ||
+    value ===
+      "variable" ||
+    value ===
+      "spending"
+    ? value
+    : null;
 }
 
 function normalizeDatabaseMoney(

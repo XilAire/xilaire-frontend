@@ -22,6 +22,7 @@ import {
 } from "@/lib/supabase/admin";
 
 import type {
+  BudgetAmountType,
   BudgetCategoryData,
 } from "@/types/budget";
 
@@ -65,6 +66,12 @@ type MembershipRow = {
     WorkspaceMembershipStatusDatabaseEnum;
 };
 
+type BudgetItemRowWithAmountType =
+  CaseBudgetBudgetItemDatabaseRow & {
+    amount_type:
+      unknown;
+  };
+
 export type UpdateBudgetItemInput = {
   itemId:
     string;
@@ -87,6 +94,9 @@ export type UpdateBudgetItemInput = {
 
   plannedAmount?:
     number;
+
+  amountType?:
+    BudgetAmountType;
 
   rolloverAmount?:
     number;
@@ -131,6 +141,9 @@ export type UpdateBudgetItemRecord = {
 
   plannedAmount:
     number;
+
+  amountType:
+    BudgetAmountType;
 
   activityAmount:
     number;
@@ -239,6 +252,7 @@ export type UpdateCaseBudgetItemResult =
           | "invalid-name"
           | "invalid-description"
           | "invalid-planned-amount"
+          | "invalid-amount-type"
           | "invalid-rollover-amount"
           | "invalid-target-amount"
           | "invalid-target-date"
@@ -267,6 +281,7 @@ export type UpdateCaseBudgetItemResult =
           | "name"
           | "description"
           | "plannedAmount"
+          | "amountType"
           | "rolloverAmount"
           | "targetAmount"
           | "targetDate"
@@ -304,6 +319,7 @@ const ITEM_SELECT =
     "updated_by_user_id",
     "name",
     "description",
+    "amount_type",
     "planned_amount",
     "activity_amount",
     "available_amount",
@@ -389,7 +405,7 @@ const MONTH_SELECT =
  * - updated_at optimistic concurrency prevents stale edits.
  * - Supabase is the only persistence layer.
  * - Automatic linked bills are synchronized server-side after a committed
- *   item rename or same-month group move.
+ *   item rename, same-month group move, or amount-type change.
  * - A secondary linked-bill sync failure never misreports the already
  *   committed canonical budget-item update as failed.
  * - No localStorage is involved.
@@ -524,7 +540,7 @@ export async function updateBudgetItem(
 
     const existing =
       existingData as unknown as
-        | CaseBudgetBudgetItemDatabaseRow
+        | BudgetItemRowWithAmountType
         | null;
 
     if (
@@ -825,6 +841,12 @@ export async function updateBudgetItem(
                 ) ??
                 0,
 
+              amountType:
+                normalizeBudgetAmountType(
+                  existing.amount_type,
+                ) ??
+                "fixed",
+
               rolloverAmount:
                 normalizeNonNegativeDatabaseMoney(
                   existing.rollover_amount,
@@ -895,6 +917,9 @@ export async function updateBudgetItem(
             plannedAmount:
               existing.planned_amount,
 
+            amountType:
+              existing.amount_type,
+
             activityAmount:
               existing.activity_amount,
 
@@ -935,6 +960,9 @@ export async function updateBudgetItem(
 
             plannedAmount:
               next.plannedAmount,
+
+            amountType:
+              next.amountType,
 
             activityAmount:
               next.activityAmount,
@@ -1117,6 +1145,9 @@ export async function updateBudgetItem(
           planned_amount:
             next.plannedAmount,
 
+          amount_type:
+            next.amountType,
+
           /*
            * Never accept activity from the client.
            * Preserve the canonical currently loaded activity amount.
@@ -1210,7 +1241,7 @@ export async function updateBudgetItem(
 
     const updatedRow =
       updatedData as unknown as
-        CaseBudgetBudgetItemDatabaseRow;
+        BudgetItemRowWithAmountType;
 
     const record =
       mapBudgetItemRecord({
@@ -1239,7 +1270,11 @@ export async function updateBudgetItem(
       ) !==
         next.name ||
       existing.budget_group_id !==
-        next.budgetGroupId;
+        next.budgetGroupId ||
+      normalizeBudgetAmountType(
+        existing.amount_type,
+      ) !==
+        next.amountType;
 
     let linkedBillSync = {
       attempted:
@@ -1277,6 +1312,9 @@ export async function updateBudgetItem(
 
             budgetItemName:
               record.name,
+
+            budgetItemAmountType:
+              record.amountType,
 
             budgetGroupId:
               record.budgetGroupId,
@@ -1389,6 +1427,9 @@ type NextBudgetItemState = {
   plannedAmount:
     number;
 
+  amountType:
+    BudgetAmountType;
+
   activityAmount:
     number;
 
@@ -1420,7 +1461,7 @@ function validateAndBuildNextState({
   destinationGroupId,
 }: {
   existing:
-    CaseBudgetBudgetItemDatabaseRow;
+    BudgetItemRowWithAmountType;
 
   input:
     UpdateBudgetItemInput;
@@ -1564,6 +1605,63 @@ function validateAndBuildNextState({
     }
 
     plannedAmount =
+      normalized;
+  }
+
+  let amountType =
+    normalizeBudgetAmountType(
+      existing.amount_type,
+    );
+
+  if (
+    !amountType
+  ) {
+    return {
+      success:
+        false,
+
+      result:
+        failure({
+          code:
+            "budget-item-update-failed",
+
+          message:
+            "CASE Budget could not verify the current budget item type.",
+        }),
+    };
+  }
+
+  if (
+    input.amountType !==
+    undefined
+  ) {
+    const normalized =
+      normalizeBudgetAmountType(
+        input.amountType,
+      );
+
+    if (
+      !normalized
+    ) {
+      return {
+        success:
+          false,
+
+        result:
+          failure({
+            code:
+              "invalid-amount-type",
+
+            message:
+              "Budget item type must be fixed, variable, or spending.",
+
+            field:
+              "amountType",
+          }),
+      };
+    }
+
+    amountType =
       normalized;
   }
 
@@ -1813,6 +1911,8 @@ function validateAndBuildNextState({
       description,
 
       plannedAmount,
+
+      amountType,
 
       activityAmount,
 
@@ -2240,7 +2340,7 @@ function hasMeaningfulChanges({
   next,
 }: {
   existing:
-    CaseBudgetBudgetItemDatabaseRow;
+    BudgetItemRowWithAmountType;
 
   next:
     NextBudgetItemState;
@@ -2260,6 +2360,10 @@ function hasMeaningfulChanges({
       existing.planned_amount,
     ) !==
       next.plannedAmount ||
+    normalizeBudgetAmountType(
+      existing.amount_type,
+    ) !==
+      next.amountType ||
     normalizeDatabaseMoney(
       existing.activity_amount,
     ) !==
@@ -2300,7 +2404,7 @@ function mapBudgetItemRecord({
   budgetMonth,
 }: {
   row:
-    CaseBudgetBudgetItemDatabaseRow;
+    BudgetItemRowWithAmountType;
 
   budgetMonth:
     CaseBudgetBudgetMonthDatabaseRow;
@@ -2328,6 +2432,11 @@ function mapBudgetItemRecord({
   const name =
     normalizeOptionalText(
       row.name,
+    );
+
+  const amountType =
+    normalizeBudgetAmountType(
+      row.amount_type,
     );
 
   const plannedAmount =
@@ -2381,6 +2490,7 @@ function mapBudgetItemRecord({
     !budgetMonthId ||
     !budgetGroupId ||
     !name ||
+    !amountType ||
     plannedAmount ===
       null ||
     activityAmount ===
@@ -2406,6 +2516,8 @@ function mapBudgetItemRecord({
       id,
 
       name,
+
+      amountType,
 
       assignedAmount:
         plannedAmount,
@@ -2442,6 +2554,8 @@ function mapBudgetItemRecord({
     description,
 
     plannedAmount,
+
+    amountType,
 
     activityAmount,
 
@@ -2494,6 +2608,9 @@ function buildApprovalDescription({
     plannedAmount:
       number;
 
+    amountType:
+      BudgetAmountType;
+
     rolloverAmount:
       number;
 
@@ -2545,6 +2662,17 @@ function buildApprovalDescription({
     changes.push(
       `assigned amount to ${formatCurrency(
         next.plannedAmount,
+      )}`,
+    );
+  }
+
+  if (
+    previous.amountType !==
+    next.amountType
+  ) {
+    changes.push(
+      `type to ${formatBudgetAmountType(
+        next.amountType,
       )}`,
     );
   }
@@ -2621,6 +2749,40 @@ function buildApprovalDescription({
   )} budget: ${changes.join(
     ", ",
   )}.`;
+}
+
+function normalizeBudgetAmountType(
+  value:
+    unknown,
+): BudgetAmountType | null {
+  if (
+    value === "fixed" ||
+    value === "variable" ||
+    value === "spending"
+  ) {
+    return value;
+  }
+
+  return null;
+}
+
+function formatBudgetAmountType(
+  amountType:
+    BudgetAmountType,
+) {
+  switch (
+    amountType
+  ) {
+    case "variable":
+      return "Variable";
+
+    case "spending":
+      return "Spending";
+
+    case "fixed":
+    default:
+      return "Fixed";
+  }
 }
 
 function normalizeNonNegativeMoney(

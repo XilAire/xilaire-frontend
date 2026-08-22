@@ -4,6 +4,10 @@ import {
   createAdminClient,
 } from "@/lib/supabase/admin";
 
+import type {
+  BudgetAmountType,
+} from "@/types/budget";
+
 export type SyncAutomaticBillsForBudgetItemInput = {
   userId:
     string;
@@ -16,6 +20,9 @@ export type SyncAutomaticBillsForBudgetItemInput = {
 
   budgetItemName:
     string;
+
+  budgetItemAmountType:
+    BudgetAmountType;
 
   budgetGroupId:
     string;
@@ -114,7 +121,8 @@ const CASE_BUDGET_BILLS_TABLE =
  * - This helper does NOT mark bills paid.
  *
  * Its only responsibility is keeping automatic bill references aligned when
- * the canonical budget item is renamed or moved to another group.
+ * the canonical budget item is renamed, moved to another group, or changes
+ * between fixed, variable, and spending amount behavior.
  *
  * The behavior replaces the previous BillsProvider client-side
  * syncBudgetItemUpdate() flow.
@@ -127,6 +135,7 @@ export async function syncAutomaticBillsForBudgetItem({
   workspaceId,
   budgetItemId,
   budgetItemName,
+  budgetItemAmountType,
   budgetGroupId,
   budgetGroupName,
 }: SyncAutomaticBillsForBudgetItemInput):
@@ -152,6 +161,11 @@ export async function syncAutomaticBillsForBudgetItem({
   const normalizedBudgetItemName =
     normalizeRequiredText(
       budgetItemName,
+    );
+
+  const normalizedBudgetItemAmountType =
+    normalizeBudgetAmountType(
+      budgetItemAmountType,
     );
 
   const normalizedBudgetGroupId =
@@ -221,6 +235,20 @@ export async function syncAutomaticBillsForBudgetItem({
   }
 
   if (
+    !normalizedBudgetItemAmountType
+  ) {
+    throw new BillBudgetSyncError({
+      message:
+        "A valid budget item amount type is required for bill synchronization.",
+
+      code:
+        "invalid-input",
+
+      operation,
+    });
+  }
+
+  if (
     !normalizedBudgetGroupId
   ) {
     throw new BillBudgetSyncError({
@@ -269,6 +297,9 @@ export async function syncAutomaticBillsForBudgetItem({
 
           budget_item_name:
             normalizedBudgetItemName,
+
+          amount_type:
+            normalizedBudgetItemAmountType,
 
           budget_category_id:
             normalizedBudgetGroupId,
@@ -536,6 +567,21 @@ export async function touchAutomaticBillsForArchivedBudgetItem({
         "CASE Budget could not update linked-bill synchronization metadata.",
     });
   }
+}
+
+function normalizeBudgetAmountType(
+  value:
+    unknown,
+): BudgetAmountType | null {
+  if (
+    value === "fixed" ||
+    value === "variable" ||
+    value === "spending"
+  ) {
+    return value;
+  }
+
+  return null;
 }
 
 function normalizeRequiredText(

@@ -10,6 +10,7 @@ import {
 } from "@/lib/supabase/admin";
 
 import type {
+  BudgetAmountType,
   BudgetCategoryData,
   BudgetCategoryGroupData,
   BudgetIncomeSource,
@@ -54,6 +55,12 @@ type MembershipRow = {
   status:
     WorkspaceMembershipStatusDatabaseEnum;
 };
+
+type BudgetItemRowWithAmountType =
+  CaseBudgetBudgetItemDatabaseRow & {
+    amount_type:
+      unknown;
+  };
 
 export type CaseBudgetBudgetMonthRecord = {
   id:
@@ -219,6 +226,7 @@ const ITEM_SELECT =
     "updated_by_user_id",
     "name",
     "description",
+    "amount_type",
     "planned_amount",
     "activity_amount",
     "available_amount",
@@ -537,7 +545,7 @@ export async function getBudget(): Promise<GetCaseBudgetResult> {
         itemResult.data ??
         []
       ) as unknown as
-        CaseBudgetBudgetItemDatabaseRow[];
+        BudgetItemRowWithAmountType[];
 
     const incomeByMonthId =
       buildIncomeByMonthId(
@@ -929,7 +937,7 @@ function buildIncomeByMonthId(
 
 function buildItemsByGroupId(
   rows:
-    CaseBudgetBudgetItemDatabaseRow[],
+    BudgetItemRowWithAmountType[],
 ) {
   const result =
     new Map<
@@ -1319,7 +1327,7 @@ function mapBudgetGroupRow({
 
 function mapBudgetItemRow(
   row:
-    CaseBudgetBudgetItemDatabaseRow,
+    BudgetItemRowWithAmountType,
 ): BudgetCategoryData | null {
   const id =
     normalizeOptionalText(
@@ -1329,6 +1337,11 @@ function mapBudgetItemRow(
   const name =
     normalizeOptionalText(
       row.name,
+    );
+
+  const amountType =
+    normalizeBudgetAmountType(
+      row.amount_type,
     );
 
   const assignedAmount =
@@ -1354,6 +1367,7 @@ function mapBudgetItemRow(
   if (
     !id ||
     !name ||
+    !amountType ||
     assignedAmount ===
       null ||
     activityAmount ===
@@ -1404,6 +1418,8 @@ function mapBudgetItemRow(
     id,
 
     name,
+
+    amountType,
 
     assignedAmount,
 
@@ -1551,6 +1567,21 @@ function cloneBudgetGroups(
         ),
     }),
   );
+}
+
+function normalizeBudgetAmountType(
+  value:
+    unknown,
+): BudgetAmountType | null {
+  if (
+    value === "fixed" ||
+    value === "variable" ||
+    value === "spending"
+  ) {
+    return value;
+  }
+
+  return null;
 }
 
 function normalizeDatabaseMoney(

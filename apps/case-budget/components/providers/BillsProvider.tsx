@@ -17,8 +17,9 @@ import {
   generateNextBill,
 } from "@/lib/bills/recurring-bills";
 
-import type {
-  BillData,
+import {
+  isSpendingBill,
+  type BillData,
 } from "@/types/bill";
 import type {
   BudgetCategoryData,
@@ -42,6 +43,7 @@ type BillsContextValue = {
   markBillPaid: (
     bill: BillData,
     paidDate: string,
+    paidAmount?: number,
   ) => Promise<BillData | null>;
 
   getBillById: (
@@ -527,7 +529,86 @@ export default function BillsProvider({
       async (
         bill: BillData,
         paidDate: string,
+        paidAmount?: number,
       ) => {
+        /*
+         * Spending entries are monthly spending envelopes, not
+         * single-payment obligations.
+         *
+         * Their actual spending must come from transactions linked to
+         * the corresponding budget item. They must never be converted
+         * to a paid bill or assigned one canonical payment transaction.
+         */
+        if (
+          isSpendingBill(
+            bill,
+          )
+        ) {
+          logBillsProviderError({
+            operation:
+              "markBillPaid",
+
+            error:
+              new Error(
+                "Monthly spending items cannot be marked paid. Their spending is tracked from linked transactions.",
+              ),
+          });
+
+          return null;
+        }
+
+        const normalizedPaidDate =
+          paidDate.trim();
+
+        if (
+          !normalizedPaidDate
+        ) {
+          logBillsProviderError({
+            operation:
+              "markBillPaid",
+
+            error:
+              new Error(
+                "A payment date is required before a bill can be marked paid.",
+              ),
+          });
+
+          return null;
+        }
+
+        const resolvedPaidAmount =
+          bill.amountType ===
+            "variable"
+            ? paidAmount ??
+              bill.paidAmount
+            : paidAmount ??
+              bill.amount;
+
+        if (
+          !Number.isFinite(
+            resolvedPaidAmount,
+          ) ||
+          (
+            resolvedPaidAmount ??
+            0
+          ) <= 0
+        ) {
+          logBillsProviderError({
+            operation:
+              "markBillPaid",
+
+            error:
+              new Error(
+                bill.amountType ===
+                  "variable"
+                  ? "Enter the actual amount paid before marking this variable bill as paid."
+                  : "A valid payment amount is required before this bill can be marked paid.",
+              ),
+          });
+
+          return null;
+        }
+
         const timestamp =
           new Date().toISOString();
 
@@ -537,13 +618,21 @@ export default function BillsProvider({
           status:
             "paid",
 
-          paidDate,
+          paidDate:
+            normalizedPaidDate,
+
+          paidAmount:
+            resolvedPaidAmount,
 
           updatedAt:
             timestamp,
         };
 
         try {
+          /*
+           * The PUT route is responsible for creating the canonical
+           * payment transaction and linking paymentTransactionId.
+           */
           const savedPaidBill =
             await updateBillViaApi(
               paidBill,
@@ -587,6 +676,11 @@ export default function BillsProvider({
               } catch (
                 error
               ) {
+                /*
+                 * The paid occurrence has already been saved. A failure
+                 * to generate the next recurrence should not cause the
+                 * client to pretend the payment itself failed.
+                 */
                 logBillsProviderError({
                   operation:
                     "markBillPaid.createNextBill",

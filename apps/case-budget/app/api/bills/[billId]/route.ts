@@ -636,6 +636,36 @@ async function handleUpdateBillRequest({
       });
     }
 
+    const paymentAmount =
+      requestedBill.amountType ===
+        "variable"
+        ? requestedBill.paidAmount
+        : requestedBill.amount;
+
+    if (
+      paymentAmount ===
+        undefined ||
+      !Number.isFinite(
+        paymentAmount,
+      ) ||
+      paymentAmount <=
+        0
+    ) {
+      return createBillPaymentErrorResponse({
+        code:
+          "payment-amount-required",
+
+        message:
+          requestedBill.amountType ===
+            "variable"
+            ? "Enter the actual amount paid before marking this variable bill as paid."
+            : "A valid payment amount is required before this bill can be marked paid.",
+
+        status:
+          400,
+      });
+    }
+
     const transactionResult =
       await createTransaction({
         date:
@@ -649,7 +679,7 @@ async function handleUpdateBillRequest({
           ),
 
         amount:
-          requestedBill.amount,
+          paymentAmount,
 
         type:
           "expense",
@@ -710,6 +740,9 @@ async function handleUpdateBillRequest({
           "paid",
 
         paidDate,
+
+        paidAmount:
+          paymentAmount,
 
         paymentTransactionId:
           createdTransaction.id,
@@ -976,6 +1009,31 @@ function isBillData(
       "number" ||
     !Number.isFinite(
       value.amount,
+    )
+  ) {
+    return false;
+  }
+
+  if (
+    value.amountType !==
+      "fixed" &&
+    value.amountType !==
+      "variable"
+  ) {
+    return false;
+  }
+
+  if (
+    value.paidAmount !==
+      undefined &&
+    (
+      typeof value.paidAmount !==
+        "number" ||
+      !Number.isFinite(
+        value.paidAmount,
+      ) ||
+      value.paidAmount <
+        0
     )
   ) {
     return false;

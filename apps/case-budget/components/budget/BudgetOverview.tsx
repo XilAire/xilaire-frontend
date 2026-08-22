@@ -28,6 +28,7 @@ import EditIncomeModal, {
 } from "@/components/budget/EditIncomeModal";
 import EmptyBudgetMonthCard from "@/components/budget/EmptyBudgetMonthCard";
 import RemainingBudgetCard from "@/components/budget/RemainingBudgetCard";
+import AddTransactionModal from "@/components/transactions/AddTransactionModal";
 import PageContainer from "@/components/layout/PageContainer";
 import {
   useBills,
@@ -35,6 +36,9 @@ import {
 import {
   useBudget,
 } from "@/components/providers/BudgetProvider";
+import {
+  useTransactions,
+} from "@/components/providers/TransactionsProvider";
 import type {
   BillData,
 } from "@/types/bill";
@@ -43,6 +47,9 @@ import type {
   BudgetCategoryGroupData,
   BudgetIncomeSource,
 } from "@/types/budget";
+import type {
+  TransactionData,
+} from "@/types/transaction";
 
 function joinClassNames(
   ...classNames: Array<
@@ -59,8 +66,14 @@ export default function BudgetOverview() {
   const searchParams = useSearchParams();
 
   const {
+    addBill,
     getLinkedBillsForBudgetItem,
   } = useBills();
+
+  const {
+    transactions,
+    addTransaction,
+  } = useTransactions();
 
   const {
     selectedMonth,
@@ -132,6 +145,32 @@ export default function BudgetOverview() {
   >(null);
 
   const [
+    creatingLinkedBillItemId,
+    setCreatingLinkedBillItemId,
+  ] = useState<
+    string | null
+  >(null);
+
+  const [
+    billActionError,
+    setBillActionError,
+  ] = useState<
+    string | null
+  >(null);
+
+  const [
+    activityBudgetItem,
+    setActivityBudgetItem,
+  ] = useState<
+    BudgetCategoryData | null
+  >(null);
+
+  const [
+    isAddActivityOpen,
+    setIsAddActivityOpen,
+  ] = useState(false);
+
+  const [
     isMonthPickerOpen,
     setIsMonthPickerOpen,
   ] = useState(false);
@@ -189,6 +228,14 @@ export default function BudgetOverview() {
 
     setIsEditItemModalOpen(
       false,
+    );
+
+    setIsAddActivityOpen(
+      false,
+    );
+
+    setActivityBudgetItem(
+      null,
     );
 
     setSelectedIncomeSource(
@@ -749,6 +796,223 @@ export default function BudgetOverview() {
     }
   }
 
+  async function handleCreateLinkedBill(
+    item: BudgetCategoryData,
+    group: BudgetCategoryGroupData,
+  ) {
+    if (
+      isMutating ||
+      creatingLinkedBillItemId
+    ) {
+      return;
+    }
+
+    const existingLinkedBills =
+      getLinkedBillsForBudgetItem(
+        item,
+      );
+
+    if (
+      existingLinkedBills.length >
+      0
+    ) {
+      handleViewBill(
+        existingLinkedBills[0],
+      );
+
+      return;
+    }
+
+    setBillActionError(
+      null,
+    );
+
+    setCreatingLinkedBillItemId(
+      item.id,
+    );
+
+    try {
+      const dueDate =
+        getMonthEndDateString(
+          selectedMonth,
+        );
+
+      const now =
+        new Date().toISOString();
+
+      const createdBill =
+        await addBill({
+          id:
+            crypto.randomUUID(),
+
+          name:
+            item.name,
+
+          amount:
+            item.assignedAmount,
+
+          amountType:
+            item.amountType as BillData["amountType"],
+
+          dueDate,
+
+          status:
+            "upcoming",
+
+          frequency:
+            "monthly",
+
+          paymentMethod:
+            "manual",
+
+          budgetItem: {
+            id:
+              item.id,
+
+            name:
+              item.name,
+
+            categoryId:
+              group.id,
+
+            categoryName:
+              group.name,
+          },
+
+          budgetSync: {
+            enabled:
+              true,
+
+            mode:
+              "automatic",
+          },
+
+          reminder: {
+            enabled:
+              false,
+
+            timing:
+              "3-days",
+          },
+
+          note:
+            "Created from the Budget overview.",
+
+          createdAt:
+            now,
+
+          updatedAt:
+            now,
+        });
+
+      if (
+        createdBill
+      ) {
+        handleViewBill(
+          createdBill,
+        );
+      }
+    } catch (
+      createBillError
+    ) {
+      setBillActionError(
+        createBillError instanceof
+          Error
+          ? createBillError.message
+          : "CASE Budget could not create the linked bill.",
+      );
+    } finally {
+      setCreatingLinkedBillItemId(
+        null,
+      );
+    }
+  }
+
+  function getTransactionsForBudgetItem(
+    item: BudgetCategoryData,
+  ) {
+    return transactions.filter(
+      (
+        transaction,
+      ) =>
+        transaction.type ===
+          "expense" &&
+        transaction.category?.id ===
+          item.id,
+    );
+  }
+
+  function handleOpenAddItemActivity(
+    item: BudgetCategoryData,
+  ) {
+    if (
+      !hasSelectedBudget ||
+      isMutating
+    ) {
+      return;
+    }
+
+    setBillActionError(
+      null,
+    );
+
+    setActivityBudgetItem(
+      item,
+    );
+
+    setIsAddActivityOpen(
+      true,
+    );
+  }
+
+  function handleCloseAddItemActivity() {
+    setIsAddActivityOpen(
+      false,
+    );
+
+    setActivityBudgetItem(
+      null,
+    );
+  }
+
+  function handleViewItemActivity(
+    item: BudgetCategoryData,
+  ) {
+    const params =
+      new URLSearchParams();
+
+    params.set(
+      "categoryId",
+      item.id,
+    );
+
+    router.push(
+      `/dashboard/transactions?${params.toString()}`,
+    );
+  }
+
+  async function handleAddActivityTransaction(
+    transaction:
+      TransactionData,
+  ) {
+    const result =
+      await addTransaction(
+        transaction,
+      );
+
+    if (
+      !result.success
+    ) {
+      setBillActionError(
+        result.message,
+      );
+
+      return;
+    }
+
+    handleCloseAddItemActivity();
+  }
+
   return (
     <>
       <PageContainer>
@@ -766,6 +1030,29 @@ export default function BudgetOverview() {
                 type="button"
                 onClick={
                   clearError
+                }
+                className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-lg border border-red-500/30 px-3 text-xs font-bold text-red-700 transition-colors hover:bg-red-500/10 dark:text-red-300"
+              >
+                Dismiss
+              </button>
+            </div>
+          ) : null}
+
+          {billActionError ? (
+            <div
+              role="alert"
+              className="flex flex-col gap-3 rounded-2xl border border-red-500/25 bg-red-500/10 px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <p className="text-sm font-semibold text-red-700 dark:text-red-300">
+                {billActionError}
+              </p>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setBillActionError(
+                    null,
+                  )
                 }
                 className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-lg border border-red-500/30 px-3 text-xs font-bold text-red-700 transition-colors hover:bg-red-500/10 dark:text-red-300"
               >
@@ -983,6 +1270,25 @@ export default function BudgetOverview() {
                               onViewBill={
                                 handleViewBill
                               }
+                              onCreateLinkedBill={
+                                handleCreateLinkedBill
+                              }
+                              creatingLinkedBillItemId={
+                                creatingLinkedBillItemId
+                              }
+                              onAddItemActivity={
+                                handleOpenAddItemActivity
+                              }
+                              onViewItemActivity={
+                                handleViewItemActivity
+                              }
+                              getItemActivityCount={(
+                                item,
+                              ) =>
+                                getTransactionsForBudgetItem(
+                                  item,
+                                ).length
+                              }
                             />
                           ),
                         )}
@@ -1093,6 +1399,32 @@ export default function BudgetOverview() {
       {!isLoading &&
       hasSelectedBudget ? (
         <>
+          <AddTransactionModal
+            isOpen={
+              isAddActivityOpen
+            }
+            onClose={
+              handleCloseAddItemActivity
+            }
+            onAddTransaction={
+              handleAddActivityTransaction
+            }
+            preset={
+              activityBudgetItem
+                ? {
+                    type:
+                      "expense",
+
+                    merchant:
+                      activityBudgetItem.name,
+
+                    referenceId:
+                      activityBudgetItem.id,
+                  }
+                : null
+            }
+          />
+
           <AddIncomeModal
             isOpen={
               isAddIncomeModalOpen
@@ -1210,6 +1542,41 @@ export default function BudgetOverview() {
       ) : null}
     </>
   );
+}
+
+function getMonthEndDateString(
+  month:
+    Date,
+) {
+  const monthEnd =
+    new Date(
+      month.getFullYear(),
+      month.getMonth() +
+        1,
+      0,
+    );
+
+  const year =
+    monthEnd.getFullYear();
+
+  const monthNumber =
+    String(
+      monthEnd.getMonth() +
+        1,
+    ).padStart(
+      2,
+      "0",
+    );
+
+  const day =
+    String(
+      monthEnd.getDate(),
+    ).padStart(
+      2,
+      "0",
+    );
+
+  return `${year}-${monthNumber}-${day}`;
 }
 
 function PlusIcon() {

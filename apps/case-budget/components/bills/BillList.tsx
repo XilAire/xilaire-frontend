@@ -10,10 +10,15 @@ type BillListProps = {
   onViewDetails: (
     bill: BillData,
   ) => void;
-  onEdit: (bill: BillData) => void;
-  onMarkPaid: (
+  onEdit: (
     bill: BillData,
   ) => void;
+  onMarkPaid?: (
+    bill: BillData,
+  ) => void;
+  getSpendingAmount?: (
+    bill: BillData,
+  ) => number;
 };
 
 export default function BillList({
@@ -21,19 +26,24 @@ export default function BillList({
   onViewDetails,
   onEdit,
   onMarkPaid,
+  getSpendingAmount,
 }: BillListProps) {
   const sortedBills = [...bills].sort(
     (firstBill, secondBill) => {
       if (
-        firstBill.status === "paid" &&
-        secondBill.status !== "paid"
+        firstBill.status ===
+          "paid" &&
+        secondBill.status !==
+          "paid"
       ) {
         return 1;
       }
 
       if (
-        firstBill.status !== "paid" &&
-        secondBill.status === "paid"
+        firstBill.status !==
+          "paid" &&
+        secondBill.status ===
+          "paid"
       ) {
         return -1;
       }
@@ -49,21 +59,39 @@ export default function BillList({
     },
   );
 
+  const isSpendingList =
+    sortedBills.length >
+      0 &&
+    sortedBills.every(
+      (
+        bill,
+      ) =>
+        bill.amountType ===
+        "spending",
+    );
+
   return (
     <section
-      aria-label="Scheduled bills"
+      aria-label={
+        isSpendingList
+          ? "Monthly spending"
+          : "Scheduled bills"
+      }
       className="overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-default)] shadow-sm"
     >
       <div className="border-b border-[var(--border-subtle)] px-4 py-4 sm:px-5">
         <div className="flex items-center justify-between gap-4">
           <div>
             <h2 className="text-lg font-bold text-[var(--text-primary)]">
-              Scheduled Bills
+              {isSpendingList
+                ? "Monthly Spending"
+                : "Scheduled Bills"}
             </h2>
 
             <p className="mt-1 text-sm text-[var(--text-muted)]">
-              {formatBillCount(
+              {formatItemCount(
                 sortedBills.length,
+                isSpendingList,
               )}{" "}
               shown
             </p>
@@ -85,10 +113,21 @@ export default function BillList({
                 onViewDetails={
                   onViewDetails
                 }
-                onEdit={onEdit}
-                onMarkPaid={
-                  onMarkPaid
+                onEdit={
+                  onEdit
                 }
+                spendingAmount={
+                  getSpendingAmount?.(
+                    bill,
+                  )
+                }
+                {...(
+                  onMarkPaid
+                    ? {
+                        onMarkPaid,
+                      }
+                    : {}
+                )}
               />
             ),
           )}
@@ -110,7 +149,9 @@ export default function BillList({
                 scope="col"
                 className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]"
               >
-                Due Date
+                {isSpendingList
+                  ? "Period End"
+                  : "Due Date"}
               </th>
 
               <th
@@ -131,21 +172,27 @@ export default function BillList({
                 scope="col"
                 className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]"
               >
-                Payment
+                {isSpendingList
+                  ? "Tracking"
+                  : "Payment"}
               </th>
 
               <th
                 scope="col"
                 className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]"
               >
-                Status
+                {isSpendingList
+                  ? "State"
+                  : "Status"}
               </th>
 
               <th
                 scope="col"
                 className="px-4 py-3 text-right text-xs font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]"
               >
-                Amount
+                {isSpendingList
+                  ? "Spending Progress"
+                  : "Amount"}
               </th>
 
               <th
@@ -168,10 +215,21 @@ export default function BillList({
                   onViewDetails={
                     onViewDetails
                   }
-                  onEdit={onEdit}
-                  onMarkPaid={
-                    onMarkPaid
+                  onEdit={
+                    onEdit
                   }
+                  spendingAmount={
+                    getSpendingAmount?.(
+                      bill,
+                    )
+                  }
+                  {...(
+                    onMarkPaid
+                      ? {
+                          onMarkPaid,
+                        }
+                      : {}
+                  )}
                 />
               ),
             )}
@@ -182,9 +240,20 @@ export default function BillList({
   );
 }
 
-function formatBillCount(
+function formatItemCount(
   count: number,
+  isSpendingList: boolean,
 ) {
+  if (
+    isSpendingList
+  ) {
+    return `${count} ${
+      count === 1
+        ? "spending item"
+        : "spending items"
+    }`;
+  }
+
   return `${count} ${
     count === 1
       ? "bill"

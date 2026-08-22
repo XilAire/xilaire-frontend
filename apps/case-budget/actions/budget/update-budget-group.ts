@@ -22,6 +22,7 @@ import {
 } from "@/lib/supabase/admin";
 
 import type {
+  BudgetAmountType,
   BudgetCategoryGroupData,
 } from "@/types/budget";
 
@@ -53,6 +54,9 @@ type BudgetItemReferenceRow = {
 
   name:
     string;
+
+  amountType:
+    BudgetAmountType;
 };
 
 type MembershipRow = {
@@ -904,6 +908,9 @@ export async function updateBudgetGroup(
               budgetItemName:
                 item.name,
 
+              budgetItemAmountType:
+                item.amountType,
+
               budgetGroupId:
                 groupId,
 
@@ -1515,7 +1522,7 @@ async function loadBudgetItemReferencesForGroup({
         "case_budget_budget_items",
       )
       .select(
-        "id,name",
+        "id,name,amount_type",
       )
       .eq(
         "workspace_id",
@@ -1574,9 +1581,15 @@ async function loadBudgetItemReferencesForGroup({
               row.name,
             );
 
+          const amountType =
+            normalizeBudgetAmountType(
+              row.amount_type,
+            );
+
           if (
             !id ||
-            !name
+            !name ||
+            !amountType
           ) {
             return null;
           }
@@ -1584,6 +1597,7 @@ async function loadBudgetItemReferencesForGroup({
           return {
             id,
             name,
+            amountType,
           };
         },
       )
@@ -1829,6 +1843,21 @@ function buildApprovalDescription({
   )} budget: ${changes.join(
     ", ",
   )}.`;
+}
+
+function normalizeBudgetAmountType(
+  value:
+    unknown,
+): BudgetAmountType | null {
+  if (
+    value === "fixed" ||
+    value === "variable" ||
+    value === "spending"
+  ) {
+    return value;
+  }
+
+  return null;
 }
 
 function normalizeSortOrder(

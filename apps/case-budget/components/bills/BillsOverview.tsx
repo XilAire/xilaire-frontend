@@ -24,6 +24,9 @@ import PageContainer from "@/components/layout/PageContainer";
 import {
   useBills,
 } from "@/components/providers/BillsProvider";
+import {
+  useBudget,
+} from "@/components/providers/BudgetProvider";
 import Pagination from "@/components/ui/Pagination";
 
 import usePagination from "@/hooks/usePagination";
@@ -32,9 +35,10 @@ import {
   calculateBillSummary,
 } from "@/lib/bills/bill-utils";
 
-import type {
-  BillData,
-  BillFilters as BillFilterValues,
+import {
+  isSpendingBill,
+  type BillData,
+  type BillFilters as BillFilterValues,
 } from "@/types/bill";
 
 const defaultFilters: BillFilterValues = {
@@ -88,6 +92,10 @@ export default function BillsOverview() {
     markBillPaid,
     getBillById,
   } = useBills();
+
+  const {
+    getBudgetItemById,
+  } = useBudget();
 
   const [
     filters,
@@ -285,6 +293,22 @@ export default function BillsOverview() {
     },
   });
 
+  const spendingBills =
+    useMemo(
+      () =>
+        paginatedBills.filter(
+          (
+            bill,
+          ) =>
+            isSpendingBill(
+              bill,
+            ),
+        ),
+      [
+        paginatedBills,
+      ],
+    );
+
   const scheduledBills =
     useMemo(
       () =>
@@ -292,8 +316,11 @@ export default function BillsOverview() {
           (
             bill,
           ) =>
+            !isSpendingBill(
+              bill,
+            ) &&
             bill.status !==
-            "paid",
+              "paid",
         ),
       [
         paginatedBills,
@@ -502,7 +529,21 @@ export default function BillsOverview() {
   async function handleMarkBillPaid(
     bill: BillData,
     paidDate: string,
+    paidAmount: number,
   ) {
+    /*
+     * Spending entries are monthly spending envelopes. They accumulate
+     * transactions and must never enter the single-payment workflow.
+     */
+    if (
+      isSpendingBill(
+        bill,
+      )
+    ) {
+      closeAllBillOverlays();
+      return;
+    }
+
     /*
      * Wait for the provider/API mutation to finish before clearing selection
      * and closing overlays. Closing early races the provider state update and
@@ -511,6 +552,7 @@ export default function BillsOverview() {
     await markBillPaid(
       bill,
       paidDate,
+      paidAmount,
     );
 
     closeAllBillOverlays();
@@ -601,7 +643,10 @@ export default function BillsOverview() {
   ) {
     if (
       bill.status ===
-      "paid"
+        "paid" ||
+      isSpendingBill(
+        bill,
+      )
     ) {
       return;
     }
@@ -686,6 +731,57 @@ export default function BillsOverview() {
           ) : (
             <section className="overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-default)] shadow-sm">
               <div className="space-y-8 p-4 sm:p-5">
+                {spendingBills.length >
+                0 ? (
+                  <div className="space-y-3">
+                    <div>
+                      <h2 className="text-sm font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">
+                        Monthly Spending
+                      </h2>
+
+                      <p className="mt-1 text-sm text-[var(--text-muted)]">
+                        These items accumulate transactions throughout the month and are not marked paid as a single bill.
+                      </p>
+                    </div>
+
+                    <BillList
+                      bills={
+                        spendingBills
+                      }
+                      onViewDetails={
+                        handleOpenBillDetails
+                      }
+                      onEdit={
+                        handleOpenEditBill
+                      }
+                      getSpendingAmount={(
+                        bill,
+                      ) => {
+                        const budgetItemId =
+                          bill.budgetItem
+                            ?.id;
+
+                        if (
+                          !budgetItemId
+                        ) {
+                          return 0;
+                        }
+
+                        const location =
+                          getBudgetItemById(
+                            budgetItemId,
+                          );
+
+                        return (
+                          location?.item
+                            .spentAmount ??
+                          0
+                        );
+                      }}
+                    />
+                  </div>
+                ) : null}
+
                 {scheduledBills.length >
                 0 ? (
                   <BillList

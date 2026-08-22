@@ -78,6 +78,9 @@ export function generateNextBill(
     paidDate:
       undefined,
 
+    paidAmount:
+      undefined,
+
     paymentTransactionId:
       undefined,
 

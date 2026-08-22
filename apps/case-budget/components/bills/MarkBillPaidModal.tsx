@@ -23,7 +23,8 @@ type MarkBillPaidModalProps = {
   onConfirm: (
     bill: BillData,
     paidDate: string,
-  ) => void;
+    paidAmount: number,
+  ) => void | Promise<void>;
 };
 
 export default function MarkBillPaidModal({
@@ -37,6 +38,9 @@ export default function MarkBillPaidModal({
       getLocalDateString(),
     );
 
+  const [paidAmount, setPaidAmount] =
+    useState("");
+
   const [error, setError] =
     useState<string | null>(null);
 
@@ -47,6 +51,15 @@ export default function MarkBillPaidModal({
 
     setPaidDate(
       getLocalDateString(),
+    );
+
+    setPaidAmount(
+      bill
+        ? String(
+            bill.paidAmount ??
+              bill.amount,
+          )
+        : "",
     );
 
     setError(null);
@@ -108,9 +121,31 @@ export default function MarkBillPaidModal({
       return;
     }
 
-    onConfirm(
-      bill,
+    const parsedPaidAmount =
+      Number(paidAmount);
+
+    if (
+      !paidAmount.trim() ||
+      !Number.isFinite(
+        parsedPaidAmount,
+      ) ||
+      parsedPaidAmount <= 0
+    ) {
+      setError(
+        "Enter a valid amount paid.",
+      );
+
+      return;
+    }
+
+    void onConfirm(
+      {
+        ...bill,
+        paidAmount:
+          parsedPaidAmount,
+      },
       paidDate,
+      parsedPaidAmount,
     );
   }
 
@@ -152,7 +187,7 @@ export default function MarkBillPaidModal({
               className="mt-1 text-sm leading-6 text-[var(--text-muted)]"
             >
               Confirm the payment date
-              for this bill.
+              and amount for this bill.
             </p>
           </div>
 
@@ -184,11 +219,20 @@ export default function MarkBillPaidModal({
                   ) : null}
                 </div>
 
-                <p className="shrink-0 text-lg font-bold text-[var(--text-primary)]">
-                  {formatBillCurrency(
-                    bill.amount,
-                  )}
-                </p>
+                <div className="shrink-0 text-right">
+                  {bill.amountType ===
+                  "variable" ? (
+                    <p className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-muted)]">
+                      Expected
+                    </p>
+                  ) : null}
+
+                  <p className="text-lg font-bold text-[var(--text-primary)]">
+                    {formatBillCurrency(
+                      bill.amount,
+                    )}
+                  </p>
+                </div>
               </div>
 
               <div className="mt-4 grid gap-3 border-t border-[var(--border-subtle)] pt-4 sm:grid-cols-2">
@@ -225,6 +269,60 @@ export default function MarkBillPaidModal({
                   />
                 ) : null}
               </div>
+            </div>
+
+            <div>
+              <label
+                htmlFor="bill-paid-amount"
+                className="mb-2 block text-sm font-bold text-[var(--text-primary)]"
+              >
+                {bill.amountType ===
+                "variable"
+                  ? "Actual Amount Paid"
+                  : "Amount Paid"}
+                <span className="ml-1 text-[var(--danger)]">
+                  *
+                </span>
+              </label>
+
+              <div className="relative">
+                <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-sm font-semibold text-[var(--text-muted)]">
+                  $
+                </span>
+
+                <input
+                  id="bill-paid-amount"
+                  type="number"
+                  inputMode="decimal"
+                  min="0.01"
+                  step="0.01"
+                  value={paidAmount}
+                  onChange={(event) => {
+                    setPaidAmount(
+                      event.target.value,
+                    );
+
+                    if (error) {
+                      setError(null);
+                    }
+                  }}
+                  className={[
+                    "min-h-11 w-full rounded-xl border bg-[var(--surface-default)] py-2 pl-8 pr-3.5 text-sm text-[var(--text-primary)] outline-none transition focus:ring-2",
+                    error
+                      ? "border-[var(--danger)] focus:border-[var(--danger)] focus:ring-[color-mix(in_srgb,var(--danger)_16%,transparent)]"
+                      : "border-[var(--border-subtle)] focus:border-[var(--primary)] focus:ring-[color-mix(in_srgb,var(--primary)_18%,transparent)]",
+                  ].join(" ")}
+                />
+              </div>
+
+              <p className="mt-1.5 text-xs leading-5 text-[var(--text-muted)]">
+                {bill.amountType ===
+                "variable"
+                  ? `Expected amount: ${formatBillCurrency(
+                      bill.amount,
+                    )}. Enter what was actually paid.`
+                  : "The configured bill amount is filled in automatically. Change it only if the actual payment was different."}
+              </p>
             </div>
 
             <div>

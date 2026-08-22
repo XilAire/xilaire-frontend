@@ -18,6 +18,7 @@ import {
 } from "@/lib/supabase/admin";
 
 import type {
+  BudgetAmountType,
   BudgetCategoryData,
   BudgetCategoryGroupData,
   BudgetIncomeSource,
@@ -128,6 +129,9 @@ type CopiedBudgetItem = {
 
   plannedAmount:
     number;
+
+  amountType:
+    BudgetAmountType;
 
   activityAmount:
     number;
@@ -410,6 +414,7 @@ const ITEM_SELECT =
     "name",
     "description",
     "planned_amount",
+    "amount_type",
     "activity_amount",
     "available_amount",
     "rollover_amount",
@@ -1855,6 +1860,17 @@ function buildCopyPlan({
 
                 plannedAmount,
 
+                amountType:
+                  normalizeBudgetAmountType(
+                    (
+                      item as CaseBudgetBudgetItemDatabaseRow & {
+                        amount_type?:
+                          unknown;
+                      }
+                    ).amount_type,
+                  ) ??
+                  "fixed",
+
                 activityAmount:
                   0,
 
@@ -2414,6 +2430,9 @@ async function executeCopy({
 
               planned_amount:
                 item.plannedAmount,
+
+              amount_type:
+                item.amountType,
 
               activity_amount:
                 0,
@@ -3226,6 +3245,17 @@ function mapBudgetHierarchy({
       name:
         item.name,
 
+      amountType:
+        normalizeBudgetAmountType(
+          (
+            item as CaseBudgetBudgetItemDatabaseRow & {
+              amount_type?:
+                unknown;
+            }
+          ).amount_type,
+        ) ??
+        "fixed",
+
       assignedAmount:
         normalizeNonNegativeDatabaseMoney(
           item.planned_amount,
@@ -3506,6 +3536,20 @@ function getIncomeStatus(
   }
 
   return "planned";
+}
+
+function normalizeBudgetAmountType(
+  value:
+    unknown,
+): BudgetAmountType | null {
+  return value ===
+      "fixed" ||
+    value ===
+      "variable" ||
+    value ===
+      "spending"
+    ? value
+    : null;
 }
 
 function normalizeDatabaseMoney(

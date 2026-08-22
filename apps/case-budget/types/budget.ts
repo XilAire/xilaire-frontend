@@ -3,6 +3,11 @@ export type BudgetIncomeStatus =
   | "partial"
   | "received";
 
+export type BudgetAmountType =
+  | "fixed"
+  | "variable"
+  | "spending";
+
 export type BudgetIncomeSource = {
   id: string;
   name: string;
@@ -14,6 +19,11 @@ export type BudgetIncomeSource = {
 export type BudgetCategoryData = {
   id: string;
   name: string;
+
+  /**
+   * Canonical amount_type persisted on case_budget_budget_items.
+   */
+  amountType: BudgetAmountType;
 
   /**
    * Canonical planned_amount persisted on case_budget_budget_items.
@@ -67,6 +77,7 @@ export type BudgetMonthsByKey = Record<
 export type CreateBudgetCategoryData = {
   name: string;
   assignedAmount: number;
+  amountType?: BudgetAmountType;
 };
 
 export type CreateBudgetGroupData = {

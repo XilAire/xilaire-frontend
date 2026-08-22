@@ -34,6 +34,20 @@ export type BudgetCategoryGroupProps = {
   onViewBill?: (
     bill: BillData,
   ) => void;
+  onCreateLinkedBill?: (
+    item: BudgetCategoryData,
+    group: BudgetCategoryGroupData,
+  ) => void;
+  creatingLinkedBillItemId?: string | null;
+  onAddItemActivity?: (
+    item: BudgetCategoryData,
+  ) => void;
+  onViewItemActivity?: (
+    item: BudgetCategoryData,
+  ) => void;
+  getItemActivityCount?: (
+    item: BudgetCategoryData,
+  ) => number;
 };
 
 const currencyFormatter =
@@ -137,6 +151,11 @@ export default function BudgetCategoryGroup({
   onEditCategory,
   getLinkedBillsForBudgetItem,
   onViewBill,
+  onCreateLinkedBill,
+  creatingLinkedBillItemId = null,
+  onAddItemActivity,
+  onViewItemActivity,
+  getItemActivityCount,
 }: BudgetCategoryGroupProps) {
   const {
     assignedAmount,
@@ -293,6 +312,28 @@ export default function BudgetCategoryGroup({
                           item,
                           group,
                         )
+                      }
+                      onCreateLinkedBill={() =>
+                        onCreateLinkedBill?.(
+                          item,
+                          group,
+                        )
+                      }
+                      isCreatingLinkedBill={
+                        creatingLinkedBillItemId ===
+                        item.id
+                      }
+                      onAddActivity={
+                        onAddItemActivity
+                      }
+                      onViewActivity={
+                        onViewItemActivity
+                      }
+                      activityCount={
+                        getItemActivityCount?.(
+                          item,
+                        ) ??
+                        0
                       }
                     />
                   </div>

@@ -11,10 +11,12 @@ import {
 
 import {
   getIncomeSourceReference,
-  getTransactionAccountReference,
   incomeSourceReferences,
-  transactionAccountReferences,
 } from "@/lib/budget/budget-reference-data";
+
+import {
+  useAccounts,
+} from "@/components/providers/AccountsProvider";
 
 import {
   useBudget,
@@ -55,8 +57,7 @@ function getEmptyFormState(): TransactionFormState {
     merchant: "",
     amount: "",
     date: "",
-    accountId:
-      transactionAccountReferences[0]?.id ?? "",
+    accountId: "",
     referenceId: "",
     status: "cleared",
     note: "",
@@ -66,6 +67,9 @@ function getEmptyFormState(): TransactionFormState {
 function getFormStateFromTransaction(
   transaction: TransactionData,
   expenseBudgetItems: Array<{
+    id: string;
+  }>,
+  transactionAccounts: Array<{
     id: string;
   }>,
 ): TransactionFormState {
@@ -112,7 +116,7 @@ function getFormStateFromTransaction(
       transaction.transferAccountId ?? "";
 
     const currentTransferAccountExists =
-      transactionAccountReferences.some(
+      transactionAccounts.some(
         (account) =>
           account.id ===
             currentTransferAccountId &&
@@ -123,7 +127,7 @@ function getFormStateFromTransaction(
     referenceId =
       currentTransferAccountExists
         ? currentTransferAccountId
-        : transactionAccountReferences.find(
+        : transactionAccounts.find(
             (account) =>
               account.id !==
               transaction.account.id,
@@ -175,6 +179,24 @@ export default function EditTransactionModal({
     budgetGroups,
   } = useBudget();
 
+  const {
+    allAccounts,
+  } = useAccounts();
+
+  const transactionAccounts =
+    useMemo(
+      () =>
+        allAccounts
+          .slice()
+          .sort(
+            (first, second) =>
+              first.name.localeCompare(
+                second.name,
+              ),
+          ),
+      [allAccounts],
+    );
+
   const expenseBudgetItems =
     useMemo(
       () =>
@@ -201,6 +223,7 @@ export default function EditTransactionModal({
       getFormStateFromTransaction(
         transaction,
         expenseBudgetItems,
+        transactionAccounts,
       ),
     );
 
@@ -210,6 +233,7 @@ export default function EditTransactionModal({
     expenseBudgetItems,
     isOpen,
     transaction,
+    transactionAccounts,
   ]);
 
   useEffect(() => {
@@ -339,7 +363,7 @@ export default function EditTransactionModal({
 
     if (type === "transfer") {
       referenceId =
-        transactionAccountReferences.find(
+        transactionAccounts.find(
           (account) =>
             account.id !== formState.accountId,
         )?.id ?? "";
@@ -361,7 +385,7 @@ export default function EditTransactionModal({
       const nextReferenceId =
         current.type === "transfer" &&
         current.referenceId === accountId
-          ? transactionAccountReferences.find(
+          ? transactionAccounts.find(
               (account) =>
                 account.id !== accountId,
             )?.id ?? ""
@@ -394,12 +418,14 @@ export default function EditTransactionModal({
       return;
     }
 
-    const account =
-      getTransactionAccountReference(
-        formState.accountId,
+    const selectedAccount =
+      transactionAccounts.find(
+        (account) =>
+          account.id ===
+          formState.accountId,
       );
 
-    if (!account) {
+    if (!selectedAccount) {
       setErrors((current) => ({
         ...current,
         accountId:
@@ -408,6 +434,16 @@ export default function EditTransactionModal({
 
       return;
     }
+
+    const account:
+      TransactionData["account"] = {
+        id:
+          selectedAccount.id,
+        name:
+          selectedAccount.name,
+        type:
+          selectedAccount.databaseType,
+      };
 
     let category:
       | TransactionData["category"]
@@ -467,8 +503,10 @@ export default function EditTransactionModal({
 
     if (formState.type === "transfer") {
       const transferAccount =
-        getTransactionAccountReference(
-          formState.referenceId,
+        transactionAccounts.find(
+          (account) =>
+            account.id ===
+            formState.referenceId,
         );
 
       if (!transferAccount) {
@@ -701,15 +739,24 @@ export default function EditTransactionModal({
                     value={formState.accountId}
                     onChange={handleAccountChange}
                   >
-                    {transactionAccountReferences.map(
-                      (account) => (
-                        <option
-                          key={account.id}
-                          value={account.id}
-                        >
-                          {account.name}
-                        </option>
-                      ),
+                    {transactionAccounts.length ===
+                    0 ? (
+                      <option value="">
+                        No accounts available
+                      </option>
+                    ) : (
+                      transactionAccounts.map(
+                        (account) => (
+                          <option
+                            key={account.id}
+                            value={account.id}
+                          >
+                            {account.institution
+                              ? `${account.name} • ${account.institution}`
+                              : account.name}
+                          </option>
+                        ),
+                      )
                     )}
                   </SelectField>
                 </FormField>
@@ -732,7 +779,7 @@ export default function EditTransactionModal({
                         Select account
                       </option>
 
-                      {transactionAccountReferences
+                      {transactionAccounts
                         .filter(
                           (account) =>
                             account.id !==

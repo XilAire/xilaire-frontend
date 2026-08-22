@@ -18,6 +18,7 @@ import {
 } from "@/lib/supabase/admin";
 
 import type {
+  BudgetAmountType,
   BudgetCategoryData,
 } from "@/types/budget";
 
@@ -82,6 +83,13 @@ export type CreateBudgetItemInput = {
    */
   plannedAmount:
     number;
+
+  /**
+   * How this budget item behaves when matching transaction activity.
+   * Defaults to fixed for backwards-compatible callers.
+   */
+  amountType?:
+    BudgetAmountType;
 
   /**
    * Optional starting rollover amount.
@@ -231,6 +239,7 @@ export type CreateCaseBudgetItemResult =
           | "invalid-name"
           | "invalid-description"
           | "invalid-planned-amount"
+          | "invalid-amount-type"
           | "invalid-rollover-amount"
           | "invalid-target-amount"
           | "invalid-target-date"
@@ -254,6 +263,7 @@ export type CreateCaseBudgetItemResult =
           | "name"
           | "description"
           | "plannedAmount"
+          | "amountType"
           | "rolloverAmount"
           | "targetAmount"
           | "targetDate"
@@ -331,6 +341,7 @@ const ITEM_SELECT =
     "name",
     "description",
     "planned_amount",
+    "amount_type",
     "activity_amount",
     "available_amount",
     "rollover_amount",
@@ -464,6 +475,29 @@ export async function createBudgetItem(
 
         field:
           "plannedAmount",
+      });
+    }
+
+    const amountType =
+      input.amountType ===
+        undefined
+        ? "fixed"
+        : normalizeBudgetAmountType(
+            input.amountType,
+          );
+
+    if (
+      !amountType
+    ) {
+      return failure({
+        code:
+          "invalid-amount-type",
+
+        message:
+          "Budget amount type must be fixed, variable, or spending.",
+
+        field:
+          "amountType",
       });
     }
 
@@ -788,6 +822,8 @@ export async function createBudgetItem(
 
           plannedAmount,
 
+          amountType,
+
           activityAmount,
 
           availableAmount,
@@ -953,6 +989,9 @@ export async function createBudgetItem(
 
           planned_amount:
             plannedAmount,
+
+          amount_type:
+            amountType,
 
           activity_amount:
             activityAmount,
@@ -1558,6 +1597,16 @@ function mapBudgetItemRecord({
       row.planned_amount,
     );
 
+  const amountType =
+    normalizeBudgetAmountType(
+      (
+        row as CaseBudgetBudgetItemDatabaseRow & {
+          amount_type?:
+            unknown;
+        }
+      ).amount_type,
+    );
+
   const activityAmount =
     normalizeDatabaseMoney(
       row.activity_amount,
@@ -1606,6 +1655,7 @@ function mapBudgetItemRecord({
     !name ||
     plannedAmount ===
       null ||
+    !amountType ||
     activityAmount ===
       null ||
     availableAmount ===
@@ -1629,6 +1679,8 @@ function mapBudgetItemRecord({
       id,
 
       name,
+
+      amountType,
 
       assignedAmount:
         plannedAmount,
@@ -1789,6 +1841,20 @@ function buildApprovalDescription({
   )} budget with ${details.join(
     ", ",
   )}.`;
+}
+
+function normalizeBudgetAmountType(
+  value:
+    unknown,
+): BudgetAmountType | null {
+  return value ===
+      "fixed" ||
+    value ===
+      "variable" ||
+    value ===
+      "spending"
+    ? value
+    : null;
 }
 
 function normalizeNonNegativeMoney(

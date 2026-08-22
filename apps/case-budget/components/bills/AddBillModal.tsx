@@ -45,6 +45,7 @@ const initialFormValues: BillFormValues = {
   name: "",
   payee: "",
   amount: "",
+  amountType: "fixed",
   dueDate: "",
   frequency: "monthly",
   paymentMethod: "manual",
@@ -395,6 +396,8 @@ export default function AddBillModal({
       amount: Number(
         formValues.amount,
       ),
+      amountType:
+        formValues.amountType,
       dueDate: formValues.dueDate,
       status: determineBillStatus(
         formValues.dueDate,
@@ -612,6 +615,43 @@ export default function AddBillModal({
                     )} pl-8`}
                   />
                 </div>
+              </FormField>
+
+              <FormField
+                label="Amount Type"
+                htmlFor="add-bill-amount-type"
+              >
+                <select
+                  id="add-bill-amount-type"
+                  value={
+                    formValues.amountType
+                  }
+                  onChange={(event) =>
+                    updateField(
+                      "amountType",
+                      event.target
+                        .value as BillFormValues["amountType"],
+                    )
+                  }
+                  className={getInputClassName(
+                    false,
+                  )}
+                >
+                  <option value="fixed">
+                    Fixed Amount
+                  </option>
+
+                  <option value="variable">
+                    Variable / Spending
+                  </option>
+                </select>
+
+                <p className="mt-1.5 text-xs leading-5 text-[var(--text-muted)]">
+                  {formValues.amountType ===
+                  "variable"
+                    ? "Use for bills such as groceries, gas, utilities, or other spending that can change during the month."
+                    : "Use when the expected bill amount is normally the same each cycle."}
+                </p>
               </FormField>
 
               <FormField

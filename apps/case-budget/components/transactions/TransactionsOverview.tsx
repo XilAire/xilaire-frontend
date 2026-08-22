@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -86,7 +87,16 @@ export default function TransactionsOverview() {
     setFilters,
   ] =
     useState<TransactionFilterValues>(
-      defaultFilters,
+      () => ({
+        ...defaultFilters,
+
+        categoryId:
+          normalizeSearchParamFilter(
+            searchParams.get(
+              "categoryId",
+            ),
+          ),
+      }),
     );
 
   const [
@@ -106,6 +116,35 @@ export default function TransactionsOverview() {
     isEditTransactionModalOpen,
     setIsEditTransactionModalOpen,
   ] = useState(false);
+
+  useEffect(() => {
+    const categoryId =
+      normalizeSearchParamFilter(
+        searchParams.get(
+          "categoryId",
+        ),
+      );
+
+    setFilters(
+      (
+        current,
+      ) => {
+        if (
+          current.categoryId ===
+          categoryId
+        ) {
+          return current;
+        }
+
+        return {
+          ...current,
+          categoryId,
+        };
+      },
+    );
+  }, [
+    searchParams,
+  ]);
 
   const hasActiveFilters =
     useMemo(
@@ -599,11 +638,33 @@ export default function TransactionsOverview() {
             0 ? (
             <button
               type="button"
-              onClick={() =>
+              onClick={() => {
                 setFilters(
                   defaultFilters,
-                )
-              }
+                );
+
+                const params =
+                  new URLSearchParams(
+                    searchParams.toString(),
+                  );
+
+                params.delete(
+                  "categoryId",
+                );
+
+                const queryString =
+                  params.toString();
+
+                router.replace(
+                  queryString
+                    ? `/dashboard/transactions?${queryString}`
+                    : "/dashboard/transactions",
+                  {
+                    scroll:
+                      false,
+                  },
+                );
+              }}
               className="mx-auto flex min-h-11 items-center justify-center rounded-xl border border-[var(--border-default)] bg-[var(--surface-default)] px-4 text-sm font-bold text-[var(--primary)] outline-none transition hover:bg-[var(--surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
             >
               Clear transaction
@@ -644,6 +705,18 @@ export default function TransactionsOverview() {
       />
     </>
   );
+}
+
+function normalizeSearchParamFilter(
+  value:
+    string | null,
+) {
+  const normalized =
+    value?.trim();
+
+  return normalized
+    ? normalized
+    : "all";
 }
 
 function normalizeAmount(

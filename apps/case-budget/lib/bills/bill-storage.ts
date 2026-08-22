@@ -7,6 +7,7 @@ import {
 import type {
   BillAccountReference,
   BillAccountType,
+  BillAmountType,
   BillBudgetAllocation,
   BillBudgetAllocationType,
   BillBudgetItemReference,
@@ -133,6 +134,12 @@ type CaseBudgetBillRow = {
   amount:
     number | string;
 
+  amount_type:
+    string;
+
+  paid_amount:
+    number | string | null;
+
   due_date:
     string;
 
@@ -215,6 +222,12 @@ type CaseBudgetBillInsertRow = {
 
   amount:
     number;
+
+  amount_type:
+    BillAmountType;
+
+  paid_amount:
+    number | null;
 
   due_date:
     string;
@@ -934,6 +947,17 @@ function mapBillDataToDatabaseValues(
         bill.amount,
       ),
 
+    amount_type:
+      normalizeAmountType(
+        bill.amountType,
+      ),
+
+    paid_amount:
+      bill.status === "paid" &&
+      bill.paidAmount !== undefined
+        ? normalizeAmount(bill.paidAmount)
+        : null,
+
     due_date:
       normalizeDateOnly(
         bill.dueDate,
@@ -1086,6 +1110,20 @@ function mapBillRowToBillData(
       normalizeDatabaseAmount(
         row.amount,
       ),
+
+    amountType:
+      normalizeAmountType(
+        row.amount_type,
+      ),
+
+    ...(row.paid_amount !== null
+      ? {
+          paidAmount:
+            normalizeDatabaseAmount(
+              row.paid_amount,
+            ),
+        }
+      : {}),
 
     dueDate:
       row.due_date,
@@ -1637,6 +1675,33 @@ function validateBill({
     "3-days",
   );
 
+  normalizeAmountType(
+    bill.amountType,
+  );
+
+  if (
+    bill.paidAmount !== undefined &&
+    (!Number.isFinite(bill.paidAmount) || bill.paidAmount < 0)
+  ) {
+    throw new BillStorageError({
+      message: "Paid amount must be a valid non-negative number.",
+      code: "invalid-input",
+      operation,
+    });
+  }
+
+  if (
+    bill.status === "paid" &&
+    bill.amountType === "variable" &&
+    bill.paidAmount === undefined
+  ) {
+    throw new BillStorageError({
+      message: "A paid variable bill must include the actual paid amount.",
+      code: "invalid-input",
+      operation,
+    });
+  }
+
   if (
     bill.status ===
       "paid" &&
@@ -1753,6 +1818,25 @@ function normalizeBillFrequency(
           "invalid-input",
         operation:
           "normalizeBillFrequency",
+      });
+  }
+}
+
+function normalizeAmountType(
+  value:
+    string,
+): BillAmountType {
+  switch (value) {
+    case "fixed":
+    case "variable":
+    case "spending":
+      return value;
+
+    default:
+      throw new BillStorageError({
+        message: `Unsupported bill amount type "${value}".`,
+        code: "invalid-input",
+        operation: "normalizeAmountType",
       });
   }
 }

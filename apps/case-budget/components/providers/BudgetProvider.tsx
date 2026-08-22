@@ -159,6 +159,9 @@ export type CreateBudgetItemData = {
 
   assignedAmount:
     number;
+
+  amountType:
+    BudgetCategoryData["amountType"];
 };
 
 export type BudgetItemLocation = {
@@ -383,6 +386,7 @@ type BudgetContextValue = {
             BudgetCategoryData,
             | "name"
             | "assignedAmount"
+            | "amountType"
           >
         >,
     ) => Promise<
@@ -1810,6 +1814,9 @@ export default function BudgetProvider({
 
                 plannedAmount:
                   item.assignedAmount,
+
+                amountType:
+                  item.amountType,
               });
 
             if (
@@ -1877,6 +1884,9 @@ export default function BudgetProvider({
 
                 plannedAmount:
                   item.assignedAmount,
+
+                amountType:
+                  item.amountType,
               });
 
             if (
@@ -1924,6 +1934,7 @@ export default function BudgetProvider({
               BudgetCategoryData,
               | "name"
               | "assignedAmount"
+              | "amountType"
             >
           >,
       ) =>
@@ -1948,6 +1959,14 @@ export default function BudgetProvider({
                   ? {
                       plannedAmount:
                         updates.assignedAmount,
+                    }
+                  : {}),
+
+                ...(updates.amountType !==
+                undefined
+                  ? {
+                      amountType:
+                        updates.amountType,
                     }
                   : {}),
               });

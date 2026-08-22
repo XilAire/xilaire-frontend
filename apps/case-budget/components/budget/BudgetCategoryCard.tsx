@@ -10,6 +10,7 @@ import {
   type BillStatus,
 } from "@/types/bill";
 import type {
+  BudgetAmountType,
   BudgetCategoryData,
 } from "@/types/budget";
 
@@ -22,6 +23,17 @@ export type BudgetCategoryCardProps = {
   onOpenBill?: (
     bill: BillData,
   ) => void;
+  onCreateLinkedBill?: (
+    category: BudgetCategoryData,
+  ) => void;
+  isCreatingLinkedBill?: boolean;
+  onAddActivity?: (
+    category: BudgetCategoryData,
+  ) => void;
+  onViewActivity?: (
+    category: BudgetCategoryData,
+  ) => void;
+  activityCount?: number;
 };
 
 const currencyFormatter =
@@ -112,18 +124,112 @@ function getBudgetItemFinancialPresentation(
   };
 }
 
-function getRemainingLabel(
+function getBudgetItemSummaryLabel(
+  amountType: BudgetAmountType,
   remainingAmount: number,
 ) {
   if (remainingAmount < 0) {
     return "Overspent";
   }
 
-  if (remainingAmount === 0) {
-    return "Fully spent";
+  switch (amountType) {
+    case "spending":
+      return "Monthly spending";
+    case "variable":
+      return "Variable expense";
+    case "fixed":
+    default:
+      return "Fixed expense";
+  }
+}
+
+function getPrimaryMetricLabel(
+  amountType: BudgetAmountType,
+) {
+  switch (amountType) {
+    case "spending":
+      return "Monthly Target";
+    case "variable":
+      return "Planned";
+    case "fixed":
+    default:
+      return "Assigned";
+  }
+}
+
+function getActivityMetricLabel(
+  amountType: BudgetAmountType,
+) {
+  switch (amountType) {
+    case "spending":
+      return "Spent";
+    case "variable":
+      return "Actual";
+    case "fixed":
+    default:
+      return "Paid / Spent";
+  }
+}
+
+function getRemainingMetricLabel(
+  amountType: BudgetAmountType,
+  isOverspent: boolean,
+) {
+  if (isOverspent) {
+    return "Overspent";
   }
 
-  return "Available";
+  return amountType === "variable"
+    ? "Available"
+    : "Remaining";
+}
+
+function getBudgetItemDescription(
+  amountType: BudgetAmountType,
+  assignedAmount: number,
+  spentAmount: number,
+  remainingAmount: number,
+) {
+  if (remainingAmount < 0) {
+    return `${currencyFormatter.format(
+      Math.abs(remainingAmount),
+    )} over the planned amount`;
+  }
+
+  switch (amountType) {
+    case "spending":
+      return `${currencyFormatter.format(
+        spentAmount,
+      )} spent of ${currencyFormatter.format(
+        assignedAmount,
+      )} · ${currencyFormatter.format(
+        remainingAmount,
+      )} remaining`;
+
+    case "variable":
+      return `${currencyFormatter.format(
+        spentAmount,
+      )} actual of ${currencyFormatter.format(
+        assignedAmount,
+      )} planned`;
+
+    case "fixed":
+    default:
+      return `${currencyFormatter.format(
+        assignedAmount,
+      )} planned · ${currencyFormatter.format(
+        remainingAmount,
+      )} remaining`;
+  }
+}
+
+function shouldOfferLinkedBill(
+  amountType: BudgetAmountType,
+) {
+  return (
+    amountType === "fixed" ||
+    amountType === "variable"
+  );
 }
 
 function parseLocalDate(
@@ -237,6 +343,44 @@ function getSyncModeClasses(
   }
 }
 
+function getAmountTypeLabel(
+  amountType:
+    BudgetAmountType,
+) {
+  switch (
+    amountType
+  ) {
+    case "variable":
+      return "Variable";
+
+    case "spending":
+      return "Spending";
+
+    case "fixed":
+    default:
+      return "Fixed";
+  }
+}
+
+function getAmountTypeClasses(
+  amountType:
+    BudgetAmountType,
+) {
+  switch (
+    amountType
+  ) {
+    case "variable":
+      return "bg-[color-mix(in_srgb,var(--warning)_12%,transparent)] text-[var(--warning)]";
+
+    case "spending":
+      return "bg-[color-mix(in_srgb,var(--primary)_10%,transparent)] text-[var(--primary)]";
+
+    case "fixed":
+    default:
+      return "bg-[var(--surface-muted)] text-[var(--text-muted)]";
+  }
+}
+
 function sortLinkedBills(
   firstBill: BillData,
   secondBill: BillData,
@@ -265,6 +409,11 @@ export default function BudgetCategoryCard({
   linkedBills = [],
   onEdit,
   onOpenBill,
+  onCreateLinkedBill,
+  isCreatingLinkedBill = false,
+  onAddActivity,
+  onViewActivity,
+  activityCount = 0,
 }: BudgetCategoryCardProps) {
   const {
     assignedAmount,
@@ -288,6 +437,28 @@ export default function BudgetCategoryCard({
     linkedBillCount === 1
       ? "1 Linked Bill"
       : `${linkedBillCount} Linked Bills`;
+
+  const amountType =
+    category.amountType;
+
+  const summaryLabel =
+    getBudgetItemSummaryLabel(
+      amountType,
+      remainingAmount,
+    );
+
+  const description =
+    getBudgetItemDescription(
+      amountType,
+      assignedAmount,
+      spentAmount,
+      remainingAmount,
+    );
+
+  const canCreateLinkedBill =
+    shouldOfferLinkedBill(
+      amountType,
+    );
 
   return (
     <article
@@ -337,6 +508,26 @@ export default function BudgetCategoryCard({
                   {category.name}
                 </h3>
 
+                <span
+                  className={joinClassNames(
+                    "inline-flex",
+                    "rounded-full",
+                    "px-2.5",
+                    "py-1",
+                    "text-[10px]",
+                    "font-bold",
+                    "uppercase",
+                    "tracking-[0.1em]",
+                    getAmountTypeClasses(
+                      category.amountType,
+                    ),
+                  )}
+                >
+                  {getAmountTypeLabel(
+                    category.amountType,
+                  )}
+                </span>
+
                 {isOverspent ? (
                   <span className="inline-flex rounded-full bg-[color-mix(in_srgb,var(--danger)_12%,transparent)] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--danger)]">
                     Overspent
@@ -353,10 +544,12 @@ export default function BudgetCategoryCard({
                 ) : null}
               </div>
 
-              <p className="mt-1 text-xs font-medium text-[var(--text-muted)]">
-                {getRemainingLabel(
-                  remainingAmount,
-                )}
+              <p className="mt-1 text-xs font-semibold text-[var(--text-muted)]">
+                {summaryLabel}
+              </p>
+
+              <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
+                {description}
               </p>
             </div>
           </div>
@@ -407,25 +600,28 @@ export default function BudgetCategoryCard({
 
         <div className="mt-5 grid grid-cols-3 gap-3">
           <AmountMetric
-            label="Assigned"
+            label={getPrimaryMetricLabel(
+              amountType,
+            )}
             amount={
               assignedAmount
             }
           />
 
           <AmountMetric
-            label="Spent"
+            label={getActivityMetricLabel(
+              amountType,
+            )}
             amount={
               spentAmount
             }
           />
 
           <AmountMetric
-            label={
-              isOverspent
-                ? "Overspent"
-                : "Remaining"
-            }
+            label={getRemainingMetricLabel(
+              amountType,
+              isOverspent,
+            )}
             amount={
               remainingAmount
             }
@@ -438,6 +634,92 @@ export default function BudgetCategoryCard({
             }
           />
         </div>
+
+        {(onAddActivity ||
+        onViewActivity) ? (
+          <div className="mt-5 flex flex-col gap-2 border-t border-[var(--border-subtle)] pt-4 sm:flex-row">
+            {onAddActivity ? (
+              <button
+                type="button"
+                onClick={() =>
+                  onAddActivity(
+                    category,
+                  )
+                }
+                className={joinClassNames(
+                  "inline-flex",
+                  "min-h-10",
+                  "flex-1",
+                  "items-center",
+                  "justify-center",
+                  "gap-2",
+                  "rounded-xl",
+                  "bg-[var(--primary)]",
+                  "px-4",
+                  "text-sm",
+                  "font-bold",
+                  "text-white",
+                  "outline-none",
+                  "transition-[filter,box-shadow]",
+                  "hover:brightness-95",
+                  "focus-visible:ring-2",
+                  "focus-visible:ring-[var(--primary)]",
+                )}
+              >
+                <ActivityPlusIcon />
+
+                {category.amountType ===
+                "spending"
+                  ? "Add Spending"
+                  : "Add Payment"}
+              </button>
+            ) : null}
+
+            {onViewActivity ? (
+              <button
+                type="button"
+                onClick={() =>
+                  onViewActivity(
+                    category,
+                  )
+                }
+                className={joinClassNames(
+                  "inline-flex",
+                  "min-h-10",
+                  "flex-1",
+                  "items-center",
+                  "justify-center",
+                  "gap-2",
+                  "rounded-xl",
+                  "border",
+                  "border-[var(--border-default)]",
+                  "bg-[var(--surface-default)]",
+                  "px-4",
+                  "text-sm",
+                  "font-bold",
+                  "text-[var(--text-primary)]",
+                  "outline-none",
+                  "transition-[background-color,border-color,color,box-shadow]",
+                  "hover:border-[var(--primary)]",
+                  "hover:bg-[var(--surface-muted)]",
+                  "hover:text-[var(--primary)]",
+                  "focus-visible:ring-2",
+                  "focus-visible:ring-[var(--primary)]",
+                )}
+              >
+                <ActivityIcon />
+
+                View / Edit Activity
+
+                {activityCount > 0 ? (
+                  <span className="rounded-full bg-[var(--surface-muted)] px-2 py-0.5 text-[10px] font-bold text-[var(--text-muted)]">
+                    {activityCount}
+                  </span>
+                ) : null}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       {linkedBillCount > 0 ? (
@@ -475,23 +757,67 @@ export default function BudgetCategoryCard({
         </div>
       ) : (
         <div className="border-t border-[var(--border-subtle)] bg-[var(--surface-muted)] px-5 py-4 sm:px-6">
-          <div className="flex items-start gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-default)] text-[var(--text-muted)]">
-              <UnlinkedIcon />
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-default)] text-[var(--text-muted)]">
+                <UnlinkedIcon />
+              </div>
+
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-[var(--text-primary)]">
+                  {canCreateLinkedBill
+                    ? "No linked bill"
+                    : "Transaction tracked"}
+                </p>
+
+                <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
+                  {canCreateLinkedBill
+                    ? "Create a monthly bill linked directly to this budget item."
+                    : "Spending is accumulated from transactions assigned to this budget item throughout the month."}
+                </p>
+              </div>
             </div>
 
-            <div className="min-w-0">
-              <p className="text-sm font-bold text-[var(--text-primary)]">
-                No linked bills
-              </p>
+            {onCreateLinkedBill &&
+            canCreateLinkedBill ? (
+              <button
+                type="button"
+                disabled={
+                  isCreatingLinkedBill
+                }
+                onClick={() =>
+                  onCreateLinkedBill(
+                    category,
+                  )
+                }
+                className={joinClassNames(
+                  "inline-flex",
+                  "min-h-10",
+                  "items-center",
+                  "justify-center",
+                  "gap-2",
+                  "rounded-xl",
+                  "bg-[var(--primary)]",
+                  "px-4",
+                  "text-xs",
+                  "font-bold",
+                  "text-white",
+                  "outline-none",
+                  "transition-[filter,box-shadow]",
+                  "hover:brightness-95",
+                  "focus-visible:ring-2",
+                  "focus-visible:ring-[var(--primary)]",
+                  "disabled:cursor-not-allowed",
+                  "disabled:opacity-60",
+                )}
+              >
+                <LinkIcon />
 
-              <p className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
-                Connect a bill to this
-                budget item to track
-                upcoming payments and
-                synchronization status.
-              </p>
-            </div>
+                {isCreatingLinkedBill
+                  ? "Creating..."
+                  : "Create Linked Bill"}
+              </button>
+            ) : null}
           </div>
         </div>
       )}
@@ -670,6 +996,46 @@ function LinkedBillRow({
         ) : null}
       </div>
     </button>
+  );
+}
+
+function ActivityPlusIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 5v14" />
+      <path d="M5 12h14" />
+    </svg>
+  );
+}
+
+function ActivityIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M4 19V9" />
+      <path d="M10 19V5" />
+      <path d="M16 19v-7" />
+      <path d="M22 19H2" />
+    </svg>
   );
 }
 

@@ -10,9 +10,10 @@ type BillMobileCardProps = {
     bill: BillData,
   ) => void;
   onEdit: (bill: BillData) => void;
-  onMarkPaid: (
+  onMarkPaid?: (
     bill: BillData,
   ) => void;
+  spendingAmount?: number;
 };
 
 export default function BillMobileCard({
@@ -20,9 +21,55 @@ export default function BillMobileCard({
   onViewDetails,
   onEdit,
   onMarkPaid,
+  spendingAmount,
 }: BillMobileCardProps) {
   const isPaid =
     bill.status === "paid";
+
+  const isSpending =
+    bill.amountType ===
+    "spending";
+
+  const canMarkPaid =
+    !isPaid &&
+    !isSpending &&
+    Boolean(
+      onMarkPaid,
+    );
+
+  const normalizedSpendingAmount =
+    Math.max(
+      0,
+      spendingAmount ??
+        0,
+    );
+
+  const spendingRemaining =
+    Math.max(
+      0,
+      bill.amount -
+        normalizedSpendingAmount,
+    );
+
+  const spendingOverage =
+    Math.max(
+      0,
+      normalizedSpendingAmount -
+        bill.amount,
+    );
+
+  const spendingPercent =
+    bill.amount >
+      0
+      ? Math.min(
+          100,
+          (
+            normalizedSpendingAmount /
+            bill.amount
+          ) *
+            100,
+        )
+      : 0;
 
   const hasBudgetLink =
     Boolean(bill.budgetItem);
@@ -49,18 +96,24 @@ export default function BillMobileCard({
               {bill.name}
             </h3>
 
-            <span
-              className={[
-                "inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-semibold",
-                getStatusClasses(
+            {isSpending ? (
+              <span className="inline-flex shrink-0 items-center rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-500/15 dark:text-blue-300">
+                Monthly Spending
+              </span>
+            ) : (
+              <span
+                className={[
+                  "inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-xs font-semibold",
+                  getStatusClasses(
+                    bill.status,
+                  ),
+                ].join(" ")}
+              >
+                {getBillStatusLabel(
                   bill.status,
-                ),
-              ].join(" ")}
-            >
-              {getBillStatusLabel(
-                bill.status,
-              )}
-            </span>
+                )}
+              </span>
+            )}
           </div>
 
           <p className="mt-1 truncate text-sm text-[var(--text-muted)]">
@@ -82,31 +135,113 @@ export default function BillMobileCard({
         </button>
       </div>
 
-      <div className="mt-5 flex items-end justify-between gap-4">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">
-            Amount
-          </p>
+      {isSpending ? (
+        <div className="mt-5 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4">
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-muted)]">
+                Target
+              </p>
 
-          <p className="mt-1 text-2xl font-bold tracking-tight text-[var(--text-primary)]">
-            {formatCurrency(
-              bill.amount,
-            )}
-          </p>
+              <p className="mt-1 text-lg font-bold text-[var(--text-primary)]">
+                {formatCurrency(
+                  bill.amount,
+                )}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-muted)]">
+                Spent
+              </p>
+
+              <p className="mt-1 text-lg font-bold text-[var(--text-primary)]">
+                {formatCurrency(
+                  normalizedSpendingAmount,
+                )}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-muted)]">
+                {spendingOverage >
+                0
+                  ? "Over"
+                  : "Remaining"}
+              </p>
+
+              <p
+                className={[
+                  "mt-1 text-lg font-bold",
+                  spendingOverage >
+                  0
+                    ? "text-red-600 dark:text-red-400"
+                    : "text-[var(--text-primary)]",
+                ].join(" ")}
+              >
+                {formatCurrency(
+                  spendingOverage >
+                  0
+                    ? spendingOverage
+                    : spendingRemaining,
+                )}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-[var(--surface-default)]">
+            <div
+              className="h-full rounded-full bg-[var(--primary)] transition-[width]"
+              style={{
+                width:
+                  `${spendingPercent}%`,
+              }}
+            />
+          </div>
+
+          <div className="mt-2 flex items-center justify-between gap-3 text-xs text-[var(--text-muted)]">
+            <span>
+              {Math.round(
+                spendingPercent,
+              )}
+              % of target used
+            </span>
+
+            <span>
+              Period ends{" "}
+              {formatDate(
+                bill.dueDate,
+              )}
+            </span>
+          </div>
         </div>
+      ) : (
+        <div className="mt-5 flex items-end justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">
+              Amount
+            </p>
 
-        <div className="text-right">
-          <p className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">
-            Due
-          </p>
+            <p className="mt-1 text-2xl font-bold tracking-tight text-[var(--text-primary)]">
+              {formatCurrency(
+                bill.amount,
+              )}
+            </p>
+          </div>
 
-          <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">
-            {formatDate(
-              bill.dueDate,
-            )}
-          </p>
+          <div className="text-right">
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">
+              Due
+            </p>
+
+            <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">
+              {formatDate(
+                bill.dueDate,
+              )}
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-4 rounded-2xl bg-[var(--surface-muted)] p-4">
         <div>
@@ -123,14 +258,18 @@ export default function BillMobileCard({
 
         <div>
           <dt className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-muted)]">
-            Payment
+            {isSpending
+              ? "Tracking"
+              : "Payment"}
           </dt>
 
           <dd className="mt-1 text-sm font-medium text-[var(--text-primary)]">
-            {bill.paymentMethod ===
-            "autopay"
-              ? "Autopay"
-              : "Manual"}
+            {isSpending
+              ? "Transactions"
+              : bill.paymentMethod ===
+                "autopay"
+                ? "Autopay"
+                : "Manual"}
           </dd>
         </div>
 
@@ -147,13 +286,17 @@ export default function BillMobileCard({
 
         <div>
           <dt className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-muted)]">
-            Status
+            {isSpending
+              ? "State"
+              : "Status"}
           </dt>
 
           <dd className="mt-1 truncate text-sm font-medium text-[var(--text-primary)]">
-            {getBillStatusLabel(
-              bill.status,
-            )}
+            {isSpending
+              ? "Active"
+              : getBillStatusLabel(
+                  bill.status,
+                )}
           </dd>
         </div>
       </dl>
@@ -263,7 +406,14 @@ export default function BillMobileCard({
         </div>
       ) : null}
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+      <div
+        className={[
+          "mt-4 grid gap-3",
+          canMarkPaid || isPaid
+            ? "sm:grid-cols-3"
+            : "sm:grid-cols-2",
+        ].join(" ")}
+      >
         <button
           type="button"
           onClick={() =>
@@ -276,11 +426,11 @@ export default function BillMobileCard({
           View Details
         </button>
 
-        {!isPaid ? (
+        {canMarkPaid ? (
           <button
             type="button"
             onClick={() =>
-              onMarkPaid(bill)
+              onMarkPaid?.(bill)
             }
             className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-bold text-white outline-none transition hover:bg-emerald-700 focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
           >
@@ -288,13 +438,13 @@ export default function BillMobileCard({
 
             Mark as Paid
           </button>
-        ) : (
+        ) : isPaid ? (
           <div className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 text-sm font-bold text-emerald-700 dark:text-emerald-300">
             <CheckIcon />
 
             Paid
           </div>
-        )}
+        ) : null}
 
         <button
           type="button"

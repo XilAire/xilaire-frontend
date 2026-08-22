@@ -8,6 +8,7 @@ import {
 } from "react";
 
 import type {
+  BudgetAmountType,
   BudgetCategoryData,
   BudgetCategoryGroupData,
 } from "@/types/budget";
@@ -86,9 +87,11 @@ export default function EditBudgetItemModal({
   ] = useState("");
 
   const [
-    spentAmount,
-    setSpentAmount,
-  ] = useState("");
+    amountType,
+    setAmountType,
+  ] = useState<BudgetAmountType>(
+    "fixed",
+  );
 
   const [
     nameError,
@@ -100,13 +103,6 @@ export default function EditBudgetItemModal({
   const [
     assignedError,
     setAssignedError,
-  ] = useState<
-    string | null
-  >(null);
-
-  const [
-    spentError,
-    setSpentError,
   ] = useState<
     string | null
   >(null);
@@ -135,15 +131,12 @@ export default function EditBudgetItemModal({
         ),
       );
 
-      setSpentAmount(
-        item.spentAmount.toFixed(
-          2,
-        ),
+      setAmountType(
+        item.amountType,
       );
 
       setNameError(null);
       setAssignedError(null);
-      setSpentError(null);
       setIsDeleteConfirmationOpen(
         false,
       );
@@ -227,11 +220,6 @@ export default function EditBudgetItemModal({
         assignedAmount,
       );
 
-    const parsedSpentAmount =
-      parseCurrencyInput(
-        spentAmount,
-      );
-
     let hasError = false;
 
     if (!trimmedName) {
@@ -257,17 +245,6 @@ export default function EditBudgetItemModal({
       setAssignedError(null);
     }
 
-    if (
-      parsedSpentAmount < 0
-    ) {
-      setSpentError(
-        "Spent amount cannot be negative.",
-      );
-
-      hasError = true;
-    } else {
-      setSpentError(null);
-    }
 
     if (hasError) {
       return;
@@ -278,8 +255,7 @@ export default function EditBudgetItemModal({
       name: trimmedName,
       assignedAmount:
         parsedAssignedAmount,
-      spentAmount:
-        parsedSpentAmount,
+      amountType,
     });
   }
 
@@ -570,6 +546,61 @@ export default function EditBudgetItemModal({
                 ) : null}
               </div>
 
+              <div>
+                <label
+                  htmlFor="edit-budget-item-amount-type"
+                  className="block text-sm font-semibold text-[var(--text-primary)]"
+                >
+                  Item type
+                </label>
+
+                <select
+                  id="edit-budget-item-amount-type"
+                  value={amountType}
+                  onChange={(
+                    event,
+                  ) =>
+                    setAmountType(
+                      event.target
+                        .value as BudgetAmountType,
+                    )
+                  }
+                  className={joinClassNames(
+                    "mt-2",
+                    "h-12",
+                    "w-full",
+                    "rounded-xl",
+                    "border",
+                    "border-[var(--border-default)]",
+                    "bg-[var(--surface-default)]",
+                    "px-4",
+                    "text-sm",
+                    "font-semibold",
+                    "text-[var(--text-primary)]",
+                    "outline-none",
+                    "focus:ring-2",
+                    "focus:ring-[var(--primary)]",
+                  )}
+                >
+                  <option value="fixed">
+                    Fixed
+                  </option>
+
+                  <option value="variable">
+                    Variable
+                  </option>
+
+                  <option value="spending">
+                    Spending
+                  </option>
+                </select>
+
+                <p className="mt-2 text-xs leading-5 text-[var(--text-muted)]">
+                  Changing the type updates the canonical budget item. Automatic
+                  linked bills are synchronized by the server where supported.
+                </p>
+              </div>
+
               <div className="grid gap-5 sm:grid-cols-2">
                 <CurrencyField
                   id="edit-budget-item-assigned"
@@ -597,31 +628,22 @@ export default function EditBudgetItemModal({
                   }}
                 />
 
-                <CurrencyField
-                  id="edit-budget-item-spent"
-                  label="Spent amount"
-                  value={
-                    spentAmount
-                  }
-                  error={
-                    spentError
-                  }
-                  onChange={(
-                    value,
-                  ) => {
-                    setSpentAmount(
-                      value,
-                    );
+                <div>
+                  <p className="block text-sm font-semibold text-[var(--text-primary)]">
+                    Spent amount
+                  </p>
 
-                    if (
-                      spentError
-                    ) {
-                      setSpentError(
-                        null,
-                      );
-                    }
-                  }}
-                />
+                  <div className="mt-2 flex h-12 items-center rounded-xl border border-[var(--border-default)] bg-[var(--surface-muted)] px-4 text-sm font-semibold text-[var(--text-primary)]">
+                    ${item.spentAmount.toFixed(
+                      2,
+                    )}
+                  </div>
+
+                  <p className="mt-2 text-xs leading-5 text-[var(--text-muted)]">
+                    Spending is calculated from canonical transactions and
+                    cannot be edited here.
+                  </p>
+                </div>
               </div>
             </div>
 

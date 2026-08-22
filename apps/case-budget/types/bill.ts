@@ -18,6 +18,26 @@ export type BillPaymentMethod =
   | "manual"
   | "autopay";
 
+/**
+ * Describes how a bill's amount behaves.
+ *
+ * fixed:
+ *   A bill with a predictable amount, such as rent or a subscription.
+ *
+ * variable:
+ *   A bill that is paid once per billing period but whose final amount
+ *   can differ from the expected amount, such as electricity.
+ *
+ * spending:
+ *   A spending bucket that can accumulate multiple transactions during
+ *   the billing period, such as groceries, gas, restaurants, supplies,
+ *   or miscellaneous spending.
+ */
+export type BillAmountType =
+  | "fixed"
+  | "variable"
+  | "spending";
+
 export type BillReminderTiming =
   | "same-day"
   | "1-day"
@@ -81,19 +101,47 @@ export type BillData = {
   id: string;
   name: string;
   payee?: string;
+
+  /**
+   * For fixed and variable bills this is the expected/scheduled amount.
+   *
+   * For spending bills this represents the spending target/limit for
+   * the billing period.
+   */
   amount: number;
+
+  amountType: BillAmountType;
+
+  /**
+   * Actual amount paid/spent.
+   *
+   * Variable bills:
+   *   The final amount that was actually paid.
+   *
+   * Spending bills:
+   *   The accumulated spending for the billing period when available.
+   *
+   * Fixed bills:
+   *   Usually unnecessary because `amount` is the payment amount.
+   */
+  paidAmount?: number;
+
   dueDate: string;
   status: BillStatus;
   frequency: BillFrequency;
   paymentMethod: BillPaymentMethod;
+
   account?: BillAccountReference;
   budgetItem?: BillBudgetItemReference;
   budgetSync?: BillBudgetSync;
   budgetAllocations?: BillBudgetAllocation[];
+
   reminder: BillReminder;
+
   note?: string;
   paidDate?: string;
   paymentTransactionId?: string;
+
   createdAt?: string;
   updatedAt?: string;
 };
@@ -124,6 +172,7 @@ export type BillFormValues = {
   name: string;
   payee: string;
   amount: string;
+  amountType: BillAmountType;
   dueDate: string;
   frequency: BillFrequency;
   paymentMethod: BillPaymentMethod;
@@ -145,6 +194,12 @@ export type BillStatusDefinition = {
 export type BillFrequencyDefinition = {
   value: BillFrequency;
   label: string;
+};
+
+export type BillAmountTypeDefinition = {
+  value: BillAmountType;
+  label: string;
+  description: string;
 };
 
 export type BillReminderTimingDefinition = {
@@ -225,6 +280,30 @@ export const billFrequencyDefinitions: BillFrequencyDefinition[] = [
   {
     value: "one-time",
     label: "One Time",
+  },
+];
+
+/**
+ * Definitions used by the Add/Edit Bill UI.
+ */
+export const billAmountTypeDefinitions: BillAmountTypeDefinition[] = [
+  {
+    value: "fixed",
+    label: "Fixed",
+    description:
+      "A predictable bill amount that is normally paid once per billing period, such as rent or a subscription.",
+  },
+  {
+    value: "variable",
+    label: "Variable",
+    description:
+      "A bill paid once per billing period whose actual amount may differ from the expected amount, such as electricity or water.",
+  },
+  {
+    value: "spending",
+    label: "Spending",
+    description:
+      "A spending category that accumulates purchases throughout the billing period, such as groceries, gas, restaurants, supplies, or miscellaneous spending.",
   },
 ];
 
@@ -315,6 +394,28 @@ export function getBillFrequencyLabel(
       (definition) =>
         definition.value === frequency,
     )?.label ?? frequency
+  );
+}
+
+export function getBillAmountTypeLabel(
+  amountType: BillAmountType,
+) {
+  return (
+    billAmountTypeDefinitions.find(
+      (definition) =>
+        definition.value === amountType,
+    )?.label ?? amountType
+  );
+}
+
+export function getBillAmountTypeDescription(
+  amountType: BillAmountType,
+) {
+  return (
+    billAmountTypeDefinitions.find(
+      (definition) =>
+        definition.value === amountType,
+    )?.description ?? ""
   );
 }
 
@@ -429,4 +530,136 @@ export function isBillFullyAllocated(
       allocatedTotal - bill.amount,
     ) < 0.01
   );
+}
+
+/**
+ * Returns the actual amount represented by the bill.
+ *
+ * fixed:
+ *   The scheduled amount is the payment amount.
+ *
+ * variable:
+ *   Use the actual paid amount once known. Before payment, fall back
+ *   to the expected amount.
+ *
+ * spending:
+ *   Use accumulated spending when available. Before any spending has
+ *   been recorded, return zero rather than the spending target.
+ */
+export function getBillPaymentAmount(
+  bill: Pick<
+    BillData,
+    "amount" | "amountType" | "paidAmount"
+  >,
+) {
+  if (
+    bill.amountType === "variable" &&
+    typeof bill.paidAmount === "number" &&
+    Number.isFinite(bill.paidAmount)
+  ) {
+    return bill.paidAmount;
+  }
+
+  if (bill.amountType === "spending") {
+    if (
+      typeof bill.paidAmount === "number" &&
+      Number.isFinite(bill.paidAmount)
+    ) {
+      return bill.paidAmount;
+    }
+
+    return 0;
+  }
+
+  return bill.amount;
+}
+
+/**
+ * Returns the planned/expected amount for the bill.
+ *
+ * For spending bills this is the spending target for the period,
+ * not the amount already spent.
+ */
+export function getBillExpectedAmount(
+  bill: Pick<BillData, "amount">,
+) {
+  return bill.amount;
+}
+
+/**
+ * Returns the actual paid/spent amount.
+ */
+export function getBillActualAmount(
+  bill: Pick<
+    BillData,
+    "amount" | "amountType" | "paidAmount"
+  >,
+) {
+  return getBillPaymentAmount(bill);
+}
+
+/**
+ * Returns the amount still remaining against the expected amount.
+ *
+ * Examples:
+ *
+ * fixed:
+ *   $500 expected -> $500 remaining until paid.
+ *
+ * variable:
+ *   $220 expected and $205 actually paid -> $0 remaining once paid
+ *   should normally be determined together with bill status.
+ *
+ * spending:
+ *   $500 target and $175 spent -> $325 remaining.
+ */
+export function getBillRemainingAmount(
+  bill: Pick<
+    BillData,
+    "amount" | "amountType" | "paidAmount" | "status"
+  >,
+) {
+  if (bill.amountType === "spending") {
+    return Math.max(
+      0,
+      bill.amount -
+        getBillPaymentAmount(bill),
+    );
+  }
+
+  if (bill.status === "paid") {
+    return 0;
+  }
+
+  return bill.amount;
+}
+
+/**
+ * Spending bills remain active throughout their billing period and
+ * accumulate transactions rather than behaving like a traditional
+ * one-payment bill.
+ */
+export function isSpendingBill(
+  bill: Pick<BillData, "amountType">,
+) {
+  return bill.amountType === "spending";
+}
+
+/**
+ * Variable bills have one payment whose final amount may differ from
+ * the expected amount.
+ */
+export function isVariableBill(
+  bill: Pick<BillData, "amountType">,
+) {
+  return bill.amountType === "variable";
+}
+
+/**
+ * Fixed bills have a predictable scheduled payment amount.
+ */
+export function isFixedBill(
+  bill: Pick<BillData, "amountType">,
+) {
+  return bill.amountType === "fixed";
 }

@@ -10,9 +10,10 @@ type BillRowProps = {
     bill: BillData,
   ) => void;
   onEdit: (bill: BillData) => void;
-  onMarkPaid: (
+  onMarkPaid?: (
     bill: BillData,
   ) => void;
+  spendingAmount?: number;
 };
 
 export default function BillRow({
@@ -20,9 +21,55 @@ export default function BillRow({
   onViewDetails,
   onEdit,
   onMarkPaid,
+  spendingAmount,
 }: BillRowProps) {
   const isPaid =
     bill.status === "paid";
+
+  const isSpending =
+    bill.amountType ===
+    "spending";
+
+  const canMarkPaid =
+    !isPaid &&
+    !isSpending &&
+    Boolean(
+      onMarkPaid,
+    );
+
+  const normalizedSpendingAmount =
+    Math.max(
+      0,
+      spendingAmount ??
+        0,
+    );
+
+  const spendingRemaining =
+    Math.max(
+      0,
+      bill.amount -
+        normalizedSpendingAmount,
+    );
+
+  const spendingOverage =
+    Math.max(
+      0,
+      normalizedSpendingAmount -
+        bill.amount,
+    );
+
+  const spendingPercent =
+    bill.amount >
+      0
+      ? Math.min(
+          100,
+          (
+            normalizedSpendingAmount /
+            bill.amount
+          ) *
+            100,
+        )
+      : 0;
 
   const hasBudgetLink =
     Boolean(bill.budgetItem);
@@ -147,43 +194,114 @@ export default function BillRow({
       </td>
 
       <td className="px-4 py-4 align-middle">
-        <span
-          className={[
-            "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold",
-            bill.paymentMethod ===
+        {isSpending ? (
+          <span className="inline-flex items-center rounded-full bg-[var(--surface-muted)] px-2.5 py-1 text-xs font-semibold text-[var(--text-muted)]">
+            Transaction tracked
+          </span>
+        ) : (
+          <span
+            className={[
+              "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold",
+              bill.paymentMethod ===
+              "autopay"
+                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
+                : "bg-slate-100 text-slate-700 dark:bg-slate-500/15 dark:text-slate-300",
+            ].join(" ")}
+          >
+            {bill.paymentMethod ===
             "autopay"
-              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
-              : "bg-slate-100 text-slate-700 dark:bg-slate-500/15 dark:text-slate-300",
-          ].join(" ")}
-        >
-          {bill.paymentMethod ===
-          "autopay"
-            ? "Autopay"
-            : "Manual"}
-        </span>
+              ? "Autopay"
+              : "Manual"}
+          </span>
+        )}
       </td>
 
       <td className="px-4 py-4 align-middle">
-        <span
-          className={[
-            "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold",
-            getStatusClasses(
+        {isSpending ? (
+          <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-500/15 dark:text-blue-300">
+            Active
+          </span>
+        ) : (
+          <span
+            className={[
+              "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold",
+              getStatusClasses(
+                bill.status,
+              ),
+            ].join(" ")}
+          >
+            {getBillStatusLabel(
               bill.status,
-            ),
-          ].join(" ")}
-        >
-          {getBillStatusLabel(
-            bill.status,
-          )}
-        </span>
+            )}
+          </span>
+        )}
       </td>
 
       <td className="px-4 py-4 text-right align-middle">
-        <span className="font-bold text-[var(--text-primary)]">
-          {formatCurrency(
-            bill.amount,
-          )}
-        </span>
+        {isSpending ? (
+          <div className="ml-auto w-52 max-w-full space-y-2 text-left">
+            <div className="flex items-center justify-between gap-3 text-xs">
+              <span className="font-semibold text-[var(--text-muted)]">
+                Spent
+              </span>
+
+              <span className="font-bold text-[var(--text-primary)]">
+                {formatCurrency(
+                  normalizedSpendingAmount,
+                )}
+              </span>
+            </div>
+
+            <div className="h-2 overflow-hidden rounded-full bg-[var(--surface-muted)]">
+              <div
+                className="h-full rounded-full bg-[var(--primary)] transition-[width]"
+                style={{
+                  width:
+                    `${spendingPercent}%`,
+                }}
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-3 text-xs">
+              <span className="text-[var(--text-muted)]">
+                {spendingOverage >
+                0
+                  ? "Over target"
+                  : "Remaining"}
+              </span>
+
+              <span
+                className={[
+                  "font-semibold",
+                  spendingOverage >
+                  0
+                    ? "text-red-600 dark:text-red-400"
+                    : "text-[var(--text-primary)]",
+                ].join(" ")}
+              >
+                {formatCurrency(
+                  spendingOverage >
+                  0
+                    ? spendingOverage
+                    : spendingRemaining,
+                )}
+              </span>
+            </div>
+
+            <p className="text-right text-[11px] font-semibold text-[var(--text-muted)]">
+              {formatCurrency(
+                bill.amount,
+              )}{" "}
+              target
+            </p>
+          </div>
+        ) : (
+          <span className="font-bold text-[var(--text-primary)]">
+            {formatCurrency(
+              bill.amount,
+            )}
+          </span>
+        )}
       </td>
 
       <td className="px-5 py-4 text-right align-middle">
@@ -200,11 +318,11 @@ export default function BillRow({
             <EyeIcon />
           </button>
 
-          {!isPaid ? (
+          {canMarkPaid ? (
             <button
               type="button"
               onClick={() =>
-                onMarkPaid(bill)
+                onMarkPaid?.(bill)
               }
               className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-[var(--text-muted)] transition hover:bg-emerald-500/10 hover:text-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:hover:text-emerald-400"
               aria-label={`Mark ${bill.name} as paid`}

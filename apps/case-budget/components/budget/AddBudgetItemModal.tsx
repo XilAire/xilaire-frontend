@@ -8,12 +8,14 @@ import {
 } from "react";
 
 import type {
+  BudgetAmountType,
   BudgetCategoryGroupData,
 } from "@/types/budget";
 
 export type AddBudgetItemFormData = {
   name: string;
   assignedAmount: number;
+  amountType: BudgetAmountType;
 };
 
 export type AddBudgetItemModalProps = {
@@ -84,6 +86,13 @@ export default function AddBudgetItemModal({
   ] = useState("");
 
   const [
+    amountType,
+    setAmountType,
+  ] = useState<BudgetAmountType>(
+    "fixed",
+  );
+
+  const [
     nameError,
     setNameError,
   ] = useState<
@@ -105,6 +114,9 @@ export default function AddBudgetItemModal({
 
       setItemName("");
       setAssignedAmount("");
+      setAmountType(
+        "fixed",
+      );
       setNameError(null);
       setAmountError(null);
     },
@@ -205,6 +217,7 @@ export default function AddBudgetItemModal({
       name: trimmedName,
       assignedAmount:
         parsedAmount,
+      amountType,
     });
   }
 
@@ -393,6 +406,62 @@ export default function AddBudgetItemModal({
                   {nameError}
                 </p>
               ) : null}
+            </div>
+
+
+            <div>
+              <label
+                htmlFor="budget-item-amount-type"
+                className="block text-sm font-semibold text-[var(--text-primary)]"
+              >
+                Item type
+              </label>
+
+              <select
+                id="budget-item-amount-type"
+                value={amountType}
+                onChange={(
+                  event,
+                ) =>
+                  setAmountType(
+                    event.target
+                      .value as BudgetAmountType,
+                  )
+                }
+                className={joinClassNames(
+                  "mt-2",
+                  "h-12",
+                  "w-full",
+                  "rounded-xl",
+                  "border",
+                  "border-[var(--border-default)]",
+                  "bg-[var(--surface-default)]",
+                  "px-4",
+                  "text-sm",
+                  "font-semibold",
+                  "text-[var(--text-primary)]",
+                  "outline-none",
+                  "focus:ring-2",
+                  "focus:ring-[var(--primary)]",
+                )}
+              >
+                <option value="fixed">
+                  Fixed
+                </option>
+
+                <option value="variable">
+                  Variable
+                </option>
+
+                <option value="spending">
+                  Spending
+                </option>
+              </select>
+
+              <p className="mt-2 text-xs leading-5 text-[var(--text-muted)]">
+                Fixed is a predictable amount, variable changes by bill cycle,
+                and spending tracks purchases throughout the month.
+              </p>
             </div>
 
             <div>

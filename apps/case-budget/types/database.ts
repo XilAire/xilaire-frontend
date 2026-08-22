@@ -767,6 +767,16 @@ export type CaseBudgetBudgetGroupDatabaseTable =
   >;
 
 /**
+ * Confirmed text values:
+ *
+ * public.case_budget_budget_items.amount_type
+ */
+export type CaseBudgetBudgetItemAmountTypeDatabaseEnum =
+  | "fixed"
+  | "variable"
+  | "spending";
+
+/**
  * public.case_budget_budget_items
  */
 export type CaseBudgetBudgetItemDatabaseRow = {
@@ -778,6 +788,7 @@ export type CaseBudgetBudgetItemDatabaseRow = {
   updated_by_user_id: string;
   name: string;
   description: string | null;
+  amount_type: CaseBudgetBudgetItemAmountTypeDatabaseEnum;
   planned_amount: number;
   activity_amount: number;
   available_amount: number;
@@ -803,6 +814,7 @@ export type CaseBudgetBudgetItemDatabaseInsert = {
   updated_by_user_id: string;
   name: string;
   description?: string | null;
+  amount_type?: CaseBudgetBudgetItemAmountTypeDatabaseEnum;
   planned_amount?: number;
   activity_amount?: number;
   available_amount?: number;

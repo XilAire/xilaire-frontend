@@ -11,10 +11,12 @@ import {
 
 import {
   getIncomeSourceReference,
-  getTransactionAccountReference,
   incomeSourceReferences,
-  transactionAccountReferences,
 } from "@/lib/budget/budget-reference-data";
+
+import {
+  useAccounts,
+} from "@/components/providers/AccountsProvider";
 
 import {
   useBudget,
@@ -26,12 +28,20 @@ import type {
   TransactionType,
 } from "@/types/transaction";
 
+export type AddTransactionPreset = {
+  type?: TransactionType;
+  merchant?: string;
+  accountId?: string;
+  referenceId?: string;
+};
+
 type AddTransactionModalProps = {
   isOpen: boolean;
   onClose: () => void;
   onAddTransaction: (
     transaction: TransactionData,
-  ) => void;
+  ) => void | Promise<unknown>;
+  preset?: AddTransactionPreset | null;
 };
 
 type TransactionFormState = {
@@ -51,8 +61,7 @@ function getDefaultFormState(): TransactionFormState {
     merchant: "",
     amount: "",
     date: getTodayDate(),
-    accountId:
-      transactionAccountReferences[0]?.id ?? "",
+    accountId: "",
     referenceId: "",
     status: "cleared",
     note: "",
@@ -63,6 +72,7 @@ export default function AddTransactionModal({
   isOpen,
   onClose,
   onAddTransaction,
+  preset = null,
 }: AddTransactionModalProps) {
   const titleId = useId();
   const descriptionId = useId();
@@ -84,6 +94,29 @@ export default function AddTransactionModal({
   const {
     budgetGroups,
   } = useBudget();
+
+  const {
+    accounts,
+  } = useAccounts();
+
+  const transactionAccounts =
+    useMemo(
+      () =>
+        accounts
+          .filter(
+            (account) =>
+              account.isActive &&
+              !account.isArchived,
+          )
+          .slice()
+          .sort(
+            (first, second) =>
+              first.name.localeCompare(
+                second.name,
+              ),
+          ),
+      [accounts],
+    );
 
   const expenseBudgetItems =
     useMemo(
@@ -141,17 +174,90 @@ export default function AddTransactionModal({
       return;
     }
 
+    const defaultState =
+      getDefaultFormState();
+
+    const defaultAccountId =
+      transactionAccounts[0]?.id ??
+      "";
+
+    const presetType =
+      preset?.type ??
+      defaultState.type;
+
+    const accountId =
+      transactionAccounts.some(
+        (account) =>
+          account.id ===
+          preset?.accountId,
+      )
+        ? preset?.accountId ??
+          defaultAccountId
+        : defaultAccountId;
+
+    let referenceId = "";
+
+    if (presetType === "expense") {
+      const presetBudgetItemExists =
+        expenseBudgetItems.some(
+          (item) =>
+            item.id ===
+            preset?.referenceId,
+        );
+
+      referenceId =
+        presetBudgetItemExists
+          ? preset?.referenceId ??
+            ""
+          : expenseBudgetItems[0]?.id ??
+            "";
+    }
+
+    if (presetType === "income") {
+      referenceId =
+        preset?.referenceId ??
+        incomeSourceReferences[0]?.id ??
+        "";
+    }
+
+    if (presetType === "transfer") {
+      const presetTransferAccountExists =
+        transactionAccounts.some(
+          (account) =>
+            account.id ===
+              preset?.referenceId &&
+            account.id !==
+              accountId,
+        );
+
+      referenceId =
+        presetTransferAccountExists
+          ? preset?.referenceId ??
+            ""
+          : transactionAccounts.find(
+              (account) =>
+                account.id !==
+                accountId,
+            )?.id ??
+            "";
+    }
+
     setFormState({
-      ...getDefaultFormState(),
-      referenceId:
-        expenseBudgetItems[0]?.id ??
+      ...defaultState,
+      type: presetType,
+      merchant:
+        preset?.merchant ??
         "",
+      accountId,
+      referenceId,
     });
 
     setErrors({});
   }, [
     expenseBudgetItems,
     isOpen,
+    preset,
+    transactionAccounts,
   ]);
 
   useEffect(() => {
@@ -233,7 +339,7 @@ export default function AddTransactionModal({
 
     if (type === "transfer") {
       referenceId =
-        transactionAccountReferences.find(
+        transactionAccounts.find(
           (account) =>
             account.id !== formState.accountId,
         )?.id ?? "";
@@ -255,7 +361,7 @@ export default function AddTransactionModal({
       const nextReferenceId =
         current.type === "transfer" &&
         current.referenceId === accountId
-          ? transactionAccountReferences.find(
+          ? transactionAccounts.find(
               (account) =>
                 account.id !== accountId,
             )?.id ?? ""
@@ -288,12 +394,14 @@ export default function AddTransactionModal({
       return;
     }
 
-    const account =
-      getTransactionAccountReference(
-        formState.accountId,
+    const selectedAccount =
+      transactionAccounts.find(
+        (account) =>
+          account.id ===
+          formState.accountId,
       );
 
-    if (!account) {
+    if (!selectedAccount) {
       setErrors((current) => ({
         ...current,
         accountId:
@@ -302,6 +410,16 @@ export default function AddTransactionModal({
 
       return;
     }
+
+    const account:
+      TransactionData["account"] = {
+        id:
+          selectedAccount.id,
+        name:
+          selectedAccount.name,
+        type:
+          selectedAccount.databaseType,
+      };
 
     let category:
       | TransactionData["category"]
@@ -359,8 +477,10 @@ export default function AddTransactionModal({
 
     if (formState.type === "transfer") {
       const transferAccount =
-        getTransactionAccountReference(
-          formState.referenceId,
+        transactionAccounts.find(
+          (account) =>
+            account.id ===
+            formState.referenceId,
         );
 
       if (!transferAccount) {
@@ -585,15 +705,24 @@ export default function AddTransactionModal({
                     value={formState.accountId}
                     onChange={handleAccountChange}
                   >
-                    {transactionAccountReferences.map(
-                      (account) => (
-                        <option
-                          key={account.id}
-                          value={account.id}
-                        >
-                          {account.name}
-                        </option>
-                      ),
+                    {transactionAccounts.length ===
+                    0 ? (
+                      <option value="">
+                        No accounts available
+                      </option>
+                    ) : (
+                      transactionAccounts.map(
+                        (account) => (
+                          <option
+                            key={account.id}
+                            value={account.id}
+                          >
+                            {account.institution
+                              ? `${account.name} • ${account.institution}`
+                              : account.name}
+                          </option>
+                        ),
+                      )
                     )}
                   </SelectField>
                 </FormField>
@@ -616,7 +745,7 @@ export default function AddTransactionModal({
                         Select account
                       </option>
 
-                      {transactionAccountReferences
+                      {transactionAccounts
                         .filter(
                           (account) =>
                             account.id !==
