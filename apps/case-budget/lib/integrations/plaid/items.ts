@@ -9,6 +9,221 @@ import {
   type PlaidServiceErrorCode,
 } from "@/lib/integrations/plaid/link";
 
+
+export type GetPlaidItemStatusInput = {
+  accessToken:
+    string;
+};
+
+export type PlaidItemStatusResult = {
+  itemId:
+    string;
+
+  updateType:
+    string | null;
+
+  webhook:
+    string | null;
+
+  transactions: {
+    lastSuccessfulUpdate:
+      string | null;
+
+    lastFailedUpdate:
+      string | null;
+  };
+
+  lastWebhook: {
+    sentAt:
+      string | null;
+
+    codeSent:
+      string | null;
+  };
+
+  itemError: {
+    errorType:
+      string | null;
+
+    errorCode:
+      string | null;
+
+    errorMessage:
+      string | null;
+
+    displayMessage:
+      string | null;
+  } | null;
+
+  requestId:
+    string;
+};
+
+/**
+ * Reads the current Plaid Item status without exposing the access token.
+ *
+ * This is useful for diagnosing Transactions Items whose local sync cursor
+ * has not been initialized yet. In particular, status.transactions shows
+ * whether Plaid has completed or failed its latest institution refresh.
+ */
+export async function getPlaidItemStatus({
+  accessToken,
+}: GetPlaidItemStatusInput): Promise<
+  PlaidItemStatusResult
+> {
+  const normalizedAccessToken =
+    requireNonEmptyValue(
+      accessToken,
+      "Plaid access token",
+    );
+
+  try {
+    const plaid =
+      getPlaidClient();
+
+    const response =
+      await plaid.itemGet({
+        access_token:
+          normalizedAccessToken,
+      });
+
+    const data =
+      toRecord(
+        response.data,
+      );
+
+    const item =
+      toRecord(
+        data?.item,
+      );
+
+    const status =
+      toRecord(
+        data?.status,
+      );
+
+    const transactionsStatus =
+      toRecord(
+        status?.transactions,
+      );
+
+    const lastWebhook =
+      toRecord(
+        status?.last_webhook,
+      );
+
+    const itemError =
+      toRecord(
+        item?.error,
+      );
+
+    const itemId =
+      getOptionalString(
+        item?.item_id,
+      );
+
+    const requestId =
+      getOptionalString(
+        data?.request_id,
+      );
+
+    if (
+      !itemId ||
+      !requestId
+    ) {
+      throw new PlaidServiceError({
+        message:
+          "Plaid returned an incomplete Item status response.",
+
+        code:
+          "provider-error",
+      });
+    }
+
+    return {
+      itemId,
+
+      updateType:
+        getOptionalString(
+          item?.update_type,
+        ) ??
+        null,
+
+      webhook:
+        getOptionalString(
+          item?.webhook,
+        ) ??
+        null,
+
+      transactions: {
+        lastSuccessfulUpdate:
+          getOptionalString(
+            transactionsStatus?.last_successful_update,
+          ) ??
+          null,
+
+        lastFailedUpdate:
+          getOptionalString(
+            transactionsStatus?.last_failed_update,
+          ) ??
+          null,
+      },
+
+      lastWebhook: {
+        sentAt:
+          getOptionalString(
+            lastWebhook?.sent_at,
+          ) ??
+          null,
+
+        codeSent:
+          getOptionalString(
+            lastWebhook?.code_sent,
+          ) ??
+          null,
+      },
+
+      itemError:
+        itemError
+          ? {
+              errorType:
+                getOptionalString(
+                  itemError.error_type,
+                ) ??
+                null,
+
+              errorCode:
+                getOptionalString(
+                  itemError.error_code,
+                ) ??
+                null,
+
+              errorMessage:
+                getOptionalString(
+                  itemError.error_message,
+                ) ??
+                null,
+
+              displayMessage:
+                getOptionalString(
+                  itemError.display_message,
+                ) ??
+                null,
+            }
+          : null,
+
+      requestId,
+    };
+  } catch (
+    error
+  ) {
+    throw normalizePlaidItemError(
+      error,
+      "Unable to retrieve the Plaid Item status.",
+    );
+  }
+}
+
 export type UpdatePlaidItemWebhookInput = {
   accessToken:
     string;

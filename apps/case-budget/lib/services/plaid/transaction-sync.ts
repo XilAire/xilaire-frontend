@@ -1281,25 +1281,27 @@ function deriveTransactionType(
   amount:
     number,
 ): CaseBudgetTransactionTypeDatabaseEnum {
-  const primaryCategory =
-    normalizeOptionalText(
-      transaction
-        .personal_finance_category
-        ?.primary,
-    )?.toUpperCase();
-
-  if (
-    primaryCategory ===
-      "TRANSFER_IN" ||
-    primaryCategory ===
-      "TRANSFER_OUT"
-  ) {
-    return "transfer";
-  }
-
   /*
-   * Plaid uses positive amounts for money leaving an account and negative
-   * amounts for money entering an account.
+   * IMPORTANT:
+   *
+   * Plaid's TRANSFER_IN / TRANSFER_OUT personal-finance categories describe
+   * the economic nature of a bank transaction. They do not prove that CASE
+   * Budget has both sides of an internal account-to-account transfer.
+   *
+   * CASE Budget's database requires transaction_type = "transfer" to have a
+   * valid transfer_account_id. Plaid imports currently map only the source
+   * account, so classifying a Plaid category as an internal CASE Budget
+   * transfer would violate case_budget_transactions_transfer_state_check.
+   *
+   * Until CASE Budget explicitly matches both sides of a transfer and can
+   * populate transfer_account_id, provider transactions are stored according
+   * to Plaid's amount direction:
+   *
+   *   positive amount -> money leaving the account -> expense
+   *   negative amount -> money entering the account -> income
+   *
+   * A future transfer-matching layer can safely promote matched rows to
+   * transaction_type = "transfer" and set transfer_account_id atomically.
    */
   return amount <
     0
