@@ -249,7 +249,10 @@ export default function PricingClient({
   }, [checkoutSessionId, router]);
 
   const subscription = billingState?.subscription ?? null;
-  const currentPlanKey = subscription?.plan_key ?? null;
+  const currentPlanKey =
+    billingState?.has_paid_subscription && subscription
+      ? subscription.plan_key
+      : null;
   const scheduledChange = subscription?.scheduled_change ?? null;
   const cancellationScheduled = Boolean(subscription?.cancel_at_period_end);
   const planChangeScheduled = Boolean(
