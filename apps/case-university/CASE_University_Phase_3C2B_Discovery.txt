@@ -1,0 +1,2168 @@
+﻿CASE UNIVERSITY - PHASE 3C.2B APPLICATION DISCOVERY
+Generated: 2026-09-04 23:33:10
+Root: C:\Development\xilaire-frontend-old\apps\case-university
+====================================================================================================
+
+====================================================================================================
+FILE: lib\university\stripe-server.ts
+====================================================================================================
+
+import "server-only";
+
+import Stripe from "stripe";
+
+import {
+  getUniversityStripeMode,
+  type UniversityStripeMode,
+} from "@/lib/university/stripe-mode";
+
+const STRIPE_API_VERSION = "2025-05-28.basil" as const;
+
+let stripeClient: Stripe | null = null;
+
+function requireServerEnvironmentVariable(name: string): string {
+  const value = process.env[name]?.trim();
+
+  if (!value) {
+    throw new Error(
+      `[CASE University] Missing required server environment variable: ${name}`,
+    );
+  }
+
+  return value;
+}
+
+export function getUniversityStripeSecretKey(
+  mode: UniversityStripeMode = getUniversityStripeMode(),
+): string {
+  return mode === "test"
+    ? requireServerEnvironmentVariable(
+        "STRIPE_SECRET_KEY_CASE_UNIVERSITY_TEST",
+      )
+    : requireServerEnvironmentVariable(
+        "STRIPE_SECRET_KEY_CASE_UNIVERSITY_LIVE",
+      );
+}
+
+export function getUniversityStripePublishableKey(
+  mode: UniversityStripeMode = getUniversityStripeMode(),
+): string {
+  return mode === "test"
+    ? requireServerEnvironmentVariable(
+        "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY_CASE_UNIVERSITY_TEST",
+      )
+    : requireServerEnvironmentVariable(
+        "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY_CASE_UNIVERSITY_LIVE",
+      );
+}
+
+export function getUniversityStripeWebhookSecret(
+  mode: UniversityStripeMode = getUniversityStripeMode(),
+): string {
+  return mode === "test"
+    ? requireServerEnvironmentVariable(
+        "STRIPE_WEBHOOK_SECRET_CASE_UNIVERSITY_TEST",
+      )
+    : requireServerEnvironmentVariable(
+        "STRIPE_WEBHOOK_SECRET_CASE_UNIVERSITY_LIVE",
+      );
+}
+
+export function getUniversityStripeClient(): Stripe {
+  if (stripeClient) {
+    return stripeClient;
+  }
+
+  stripeClient = new Stripe(getUniversityStripeSecretKey(), {
+    apiVersion: STRIPE_API_VERSION,
+    appInfo: {
+      name: "CASE University",
+      version: "0.1.0",
+    },
+  });
+
+  return stripeClient;
+}
+
+
+
+====================================================================================================
+FILE: lib\university\stripe-sync.ts
+====================================================================================================
+
+import "server-only";
+
+import type Stripe from "stripe";
+
+import {
+  createSupabaseServerServiceClient,
+} from "@/lib/supabase/serverService";
+import {
+  getUniversityStripeClient,
+} from "@/lib/university/stripe-server";
+import {
+  getUniversityStripeMode,
+  type UniversityStripeMode,
+} from "@/lib/university/stripe-mode";
+
+const UNIVERSITY_USER_METADATA_KEY = "case_university_user_id";
+
+const SUPPORTED_SUBSCRIPTION_STATUSES = new Set<string>([
+  "trialing",
+  "active",
+  "past_due",
+  "canceled",
+  "unpaid",
+  "incomplete",
+  "incomplete_expired",
+]);
+
+function unixToIso(value: number | null | undefined): string | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  return new Date(value * 1000).toISOString();
+}
+
+function extractExpandableId(
+  value: string | { id: string } | null | undefined,
+): string | null {
+  if (!value) {
+    return null;
+  }
+
+  return typeof value === "string" ? value : value.id;
+}
+
+function getSubscriptionIdFromCheckoutSession(
+  session: Stripe.Checkout.Session,
+): string | null {
+  return extractExpandableId(session.subscription);
+}
+
+function getSubscriptionIdFromInvoice(invoice: Stripe.Invoice): string | null {
+  const parent = invoice.parent;
+
+  if (!parent || parent.type !== "subscription_details") {
+    return null;
+  }
+
+  return extractExpandableId(
+    parent.subscription_details?.subscription,
+  );
+}
+
+async function getUniversityUserIdFromSubscription(
+  subscription: Stripe.Subscription,
+): Promise<string | null> {
+  const subscriptionUserId =
+    subscription.metadata[UNIVERSITY_USER_METADATA_KEY]?.trim();
+
+  if (subscriptionUserId) {
+    return subscriptionUserId;
+  }
+
+  const customerId = extractExpandableId(subscription.customer);
+
+  if (!customerId) {
+    return null;
+  }
+
+  const stripe = getUniversityStripeClient();
+  const customer = await stripe.customers.retrieve(customerId);
+
+  if (customer.deleted) {
+    return null;
+  }
+
+  return customer.metadata[UNIVERSITY_USER_METADATA_KEY]?.trim() || null;
+}
+
+function getPrimarySubscriptionItem(
+  subscription: Stripe.Subscription,
+): Stripe.SubscriptionItem {
+  const item = subscription.items.data[0];
+
+  if (!item) {
+    throw new Error(
+      `[CASE University] Stripe subscription ${subscription.id} has no subscription items.`,
+    );
+  }
+
+  return item;
+}
+
+export async function syncUniversitySubscriptionFromStripe({
+  subscriptionId,
+  stripeEventId,
+  stripeEventCreatedAt,
+}: {
+  subscriptionId: string;
+  stripeEventId: string;
+  stripeEventCreatedAt: number | null;
+}): Promise<void> {
+  const stripe = getUniversityStripeClient();
+
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
+    expand: ["items.data.price.product"],
+  });
+
+  const userId = await getUniversityUserIdFromSubscription(subscription);
+
+  if (!userId) {
+    throw new Error(
+      `[CASE University] Stripe subscription ${subscription.id} is missing trusted ${UNIVERSITY_USER_METADATA_KEY} metadata.`,
+    );
+  }
+
+  if (!SUPPORTED_SUBSCRIPTION_STATUSES.has(subscription.status)) {
+    throw new Error(
+      `[CASE University] Unsupported Stripe subscription status "${subscription.status}" for ${subscription.id}.`,
+    );
+  }
+
+  const item = getPrimarySubscriptionItem(subscription);
+  const priceId = item.price.id;
+  const productId = extractExpandableId(item.price.product);
+
+  if (!priceId) {
+    throw new Error(
+      `[CASE University] Stripe subscription ${subscription.id} has no price ID.`,
+    );
+  }
+
+  if (!productId) {
+    throw new Error(
+      `[CASE University] Stripe subscription ${subscription.id} has no product ID.`,
+    );
+  }
+
+  const currentPeriodStart = unixToIso(item.current_period_start);
+  const currentPeriodEnd = unixToIso(item.current_period_end);
+  const customerId = extractExpandableId(subscription.customer);
+
+  if (!customerId) {
+    throw new Error(
+      `[CASE University] Stripe subscription ${subscription.id} has no customer ID.`,
+    );
+  }
+
+  const stripeMode = getUniversityStripeMode();
+  const serviceSupabase = createSupabaseServerServiceClient();
+
+  const { error } = await serviceSupabase.rpc(
+    "upsert_university_subscription_from_stripe",
+    {
+      p_user_id: userId,
+      p_stripe_mode: stripeMode,
+      p_stripe_customer_id: customerId,
+      p_stripe_subscription_id: subscription.id,
+      p_stripe_price_id: priceId,
+      p_stripe_product_id: productId,
+      p_status: subscription.status,
+      p_current_period_start: currentPeriodStart,
+      p_current_period_end: currentPeriodEnd,
+      p_cancel_at_period_end: subscription.cancel_at_period_end,
+      p_canceled_at: unixToIso(subscription.canceled_at),
+      p_stripe_event_id: stripeEventId,
+      p_stripe_event_created_at: unixToIso(stripeEventCreatedAt),
+    },
+  );
+
+  if (error) {
+    throw new Error(
+      `[CASE University] Failed to synchronize Stripe subscription ${subscription.id}: ${error.message}`,
+    );
+  }
+}
+
+export function getSubscriptionIdForUniversityStripeEvent(
+  event: Stripe.Event,
+): string | null {
+  switch (event.type) {
+    case "checkout.session.completed":
+      return getSubscriptionIdFromCheckoutSession(
+        event.data.object as Stripe.Checkout.Session,
+      );
+
+    case "customer.subscription.created":
+    case "customer.subscription.updated":
+    case "customer.subscription.deleted":
+      return (event.data.object as Stripe.Subscription).id;
+
+    case "invoice.paid":
+    case "invoice.payment_failed":
+    case "invoice.payment_action_required":
+      return getSubscriptionIdFromInvoice(
+        event.data.object as Stripe.Invoice,
+      );
+
+    default:
+      return null;
+  }
+}
+
+export function stripeEventMatchesConfiguredMode(
+  event: Stripe.Event,
+  mode: UniversityStripeMode,
+): boolean {
+  return event.livemode === (mode === "live");
+}
+
+
+
+====================================================================================================
+FILE: lib\university\billing-checkout.ts
+====================================================================================================
+
+import "server-only";
+
+import type Stripe from "stripe";
+
+import { createSupabaseServerServiceClient } from "@/lib/supabase/serverService";
+import { getUniversityStripeClient } from "@/lib/university/stripe-server";
+import {
+  getUniversityStripeMode,
+  type UniversityStripeMode,
+} from "@/lib/university/stripe-mode";
+
+export const UNIVERSITY_PLAN_KEYS = [
+  "university_plus_monthly",
+  "university_plus_annual",
+  "university_pro_monthly",
+  "university_pro_annual",
+] as const;
+
+export type UniversityPlanKey = (typeof UNIVERSITY_PLAN_KEYS)[number];
+
+export type UniversityBillingState = {
+  stripe_mode: UniversityStripeMode;
+  tier: "free" | "plus" | "pro";
+  has_paid_subscription: boolean;
+  subscription: null | {
+    id: string;
+    plan_id: string | null;
+    plan_key: string | null;
+    plan_name: string | null;
+    price_display: string | null;
+    interval: string | null;
+    stripe_customer_id: string | null;
+    stripe_subscription_id: string | null;
+    stripe_price_id: string | null;
+    stripe_product_id: string | null;
+    status: string | null;
+    current_period_start: string | null;
+    current_period_end: string | null;
+    cancel_at_period_end: boolean;
+    canceled_at: string | null;
+    scheduled_change: unknown;
+  };
+};
+
+type PlanRow = {
+  id: string;
+  key: UniversityPlanKey;
+  name: string;
+  interval: "month" | "year";
+  price_display: string;
+  stripe_price_id: string | null;
+  stripe_price_id_test: string | null;
+};
+
+type ProfileRow = {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  stripe_customer_id: string | null;
+  stripe_customer_id_test: string | null;
+};
+
+export function isUniversityPlanKey(value: unknown): value is UniversityPlanKey {
+  return (
+    typeof value === "string" &&
+    (UNIVERSITY_PLAN_KEYS as readonly string[]).includes(value)
+  );
+}
+
+export async function getUniversityBillingState(
+  userId: string,
+  mode: UniversityStripeMode = getUniversityStripeMode(),
+): Promise<UniversityBillingState> {
+  const service = createSupabaseServerServiceClient();
+  const { data, error } = await service.rpc(
+    "get_university_user_billing_state",
+    {
+      p_user_id: userId,
+      p_stripe_mode: mode,
+    },
+  );
+
+  if (error) {
+    throw new Error(
+      `[CASE University] Unable to load billing state: ${error.message}`,
+    );
+  }
+
+  return data as UniversityBillingState;
+}
+
+export async function getUniversityPlanForCheckout(
+  planKey: UniversityPlanKey,
+  mode: UniversityStripeMode = getUniversityStripeMode(),
+): Promise<PlanRow & { stripePriceId: string }> {
+  const service = createSupabaseServerServiceClient();
+  const { data, error } = await service
+    .from("plans")
+    .select(
+      "id,key,name,interval,price_display,stripe_price_id,stripe_price_id_test",
+    )
+    .eq("key", planKey)
+    .eq("active", true)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(
+      `[CASE University] Unable to resolve checkout plan: ${error.message}`,
+    );
+  }
+
+  if (!data) {
+    throw new Error("The selected CASE University plan is not available.");
+  }
+
+  const plan = data as PlanRow;
+  const stripePriceId =
+    mode === "test" ? plan.stripe_price_id_test : plan.stripe_price_id;
+
+  if (!stripePriceId) {
+    throw new Error(
+      `The selected CASE University plan is missing its ${mode.toUpperCase()} Stripe price.`,
+    );
+  }
+
+  const { data: resolved, error: resolveError } = await service.rpc(
+    "resolve_university_plan_by_stripe_price",
+    {
+      p_stripe_price_id: stripePriceId,
+      p_stripe_mode: mode,
+    },
+  );
+
+  if (resolveError || !resolved || resolved.plan_key !== planKey) {
+    throw new Error(
+      "The selected Stripe price is not mapped to the expected CASE University plan.",
+    );
+  }
+
+  return {
+    ...plan,
+    stripePriceId,
+  };
+}
+
+async function loadProfile(userId: string): Promise<ProfileRow> {
+  const service = createSupabaseServerServiceClient();
+  const { data, error } = await service
+    .from("profiles")
+    .select(
+      "id,email,full_name,stripe_customer_id,stripe_customer_id_test",
+    )
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(
+      `[CASE University] Unable to load billing profile: ${error.message}`,
+    );
+  }
+
+  if (!data) {
+    throw new Error("CASE University profile was not found.");
+  }
+
+  return data as ProfileRow;
+}
+
+function customerIdForMode(
+  profile: ProfileRow,
+  mode: UniversityStripeMode,
+): string | null {
+  return mode === "test"
+    ? profile.stripe_customer_id_test
+    : profile.stripe_customer_id;
+}
+
+async function persistCustomerId(
+  userId: string,
+  mode: UniversityStripeMode,
+  customerId: string,
+): Promise<void> {
+  const service = createSupabaseServerServiceClient();
+  const { error } = await service.rpc("set_university_stripe_customer_id", {
+    p_user_id: userId,
+    p_stripe_mode: mode,
+    p_stripe_customer_id: customerId,
+  });
+
+  if (error) {
+    throw new Error(
+      `[CASE University] Unable to persist Stripe customer: ${error.message}`,
+    );
+  }
+}
+
+export async function getOrCreateUniversityStripeCustomer(args: {
+  userId: string;
+  authEmail?: string | null;
+  mode?: UniversityStripeMode;
+}): Promise<Stripe.Customer> {
+  const mode = args.mode ?? getUniversityStripeMode();
+  const stripe = getUniversityStripeClient();
+  const profile = await loadProfile(args.userId);
+  const existingCustomerId = customerIdForMode(profile, mode);
+
+  if (existingCustomerId) {
+    const existing = await stripe.customers.retrieve(existingCustomerId);
+
+    if (existing.deleted) {
+      throw new Error(
+        "The Stripe customer linked to this account was deleted. Billing support must reconcile the account before checkout can continue.",
+      );
+    }
+
+    if (
+      existing.metadata.case_university_user_id &&
+      existing.metadata.case_university_user_id !== args.userId
+    ) {
+      throw new Error(
+        "The Stripe customer linked to this account does not match the authenticated CASE University user.",
+      );
+    }
+
+    if (!existing.metadata.case_university_user_id) {
+      return stripe.customers.update(existing.id, {
+        metadata: {
+          ...existing.metadata,
+          case_university_user_id: args.userId,
+          app: "case_university",
+          stripe_mode: mode,
+        },
+      });
+    }
+
+    return existing;
+  }
+
+  const customer = await stripe.customers.create({
+    email: profile.email ?? args.authEmail ?? undefined,
+    name: profile.full_name ?? undefined,
+    metadata: {
+      case_university_user_id: args.userId,
+      app: "case_university",
+      stripe_mode: mode,
+    },
+  });
+
+  try {
+    await persistCustomerId(args.userId, mode, customer.id);
+  } catch (error) {
+    try {
+      await stripe.customers.del(customer.id);
+    } catch {
+      // Best-effort cleanup only. Preserve the original persistence error.
+    }
+
+    throw error;
+  }
+
+  return customer;
+}
+
+
+
+====================================================================================================
+FILE: lib\university\billing-management.ts
+====================================================================================================
+
+import "server-only";
+
+import type Stripe from "stripe";
+
+import {
+  getUniversityBillingState,
+  getUniversityPlanForCheckout,
+  type UniversityBillingState,
+  type UniversityPlanKey,
+} from "@/lib/university/billing-checkout";
+import { getUniversityStripeClient } from "@/lib/university/stripe-server";
+import {
+  getUniversityStripeMode,
+  type UniversityStripeMode,
+} from "@/lib/university/stripe-mode";
+
+const UNIVERSITY_USER_METADATA_KEY = "case_university_user_id";
+
+function expandableId(
+  value: string | { id: string } | null | undefined,
+): string | null {
+  if (!value) return null;
+  return typeof value === "string" ? value : value.id;
+}
+
+function requireManagedSubscription(
+  billingState: UniversityBillingState,
+): NonNullable<UniversityBillingState["subscription"]> {
+  const subscription = billingState.subscription;
+
+  if (
+    !billingState.has_paid_subscription ||
+    !subscription ||
+    !subscription.stripe_subscription_id ||
+    !subscription.stripe_customer_id ||
+    !subscription.plan_key
+  ) {
+    throw new Error(
+      "No manageable CASE University paid subscription was found for this account.",
+    );
+  }
+
+  if (!["active", "trialing"].includes(subscription.status ?? "")) {
+    throw new Error(
+      `The CASE University subscription cannot be changed while its status is "${subscription.status ?? "unknown"}".`,
+    );
+  }
+
+  return subscription;
+}
+
+function isImmediatePlusToProUpgrade(
+  currentPlanKey: string,
+  targetPlanKey: UniversityPlanKey,
+): boolean {
+  return (
+    currentPlanKey === "university_plus_monthly" &&
+    targetPlanKey === "university_pro_monthly"
+  );
+}
+
+async function retrieveOwnedStripeSubscription(args: {
+  userId: string;
+  mode: UniversityStripeMode;
+  billingState: UniversityBillingState;
+}): Promise<Stripe.Subscription> {
+  const managed = requireManagedSubscription(args.billingState);
+  const stripe = getUniversityStripeClient();
+
+  const stripeSubscription = await stripe.subscriptions.retrieve(
+    managed.stripe_subscription_id!,
+    {
+      expand: ["items.data.price.product"],
+    },
+  );
+
+  if (stripeSubscription.livemode !== (args.mode === "live")) {
+    throw new Error(
+      "The Stripe subscription environment does not match CASE University.",
+    );
+  }
+
+  const stripeCustomerId = expandableId(stripeSubscription.customer);
+
+  if (
+    !stripeCustomerId ||
+    stripeCustomerId !== managed.stripe_customer_id
+  ) {
+    throw new Error(
+      "The Stripe subscription customer does not match the CASE University billing record.",
+    );
+  }
+
+  const metadataUserId =
+    stripeSubscription.metadata[UNIVERSITY_USER_METADATA_KEY]?.trim();
+
+  if (!metadataUserId || metadataUserId !== args.userId) {
+    throw new Error(
+      "The Stripe subscription does not belong to the authenticated CASE University user.",
+    );
+  }
+
+  if (stripeSubscription.items.data.length !== 1) {
+    throw new Error(
+      "CASE University subscription management requires exactly one Stripe subscription item.",
+    );
+  }
+
+  return stripeSubscription;
+}
+
+export type ImmediateUniversityPlanChangeResult = {
+  subscriptionId: string;
+  targetPlanKey: UniversityPlanKey;
+  stripeStatus: Stripe.Subscription.Status;
+  pendingUpdate: boolean;
+  billingState: UniversityBillingState;
+};
+
+export async function changeUniversityPlanImmediately(args: {
+  userId: string;
+  targetPlanKey: UniversityPlanKey;
+  mode?: UniversityStripeMode;
+}): Promise<ImmediateUniversityPlanChangeResult> {
+  const mode = args.mode ?? getUniversityStripeMode();
+  const billingState = await getUniversityBillingState(args.userId, mode);
+  const managed = requireManagedSubscription(billingState);
+
+  if (managed.cancel_at_period_end) {
+    throw new Error(
+      "Undo the scheduled cancellation before changing this CASE University plan.",
+    );
+  }
+
+  if (managed.scheduled_change) {
+    throw new Error(
+      "Undo the scheduled plan change before starting a new CASE University plan change.",
+    );
+  }
+
+  if (managed.plan_key === args.targetPlanKey) {
+    throw new Error("That CASE University plan is already active.");
+  }
+
+  if (
+    !isImmediatePlusToProUpgrade(
+      managed.plan_key!,
+      args.targetPlanKey,
+    )
+  ) {
+    throw new Error(
+      "Phase 3C.1 currently allows only an immediate Plus Monthly to Pro Monthly upgrade.",
+    );
+  }
+
+  const targetPlan = await getUniversityPlanForCheckout(
+    args.targetPlanKey,
+    mode,
+  );
+
+  const stripeSubscription = await retrieveOwnedStripeSubscription({
+    userId: args.userId,
+    mode,
+    billingState,
+  });
+
+  const subscriptionItem = stripeSubscription.items.data[0];
+
+  if (!subscriptionItem) {
+    throw new Error("The Stripe subscription has no billable item.");
+  }
+
+  const stripe = getUniversityStripeClient();
+
+  const updated = await stripe.subscriptions.update(
+    stripeSubscription.id,
+    {
+      items: [
+        {
+          id: subscriptionItem.id,
+          price: targetPlan.stripePriceId,
+          quantity: 1,
+        },
+      ],
+      proration_behavior: "always_invoice",
+      payment_behavior: "pending_if_incomplete",
+      metadata: {
+        ...stripeSubscription.metadata,
+        case_university_user_id: args.userId,
+        app: "case_university",
+        stripe_mode: mode,
+        plan_key: targetPlan.key,
+      },
+    },
+  );
+
+  /*
+   * Stripe is authoritative. We intentionally do not write the new plan
+   * directly into Supabase here. customer.subscription.updated and invoice
+   * webhooks synchronize the accepted Stripe state through the existing
+   * CASE University webhook pipeline.
+   */
+  const refreshedBillingState = await getUniversityBillingState(
+    args.userId,
+    mode,
+  );
+
+  return {
+    subscriptionId: updated.id,
+    targetPlanKey: targetPlan.key,
+    stripeStatus: updated.status,
+    pendingUpdate: Boolean(updated.pending_update),
+    billingState: refreshedBillingState,
+  };
+}
+
+
+
+====================================================================================================
+FILE: app\api\stripe\webhook\route.ts
+====================================================================================================
+
+import { NextResponse } from "next/server";
+import type Stripe from "stripe";
+
+import {
+  createSupabaseServerServiceClient,
+} from "@/lib/supabase/serverService";
+import {
+  getUniversityStripeClient,
+  getUniversityStripeWebhookSecret,
+} from "@/lib/university/stripe-server";
+import {
+  getSubscriptionIdForUniversityStripeEvent,
+  stripeEventMatchesConfiguredMode,
+  syncUniversitySubscriptionFromStripe,
+} from "@/lib/university/stripe-sync";
+import {
+  getUniversityStripeMode,
+} from "@/lib/university/stripe-mode";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+const SUPPORTED_EVENTS = new Set<Stripe.Event.Type>([
+  "checkout.session.completed",
+  "customer.subscription.created",
+  "customer.subscription.updated",
+  "customer.subscription.deleted",
+  "invoice.paid",
+  "invoice.payment_failed",
+  "invoice.payment_action_required",
+]);
+
+async function completeWebhookEvent({
+  eventId,
+  stripeMode,
+  status,
+  errorMessage,
+}: {
+  eventId: string;
+  stripeMode: "test" | "live";
+  status: "processed" | "ignored" | "failed";
+  errorMessage?: string | null;
+}) {
+  const serviceSupabase = createSupabaseServerServiceClient();
+
+  const { error } = await serviceSupabase.rpc(
+    "complete_university_stripe_webhook_event",
+    {
+      p_stripe_event_id: eventId,
+      p_stripe_mode: stripeMode,
+      p_processing_status: status,
+      p_error_message: errorMessage ?? null,
+    },
+  );
+
+  if (error) {
+    throw new Error(
+      `[CASE University] Unable to complete Stripe webhook ledger event ${eventId}: ${error.message}`,
+    );
+  }
+}
+
+async function shouldProcessWebhookEvent({
+  event,
+  stripeMode,
+}: {
+  event: Stripe.Event;
+  stripeMode: "test" | "live";
+}): Promise<boolean> {
+  const serviceSupabase = createSupabaseServerServiceClient();
+
+  const { data: inserted, error: registerError } = await serviceSupabase.rpc(
+    "register_university_stripe_webhook_event",
+    {
+      p_stripe_event_id: event.id,
+      p_stripe_mode: stripeMode,
+      p_event_type: event.type,
+      p_stripe_created_at: new Date(event.created * 1000).toISOString(),
+      p_payload_object_id:
+        "id" in event.data.object ? String(event.data.object.id) : null,
+      p_metadata: {
+        api_version: event.api_version ?? null,
+        livemode: event.livemode,
+      },
+    },
+  );
+
+  if (registerError) {
+    throw new Error(
+      `[CASE University] Unable to register Stripe webhook event ${event.id}: ${registerError.message}`,
+    );
+  }
+
+  if (inserted === true) {
+    return true;
+  }
+
+  const { data: existingEvent, error: existingError } =
+    await serviceSupabase
+      .from("university_stripe_webhook_events")
+      .select("processing_status")
+      .eq("stripe_event_id", event.id)
+      .eq("stripe_mode", stripeMode)
+      .maybeSingle();
+
+  if (existingError) {
+    throw new Error(
+      `[CASE University] Unable to inspect duplicate Stripe webhook event ${event.id}: ${existingError.message}`,
+    );
+  }
+
+  return (
+    existingEvent?.processing_status === "received" ||
+    existingEvent?.processing_status === "failed"
+  );
+}
+
+export async function POST(request: Request) {
+  const stripeMode = getUniversityStripeMode();
+  const stripe = getUniversityStripeClient();
+  const signature = request.headers.get("stripe-signature");
+
+  if (!signature) {
+    return NextResponse.json(
+      { error: "Missing Stripe signature." },
+      { status: 400 },
+    );
+  }
+
+  const rawBody = await request.text();
+  let event: Stripe.Event;
+
+  try {
+    event = stripe.webhooks.constructEvent(
+      rawBody,
+      signature,
+      getUniversityStripeWebhookSecret(stripeMode),
+    );
+  } catch (error) {
+    console.error(
+      "[CASE University] Stripe webhook signature verification failed.",
+      error,
+    );
+
+    return NextResponse.json(
+      { error: "Invalid Stripe webhook signature." },
+      { status: 400 },
+    );
+  }
+
+  if (!stripeEventMatchesConfiguredMode(event, stripeMode)) {
+    console.error(
+      `[CASE University] Rejected Stripe event ${event.id}: livemode=${event.livemode} does not match configured mode=${stripeMode}.`,
+    );
+
+    return NextResponse.json(
+      { error: "Stripe event mode mismatch." },
+      { status: 400 },
+    );
+  }
+
+  try {
+    const shouldProcess = await shouldProcessWebhookEvent({
+      event,
+      stripeMode,
+    });
+
+    if (!shouldProcess) {
+      return NextResponse.json({
+        received: true,
+        duplicate: true,
+      });
+    }
+
+    if (!SUPPORTED_EVENTS.has(event.type)) {
+      await completeWebhookEvent({
+        eventId: event.id,
+        stripeMode,
+        status: "ignored",
+      });
+
+      return NextResponse.json({
+        received: true,
+        ignored: true,
+      });
+    }
+
+    const subscriptionId = getSubscriptionIdForUniversityStripeEvent(event);
+
+    if (!subscriptionId) {
+      await completeWebhookEvent({
+        eventId: event.id,
+        stripeMode,
+        status: "ignored",
+      });
+
+      return NextResponse.json({
+        received: true,
+        ignored: true,
+      });
+    }
+
+    await syncUniversitySubscriptionFromStripe({
+      subscriptionId,
+      stripeEventId: event.id,
+      stripeEventCreatedAt: event.created,
+    });
+
+    await completeWebhookEvent({
+      eventId: event.id,
+      stripeMode,
+      status: "processed",
+    });
+
+    return NextResponse.json({ received: true });
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Unknown Stripe webhook processing error.";
+
+    console.error(
+      `[CASE University] Stripe webhook processing failed for event ${event.id}.`,
+      error,
+    );
+
+    try {
+      await completeWebhookEvent({
+        eventId: event.id,
+        stripeMode,
+        status: "failed",
+        errorMessage: message,
+      });
+    } catch (ledgerError) {
+      console.error(
+        `[CASE University] Unable to mark webhook event ${event.id} as failed.`,
+        ledgerError,
+      );
+    }
+
+    return NextResponse.json(
+      { error: "Stripe webhook processing failed." },
+      { status: 500 },
+    );
+  }
+}
+
+
+
+====================================================================================================
+FILE: app\api\stripe\checkout\create\route.ts
+====================================================================================================
+
+import { NextResponse } from "next/server";
+
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import {
+  getOrCreateUniversityStripeCustomer,
+  getUniversityBillingState,
+  getUniversityPlanForCheckout,
+  isUniversityPlanKey,
+} from "@/lib/university/billing-checkout";
+import { getUniversityStripeClient } from "@/lib/university/stripe-server";
+import { getUniversityStripeMode } from "@/lib/university/stripe-mode";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+function getAppUrl(): string {
+  const value = process.env.NEXT_PUBLIC_CASE_UNIVERSITY_APP_URL?.trim();
+
+  if (!value) {
+    throw new Error(
+      "[CASE University] NEXT_PUBLIC_CASE_UNIVERSITY_APP_URL is required.",
+    );
+  }
+
+  return value.replace(/\/$/, "");
+}
+
+export async function POST(request: Request) {
+  try {
+    const supabase = await createSupabaseServerClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        {
+          error: "AUTH_REQUIRED",
+          message: "Sign in to continue to checkout.",
+        },
+        { status: 401 },
+      );
+    }
+
+    const body = (await request.json().catch(() => null)) as
+      | { planKey?: unknown }
+      | null;
+
+    if (!body || !isUniversityPlanKey(body.planKey)) {
+      return NextResponse.json(
+        {
+          error: "INVALID_PLAN",
+          message: "Select a valid CASE University plan.",
+        },
+        { status: 400 },
+      );
+    }
+
+    const mode = getUniversityStripeMode();
+    const billingState = await getUniversityBillingState(user.id, mode);
+
+    if (billingState.has_paid_subscription) {
+      return NextResponse.json(
+        {
+          error: "SUBSCRIPTION_EXISTS",
+          message:
+            "This account already has a CASE University subscription. Use billing management to change the existing membership.",
+        },
+        { status: 409 },
+      );
+    }
+
+    const plan = await getUniversityPlanForCheckout(body.planKey, mode);
+    const customer = await getOrCreateUniversityStripeCustomer({
+      userId: user.id,
+      authEmail: user.email,
+      mode,
+    });
+
+    const stripe = getUniversityStripeClient();
+    const appUrl = getAppUrl();
+
+    const session = await stripe.checkout.sessions.create({
+      ui_mode: "embedded",
+      mode: "subscription",
+      customer: customer.id,
+      client_reference_id: user.id,
+      line_items: [
+        {
+          price: plan.stripePriceId,
+          quantity: 1,
+        },
+      ],
+      payment_method_types: ["card"],
+      return_url: `${appUrl}/pricing?checkout=return&session_id={CHECKOUT_SESSION_ID}`,
+      metadata: {
+        case_university_user_id: user.id,
+        app: "case_university",
+        stripe_mode: mode,
+        plan_key: plan.key,
+      },
+      subscription_data: {
+        metadata: {
+          case_university_user_id: user.id,
+          app: "case_university",
+          stripe_mode: mode,
+          plan_key: plan.key,
+        },
+      },
+    });
+
+    if (!session.client_secret) {
+      throw new Error("Stripe did not return an Embedded Checkout client secret.");
+    }
+
+    return NextResponse.json({
+      clientSecret: session.client_secret,
+      sessionId: session.id,
+    });
+  } catch (error) {
+    console.error("[CASE University] Checkout session creation failed", error);
+
+    return NextResponse.json(
+      {
+        error: "CHECKOUT_CREATE_FAILED",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Unable to start CASE University checkout.",
+      },
+      { status: 500 },
+    );
+  }
+}
+
+
+
+====================================================================================================
+FILE: app\api\stripe\checkout\session-status\route.ts
+====================================================================================================
+
+import { NextResponse } from "next/server";
+
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getUniversityBillingState } from "@/lib/university/billing-checkout";
+import { getUniversityStripeClient } from "@/lib/university/stripe-server";
+import { getUniversityStripeMode } from "@/lib/university/stripe-mode";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+export async function GET(request: Request) {
+  try {
+    const supabase = await createSupabaseServerClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: "AUTH_REQUIRED" },
+        { status: 401 },
+      );
+    }
+
+    const url = new URL(request.url);
+    const sessionId = url.searchParams.get("session_id")?.trim();
+
+    if (!sessionId || !sessionId.startsWith("cs_")) {
+      return NextResponse.json(
+        { error: "INVALID_SESSION" },
+        { status: 400 },
+      );
+    }
+
+    const stripe = getUniversityStripeClient();
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+    const sessionUserId =
+      session.client_reference_id ??
+      session.metadata?.case_university_user_id ??
+      null;
+
+    if (sessionUserId !== user.id) {
+      return NextResponse.json(
+        { error: "SESSION_NOT_OWNED" },
+        { status: 403 },
+      );
+    }
+
+    const mode = getUniversityStripeMode();
+    const billingState = await getUniversityBillingState(user.id, mode);
+
+    return NextResponse.json({
+      checkoutStatus: session.status,
+      paymentStatus: session.payment_status,
+      billingState,
+    });
+  } catch (error) {
+    console.error("[CASE University] Checkout status lookup failed", error);
+
+    return NextResponse.json(
+      {
+        error: "STATUS_LOOKUP_FAILED",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Unable to verify checkout status.",
+      },
+      { status: 500 },
+    );
+  }
+}
+
+
+
+====================================================================================================
+FILE: app\api\stripe\subscription\change-plan\route.ts
+====================================================================================================
+
+import { NextResponse } from "next/server";
+
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import {
+  isUniversityPlanKey,
+} from "@/lib/university/billing-checkout";
+import {
+  changeUniversityPlanImmediately,
+} from "@/lib/university/billing-management";
+import { getUniversityStripeMode } from "@/lib/university/stripe-mode";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+export async function POST(request: Request) {
+  try {
+    const supabase = await createSupabaseServerClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        {
+          error: "AUTH_REQUIRED",
+          message: "Sign in to manage your CASE University membership.",
+        },
+        { status: 401 },
+      );
+    }
+
+    const body = (await request.json().catch(() => null)) as
+      | { targetPlanKey?: unknown }
+      | null;
+
+    if (!body || !isUniversityPlanKey(body.targetPlanKey)) {
+      return NextResponse.json(
+        {
+          error: "INVALID_PLAN",
+          message: "Select a valid CASE University target plan.",
+        },
+        { status: 400 },
+      );
+    }
+
+    const mode = getUniversityStripeMode();
+
+    const result = await changeUniversityPlanImmediately({
+      userId: user.id,
+      targetPlanKey: body.targetPlanKey,
+      mode,
+    });
+
+    return NextResponse.json({
+      ok: true,
+      subscriptionId: result.subscriptionId,
+      targetPlanKey: result.targetPlanKey,
+      stripeStatus: result.stripeStatus,
+      pendingUpdate: result.pendingUpdate,
+      billingState: result.billingState,
+      message: result.pendingUpdate
+        ? "Stripe is waiting for the prorated upgrade payment to complete."
+        : "Your upgrade was submitted successfully. CASE University is synchronizing the new membership.",
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Unable to change the CASE University subscription.";
+
+    console.error(
+      "[CASE University] Immediate subscription plan change failed",
+      error,
+    );
+
+    return NextResponse.json(
+      {
+        error: "PLAN_CHANGE_FAILED",
+        message,
+      },
+      { status: 400 },
+    );
+  }
+}
+
+
+
+====================================================================================================
+FILE: components\pricing\PricingClient.tsx
+====================================================================================================
+
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  EmbeddedCheckout,
+  EmbeddedCheckoutProvider,
+} from "@stripe/react-stripe-js";
+import { loadStripe } from "@stripe/stripe-js";
+
+import type {
+  UniversityBillingState,
+  UniversityPlanKey,
+} from "@/lib/university/billing-checkout";
+
+type BillingCadence = "monthly" | "annual";
+type PaidTier = "plus" | "pro";
+
+type PricingClientProps = {
+  isAuthenticated: boolean;
+  publishableKey: string;
+  initialBillingState: UniversityBillingState | null;
+  checkoutSessionId: string | null;
+};
+
+const planCopy = {
+  plus: {
+    name: "Plus",
+    eyebrow: "Build Your Skills",
+    description:
+      "Unlock the core CASE University curriculum and progress from investing fundamentals into technical analysis.",
+    monthly: "$14.99",
+    annual: "$149.99",
+    features: [
+      "Everything included in Free",
+      "Complete Investing Foundations course",
+      "Complete Technical Analysis course",
+      "Interactive practice and weak-area training",
+      "Downloadable worksheets and course resources",
+      "Full learning progress tracking",
+      "Course completion certificates",
+    ],
+  },
+  pro: {
+    name: "Pro",
+    eyebrow: "Complete The Path",
+    description:
+      "Access the complete CASE University learning path, including options and advanced options education.",
+    monthly: "$29.99",
+    annual: "$299.99",
+    features: [
+      "Everything included in CASE University Plus",
+      "Complete Options Trading course",
+      "Complete Advanced Options Trading course",
+      "Advanced options, scalping, swing, and LEAPS education",
+      "Earnings and advanced trade-management education",
+      "Advanced practice, worksheets, and course certificates",
+    ],
+  },
+} as const;
+
+function planKeyFor(
+  tier: PaidTier,
+  cadence: BillingCadence,
+): UniversityPlanKey {
+  return `university_${tier}_${cadence === "monthly" ? "monthly" : "annual"}` as UniversityPlanKey;
+}
+
+function sleep(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+}
+
+export default function PricingClient({
+  isAuthenticated,
+  publishableKey,
+  initialBillingState,
+  checkoutSessionId,
+}: PricingClientProps) {
+  const router = useRouter();
+  const [cadence, setCadence] = useState<BillingCadence>("monthly");
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [loadingPlan, setLoadingPlan] =
+    useState<UniversityPlanKey | null>(null);
+  const [changingPlan, setChangingPlan] =
+    useState<UniversityPlanKey | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [returnMessage, setReturnMessage] = useState<string | null>(null);
+  const [managementMessage, setManagementMessage] =
+    useState<string | null>(null);
+
+  const stripePromise = useMemo(
+    () => loadStripe(publishableKey),
+    [publishableKey],
+  );
+
+  useEffect(() => {
+    if (!checkoutSessionId) return;
+
+    let cancelled = false;
+    let attempts = 0;
+
+    const check = async () => {
+      attempts += 1;
+
+      try {
+        const response = await fetch(
+          `/api/stripe/checkout/session-status?session_id=${encodeURIComponent(checkoutSessionId)}`,
+          { cache: "no-store" },
+        );
+        const data = await response.json();
+
+        if (cancelled) return;
+
+        if (!response.ok) {
+          setReturnMessage(data.message ?? "Unable to verify checkout yet.");
+          return;
+        }
+
+        if (data.billingState?.has_paid_subscription) {
+          setReturnMessage("Your CASE University membership is active.");
+          router.refresh();
+          return;
+        }
+
+        if (data.checkoutStatus === "complete") {
+          setReturnMessage(
+            "Payment completed. We are finishing your membership activation.",
+          );
+        } else {
+          setReturnMessage("Checkout was not completed.");
+          return;
+        }
+
+        if (attempts < 8) {
+          window.setTimeout(check, 1500);
+        }
+      } catch {
+        if (!cancelled) {
+          setReturnMessage(
+            "Unable to verify checkout yet. Please refresh shortly.",
+          );
+        }
+      }
+    };
+
+    void check();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [checkoutSessionId, router]);
+
+  async function startCheckout(tier: PaidTier) {
+    setError(null);
+    setManagementMessage(null);
+
+    const planKey = planKeyFor(tier, cadence);
+
+    if (!isAuthenticated) {
+      const redirect = `/pricing?checkout_plan=${encodeURIComponent(planKey)}`;
+      window.location.assign(
+        `/auth/signin?redirect=${encodeURIComponent(redirect)}`,
+      );
+      return;
+    }
+
+    if (initialBillingState?.has_paid_subscription) {
+      setError(
+        "You already have a paid CASE University membership. Use the available plan-change action to manage it.",
+      );
+      return;
+    }
+
+    setLoadingPlan(planKey);
+
+    try {
+      const response = await fetch("/api/stripe/checkout/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ planKey }),
+      });
+
+      const data = await response.json();
+
+      if (response.status === 401) {
+        const redirect = `/pricing?checkout_plan=${encodeURIComponent(planKey)}`;
+        window.location.assign(
+          `/auth/signin?redirect=${encodeURIComponent(redirect)}`,
+        );
+        return;
+      }
+
+      if (!response.ok || !data.clientSecret) {
+        throw new Error(data.message ?? "Unable to start checkout.");
+      }
+
+      setClientSecret(data.clientSecret);
+    } catch (checkoutError) {
+      setError(
+        checkoutError instanceof Error
+          ? checkoutError.message
+          : "Unable to start checkout.",
+      );
+    } finally {
+      setLoadingPlan(null);
+    }
+  }
+
+  async function changePlan(targetPlanKey: UniversityPlanKey) {
+    setError(null);
+    setManagementMessage(null);
+    setChangingPlan(targetPlanKey);
+
+    try {
+      const response = await fetch(
+        "/api/stripe/subscription/change-plan",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ targetPlanKey }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (response.status === 401) {
+        window.location.assign(
+          `/auth/signin?redirect=${encodeURIComponent("/pricing")}`,
+        );
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          data.message ?? "Unable to change your CASE University plan.",
+        );
+      }
+
+      setManagementMessage(
+        data.pendingUpdate
+          ? "Stripe is waiting for the prorated upgrade payment to complete. Your current plan remains active until Stripe confirms the change."
+          : "Upgrade submitted. We are synchronizing your Pro membership.",
+      );
+
+      /*
+       * The webhook is authoritative. Give the local Stripe CLI / production
+       * webhook a few moments to persist the new price before refreshing the
+       * server-rendered billing state.
+       */
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        await sleep(1200);
+        router.refresh();
+      }
+    } catch (changeError) {
+      setError(
+        changeError instanceof Error
+          ? changeError.message
+          : "Unable to change your CASE University plan.",
+      );
+    } finally {
+      setChangingPlan(null);
+    }
+  }
+
+  const currentPlanKey =
+    initialBillingState?.subscription?.plan_key ?? null;
+
+  const isPlusMonthlyToProMonthly =
+    currentPlanKey === "university_plus_monthly" &&
+    cadence === "monthly";
+
+  return (
+    <>
+      <div className="mb-10 flex flex-col items-center gap-3">
+        <div className="inline-flex rounded-xl border border-[var(--border-default)] bg-[var(--surface-default)] p-1 shadow-[var(--shadow-xs)]">
+          <button
+            type="button"
+            onClick={() => setCadence("monthly")}
+            className={`rounded-lg px-5 py-2.5 text-sm font-bold transition ${
+              cadence === "monthly"
+                ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
+                : "text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]"
+            }`}
+          >
+            Monthly
+          </button>
+          <button
+            type="button"
+            onClick={() => setCadence("annual")}
+            className={`rounded-lg px-5 py-2.5 text-sm font-bold transition ${
+              cadence === "annual"
+                ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
+                : "text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]"
+            }`}
+          >
+            Annual
+          </button>
+        </div>
+        <p className="text-xs font-semibold text-[var(--text-muted)]">
+          Annual plans save about 16% compared with monthly billing.
+        </p>
+      </div>
+
+      {returnMessage ? (
+        <div className="mx-auto mb-6 max-w-3xl rounded-2xl border border-[var(--primary-border)] bg-[var(--primary-soft)] px-5 py-4 text-center text-sm font-semibold text-[var(--text-primary)]">
+          {returnMessage}
+        </div>
+      ) : null}
+
+      {managementMessage ? (
+        <div className="mx-auto mb-6 max-w-3xl rounded-2xl border border-[var(--primary-border)] bg-[var(--primary-soft)] px-5 py-4 text-center text-sm font-semibold text-[var(--text-primary)]">
+          {managementMessage}
+        </div>
+      ) : null}
+
+      {error ? (
+        <div className="mx-auto mb-6 max-w-3xl rounded-2xl border border-[var(--danger-border,var(--border-default))] bg-[var(--surface-default)] px-5 py-4 text-center text-sm font-semibold text-[var(--text-primary)]">
+          {error}
+        </div>
+      ) : null}
+
+      <div className="grid gap-5 lg:grid-cols-3 lg:items-stretch xl:gap-6">
+        <article className="flex h-full flex-col overflow-hidden rounded-3xl border border-[var(--border-default)] bg-[var(--surface-default)] shadow-[var(--shadow-sm)]">
+          <div className="h-1.5 bg-[var(--border-strong)]" />
+          <div className="flex flex-1 flex-col p-5 sm:p-6">
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-[var(--primary)]">
+              Start Learning
+            </p>
+            <h2 className="mt-2 text-3xl font-black tracking-tight text-[var(--text-primary)]">
+              Free
+            </h2>
+            <p className="mt-4 min-h-[72px] text-sm leading-6 text-[var(--text-secondary)]">
+              Explore CASE University and begin building your investing
+              foundation at no cost.
+            </p>
+            <div className="mt-6 border-y border-[var(--border-subtle)] py-5">
+              <p className="text-4xl font-black tracking-tight text-[var(--text-primary)]">
+                $0
+              </p>
+              <p className="mt-1 text-xs font-semibold text-[var(--text-muted)]">
+                Free forever
+              </p>
+            </div>
+            <div className="mt-6 grid gap-3 text-sm leading-6 text-[var(--text-secondary)]">
+              {[
+                "Selected introductory lessons",
+                "Public course catalog",
+                "Learning dashboard",
+                "Basic progress tracking",
+                "Public certificate verification",
+              ].map((feature) => (
+                <p key={feature} className="font-semibold">
+                  âœ“ {feature}
+                </p>
+              ))}
+            </div>
+            <div className="mt-auto pt-8">
+              <a
+                href="/courses"
+                className="inline-flex min-h-12 w-full items-center justify-center rounded-xl border border-[var(--border-default)] px-5 py-3 text-sm font-bold text-[var(--text-primary)] transition hover:bg-[var(--surface-hover)]"
+              >
+                {initialBillingState?.tier === "free"
+                  ? "Current Plan"
+                  : "Explore Free"}
+              </a>
+            </div>
+          </div>
+        </article>
+
+        {(["plus", "pro"] as PaidTier[]).map((tier) => {
+          const copy = planCopy[tier];
+          const key = planKeyFor(tier, cadence);
+          const isCurrent = currentPlanKey === key;
+          const featured = tier === "plus";
+          const canImmediateUpgrade =
+            tier === "pro" &&
+            key === "university_pro_monthly" &&
+            isPlusMonthlyToProMonthly;
+
+          let buttonLabel = `Choose ${copy.name}`;
+
+          if (isCurrent) {
+            buttonLabel = "Current Plan";
+          } else if (loadingPlan === key) {
+            buttonLabel = "Opening Checkout...";
+          } else if (changingPlan === key) {
+            buttonLabel = "Upgrading...";
+          } else if (
+            initialBillingState?.has_paid_subscription &&
+            canImmediateUpgrade
+          ) {
+            buttonLabel = "Upgrade to Pro";
+          } else if (initialBillingState?.has_paid_subscription) {
+            buttonLabel = "Management Coming Next";
+          }
+
+          const disabled =
+            Boolean(loadingPlan) ||
+            Boolean(changingPlan) ||
+            isCurrent ||
+            (Boolean(initialBillingState?.has_paid_subscription) &&
+              !canImmediateUpgrade);
+
+          return (
+            <article
+              key={tier}
+              className={`relative flex h-full flex-col overflow-hidden rounded-3xl border bg-[var(--surface-default)] shadow-[var(--shadow-sm)] ${
+                featured
+                  ? "border-[var(--primary-border)] lg:-translate-y-2 lg:shadow-[var(--shadow-md)]"
+                  : "border-[var(--border-default)]"
+              }`}
+            >
+              <div
+                className={`h-1.5 ${
+                  featured
+                    ? "bg-[var(--primary)]"
+                    : "bg-[var(--border-strong)]"
+                }`}
+              />
+              <div className="flex flex-1 flex-col p-5 sm:p-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-[var(--primary)]">
+                      {copy.eyebrow}
+                    </p>
+                    <h2 className="mt-2 text-3xl font-black tracking-tight text-[var(--text-primary)]">
+                      {copy.name}
+                    </h2>
+                  </div>
+                  {featured ? (
+                    <span className="rounded-full border border-[var(--primary-border)] bg-[var(--primary-soft)] px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.1em] text-[var(--primary)]">
+                      Most Popular
+                    </span>
+                  ) : null}
+                </div>
+
+                <p className="mt-4 min-h-[72px] text-sm leading-6 text-[var(--text-secondary)]">
+                  {copy.description}
+                </p>
+
+                <div className="mt-6 border-y border-[var(--border-subtle)] py-5">
+                  <p className="text-4xl font-black tracking-tight text-[var(--text-primary)]">
+                    {cadence === "monthly"
+                      ? copy.monthly
+                      : copy.annual}
+                  </p>
+                  <p className="mt-1 text-xs font-semibold text-[var(--text-muted)]">
+                    {cadence === "monthly"
+                      ? "per month"
+                      : "per year"}
+                  </p>
+                </div>
+
+                <div className="mt-6 grid gap-3 text-sm leading-6 text-[var(--text-secondary)]">
+                  {copy.features.map((feature) => (
+                    <p key={feature} className="font-semibold">
+                      âœ“ {feature}
+                    </p>
+                  ))}
+                </div>
+
+                <div className="mt-auto pt-8">
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => {
+                      if (canImmediateUpgrade) {
+                        void changePlan(key);
+                      } else {
+                        void startCheckout(tier);
+                      }
+                    }}
+                    className={`inline-flex min-h-12 w-full items-center justify-center rounded-xl px-5 py-3 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                      featured
+                        ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-[var(--shadow-primary)] hover:bg-[var(--primary-hover)]"
+                        : "border border-[var(--border-default)] text-[var(--text-primary)] hover:bg-[var(--surface-hover)]"
+                    }`}
+                  >
+                    {buttonLabel}
+                  </button>
+                </div>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+
+      {clientSecret ? (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-3 sm:p-6">
+          <div className="max-h-[95vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-[var(--surface-default)] shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[var(--border-subtle)] bg-[var(--surface-default)] px-5 py-4">
+              <div>
+                <p className="text-sm font-black text-[var(--text-primary)]">
+                  CASE University Checkout
+                </p>
+                <p className="mt-1 text-xs text-[var(--text-muted)]">
+                  Secure checkout powered by Stripe.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setClientSecret(null)}
+                className="rounded-lg border border-[var(--border-default)] px-3 py-2 text-sm font-bold text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]"
+              >
+                Close
+              </button>
+            </div>
+            <div className="p-3 sm:p-5">
+              <EmbeddedCheckoutProvider
+                stripe={stripePromise}
+                options={{ clientSecret }}
+              >
+                <EmbeddedCheckout />
+              </EmbeddedCheckoutProvider>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+
+
+====================================================================================================
+FILE: app\pricing\page.tsx
+====================================================================================================
+
+import type { Metadata } from "next";
+import Link from "next/link";
+
+import MarketingFooter from "@/components/marketing/MarketingFooter";
+import MarketingHeader from "@/components/marketing/MarketingHeader";
+import PricingClient from "@/components/pricing/PricingClient";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getUniversityBillingState } from "@/lib/university/billing-checkout";
+import { getUniversityStripePublishableKey } from "@/lib/university/stripe-server";
+import { getUniversityStripeMode } from "@/lib/university/stripe-mode";
+
+export const metadata: Metadata = {
+  title: "Pricing",
+  description: "Compare CASE University Free, Plus, and Pro learning plans.",
+};
+
+export const dynamic = "force-dynamic";
+
+type PricingPageProps = {
+  searchParams: Promise<{
+    checkout?: string | string[];
+    session_id?: string | string[];
+  }>;
+};
+
+function single(value: string | string[] | undefined): string | null {
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) return value[0] ?? null;
+  return null;
+}
+
+const comparisonRows = [
+  ["Public course catalog", true, true, true],
+  ["Selected introductory lessons", true, true, true],
+  ["Investing Foundations", false, true, true],
+  ["Technical Analysis", false, true, true],
+  ["Options Trading", false, false, true],
+  ["Advanced Options Trading", false, false, true],
+  ["Full progress tracking", false, true, true],
+  ["Downloadable resources", false, true, true],
+  ["Course certificates", false, true, true],
+] as const;
+
+export default async function PricingPage({
+  searchParams,
+}: PricingPageProps) {
+  const params = await searchParams;
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const mode = getUniversityStripeMode();
+  const publishableKey = getUniversityStripePublishableKey(mode);
+  const billingState = user
+    ? await getUniversityBillingState(user.id, mode)
+    : null;
+
+  const checkoutSessionId =
+    single(params.checkout) === "return"
+      ? single(params.session_id)
+      : null;
+
+  return (
+    <div className="flex min-h-screen flex-col bg-[var(--background)] text-[var(--foreground)]">
+      <MarketingHeader />
+
+      <main className="flex-1">
+        <section className="relative overflow-hidden border-b border-[var(--border-subtle)] py-16 sm:py-20 lg:py-24">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,var(--primary-soft),transparent_34%),radial-gradient(circle_at_85%_15%,var(--achievement-soft),transparent_25%)]"
+          />
+          <div className="relative mx-auto w-full max-w-[1600px] px-4 text-center sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-4xl">
+              <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[var(--primary)]">
+                CASE University Plans
+              </p>
+              <h1 className="mt-4 text-4xl font-black tracking-[-0.04em] text-[var(--text-primary)] sm:text-5xl lg:text-6xl">
+                Learn at your level.
+                <br />
+                <span className="text-[var(--primary)]">
+                  Advance when you&apos;re ready.
+                </span>
+              </h1>
+              <p className="mx-auto mt-6 max-w-2xl text-base leading-7 text-[var(--text-secondary)] sm:text-lg sm:leading-8">
+                Start for free, then unlock the curriculum, practice
+                tools, resources, and certificates that match your
+                learning path.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section className="bg-[var(--surface-muted)] py-16 sm:py-20 lg:py-24">
+          <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8">
+            <PricingClient
+              isAuthenticated={Boolean(user)}
+              publishableKey={publishableKey}
+              initialBillingState={billingState}
+              checkoutSessionId={checkoutSessionId}
+            />
+            <p className="mx-auto mt-10 max-w-3xl text-center text-sm leading-6 text-[var(--text-muted)]">
+              Subscriptions renew automatically until canceled.
+              Educational content is for informational purposes and is
+              not personalized investment, tax, or legal advice.
+            </p>
+          </div>
+        </section>
+
+        <section className="border-y border-[var(--border-subtle)] bg-[var(--background)] py-16 sm:py-20 lg:py-24">
+          <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
+            <div className="text-center">
+              <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[var(--primary)]">
+                Compare Plans
+              </p>
+              <h2 className="mt-3 text-3xl font-black tracking-[-0.03em] text-[var(--text-primary)] sm:text-4xl">
+                Find the learning level that fits you.
+              </h2>
+            </div>
+
+            <div className="mt-10 overflow-hidden rounded-3xl border border-[var(--border-default)] bg-[var(--surface-default)] shadow-[var(--shadow-sm)]">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[700px] border-collapse text-left">
+                  <thead>
+                    <tr className="border-b border-[var(--border-default)] bg-[var(--surface-muted)]">
+                      <th className="px-5 py-4 text-xs font-extrabold uppercase tracking-[0.12em] text-[var(--text-muted)] sm:px-6">
+                        Feature
+                      </th>
+                      {["Free", "Plus", "Pro"].map((name) => (
+                        <th
+                          key={name}
+                          className="px-5 py-4 text-center text-sm font-black text-[var(--text-primary)] sm:px-6"
+                        >
+                          {name}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {comparisonRows.map(
+                      ([feature, free, plus, pro], index) => (
+                        <tr
+                          key={feature}
+                          className={
+                            index < comparisonRows.length - 1
+                              ? "border-b border-[var(--border-subtle)]"
+                              : undefined
+                          }
+                        >
+                          <td className="px-5 py-4 text-sm font-semibold text-[var(--text-secondary)] sm:px-6">
+                            {feature}
+                          </td>
+                          {[free, plus, pro].map((included, i) => (
+                            <td
+                              key={i}
+                              className={`px-5 py-4 text-center sm:px-6 ${
+                                i === 1
+                                  ? "bg-[var(--primary-soft)]"
+                                  : ""
+                              }`}
+                            >
+                              <span
+                                className={`inline-flex h-7 w-7 items-center justify-center rounded-full ${
+                                  included
+                                    ? "bg-[var(--primary-soft)] text-[var(--primary)]"
+                                    : "bg-[var(--surface-muted)] text-[var(--text-muted)]"
+                                }`}
+                                aria-label={
+                                  included
+                                    ? "Included"
+                                    : "Not included"
+                                }
+                              >
+                                {included ? "âœ“" : "âˆ’"}
+                              </span>
+                            </td>
+                          ))}
+                        </tr>
+                      ),
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="bg-[var(--surface-muted)] py-16 sm:py-20">
+          <div className="mx-auto w-full max-w-4xl px-4 sm:px-6 lg:px-8">
+            <div className="rounded-3xl border border-[var(--primary-border)] bg-[var(--surface-default)] p-6 text-center shadow-[var(--shadow-md)] sm:p-8 lg:p-10">
+              <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-[var(--primary)]">
+                Not Sure Where To Start?
+              </p>
+              <h2 className="mt-3 text-2xl font-black tracking-tight text-[var(--text-primary)] sm:text-3xl">
+                Begin with Investing Foundations.
+              </h2>
+              <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-[var(--text-secondary)] sm:text-base">
+                Build the fundamentals first. You can decide how far
+                you want to advance after you understand the market,
+                financial statements, and company analysis.
+              </p>
+              <Link
+                href="/courses/investing-foundations"
+                className="mt-6 inline-flex min-h-12 items-center justify-center rounded-xl bg-[var(--primary)] px-5 py-3 text-sm font-bold text-[var(--primary-foreground)] shadow-[var(--shadow-primary)] transition hover:bg-[var(--primary-hover)]"
+              >
+                Explore Investing Foundations â†’
+              </Link>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <MarketingFooter />
+    </div>
+  );
+}
+
+
+
+====================================================================================================
+PACKAGE.JSON
+====================================================================================================
+
+{
+  "name": "case-university",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@react-email/components": "^1.0.12",
+    "@stripe/react-stripe-js": "^6.9.0",
+    "@stripe/stripe-js": "^9.15.0",
+    "@supabase/ssr": "^0.12.5",
+    "@supabase/supabase-js": "^2.112.4",
+    "next": "16.3.3",
+    "pdf-lib": "^1.17.1",
+    "qrcode.react": "^4.2.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "stripe": "18.2.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.3",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
+
+

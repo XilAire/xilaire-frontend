@@ -1,0 +1,836 @@
+@import "tailwindcss";
+
+/*
+ * CASE University
+ * Global Design System
+ *
+ * Design direction:
+ * - Modern academic platform
+ * - Professional investing education
+ * - Shared visual language with the CASE product family
+ * - University-specific blue identity
+ * - Gold reserved for achievement, certification, and milestones
+ *
+ * UniversityThemeProvider applies either:
+ *
+ *   <html class="light">
+ *   <html class="dark">
+ *
+ * Tailwind's dark: utilities respond to the .dark class.
+ */
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+
+/* =========================================================
+   LIGHT THEME
+   ========================================================= */
+
+:root {
+  /*
+   * Core application background
+   */
+
+  --background: #f6f8fc;
+  --foreground: #172033;
+
+
+  /*
+   * Brand
+   *
+   * CASE University uses a confident academic blue as its
+   * primary identity.
+   */
+
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-active: #1e40af;
+  --primary-foreground: #ffffff;
+
+  --primary-soft: #eff6ff;
+  --primary-soft-strong: #dbeafe;
+
+  --primary-border: #bfdbfe;
+
+
+  /*
+   * Academic / achievement accent
+   *
+   * Gold is intentionally secondary.
+   * Use for certificates, achievements, milestones,
+   * course completion, and academic recognition.
+   */
+
+  --accent: #b7791f;
+  --accent-hover: #975a16;
+  --accent-foreground: #ffffff;
+
+  --accent-soft: #fff8e7;
+  --accent-soft-strong: #fef0c7;
+
+  --accent-border: #f5d88a;
+
+
+  /*
+   * Surfaces
+   */
+
+  --surface-default: #ffffff;
+  --surface-elevated: #ffffff;
+  --surface-muted: #f1f4f9;
+  --surface-subtle: #f8fafc;
+  --surface-hover: #edf2f8;
+  --surface-active: #e8eef7;
+
+
+  /*
+   * Text hierarchy
+   */
+
+  --text-primary: #172033;
+  --text-secondary: #475569;
+  --text-muted: #7b8798;
+  --text-subtle: #94a3b8;
+  --text-disabled: #a8b2c1;
+
+
+  /*
+   * Borders
+   */
+
+  --border-subtle: #e5eaf1;
+  --border-default: #d9e0ea;
+  --border-strong: #c4cedb;
+
+
+  /*
+   * Sidebar
+   */
+
+  --sidebar-background: #ffffff;
+  --sidebar-surface: #f8fafc;
+
+  --sidebar-foreground: #172033;
+  --sidebar-muted-foreground: #718096;
+  --sidebar-section-foreground: #64748b;
+  --sidebar-icon-foreground: #7b8798;
+
+  --sidebar-border: #e6eaf0;
+  --sidebar-border-strong: #d1d8e2;
+
+  --sidebar-hover-background: #f1f5f9;
+  --sidebar-hover-foreground: #172033;
+
+  --sidebar-active-background: #eaf2ff;
+  --sidebar-active-foreground: #1d4ed8;
+
+  --sidebar-avatar-background: #eaf2ff;
+  --sidebar-avatar-foreground: #1d4ed8;
+
+
+  /*
+   * Status colors
+   */
+
+  --success: #16855b;
+  --success-foreground: #ffffff;
+  --success-soft: #eaf8f1;
+  --success-border: #b8e5d1;
+
+  --warning: #b7791f;
+  --warning-foreground: #ffffff;
+  --warning-soft: #fff7e6;
+  --warning-border: #f1d69a;
+
+  --danger: #dc3545;
+  --danger-foreground: #ffffff;
+  --danger-soft: #fff0f1;
+  --danger-border: #f5c2c7;
+
+  --info: #2563eb;
+  --info-foreground: #ffffff;
+  --info-soft: #eff6ff;
+  --info-border: #bfdbfe;
+
+
+  /*
+   * Course difficulty
+   */
+
+  --difficulty-beginner: #16855b;
+  --difficulty-beginner-soft: #eaf8f1;
+
+  --difficulty-intermediate: #2563eb;
+  --difficulty-intermediate-soft: #eff6ff;
+
+  --difficulty-advanced: #7c3aed;
+  --difficulty-advanced-soft: #f3efff;
+
+
+  /*
+   * Academic progress
+   */
+
+  --progress-track: #e8edf4;
+  --progress-fill: #2563eb;
+
+  --completed: #16855b;
+  --completed-soft: #eaf8f1;
+
+  --locked: #94a3b8;
+  --locked-soft: #f1f5f9;
+
+
+  /*
+   * Certification / achievement
+   */
+
+  --achievement: #b7791f;
+  --achievement-soft: #fff8e7;
+  --achievement-border: #f5d88a;
+
+
+  /*
+   * Premium plan styling
+   */
+
+  --pro: #7c3aed;
+  --pro-soft: #f3efff;
+
+  --premium: #b7791f;
+  --premium-soft: #fff8e7;
+
+
+  /*
+   * Focus
+   */
+
+  --focus-ring: #2563eb;
+
+
+  /*
+   * Shadows
+   */
+
+  --shadow-xs:
+    0 1px 2px rgb(15 23 42 / 0.04);
+
+  --shadow-sm:
+    0 1px 3px rgb(15 23 42 / 0.06),
+    0 1px 2px rgb(15 23 42 / 0.04);
+
+  --shadow-md:
+    0 8px 24px rgb(15 23 42 / 0.08);
+
+  --shadow-lg:
+    0 16px 40px rgb(15 23 42 / 0.10);
+
+  --shadow-xl:
+    0 24px 60px rgb(15 23 42 / 0.14);
+
+  --shadow-primary:
+    0 8px 24px rgb(37 99 235 / 0.20);
+
+
+  /*
+   * Layout
+   */
+
+  --sidebar-width: 288px;
+  --topbar-height: 80px;
+
+
+  /*
+   * Radius
+   */
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+}
+
+
+/* =========================================================
+   DARK THEME
+   ========================================================= */
+
+html.dark {
+  /*
+   * Core application background
+   */
+
+  --background: #0b1020;
+  --foreground: #f8fafc;
+
+
+  /*
+   * Brand
+   */
+
+  --primary: #60a5fa;
+  --primary-hover: #7db6fb;
+  --primary-active: #93c5fd;
+  --primary-foreground: #07111f;
+
+  --primary-soft: #12233f;
+  --primary-soft-strong: #18345f;
+
+  --primary-border: #284d7d;
+
+
+  /*
+   * Academic / achievement accent
+   */
+
+  --accent: #f2c66d;
+  --accent-hover: #f6d48d;
+  --accent-foreground: #211704;
+
+  --accent-soft: #2c2414;
+  --accent-soft-strong: #3b3019;
+
+  --accent-border: #665125;
+
+
+  /*
+   * Surfaces
+   */
+
+  --surface-default: #111827;
+  --surface-elevated: #151e2e;
+  --surface-muted: #182233;
+  --surface-subtle: #0f1726;
+  --surface-hover: #1d293b;
+  --surface-active: #243247;
+
+
+  /*
+   * Text hierarchy
+   */
+
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --text-subtle: #748198;
+  --text-disabled: #5d697b;
+
+
+  /*
+   * Borders
+   */
+
+  --border-subtle: #263244;
+  --border-default: #334155;
+  --border-strong: #475569;
+
+
+  /*
+   * Sidebar
+   */
+
+  --sidebar-background: #0e1625;
+  --sidebar-surface: #121c2c;
+
+  --sidebar-foreground: #f8fafc;
+  --sidebar-muted-foreground: #94a3b8;
+  --sidebar-section-foreground: #a8b3c4;
+  --sidebar-icon-foreground: #8390a3;
+
+  --sidebar-border: #253144;
+  --sidebar-border-strong: #344258;
+
+  --sidebar-hover-background: #182438;
+  --sidebar-hover-foreground: #ffffff;
+
+  --sidebar-active-background: #18345f;
+  --sidebar-active-foreground: #93c5fd;
+
+  --sidebar-avatar-background: #18345f;
+  --sidebar-avatar-foreground: #bfdbfe;
+
+
+  /*
+   * Status colors
+   */
+
+  --success: #4ade80;
+  --success-foreground: #071a0f;
+  --success-soft: #10291c;
+  --success-border: #235c3b;
+
+  --warning: #f5c451;
+  --warning-foreground: #211704;
+  --warning-soft: #2e2614;
+  --warning-border: #665125;
+
+  --danger: #fb7185;
+  --danger-foreground: #25080d;
+  --danger-soft: #32151c;
+  --danger-border: #6b2a38;
+
+  --info: #60a5fa;
+  --info-foreground: #07111f;
+  --info-soft: #12233f;
+  --info-border: #284d7d;
+
+
+  /*
+   * Course difficulty
+   */
+
+  --difficulty-beginner: #4ade80;
+  --difficulty-beginner-soft: #10291c;
+
+  --difficulty-intermediate: #60a5fa;
+  --difficulty-intermediate-soft: #12233f;
+
+  --difficulty-advanced: #c4b5fd;
+  --difficulty-advanced-soft: #251d43;
+
+
+  /*
+   * Academic progress
+   */
+
+  --progress-track: #263244;
+  --progress-fill: #60a5fa;
+
+  --completed: #4ade80;
+  --completed-soft: #10291c;
+
+  --locked: #64748b;
+  --locked-soft: #182233;
+
+
+  /*
+   * Certification / achievement
+   */
+
+  --achievement: #f2c66d;
+  --achievement-soft: #2c2414;
+  --achievement-border: #665125;
+
+
+  /*
+   * Premium plan styling
+   */
+
+  --pro: #c4b5fd;
+  --pro-soft: #251d43;
+
+  --premium: #f2c66d;
+  --premium-soft: #2c2414;
+
+
+  /*
+   * Focus
+   */
+
+  --focus-ring: #60a5fa;
+
+
+  /*
+   * Shadows
+   */
+
+  --shadow-xs:
+    0 1px 2px rgb(0 0 0 / 0.20);
+
+  --shadow-sm:
+    0 2px 6px rgb(0 0 0 / 0.20);
+
+  --shadow-md:
+    0 10px 30px rgb(0 0 0 / 0.24);
+
+  --shadow-lg:
+    0 18px 48px rgb(0 0 0 / 0.30);
+
+  --shadow-xl:
+    0 28px 72px rgb(0 0 0 / 0.36);
+
+  --shadow-primary:
+    0 10px 28px rgb(37 99 235 / 0.22);
+}
+
+
+/* =========================================================
+   TAILWIND THEME BRIDGE
+   ========================================================= */
+
+@theme inline {
+  --color-background:
+    var(--background);
+
+  --color-foreground:
+    var(--foreground);
+
+  --font-sans:
+    var(--font-geist-sans);
+
+  --font-mono:
+    var(--font-geist-mono);
+}
+
+
+/* =========================================================
+   DOCUMENT
+   ========================================================= */
+
+html {
+  min-height: 100%;
+
+  background:
+    var(--background);
+
+  color:
+    var(--foreground);
+
+  color-scheme:
+    light;
+
+  scroll-behavior:
+    smooth;
+}
+
+html.dark {
+  color-scheme:
+    dark;
+}
+
+body {
+  min-height:
+    100vh;
+
+  margin:
+    0;
+
+  background:
+    var(--background);
+
+  color:
+    var(--text-primary);
+
+  font-family:
+    var(--font-geist-sans),
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  -webkit-font-smoothing:
+    antialiased;
+
+  text-rendering:
+    optimizeLegibility;
+
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+
+/* =========================================================
+   GLOBAL ELEMENTS
+   ========================================================= */
+
+* {
+  box-sizing:
+    border-box;
+}
+
+button,
+a,
+input,
+textarea,
+select {
+  font:
+    inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color:
+    transparent;
+}
+
+button {
+  cursor:
+    pointer;
+}
+
+button:disabled {
+  cursor:
+    not-allowed;
+}
+
+a {
+  color:
+    inherit;
+
+  text-decoration:
+    none;
+}
+
+img,
+svg {
+  display:
+    block;
+}
+
+img {
+  max-width:
+    100%;
+}
+
+input,
+textarea,
+select {
+  color:
+    var(--text-primary);
+}
+
+
+/* =========================================================
+   TEXT SELECTION
+   ========================================================= */
+
+::selection {
+  background:
+    var(--primary-soft-strong);
+
+  color:
+    var(--text-primary);
+}
+
+
+/* =========================================================
+   SCROLLBARS
+   ========================================================= */
+
+* {
+  scrollbar-width:
+    thin;
+
+  scrollbar-color:
+    var(--border-strong)
+    transparent;
+}
+
+*::-webkit-scrollbar {
+  width:
+    8px;
+
+  height:
+    8px;
+}
+
+*::-webkit-scrollbar-track {
+  background:
+    transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  border:
+    2px solid transparent;
+
+  border-radius:
+    999px;
+
+  background:
+    var(--border-strong);
+
+  background-clip:
+    padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background:
+    var(--text-muted);
+
+  background-clip:
+    padding-box;
+}
+
+
+/* =========================================================
+   ACCESSIBILITY
+   ========================================================= */
+
+:focus-visible {
+  outline:
+    2px solid
+    var(--focus-ring);
+
+  outline-offset:
+    2px;
+}
+
+
+/* =========================================================
+   RESPONSIVE / SAFE AREA UTILITIES
+   ========================================================= */
+
+.safe-area-bottom {
+  padding-bottom:
+    env(
+      safe-area-inset-bottom,
+      0px
+    );
+}
+
+.safe-area-top {
+  padding-top:
+    env(
+      safe-area-inset-top,
+      0px
+    );
+}
+
+
+/* =========================================================
+   UTILITY CLASSES
+   ========================================================= */
+
+.scrollbar-none {
+  scrollbar-width:
+    none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display:
+    none;
+}
+
+.case-surface {
+  border:
+    1px solid
+    var(--border-subtle);
+
+  border-radius:
+    var(--radius-lg);
+
+  background:
+    var(--surface-default);
+
+  box-shadow:
+    var(--shadow-xs);
+}
+
+.case-surface-elevated {
+  border:
+    1px solid
+    var(--border-subtle);
+
+  border-radius:
+    var(--radius-lg);
+
+  background:
+    var(--surface-elevated);
+
+  box-shadow:
+    var(--shadow-md);
+}
+
+.case-primary-gradient {
+  background:
+    linear-gradient(
+      135deg,
+      var(--primary),
+      color-mix(
+        in srgb,
+        var(--primary)
+        72%,
+        #7c3aed
+      )
+    );
+}
+
+.case-achievement-gradient {
+  background:
+    linear-gradient(
+      135deg,
+      var(--achievement),
+      color-mix(
+        in srgb,
+        var(--achievement)
+        70%,
+        #f59e0b
+      )
+    );
+}
+
+
+/* =========================================================
+   MOTION
+   ========================================================= */
+
+@media (
+  prefers-reduced-motion:
+    reduce
+) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior:
+      auto !important;
+
+    transition-duration:
+      0.01ms !important;
+
+    animation-duration:
+      0.01ms !important;
+
+    animation-iteration-count:
+      1 !important;
+  }
+}
+
+
+/* =========================================================
+   LARGE DISPLAY SCALING
+   ========================================================= */
+
+/*
+ * CASE University is mobile-first but designed to remain
+ * comfortable on large desktop, ultrawide, and television
+ * displays.
+ */
+
+@media (
+  min-width:
+    1920px
+) {
+  :root {
+    --sidebar-width:
+      304px;
+  }
+}
+
+@media (
+  min-width:
+    2560px
+) {
+  :root {
+    --sidebar-width:
+      320px;
+
+    --topbar-height:
+      88px;
+  }
+
+  html {
+    font-size:
+      17px;
+  }
+}
+
+@media (
+  min-width:
+    3200px
+) {
+  html {
+    font-size:
+      18px;
+  }
+}
