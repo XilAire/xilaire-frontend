@@ -5,6 +5,7 @@ import UniversityThemeProvider, {
   type UniversityTheme,
 } from "@/components/providers/UniversityThemeProvider";
 import { resolveCurrentUserRole } from "@/lib/auth/resolveCurrentUserRole";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentUserProfileSettings } from "@/lib/university/profile-settings";
 
 type AppLayoutProps = {
@@ -28,14 +29,22 @@ function normalizeTheme(
 export default async function AppLayout({
   children,
 }: AppLayoutProps) {
+  const supabase =
+    await createSupabaseServerClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   const [
     currentUserRole,
     profileSettings,
-  ] =
-    await Promise.all([
-      resolveCurrentUserRole(),
-      getCurrentUserProfileSettings(),
-    ]);
+  ] = user
+    ? await Promise.all([
+        resolveCurrentUserRole(),
+        getCurrentUserProfileSettings(),
+      ])
+    : [null, null];
 
   const canManageUniversity =
     currentUserRole?.role_name ===
@@ -47,7 +56,7 @@ export default async function AppLayout({
 
   const initialTheme =
     normalizeTheme(
-      profileSettings.profile.theme,
+      profileSettings?.profile.theme,
     );
 
   return (

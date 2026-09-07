@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   EmbeddedCheckout,
@@ -28,6 +28,7 @@ type PricingClientProps = {
   publishableKey: string;
   initialBillingState: UniversityBillingState | null;
   checkoutSessionId: string | null;
+  requestedPlanKey?: UniversityPlanKey | null;
 };
 
 const planCopy = {
@@ -153,8 +154,10 @@ export default function PricingClient({
   publishableKey,
   initialBillingState,
   checkoutSessionId,
+  requestedPlanKey = null,
 }: PricingClientProps) {
   const router = useRouter();
+  const autoCheckoutStartedRef = useRef(false);
   const initialCadence: BillingCadence =
     initialBillingState?.subscription?.interval === "year" ? "annual" : "monthly";
   const [cadence, setCadence] = useState<BillingCadence>(initialCadence);
@@ -268,16 +271,15 @@ export default function PricingClient({
     const planKey = planKeyFor(tier, cadence);
 
     if (!isAuthenticated) {
-      const redirect = `/pricing?checkout_plan=${encodeURIComponent(planKey)}`;
       window.location.assign(
-        `/auth/signin?redirect=${encodeURIComponent(redirect)}`,
+        `/auth/register?plan=${encodeURIComponent(planKey)}&source=case_university`,
       );
       return;
     }
 
     if (billingState?.has_paid_subscription) {
-      setError(
-        "You already have a paid CASE University membership. Manage the existing membership instead of starting a second subscription.",
+      window.location.assign(
+        `/settings/billing?plan=${encodeURIComponent(planKey)}`,
       );
       return;
     }
@@ -321,6 +323,34 @@ export default function PricingClient({
     }
   }
 
+  // AUTO-RESUME SELECTED PLAN
+  useEffect(() => {
+    if (!requestedPlanKey) return;
+    if (!isAuthenticated) return;
+    if (billingState?.has_paid_subscription) return;
+    if (clientSecret) return;
+    if (autoCheckoutStartedRef.current) return;
+
+    const requestedCadence: BillingCadence =
+      requestedPlanKey.endsWith("_annual") ? "annual" : "monthly";
+
+    const requestedTier: PaidTier =
+      requestedPlanKey.includes("_pro_") ? "pro" : "plus";
+
+    if (cadence !== requestedCadence) {
+      setCadence(requestedCadence);
+      return;
+    }
+
+    autoCheckoutStartedRef.current = true;
+    void startCheckout(requestedTier);
+  }, [
+    billingState?.has_paid_subscription,
+    cadence,
+    clientSecret,
+    isAuthenticated,
+    requestedPlanKey,
+  ]);
   async function changePlanImmediately(targetPlanKey: UniversityPlanKey) {
     setError(null);
     setManagementMessage(null);
@@ -746,10 +776,14 @@ export default function PricingClient({
                 </button>
               ) : (
                 <a
-                  href="/courses"
+                  href={isAuthenticated ? "/courses" : "/auth/register"}
                   className="inline-flex min-h-12 w-full items-center justify-center rounded-xl border border-[var(--border-default)] px-5 py-3 text-sm font-bold text-[var(--text-primary)] transition hover:bg-[var(--surface-hover)]"
                 >
-                  {billingState?.tier === "free" ? "Current Plan" : "Explore Free"}
+                  {isAuthenticated && billingState?.tier === "free"
+                    ? "Current Plan"
+                    : isAuthenticated
+                      ? "Explore Free"
+                      : "Create Free Account"}
                 </a>
               )}
             </div>

@@ -1,12 +1,13 @@
 "use server";
 
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getCurrentUserProfileSettings } from "@/lib/university/profile-settings";
 import {
   getCurrentUniversityNotifications,
   markAllCurrentUniversityNotificationsRead,
   markCurrentUniversityNotificationRead,
   searchCurrentUniversityTopBar,
 } from "@/lib/university/top-bar";
-import { getCurrentUserProfileSettings } from "@/lib/university/profile-settings";
 
 import type {
   UniversityTopBarBootstrap,
@@ -14,6 +15,34 @@ import type {
 } from "@/lib/university/top-bar-types";
 
 export async function getUniversityTopBarBootstrapAction(): Promise<UniversityTopBarBootstrap> {
+  const supabase =
+    await createSupabaseServerClient();
+
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  /*
+   * Public routes such as /courses use the shared application shell.
+   *
+   * Profile settings and notifications are authenticated resources,
+   * so neither should be loaded when there is no current user.
+   */
+  if (error || !user) {
+    return {
+      display_name:
+        "CASE University learner",
+
+      email: "",
+
+      notifications: {
+        unread_count: 0,
+        items: [],
+      },
+    };
+  }
+
   const [
     profileSettings,
     notifications,

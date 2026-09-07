@@ -49,7 +49,7 @@ export default async function AdminCoursesPage() {
 
   if (
     !role ||
-    role.role_rank < 4
+    role.role_rank < 2
   ) {
     redirect(
       "/dashboard",

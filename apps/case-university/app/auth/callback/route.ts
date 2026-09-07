@@ -7,18 +7,99 @@ import {
   createSupabaseServerClient,
 } from "@/lib/supabase/server";
 
-function getSafeNextPath(
+const DEFAULT_POST_AUTH_PATH =
+  "/dashboard";
+
+function getSafeInternalPath(
   value: string | null,
-) {
+  origin: string,
+): string {
+  const candidate =
+    value?.trim();
+
   if (
-    !value ||
-    !value.startsWith("/") ||
-    value.startsWith("//")
+    !candidate ||
+    !candidate.startsWith("/") ||
+    candidate.startsWith("//") ||
+    candidate.includes("\\")
   ) {
-    return "/dashboard";
+    return DEFAULT_POST_AUTH_PATH;
   }
 
-  return value;
+  try {
+    const parsed =
+      new URL(
+        candidate,
+        origin,
+      );
+
+    if (
+      parsed.origin !== origin
+    ) {
+      return DEFAULT_POST_AUTH_PATH;
+    }
+
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return DEFAULT_POST_AUTH_PATH;
+  }
+}
+
+function getRequestedPostAuthPath(
+  requestUrl: URL,
+): string {
+  /*
+   * Registration currently uses ?redirect=...
+   * while password recovery and older auth flows
+   * may use ?next=....
+   *
+   * Support both so existing links continue to work.
+   */
+  const requestedPath =
+    requestUrl.searchParams.get(
+      "redirect",
+    ) ??
+    requestUrl.searchParams.get(
+      "next",
+    );
+
+  return getSafeInternalPath(
+    requestedPath,
+    requestUrl.origin,
+  );
+}
+
+function buildSignInErrorRedirect(
+  requestUrl: URL,
+  errorCode: string,
+  postAuthPath: string,
+) {
+  const redirectUrl =
+    new URL(
+      "/auth/signin",
+      requestUrl.origin,
+    );
+
+  redirectUrl.searchParams.set(
+    "error",
+    errorCode,
+  );
+
+  /*
+   * Preserve the user's original internal destination so a
+   * paid-plan selection is not lost if they must sign in again.
+   */
+  if (
+    postAuthPath !==
+    DEFAULT_POST_AUTH_PATH
+  ) {
+    redirectUrl.searchParams.set(
+      "redirect",
+      postAuthPath,
+    );
+  }
+
+  return redirectUrl;
 }
 
 export async function GET(
@@ -34,11 +115,9 @@ export async function GET(
       "code",
     );
 
-  const next =
-    getSafeNextPath(
-      requestUrl.searchParams.get(
-        "next",
-      ),
+  const postAuthPath =
+    getRequestedPostAuthPath(
+      requestUrl,
     );
 
   const errorCode =
@@ -68,19 +147,12 @@ export async function GET(
       },
     );
 
-    const redirectUrl =
-      new URL(
-        "/auth/signin",
-        requestUrl.origin,
-      );
-
-    redirectUrl.searchParams.set(
-      "error",
-      "auth_link_invalid",
-    );
-
     return NextResponse.redirect(
-      redirectUrl,
+      buildSignInErrorRedirect(
+        requestUrl,
+        "auth_link_invalid",
+        postAuthPath,
+      ),
     );
   }
 
@@ -96,19 +168,12 @@ export async function GET(
       "CASE University authentication callback is missing a code.",
     );
 
-    const redirectUrl =
-      new URL(
-        "/auth/signin",
-        requestUrl.origin,
-      );
-
-    redirectUrl.searchParams.set(
-      "error",
-      "auth_link_invalid",
-    );
-
     return NextResponse.redirect(
-      redirectUrl,
+      buildSignInErrorRedirect(
+        requestUrl,
+        "auth_link_invalid",
+        postAuthPath,
+      ),
     );
   }
 
@@ -147,35 +212,31 @@ export async function GET(
         },
       );
 
-      const redirectUrl =
-        new URL(
-          "/auth/signin",
-          requestUrl.origin,
-        );
-
-      redirectUrl.searchParams.set(
-        "error",
-        "auth_link_invalid",
-      );
-
       return NextResponse.redirect(
-        redirectUrl,
+        buildSignInErrorRedirect(
+          requestUrl,
+          "auth_link_invalid",
+          postAuthPath,
+        ),
       );
     }
 
     /*
      * The session is now established.
      *
-     * Password-recovery links should supply:
+     * Registration links can use:
+     *
+     * /auth/callback?redirect=/pricing?checkout_plan=...
+     *
+     * Password recovery and older auth flows can use:
      *
      * /auth/callback?next=/auth/update-password
      *
-     * Other future authentication flows can safely
-     * provide another internal application path.
+     * Only validated same-origin application paths are honored.
      */
     return NextResponse.redirect(
       new URL(
-        next,
+        postAuthPath,
         requestUrl.origin,
       ),
     );
@@ -187,19 +248,12 @@ export async function GET(
       error,
     );
 
-    const redirectUrl =
-      new URL(
-        "/auth/signin",
-        requestUrl.origin,
-      );
-
-    redirectUrl.searchParams.set(
-      "error",
-      "auth_callback_failed",
-    );
-
     return NextResponse.redirect(
-      redirectUrl,
+      buildSignInErrorRedirect(
+        requestUrl,
+        "auth_callback_failed",
+        postAuthPath,
+      ),
     );
   }
 }

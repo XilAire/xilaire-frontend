@@ -1,0 +1,332 @@
+"use client";
+
+import Link from "next/link";
+import {
+  useActionState,
+  useEffect,
+} from "react";
+import {
+  useRouter,
+} from "next/navigation";
+
+import {
+  initialRegisterUniversityState,
+  registerUniversityUserAction,
+} from "@/app/actions/register";
+
+import type {
+  CaseProductKey,
+  CaseUniversityPaidPlanKey,
+} from "@/lib/auth/registration-intent";
+
+import {
+  buildPostRegistrationRedirect,
+  buildSignInUrl,
+} from "@/lib/auth/registration-intent";
+
+type RegisterFormProps = {
+  planKey:
+    CaseUniversityPaidPlanKey | null;
+
+  sourceProduct:
+    CaseProductKey;
+};
+
+function planLabel(
+  planKey:
+    CaseUniversityPaidPlanKey | null,
+): string {
+  switch (
+    planKey
+  ) {
+    case "university_plus_monthly":
+      return "Plus Monthly";
+
+    case "university_plus_annual":
+      return "Plus Annual";
+
+    case "university_pro_monthly":
+      return "Pro Monthly";
+
+    case "university_pro_annual":
+      return "Pro Annual";
+
+    default:
+      return "Free";
+  }
+}
+
+export default function RegisterForm({
+  planKey,
+  sourceProduct,
+}: RegisterFormProps) {
+  const router =
+    useRouter();
+
+  const [
+    state,
+    formAction,
+    pending,
+  ] =
+    useActionState(
+      registerUniversityUserAction,
+      initialRegisterUniversityState,
+    );
+
+  const postAuthRedirect =
+    buildPostRegistrationRedirect(
+      planKey,
+    );
+
+  const signInHref =
+    buildSignInUrl(
+      postAuthRedirect,
+    );
+
+  useEffect(
+    () => {
+      if (
+        state.status ===
+          "success" &&
+        state.redirectTo
+      ) {
+        router.replace(
+          state.redirectTo,
+        );
+        router.refresh();
+      }
+    },
+    [
+      router,
+      state.redirectTo,
+      state.status,
+    ],
+  );
+
+  return (
+    <div className="w-full">
+      <div className="mb-6 rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4">
+        <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-[var(--text-muted)]">
+          Selected membership
+        </p>
+
+        <div className="mt-2 flex items-center justify-between gap-4">
+          <p className="text-lg font-black text-[var(--text-primary)]">
+            CASE University{" "}
+            {planLabel(
+              planKey,
+            )}
+          </p>
+
+          <Link
+            href="/pricing"
+            className="text-sm font-bold text-[var(--primary)] hover:underline"
+          >
+            Change
+          </Link>
+        </div>
+      </div>
+
+      {state.message ? (
+        <div
+          className={[
+            "mb-5 rounded-xl border px-4 py-3 text-sm leading-6",
+            state.status ===
+            "error"
+              ? "border-red-300 bg-red-50 text-red-800"
+              : "border-[var(--border-subtle)] bg-[var(--surface-muted)] text-[var(--text-secondary)]",
+          ].join(
+            " ",
+          )}
+        >
+          {state.message}
+
+          {state.signInUrl ? (
+            <div className="mt-3">
+              <Link
+                href={
+                  state.signInUrl
+                }
+                className="font-extrabold text-[var(--primary)] hover:underline"
+              >
+                Sign in and continue
+              </Link>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {state.status ===
+      "check_email" ? (
+        <div className="space-y-4">
+          <p className="text-sm leading-6 text-[var(--text-secondary)]">
+            You can close this page after opening the confirmation email.
+          </p>
+
+          <Link
+            href={
+              signInHref
+            }
+            className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-default)] px-4 py-2.5 text-sm font-extrabold text-[var(--text-primary)] transition hover:bg-[var(--surface-muted)]"
+          >
+            Already confirmed? Sign in
+          </Link>
+        </div>
+      ) : (
+        <form
+          action={
+            formAction
+          }
+          className="space-y-5"
+        >
+          <input
+            type="hidden"
+            name="plan"
+            value={
+              planKey ?? ""
+            }
+          />
+
+          <input
+            type="hidden"
+            name="source"
+            value={
+              sourceProduct
+            }
+          />
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              label="First name"
+              name="first_name"
+              autoComplete="given-name"
+            />
+
+            <Field
+              label="Last name"
+              name="last_name"
+              autoComplete="family-name"
+            />
+          </div>
+
+          <Field
+            label="Email"
+            name="email"
+            type="email"
+            autoComplete="email"
+          />
+
+          <Field
+            label="Password"
+            name="password"
+            type="password"
+            autoComplete="new-password"
+            hint="Use at least 8 characters."
+          />
+
+          <Field
+            label="Confirm password"
+            name="confirm_password"
+            type="password"
+            autoComplete="new-password"
+          />
+
+          <label className="flex items-start gap-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4">
+            <input
+              type="checkbox"
+              name="accept_terms"
+              className="mt-1 h-4 w-4"
+              required
+            />
+
+            <span className="text-sm leading-6 text-[var(--text-secondary)]">
+              I agree to the{" "}
+              <Link
+                href="/legal/terms"
+                target="_blank"
+                className="font-bold text-[var(--primary)] hover:underline"
+              >
+                Terms of Service
+              </Link>{" "}
+              and{" "}
+              <Link
+                href="/legal/privacy"
+                target="_blank"
+                className="font-bold text-[var(--primary)] hover:underline"
+              >
+                Privacy Policy
+              </Link>
+              .
+            </span>
+          </label>
+
+          <button
+            type="submit"
+            disabled={
+              pending
+            }
+            className="inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-[var(--primary)] px-5 py-3 text-sm font-extrabold text-[var(--primary-foreground)] transition disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {pending
+              ? "Creating account..."
+              : "Create account"}
+          </button>
+
+          <p className="text-center text-sm text-[var(--text-secondary)]">
+            Already have an account?{" "}
+            <Link
+              href={
+                signInHref
+              }
+              className="font-extrabold text-[var(--primary)] hover:underline"
+            >
+              Sign in
+            </Link>
+          </p>
+        </form>
+      )}
+    </div>
+  );
+}
+
+function Field({
+  label,
+  name,
+  type = "text",
+  autoComplete,
+  hint,
+}: {
+  label: string;
+  name: string;
+  type?: string;
+  autoComplete?: string;
+  hint?: string;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-bold text-[var(--text-primary)]">
+        {label}
+      </span>
+
+      <input
+        name={
+          name
+        }
+        type={
+          type
+        }
+        autoComplete={
+          autoComplete
+        }
+        required
+        className="min-h-12 w-full rounded-xl border border-[var(--border-default)] bg-[var(--surface-default)] px-4 py-3 text-sm text-[var(--text-primary)] outline-none transition focus:border-[var(--primary)]"
+      />
+
+      {hint ? (
+        <span className="mt-1.5 block text-xs text-[var(--text-muted)]">
+          {hint}
+        </span>
+      ) : null}
+    </label>
+  );
+}

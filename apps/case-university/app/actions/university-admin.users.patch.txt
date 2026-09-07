@@ -1,0 +1,11 @@
+// ============================================================
+// CASE UNIVERSITY ADMIN USERS EXPORTS
+// Append this block to the END of the existing:
+// apps/case-university/app/actions/university-admin.ts
+// ============================================================
+
+export {
+  getAdminUniversityUserById,
+  getAdminUniversityUsers,
+  requireUniversityAdmin,
+} from "@/lib/university/admin-users";

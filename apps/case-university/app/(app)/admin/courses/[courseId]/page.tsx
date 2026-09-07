@@ -44,7 +44,7 @@ type LessonRow = {
 export default async function AdminCoursePage({ params }: PageProps) {
   const role = await resolveCurrentUserRole();
 
-  if (!role || role.role_rank < 4) {
+  if (!role || role.role_rank < 2) {
     redirect("/dashboard");
   }
 

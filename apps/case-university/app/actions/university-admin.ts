@@ -41,7 +41,7 @@ export async function updateUniversityCourseSettingsAction(
 
   if (
     !role ||
-    role.role_rank < 4
+    role.role_rank < 3
   ) {
     return {
       success: false,
@@ -528,7 +528,7 @@ export async function updateUniversityModuleSettingsAction(
 ): Promise<UpdateModuleSettingsResult> {
   const role = await resolveCurrentUserRole();
 
-  if (!role || role.role_rank < 4) {
+  if (!role || role.role_rank < 3) {
     return {
       success: false,
       message:
@@ -783,7 +783,7 @@ export async function updateUniversityLessonSettingsAction(
 ): Promise<UpdateLessonSettingsResult> {
   const role = await resolveCurrentUserRole();
 
-  if (!role || role.role_rank < 4) {
+  if (!role || role.role_rank < 3) {
     return {
       success: false,
       message:
@@ -1106,7 +1106,16 @@ type PublishEntityResult = {
   message: string;
 };
 
-async function requireUniversityAdmin() {
+async function requireUniversityCurriculumManager() {
+  const role = await resolveCurrentUserRole();
+
+  return Boolean(
+    role &&
+      role.role_rank >= 3,
+  );
+}
+
+async function requireUniversityPublisher() {
   const role = await resolveCurrentUserRole();
 
   return Boolean(
@@ -1177,7 +1186,7 @@ async function setUniversityCurriculumPublishState({
   lessonId?: string;
   publish: boolean;
 }): Promise<PublishEntityResult> {
-  if (!(await requireUniversityAdmin())) {
+  if (!(await requireUniversityPublisher())) {
     return {
       success: false,
       message:
@@ -1496,7 +1505,7 @@ type CreateCurriculumResult = {
 export async function createUniversityCourseAction(
   input: CreateCourseInput,
 ): Promise<CreateCurriculumResult> {
-  if (!(await requireUniversityAdmin())) {
+  if (!(await requireUniversityCurriculumManager())) {
     return {
       success: false,
       message:
@@ -1652,7 +1661,7 @@ export async function createUniversityCourseAction(
 export async function createUniversityModuleAction(
   input: CreateModuleInput,
 ): Promise<CreateCurriculumResult> {
-  if (!(await requireUniversityAdmin())) {
+  if (!(await requireUniversityCurriculumManager())) {
     return {
       success: false,
       message:
@@ -1798,7 +1807,7 @@ export async function createUniversityModuleAction(
 export async function createUniversityLessonAction(
   input: CreateLessonInput,
 ): Promise<CreateCurriculumResult> {
-  if (!(await requireUniversityAdmin())) {
+  if (!(await requireUniversityCurriculumManager())) {
     return {
       success: false,
       message:
@@ -2006,7 +2015,7 @@ export async function moveUniversityCurriculumItemAction(
     direction: MoveDirection;
   },
 ): Promise<CurriculumLifecycleResult> {
-  if (!(await requireUniversityAdmin())) {
+  if (!(await requireUniversityCurriculumManager())) {
     return {
       success: false,
       message:
@@ -2197,7 +2206,7 @@ export async function moveUniversityCurriculumItemAction(
 export async function archiveUniversityCurriculumItemAction(
   input: CurriculumLifecycleInput,
 ): Promise<CurriculumLifecycleResult> {
-  if (!(await requireUniversityAdmin())) {
+  if (!(await requireUniversityCurriculumManager())) {
     return {
       success: false,
       message:
@@ -2214,7 +2223,7 @@ export async function archiveUniversityCurriculumItemAction(
 export async function restoreUniversityCurriculumItemAction(
   input: CurriculumLifecycleInput,
 ): Promise<CurriculumLifecycleResult> {
-  if (!(await requireUniversityAdmin())) {
+  if (!(await requireUniversityCurriculumManager())) {
     return {
       success: false,
       message:
@@ -2231,7 +2240,7 @@ export async function restoreUniversityCurriculumItemAction(
 export async function deleteUniversityCurriculumItemAction(
   input: CurriculumLifecycleInput,
 ): Promise<CurriculumLifecycleResult> {
-  if (!(await requireUniversityAdmin())) {
+  if (!(await requireUniversityCurriculumManager())) {
     return {
       success: false,
       message:

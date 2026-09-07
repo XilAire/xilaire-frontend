@@ -169,6 +169,26 @@ function ProfileIcon() {
   );
 }
 
+function BillingIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M3 10h18" />
+      <path d="M7 15h3" />
+    </svg>
+  );
+}
+
 function SettingsIcon() {
   return (
     <svg
@@ -290,9 +310,19 @@ const navigationSections: NavigationSection[] = [
     label: "Admin",
     items: [
       {
+        label: "Admin Home",
+        href: "/admin",
+        icon: <AdminIcon />,
+      },
+      {
+        label: "Users",
+        href: "/admin/users",
+        icon: <ProfileIcon />,
+      },
+      {
         label: "Course Management",
         href: "/admin/courses",
-        icon: <AdminIcon />,
+        icon: <CoursesIcon />,
       },
     ],
   },
@@ -303,6 +333,11 @@ const navigationSections: NavigationSection[] = [
         label: "Profile",
         href: "/profile",
         icon: <ProfileIcon />,
+      },
+      {
+        label: "Plans & Billing",
+        href: "/settings/billing",
+        icon: <BillingIcon />,
       },
       {
         label: "Settings",
@@ -330,6 +365,19 @@ function isItemActive(
       pathname === "/courses" ||
       pathname.startsWith(
         "/courses/",
+      )
+    );
+  }
+
+  if (href === "/admin") {
+    return pathname === "/admin";
+  }
+
+  if (href === "/admin/users") {
+    return (
+      pathname === "/admin/users" ||
+      pathname.startsWith(
+        "/admin/users/",
       )
     );
   }

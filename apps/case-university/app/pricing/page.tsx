@@ -4,6 +4,7 @@ import Link from "next/link";
 import MarketingFooter from "@/components/marketing/MarketingFooter";
 import MarketingHeader from "@/components/marketing/MarketingHeader";
 import PricingClient from "@/components/pricing/PricingClient";
+import { normalizePaidPlanKey } from "@/lib/auth/registration-intent";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getUniversityBillingState } from "@/lib/university/billing-checkout";
 import { getUniversityStripePublishableKey } from "@/lib/university/stripe-server";
@@ -20,6 +21,7 @@ type PricingPageProps = {
   searchParams: Promise<{
     checkout?: string | string[];
     session_id?: string | string[];
+    checkout_plan?: string | string[];
   }>;
 };
 
@@ -61,6 +63,10 @@ export default async function PricingPage({
       ? single(params.session_id)
       : null;
 
+  const requestedPlanKey = normalizePaidPlanKey(
+    single(params.checkout_plan),
+  );
+
   return (
     <div className="flex min-h-screen flex-col bg-[var(--background)] text-[var(--foreground)]">
       <MarketingHeader isAuthenticated={Boolean(user)} />
@@ -98,6 +104,7 @@ export default async function PricingPage({
               publishableKey={publishableKey}
               initialBillingState={billingState}
               checkoutSessionId={checkoutSessionId}
+              requestedPlanKey={requestedPlanKey}
             />
             <p className="mx-auto mt-10 max-w-3xl text-center text-sm leading-6 text-[var(--text-muted)]">
               Subscriptions renew automatically until canceled. Scheduled plan

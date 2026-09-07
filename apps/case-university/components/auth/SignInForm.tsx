@@ -27,10 +27,12 @@ type SignInFormProps = {
 
   authErrorCode?:
     string | null;
+  registrationHref: string;
 };
 
 export default function SignInForm({
   redirectTo,
+  registrationHref,
   status = null,
   passwordStatus = null,
   authErrorCode = null,
@@ -437,6 +439,17 @@ export default function SignInForm({
           ? "Signing in..."
           : "Sign in"}
       </button>
+      <div className="border-t border-[var(--border-subtle)] pt-5 text-center">
+        <p className="text-sm text-[var(--text-muted)]">
+          New to CASE University?{" "}
+          <Link
+            href={registrationHref}
+            className="font-bold text-[var(--primary)] transition hover:text-[var(--primary-hover)]"
+          >
+            Create account
+          </Link>
+        </p>
+      </div>
     </form>
   );
 }

@@ -55,7 +55,7 @@ export default async function AdminModulePage({
 }: AdminModulePageProps) {
   const role = await resolveCurrentUserRole();
 
-  if (!role || role.role_rank < 4) {
+  if (!role || role.role_rank < 2) {
     redirect("/dashboard");
   }
 
