@@ -425,11 +425,11 @@ function getFirstEnabledHref(
 }
 
 type SidebarProps = {
-  canManageUniversity?: boolean;
+  canAccessAdmin?: boolean;
 };
 
 export default function Sidebar({
-  canManageUniversity = false,
+  canAccessAdmin = false,
 }: SidebarProps) {
   const pathname =
     usePathname();
@@ -438,7 +438,7 @@ export default function Sidebar({
     useRouter();
 
   const visibleNavigationSections =
-    canManageUniversity
+    canAccessAdmin
       ? navigationSections
       : navigationSections.filter(
           (section) =>

@@ -11,13 +11,15 @@ import Sidebar from "@/components/layout/Sidebar";
 type AppShellProps = {
   children: ReactNode;
   title?: string;
+  canAccessAdmin?: boolean;
   canManageUniversity?: boolean;
 };
 
 export default function AppShell({
   children,
   title = "CASE University",
-  canManageUniversity = false,
+  canAccessAdmin = false,
+  canManageUniversity: _canManageUniversity = false,
 }: AppShellProps) {
   return (
     <div
@@ -54,7 +56,7 @@ export default function AppShell({
           "
         >
           <Sidebar
-            canManageUniversity={canManageUniversity}
+            canAccessAdmin={canAccessAdmin}
           />
         </div>
 
@@ -102,7 +104,9 @@ export default function AppShell({
           lg:hidden
         "
       >
-        <MobileNav />
+        <MobileNav
+          canAccessAdmin={canAccessAdmin}
+        />
       </div>
     </div>
   );

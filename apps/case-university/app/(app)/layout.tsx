@@ -46,13 +46,19 @@ export default async function AppLayout({
       ])
     : [null, null];
 
-  const canManageUniversity =
-    currentUserRole?.role_name ===
-      "master_admin" ||
+  const roleRank =
     Number(
       currentUserRole?.role_rank ??
         0,
-    ) >= 4;
+    );
+
+  const canAccessAdmin =
+    roleRank >= 2;
+
+  const canManageUniversity =
+    currentUserRole?.role_name ===
+      "master_admin" ||
+    roleRank >= 4;
 
   const initialTheme =
     normalizeTheme(
@@ -64,6 +70,9 @@ export default async function AppLayout({
       initialTheme={initialTheme}
     >
       <AppShell
+        canAccessAdmin={
+          canAccessAdmin
+        }
         canManageUniversity={
           canManageUniversity
         }

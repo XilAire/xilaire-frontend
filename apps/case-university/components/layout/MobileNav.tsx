@@ -238,12 +238,18 @@ function isItemActive(
   );
 }
 
-export default function MobileNav() {
+type MobileNavProps = {
+  canAccessAdmin?: boolean;
+};
+
+export default function MobileNav({
+  canAccessAdmin = false,
+}: MobileNavProps) {
   const pathname =
     usePathname();
 
   const visibleNavigationItems =
-    pathname.startsWith("/admin")
+    canAccessAdmin
       ? adminNavigationItems
       : navigationItems;
 
