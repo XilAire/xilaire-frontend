@@ -29,12 +29,6 @@ export type RegisterUniversityState = {
   signInUrl: string | null;
 };
 
-export const initialRegisterUniversityState: RegisterUniversityState = {
-  status: "idle",
-  message: null,
-  redirectTo: null,
-  signInUrl: null,
-};
 
 function normalizeEmail(
   value: FormDataEntryValue | null,

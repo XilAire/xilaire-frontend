@@ -10,8 +10,11 @@ import {
 } from "next/navigation";
 
 import {
-  initialRegisterUniversityState,
   registerUniversityUserAction,
+} from "@/app/actions/register";
+
+import type {
+  RegisterUniversityState,
 } from "@/app/actions/register";
 
 import type {
@@ -30,6 +33,13 @@ type RegisterFormProps = {
 
   sourceProduct:
     CaseProductKey;
+};
+
+const initialRegisterUniversityState: RegisterUniversityState = {
+  status: "idle",
+  message: null,
+  redirectTo: null,
+  signInUrl: null,
 };
 
 function planLabel(
