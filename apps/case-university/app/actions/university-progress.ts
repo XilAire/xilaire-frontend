@@ -4,6 +4,9 @@ import {
   revalidatePath,
 } from "next/cache";
 
+import { requireActiveUniversityUser } from "@/lib/university/require-active-user";
+import { getUniversityCourseForLearnerOrAdminPreview } from "@/lib/university/courses";
+
 import {
   redirect,
 } from "next/navigation";
@@ -87,6 +90,52 @@ function revalidateUniversityProgressPaths(
       `/courses/${courseSlug}/lessons/${lessonSlug}`,
     );
   }
+}
+
+/**
+ * Resolve navigation using trusted course metadata, never the browser's
+ * nextLessonSlug. The course loader enforces learner publication rules
+ * and supports authorized administrator draft previews.
+ */
+async function resolveLessonNavigation({
+  courseId,
+  courseSlug,
+  moduleId,
+  lessonId,
+  lessonSlug,
+}: {
+  courseId: string;
+  courseSlug: string;
+  moduleId: string;
+  lessonId: string;
+  lessonSlug: string;
+}): Promise<string | null> {
+  const course = await getUniversityCourseForLearnerOrAdminPreview(courseSlug);
+
+  if (!course || course.id !== courseId) {
+    throw new Error("Course not found or unavailable.");
+  }
+
+  const orderedLessons = [...course.modules]
+    .sort((a, b) => a.sort_order - b.sort_order || a.id.localeCompare(b.id))
+    .flatMap((module) =>
+      [...module.lessons]
+        .sort((a, b) => a.sort_order - b.sort_order || a.id.localeCompare(b.id))
+        .map((lesson) => ({ lesson, moduleId: module.id })),
+    );
+
+  const currentIndex = orderedLessons.findIndex(
+    ({ lesson, moduleId: orderedModuleId }) =>
+      lesson.id === lessonId &&
+      lesson.slug === lessonSlug &&
+      orderedModuleId === moduleId,
+  );
+
+  if (currentIndex < 0) {
+    throw new Error("Lesson not found in this course.");
+  }
+
+  return orderedLessons[currentIndex + 1]?.lesson.slug ?? null;
 }
 
 async function tryIssueCertificateAfterCompletion(
@@ -175,6 +224,8 @@ export async function beginCourseAction({
   courseSlug,
   firstLessonSlug,
 }: BeginCourseInput): Promise<void> {
+  await requireActiveUniversityUser();
+
   const normalizedCourseId =
     requireValue(
       courseId,
@@ -220,6 +271,8 @@ export async function startLessonAction({
   lessonId,
   lessonSlug,
 }: StartLessonInput): Promise<UniversityProgressActionState> {
+  await requireActiveUniversityUser();
+
   const normalizedCourseId =
     requireValue(
       courseId,
@@ -283,6 +336,8 @@ export async function completeLessonAction({
   lessonSlug,
   nextLessonSlug,
 }: CompleteLessonInput): Promise<UniversityProgressActionState> {
+  await requireActiveUniversityUser();
+
   const normalizedCourseId =
     requireValue(
       courseId,
@@ -398,8 +453,9 @@ export async function completeLessonAndContinueAction({
   moduleId,
   lessonId,
   lessonSlug,
-  nextLessonSlug,
 }: CompleteLessonInput): Promise<UniversityProgressActionState> {
+  await requireActiveUniversityUser();
+
   const normalizedCourseId =
     requireValue(
       courseId,
@@ -430,9 +486,23 @@ export async function completeLessonAndContinueAction({
       "Lesson slug",
     );
 
-  const normalizedNextLessonSlug =
-    nextLessonSlug?.trim() ||
-    null;
+  let resolvedNextLessonSlug: string | null;
+
+  try {
+    resolvedNextLessonSlug = await resolveLessonNavigation({
+      courseId: normalizedCourseId,
+      courseSlug: normalizedCourseSlug,
+      moduleId: normalizedModuleId,
+      lessonId: normalizedLessonId,
+      lessonSlug: normalizedLessonSlug,
+    });
+  } catch (error) {
+    console.error("[CASE University] Unable to resolve lesson navigation.", error);
+    return {
+      success: false,
+      message: "Unable to verify the next lesson. Refresh the page and try again.",
+    };
+  }
 
   try {
     await completeCurrentUserLesson({
@@ -487,14 +557,14 @@ export async function completeLessonAndContinueAction({
   );
 
   if (
-    normalizedNextLessonSlug
+    resolvedNextLessonSlug
   ) {
     revalidatePath(
-      `/courses/${normalizedCourseSlug}/lessons/${normalizedNextLessonSlug}`,
+      `/courses/${normalizedCourseSlug}/lessons/${resolvedNextLessonSlug}`,
     );
 
     redirect(
-      `/courses/${normalizedCourseSlug}/lessons/${normalizedNextLessonSlug}`,
+      `/courses/${normalizedCourseSlug}/lessons/${resolvedNextLessonSlug}`,
     );
   }
 

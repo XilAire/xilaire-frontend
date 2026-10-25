@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { isUniversityAccountSuspended } from "@/lib/university/account-suspension";
 import {
   getOrCreateUniversityStripeCustomer,
   getUniversityBillingState,
@@ -40,6 +41,13 @@ export async function POST(request: Request) {
           message: "Sign in to continue to checkout.",
         },
         { status: 401 },
+      );
+    }
+
+    if (await isUniversityAccountSuspended(user.id)) {
+      return NextResponse.json(
+        { error: "UNIVERSITY_ACCOUNT_SUSPENDED", message: "CASE University access is suspended." },
+        { status: 403 },
       );
     }
 

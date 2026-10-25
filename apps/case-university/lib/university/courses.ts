@@ -79,6 +79,17 @@ type SequentialLessonRow = {
   sort_order: number;
 };
 
+/** Match the progress RPC's deterministic curriculum ordering. */
+function compareCurriculumOrder(
+  a: { sort_order: number; id: string },
+  b: { sort_order: number; id: string },
+): number {
+  return (
+    a.sort_order - b.sort_order ||
+    (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
+  );
+}
+
 async function canCurrentUserAccessSequentialLesson({
   courseId,
   lessonId,
@@ -99,7 +110,8 @@ async function canCurrentUserAccessSequentialLesson({
       .select("id, sort_order")
       .eq("course_id", courseId)
       .eq("status", "published")
-      .order("sort_order", { ascending: true }),
+      .order("sort_order", { ascending: true })
+      .order("id", { ascending: true }),
 
     serviceSupabase
       .from("university_lessons")
@@ -125,7 +137,7 @@ async function canCurrentUserAccessSequentialLesson({
   }
 
   const moduleRows =
-    (modules ?? []) as SequentialModuleRow[];
+    [...((modules ?? []) as SequentialModuleRow[])].sort(compareCurriculumOrder);
   const lessonRows =
     (lessons ?? []) as SequentialLessonRow[];
 
@@ -136,7 +148,7 @@ async function canCurrentUserAccessSequentialLesson({
           (lesson) => lesson.module_id === module.id,
         )
         .sort(
-          (a, b) => a.sort_order - b.sort_order,
+          compareCurriculumOrder,
         )
         .map((lesson) => lesson.id),
   );
@@ -227,7 +239,7 @@ function sortLessons(
   lessons: UniversityLesson[] | null | undefined,
 ): UniversityLesson[] {
   return [...(lessons ?? [])].sort(
-    (a, b) => a.sort_order - b.sort_order,
+    compareCurriculumOrder,
   );
 }
 
@@ -240,7 +252,7 @@ function sortModules(
     | undefined,
 ): UniversityModuleWithLessons[] {
   return [...(modules ?? [])]
-    .sort((a, b) => a.sort_order - b.sort_order)
+    .sort(compareCurriculumOrder)
     .map((module) => ({
       ...module,
       lessons: sortLessons(module.lessons),
@@ -518,8 +530,7 @@ async function getStrictPublishedUniversityCourseWithModules(
   const modules: UniversityModuleWithLessons[] =
     [...(course.modules ?? [])]
       .sort(
-        (a, b) =>
-          a.sort_order - b.sort_order,
+        compareCurriculumOrder,
       )
       .map((module) => ({
         ...module,
@@ -529,8 +540,7 @@ async function getStrictPublishedUniversityCourseWithModules(
               lesson.module_id === module.id,
           )
           .sort(
-            (a, b) =>
-              a.sort_order - b.sort_order,
+            compareCurriculumOrder,
           ),
       }));
 
@@ -617,7 +627,8 @@ async function getAdminPreviewUniversityCourseWithModules(
       .eq("course_id", course.id)
       .order("sort_order", {
         ascending: true,
-      }),
+      })
+      .order("id", { ascending: true }),
 
     serviceSupabase
       .from("university_lessons")
@@ -642,7 +653,8 @@ async function getAdminPreviewUniversityCourseWithModules(
       .eq("course_id", course.id)
       .order("sort_order", {
         ascending: true,
-      }),
+      })
+      .order("id", { ascending: true }),
   ]);
 
   if (modulesError) {
@@ -689,8 +701,7 @@ async function getAdminPreviewUniversityCourseWithModules(
             lesson.module_id === module.id,
         )
         .sort(
-          (a, b) =>
-            a.sort_order - b.sort_order,
+          compareCurriculumOrder,
         ),
     })),
   };

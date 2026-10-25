@@ -3,11 +3,12 @@
 import { FormEvent, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createUniversityLessonAction } from "@/app/actions/university-admin";
+import { UNIVERSITY_LESSON_TYPES, type UniversityLessonType } from "@/lib/university/lesson-types";
 
 export default function CreateLessonForm({courseId,moduleId}:{courseId:string;moduleId:string}) {
   const router=useRouter(); const [pending,startTransition]=useTransition();
   const [title,setTitle]=useState(""); const [slug,setSlug]=useState(""); const [slugTouched,setSlugTouched]=useState(false);
-  const [shortDescription,setShortDescription]=useState(""); const [lessonType,setLessonType]=useState("lesson");
+  const [shortDescription,setShortDescription]=useState(""); const [lessonType,setLessonType]=useState<UniversityLessonType>("lesson");
   const [estimatedMinutes,setEstimatedMinutes]=useState(""); const [videoUrl,setVideoUrl]=useState(""); const [isPreview,setIsPreview]=useState(false);
   const [error,setError]=useState<string|null>(null);
   function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();setError(null);startTransition(async()=>{
@@ -28,7 +29,7 @@ export default function CreateLessonForm({courseId,moduleId}:{courseId:string;mo
       </div>
       <Field label="Short description"><textarea rows={3} value={shortDescription} onChange={e=>setShortDescription(e.target.value)} className={`${inputClassName} py-3`}/></Field>
       <div className="grid gap-5 md:grid-cols-3">
-        <Field label="Lesson type"><input required value={lessonType} onChange={e=>setLessonType(e.target.value.toLowerCase().replace(/\s+/g,"_"))} className={inputClassName}/></Field>
+        <Field label="Lesson type"><select required value={lessonType} onChange={e=>setLessonType(e.target.value as UniversityLessonType)} className={inputClassName} disabled={pending}>{UNIVERSITY_LESSON_TYPES.map(option=><option key={option.value} value={option.value}>{option.label}</option>)}</select></Field>
         <Field label="Estimated minutes"><input type="number" min="1" step="1" value={estimatedMinutes} onChange={e=>setEstimatedMinutes(e.target.value)} className={inputClassName}/></Field>
         <Field label="Video URL"><input type="url" placeholder="https://..." value={videoUrl} onChange={e=>setVideoUrl(e.target.value)} className={inputClassName}/></Field>
       </div>

@@ -9,6 +9,7 @@ import {
 import { useRouter } from "next/navigation";
 
 import { updateUniversityLessonSettingsAction } from "@/app/actions/university-admin";
+import { UNIVERSITY_LESSON_TYPES } from "@/lib/university/lesson-types";
 import LessonContentBuilder from "@/components/admin/courses/LessonContentBuilder";
 import {
   normalizeLessonContent,
@@ -219,23 +220,27 @@ export default function LessonSettingsForm({
             <Field
               label="Lesson type"
               htmlFor="lesson-type"
-              hint="Examples: lesson, video, quiz, worksheet."
+              hint="Choose a supported lesson format."
             >
-              <input
+              <select
                 id="lesson-type"
                 value={lessonType}
-                onChange={(event) =>
-                  setLessonType(
-                    event.target.value
-                      .trimStart()
-                      .toLowerCase()
-                      .replace(/\s+/g, "_"),
-                  )
-                }
+                onChange={(event) => setLessonType(event.target.value)}
                 required
                 disabled={isPending}
                 className={inputClassName}
-              />
+              >
+                {!UNIVERSITY_LESSON_TYPES.some((option) => option.value === lessonType) && (
+                  <option value={lessonType} disabled>
+                    Unsupported existing type: {lessonType || "(empty)"} — select a valid type
+                  </option>
+                )}
+                {UNIVERSITY_LESSON_TYPES.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </Field>
 
             <Field

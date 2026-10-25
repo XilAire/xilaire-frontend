@@ -4,6 +4,7 @@ import { resolveCurrentUserRole } from "@/lib/auth/resolveCurrentUserRole";
 
 export type UniversityAdminRoleName =
   | "user"
+  | "power_user"
   | "admin"
   | "super_admin"
   | "master_admin";
@@ -105,6 +106,10 @@ export function roleNameFromRank(
     return "admin";
   }
 
+  if (rank === 1) {
+    return "power_user";
+  }
+
   return "user";
 }
 
@@ -116,6 +121,18 @@ export function buildUniversityAdminPermissions(
       rankValue,
     );
 
+  /*
+   * CASE University role hierarchy:
+   *
+   * 0 = User
+   * 1 = Power User
+   * 2 = Admin
+   * 3 = Super Admin
+   * 4 = Master Admin
+   *
+   * Power User intentionally receives no Admin-section capability.
+   * It is an elevated learner/course-facing role only.
+   */
   if (rank < 2) {
     return {
       ...EMPTY_PERMISSIONS,
@@ -159,8 +176,8 @@ export function buildUniversityAdminPermissions(
      *
      * Super Admin (3):
      *   Create/edit/manage content, resources and assessments.
-     *   Archive is allowed, but permanent deletion and
-     *   publish/unpublish remain protected.
+     *   Archive, permanent deletion and publish/unpublish
+     *   remain protected for Master Admin only.
      *
      * Master Admin (4+):
      *   Full curriculum authority.
@@ -178,7 +195,7 @@ export function buildUniversityAdminPermissions(
       rank >= 3,
 
     canArchiveCurriculum:
-      rank >= 3,
+      rank >= 4,
 
     canPublishCurriculum:
       rank >= 4,
@@ -307,13 +324,13 @@ export function canActorAssignRole({
 
   if (actor === 3) {
     return (
-      desired === 1 ||
-      desired === 2
+      desired >= 0 &&
+      desired <= 2
     );
   }
 
   return (
-    desired >= 1 &&
+    desired >= 0 &&
     desired <= 4
   );
 }

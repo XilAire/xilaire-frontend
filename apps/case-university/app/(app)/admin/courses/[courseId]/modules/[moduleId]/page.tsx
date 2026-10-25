@@ -148,6 +148,20 @@ export default async function AdminModulePage({
   const module = moduleResult.data as ModuleRow;
   const lessons = (lessonsResult.data ?? []) as LessonRow[];
 
+  const moduleOrderResult = await admin
+    .from("university_modules")
+    .select("id,sort_order")
+    .eq("course_id", courseId)
+    .order("sort_order", { ascending: true })
+    .order("id", { ascending: true });
+
+  if (moduleOrderResult.error) {
+    console.error("[CASE University Admin] Unable to load module order.", moduleOrderResult.error);
+    throw new Error("Unable to determine module position.");
+  }
+
+  const modulePosition = (moduleOrderResult.data ?? []).findIndex((item) => item.id === module.id) + 1;
+
   const publishedLessons = lessons.filter(
     (lesson) => lesson.status === "published",
   ).length;
@@ -197,7 +211,7 @@ export default async function AdminModulePage({
               <StatusBadge status={module.status} />
 
               <span className="rounded-full bg-[var(--surface-secondary)] px-3 py-1 text-xs font-semibold text-[var(--text-secondary)]">
-                Module {module.sort_order}
+                Module {modulePosition}
               </span>
             </div>
 
@@ -280,7 +294,7 @@ export default async function AdminModulePage({
                 {lessons.map((lesson, index) => (
                   <article
                     key={lesson.id}
-                    className="flex flex-col gap-4 px-5 py-5 sm:px-6 lg:flex-row lg:items-center lg:justify-between"
+                    className="min-w-0 space-y-5 px-5 py-5 sm:px-6"
                   >
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
@@ -307,13 +321,13 @@ export default async function AdminModulePage({
                       </div>
 
                       {lesson.short_description ? (
-                        <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--text-secondary)]">
+                        <p className="mt-3 max-w-3xl break-words text-sm leading-6 text-[var(--text-secondary)]">
                           {lesson.short_description}
                         </p>
                       ) : null}
                     </div>
 
-                    <div className="flex shrink-0 flex-col gap-3">
+                    <div className="min-w-0 space-y-3 border-t border-[var(--border-subtle)] pt-4">
                       <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--text-muted)]">
                         <MetadataPill>
                           {formatLabel(lesson.lesson_type)}
@@ -324,7 +338,8 @@ export default async function AdminModulePage({
                         </MetadataPill>
                       </div>
 
-                      <CurriculumItemControls
+                      <div className="max-w-full overflow-x-auto pb-1 [&>div]:!flex-wrap">
+                        <CurriculumItemControls
                         entityType="lesson"
                         entityId={lesson.id}
                         courseId={course.id}
@@ -333,7 +348,8 @@ export default async function AdminModulePage({
                         canMoveUp={index > 0}
                         canMoveDown={index < lessons.length - 1}
                         compact
-                      />
+                        />
+                      </div>
                     </div>
                   </article>
                 ))}

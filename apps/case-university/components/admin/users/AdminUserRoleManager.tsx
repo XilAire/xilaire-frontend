@@ -36,6 +36,11 @@ const ROLE_OPTIONS: RoleOption[] = [
   {
     name: "user",
     label: "User",
+    rank: 0,
+  },
+  {
+    name: "power_user",
+    label: "Power User",
     rank: 1,
   },
   {
@@ -95,6 +100,7 @@ export default function AdminUserRoleManager({
   ] =
     useState<UniversityAdminRoleName>(
       (
+        currentRoleName === "power_user" ||
         currentRoleName === "admin" ||
         currentRoleName === "super_admin" ||
         currentRoleName === "master_admin"
@@ -450,6 +456,20 @@ export default function AdminUserRoleManager({
           sm:grid-cols-2
         "
       >
+        <p>
+          <strong>
+            User (0):
+          </strong>{" "}
+          standard learner access.
+        </p>
+
+        <p>
+          <strong>
+            Power User (1):
+          </strong>{" "}
+          course-facing access only; no Admin section.
+        </p>
+
         <p>
           <strong>
             Admin (2):

@@ -14,6 +14,8 @@ import {
   createAuthorizedUniversityLessonResourceDownload,
 } from "@/lib/university/lesson-resources";
 
+import { isUniversityAccountSuspended } from "@/lib/university/account-suspension";
+
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const runtime = "nodejs";
@@ -83,6 +85,22 @@ export async function GET(
         headers: noStoreHeaders(),
       },
     );
+  }
+
+  // Do not issue resource URLs to suspended University users.
+  // A failed suspension lookup also denies access.
+  try {
+    if (await isUniversityAccountSuspended(user.id)) {
+      return new NextResponse("Forbidden", {
+        status: 403,
+        headers: noStoreHeaders(),
+      });
+    }
+  } catch {
+    return new NextResponse("Unable to verify University access", {
+      status: 503,
+      headers: noStoreHeaders(),
+    });
   }
 
   /*

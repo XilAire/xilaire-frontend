@@ -1,5 +1,7 @@
 "use server";
 
+import { requireActiveUniversityUser } from "@/lib/university/require-active-user";
+
 import { revalidatePath } from "next/cache";
 
 import {
@@ -22,6 +24,7 @@ export async function createPracticeSessionAction(input: {
   sessionId?: string;
 }> {
   try {
+    await requireActiveUniversityUser();
     const session = await createCurrentUserPracticeSession(input);
 
     revalidatePath("/practice");
@@ -52,6 +55,7 @@ export async function createMissedQuestionsPracticeSessionAction(
   sessionId?: string;
 }> {
   try {
+    await requireActiveUniversityUser();
     const session =
       await createCurrentUserMissedQuestionsPracticeSession(questionCount);
 
@@ -86,6 +90,7 @@ export async function createWeakAreaPracticeSessionAction(
   sessionId?: string;
 }> {
   try {
+    await requireActiveUniversityUser();
     const session =
       await createCurrentUserWeakAreaPracticeSession(questionCount);
 
@@ -118,6 +123,7 @@ export async function submitPracticeSessionAction(
   result?: UniversityPracticeSubmissionResult;
 }> {
   try {
+    await requireActiveUniversityUser();
     const result = await submitCurrentUserPracticeSession({
       sessionId,
       answers,
@@ -151,6 +157,7 @@ export async function abandonPracticeSessionAction(
   message: string;
 }> {
   try {
+    await requireActiveUniversityUser();
     const abandoned = await abandonCurrentUserPracticeSession(sessionId);
 
     revalidatePath("/practice");

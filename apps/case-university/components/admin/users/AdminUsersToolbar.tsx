@@ -173,6 +173,10 @@ export default function AdminUsersToolbar({
               User
             </option>
 
+            <option value="power_user">
+              Power User
+            </option>
+
             <option value="admin">
               Admin
             </option>

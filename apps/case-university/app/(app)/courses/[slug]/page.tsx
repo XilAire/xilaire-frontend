@@ -321,15 +321,31 @@ export default async function CourseDetailPage({
   const isAdminCurriculumPreview =
     course.status !== "published";
 
+  const roleRank =
+    Number(
+      currentUserRole?.role_rank ??
+        0,
+    );
+
+  /*
+   * Rank 1+ bypasses published-course billing only.
+   *
+   * Power User, Admin, and Super Admin remain normal learners
+   * for progression and do not inherit the Master Admin
+   * testing override.
+   */
+  const hasCourseRoleBypass =
+    roleRank >= 1;
+
   const isUniversityAdmin =
-    (currentUserRole?.role_rank ?? 0) >= 4;
+    roleRank >= 4;
 
   const canBypassSequentialProgression =
     isUniversityAdmin ||
     isAdminCurriculumPreview;
 
   const hasFullCourseAccess =
-    isUniversityAdmin ||
+    hasCourseRoleBypass ||
     isAdminCurriculumPreview ||
     (courseEntitlement
       ? universityAccess.entitlements[

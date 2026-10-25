@@ -1,5 +1,7 @@
 "use server";
 
+import { requireActiveUniversityUser } from "@/lib/university/require-active-user";
+
 import { revalidatePath } from "next/cache";
 
 import {
@@ -25,6 +27,7 @@ export async function updateUniversityProfileAction(
   formData: FormData,
 ): Promise<UniversityFormState> {
   try {
+    await requireActiveUniversityUser();
     const fullName = String(
       formData.get("full_name") ?? "",
     ).trim();
@@ -62,6 +65,7 @@ export async function updateUniversitySettingsAction(
   formData: FormData,
 ): Promise<UniversityFormState> {
   try {
+    await requireActiveUniversityUser();
     const theme = String(
       formData.get("theme") ?? "",
     )
@@ -139,6 +143,7 @@ export async function updateUniversitySettingsAction(
 export async function updateUniversityThemePreferenceAction(
   theme: "light" | "dark",
 ): Promise<void> {
+  await requireActiveUniversityUser();
   const current =
     await getCurrentUserProfileSettings();
 

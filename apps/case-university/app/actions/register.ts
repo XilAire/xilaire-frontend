@@ -96,17 +96,8 @@ async function provisionUniversityAccount({
         "id,name,rank",
       )
       .eq(
-        "rank",
-        1,
-      )
-      .order(
-        "id",
-        {
-          ascending: true,
-        },
-      )
-      .limit(
-        1,
+        "name",
+        "user",
       )
       .maybeSingle();
 

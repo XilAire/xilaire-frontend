@@ -1,5 +1,7 @@
 "use server";
 
+import { requireActiveUniversityUser } from "@/lib/university/require-active-user";
+
 import {
   revalidatePath,
 } from "next/cache";
@@ -11,7 +13,6 @@ import {
   createSupabaseServerServiceClient,
 } from "@/lib/supabase/serverService";
 import {
-  canActorAssignRole,
   canActorManageTargetRole,
   getCurrentUniversityAdminContext,
   normalizeUniversityAdminRank,
@@ -28,460 +29,118 @@ export type UpdateUniversityUserRoleResult = {
   message: string;
 };
 
-type RoleRow = {
-  id: string;
-  name: string;
-  rank: number;
-};
-
-type TargetProfileRow = {
-  id: string;
-  email: string | null;
-  role_id: string | null;
-  roles:
-    | {
-        name: string | null;
-        rank: number | null;
-      }
-    | Array<{
-        name: string | null;
-        rank: number | null;
-      }>
-    | null;
-};
-
 const MANAGED_ROLE_NAMES =
   new Set<UniversityAdminRoleName>([
     "user",
+    "power_user",
     "admin",
     "super_admin",
     "master_admin",
   ]);
 
-function singleRelation<T>(
-  value:
-    | T
-    | T[]
-    | null
-    | undefined,
-): T | null {
-  if (
-    Array.isArray(
-      value,
-    )
-  ) {
-    return (
-      value[0] ??
-      null
-    );
-  }
-
-  return value ?? null;
-}
-
-async function countMasterAdmins(): Promise<number> {
-  const service =
-    createSupabaseServerServiceClient();
-
-  const {
-    data:
-      masterRoles,
-    error:
-      roleError,
-  } =
-    await service
-      .from(
-        "roles",
-      )
-      .select(
-        "id",
-      )
-      .gte(
-        "rank",
-        4,
-      );
-
-  if (roleError) {
-    throw new Error(
-      `[CASE University Admin] Unable to resolve master-admin roles: ${roleError.message}`,
-    );
-  }
-
-  const roleIds =
-    (
-      masterRoles ??
-      []
-    )
-      .map(
-        (role) =>
-          String(
-            role.id,
-          ),
-      )
-      .filter(
-        Boolean,
-      );
-
-  if (
-    roleIds.length === 0
-  ) {
-    return 0;
-  }
-
-  const {
-    count,
-    error:
-      countError,
-  } =
-    await service
-      .from(
-        "profiles",
-      )
-      .select(
-        "id",
-        {
-          count:
-            "exact",
-          head:
-            true,
-        },
-      )
-      .in(
-        "role_id",
-        roleIds,
-      );
-
-  if (countError) {
-    throw new Error(
-      `[CASE University Admin] Unable to count master-admin accounts: ${countError.message}`,
-    );
-  }
-
-  return count ?? 0;
-}
-
 export async function updateUniversityUserRoleAction(
   input: UpdateUniversityUserRoleInput,
 ): Promise<UpdateUniversityUserRoleResult> {
-  const userId =
-    String(
-      input.userId ??
-        "",
-    ).trim();
-
-  const roleName =
-    String(
-      input.roleName ??
-        "",
-    )
-      .trim()
-      .toLowerCase() as
-        UniversityAdminRoleName;
-
-  if (!userId) {
-    return {
-      success:
-        false,
-      message:
-        "The user identifier is missing.",
-    };
+  const userId = String(input.userId ?? "").trim();
+  const roleName = String(input.roleName ?? "").trim().toLowerCase() as UniversityAdminRoleName;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
+    return { success: false, message: "Invalid user identifier." };
   }
-
-  if (
-    !MANAGED_ROLE_NAMES.has(
-      roleName,
-    )
-  ) {
-    return {
-      success:
-        false,
-      message:
-        "Select a valid CASE University role.",
-    };
+  if (!MANAGED_ROLE_NAMES.has(roleName)) {
+    return { success: false, message: "Select a valid CASE University role." };
   }
-
-  const actor =
-    await getCurrentUniversityAdminContext();
-
-  if (
-    !actor.permissions
-      .canChangeUserRoles
-  ) {
-    return {
-      success:
-        false,
-      message:
-        "You do not have permission to change CASE University user roles.",
-    };
+  await requireActiveUniversityUser();
+  const actor = await getCurrentUniversityAdminContext();
+  if (!actor.permissions.canChangeUserRoles) {
+    return { success: false, message: "You do not have permission to change CASE University user roles." };
   }
-
-  const auth =
-    await createSupabaseServerClient();
-
-  const {
-    data: {
-      user:
-        currentUser,
-    },
-  } =
-    await auth.auth.getUser();
-
-  if (!currentUser) {
-    return {
-      success:
-        false,
-      message:
-        "Your authenticated session could not be verified.",
-    };
+  const auth = await createSupabaseServerClient();
+  const { data: { user: currentUser }, error: authError } = await auth.auth.getUser();
+  if (authError || !currentUser) {
+    return { success: false, message: "Your authenticated session could not be verified." };
   }
-
-  if (
-    currentUser.id ===
-    userId
-  ) {
-    return {
-      success:
-        false,
-      message:
-        "You cannot change your own administrative role.",
-    };
+  if (currentUser.id === userId) {
+    return { success: false, message: "You cannot change your own administrative role." };
   }
-
-  const service =
-    createSupabaseServerServiceClient();
-
-  const [
-    targetProfileResult,
-    desiredRoleResult,
-  ] =
-    await Promise.all([
-      service
-        .from(
-          "profiles",
-        )
-        .select(
-          `
-            id,
-            email,
-            role_id,
-            roles:roles!profiles_role_id_fkey (
-              name,
-              rank
-            )
-          `,
-        )
-        .eq(
-          "id",
-          userId,
-        )
-        .maybeSingle(),
-
-      service
-        .from(
-          "roles",
-        )
-        .select(
-          "id,name,rank",
-        )
-        .eq(
-          "name",
-          roleName,
-        )
-        .maybeSingle(),
-    ]);
-
-  if (
-    targetProfileResult.error
-  ) {
-    console.error(
-      "[CASE University Admin] Unable to load target profile for role change.",
-      targetProfileResult.error,
-    );
-
-    return {
-      success:
-        false,
-      message:
-        "Unable to load the selected user's profile.",
-    };
+  const service = createSupabaseServerServiceClient();
+  const { data, error } = await service.rpc("update_case_university_user_role", {
+    p_actor_id: currentUser.id,
+    p_user_id: userId,
+    p_role_name: roleName,
+  });
+  if (error) {
+    console.error("[CASE University Admin] Atomic role update failed", error);
+    return { success: false, message: "Unable to update the user's role. No changes were committed." };
   }
-
-  if (
-    !targetProfileResult.data
-  ) {
-    return {
-      success:
-        false,
-      message:
-        "This authentication account does not have a profile record yet, so its role cannot be changed.",
-    };
+  const result = data as { success?: boolean; changed?: boolean; role_name?: string } | null;
+  if (!result || result.success !== true || result.role_name !== roleName) {
+    return { success: false, message: "Role update transaction was not confirmed." };
   }
-
-  if (
-    desiredRoleResult.error
-  ) {
-    console.error(
-      "[CASE University Admin] Unable to resolve requested role.",
-      desiredRoleResult.error,
-    );
-
-    return {
-      success:
-        false,
-      message:
-        "Unable to resolve the requested role.",
-    };
-  }
-
-  const desiredRole =
-    desiredRoleResult.data as
-      | RoleRow
-      | null;
-
-  if (!desiredRole) {
-    return {
-      success:
-        false,
-      message:
-        `The ${roleName} role does not exist in the roles table.`,
-    };
-  }
-
-  const targetProfile =
-    targetProfileResult.data as unknown as
-      TargetProfileRow;
-
-  const currentTargetRole =
-    singleRelation(
-      targetProfile.roles,
-    );
-
-  const targetRank =
-    normalizeUniversityAdminRank(
-      currentTargetRole?.rank ??
-        1,
-    );
-
-  const desiredRank =
-    normalizeUniversityAdminRank(
-      desiredRole.rank,
-    );
-
-  if (
-    !canActorManageTargetRole({
-      actorRank:
-        actor.roleRank,
-      targetRank,
-    })
-  ) {
-    return {
-      success:
-        false,
-      message:
-        "You cannot manage an account at this administrative level.",
-    };
-  }
-
-  if (
-    !canActorAssignRole({
-      actorRank:
-        actor.roleRank,
-      desiredRank,
-    })
-  ) {
-    return {
-      success:
-        false,
-      message:
-        "You cannot assign the selected administrative role.",
-    };
-  }
-
-  /*
-   * Super Admin (3):
-   * - may manage rank 1 and 2
-   * - may assign only rank 1 and 2
-   *
-   * Master Admin (4+):
-   * - may manage 1-4
-   * - may assign 1-4
-   *
-   * No account may self-modify.
-   */
-  if (
-    targetRank >= 4 &&
-    desiredRank < 4
-  ) {
-    const masterCount =
-      await countMasterAdmins();
-
-    if (
-      masterCount <= 1
-    ) {
-      return {
-        success:
-          false,
-        message:
-          "This is the last Master Admin account and cannot be demoted.",
-      };
-    }
-  }
-
-  if (
-    targetProfile.role_id ===
-    desiredRole.id
-  ) {
-    return {
-      success:
-        true,
-      message:
-        `This user is already assigned the ${desiredRole.name} role.`,
-    };
-  }
-
-  const {
-    error:
-      updateError,
-  } =
-    await service
-      .from(
-        "profiles",
-      )
-      .update({
-        role_id:
-          desiredRole.id,
-      })
-      .eq(
-        "id",
-        userId,
-      );
-
-  if (updateError) {
-    console.error(
-      "[CASE University Admin] User role update failed.",
-      updateError,
-    );
-
-    return {
-      success:
-        false,
-      message:
-        "Unable to update this user's role right now.",
-    };
-  }
-
-  revalidatePath(
-    "/admin/users",
-  );
-
-  revalidatePath(
-    `/admin/users/${userId}`,
-  );
-
+  revalidatePath("/admin/users");
+  revalidatePath(`/admin/users/${userId}`);
   return {
-    success:
-      true,
-    message:
-      `User role changed to ${desiredRole.name.replaceAll("_", " ")} successfully.`,
+    success: true,
+    message: result.changed === false
+      ? `This user is already assigned the ${roleName.replaceAll("_", " ")} role.`
+      : `User role changed to ${roleName.replaceAll("_", " ")} successfully.`,
   };
+}
+
+
+/** CASE University-only account suspension. Does not alter shared Supabase Auth. */
+export async function updateUniversityAccountSuspensionAction(input: {
+  userId: string;
+  suspend: boolean;
+  reason: string;
+}): Promise<{ success: boolean; message: string }> {
+  const userId = String(input.userId ?? "").trim();
+  const reason = String(input.reason ?? "").trim();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
+    return { success: false, message: "Invalid user identifier." };
+  }
+  if (reason.length < 10 || reason.length > 1000) {
+    return { success: false, message: "Enter a reason between 10 and 1000 characters." };
+  }
+  await requireActiveUniversityUser();
+  const actor = await getCurrentUniversityAdminContext();
+  if (!actor.permissions.canManageUsers) {
+    return { success: false, message: "You cannot manage account security." };
+  }
+  const auth = await createSupabaseServerClient();
+  const { data: { user: currentUser }, error: authError } = await auth.auth.getUser();
+  if (authError || !currentUser) return { success: false, message: "Authentication required." };
+  if (currentUser.id === userId) return { success: false, message: "You cannot suspend your own account." };
+  const service = createSupabaseServerServiceClient();
+  const { data: targetAuth, error: targetAuthError } = await service.auth.admin.getUserById(userId);
+  if (targetAuthError || !targetAuth?.user) return { success: false, message: "Account not found." };
+  const { data: target, error: profileError } = await service.from("profiles")
+    .select("role_id,roles:roles!profiles_role_id_fkey(rank)")
+    .eq("id", userId).maybeSingle();
+  if (profileError || !target) return { success: false, message: "Unable to verify target role. No changes made." };
+  const relation = target.roles as unknown as { rank: number | null } | Array<{ rank: number | null }> | null;
+  const targetRank = normalizeUniversityAdminRank(Array.isArray(relation) ? relation[0]?.rank : relation?.rank);
+  if (!canActorManageTargetRole({ actorRank: actor.roleRank, targetRank })) {
+    return { success: false, message: "You cannot manage this account's administrative level." };
+  }
+  // A single database transaction updates status and records the audit event.
+  // The RPC independently validates the actor, target rank and current status.
+  const { data: transactionResult, error: transactionError } = await service.rpc(
+    "update_case_university_account_suspension",
+    {
+      p_actor_id: currentUser.id,
+      p_user_id: userId,
+      p_suspend: input.suspend,
+      p_reason: reason,
+    },
+  );
+  if (transactionError) {
+    console.error("[CASE University] Atomic suspension update failed", transactionError);
+    return { success: false, message: "Unable to update University suspension status. No changes were committed." };
+  }
+  if (!transactionResult || transactionResult.success !== true) {
+    return { success: false, message: "Suspension transaction was not confirmed." };
+  }
+  revalidatePath("/admin/users");
+  revalidatePath(`/admin/users/${userId}`);
+  return { success: true, message: input.suspend ? "University access suspended." : "University access restored." };
 }

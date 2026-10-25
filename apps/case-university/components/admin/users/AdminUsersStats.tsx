@@ -76,7 +76,7 @@ export default function AdminUsersStats({
         grid
         gap-3
         sm:grid-cols-2
-        xl:grid-cols-4
+        xl:grid-cols-5
       "
     >
       <StatCard
@@ -95,6 +95,12 @@ export default function AdminUsersStats({
         label="Never Signed In"
         value={stats.neverSignedInUsers}
         helper="Registered accounts without a recorded sign-in."
+      />
+
+      <StatCard
+        label="Power Users"
+        value={stats.powerUserUsers}
+        helper="Rank 1 course-facing users with no Admin-section access."
       />
 
       <StatCard

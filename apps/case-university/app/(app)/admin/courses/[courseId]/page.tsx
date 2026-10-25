@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import CurriculumItemControls from "@/components/admin/courses/CurriculumItemControls";
+import CreateModuleForm from "@/components/admin/courses/CreateModuleForm";
 import { resolveCurrentUserRole } from "@/lib/auth/resolveCurrentUserRole";
 import { createSupabaseServerServiceClient } from "@/lib/supabase/serverService";
 
@@ -94,6 +95,8 @@ export default async function AdminCoursePage({ params }: PageProps) {
   const modules = (modulesResult.data ?? []) as ModuleRow[];
   const lessons = (lessonsResult.data ?? []) as LessonRow[];
   const unassignedLessons = lessons.filter((lesson) => !lesson.module_id);
+  const activeModules = modules.filter((module) => module.status !== "archived");
+  const activeLessons = lessons.filter((lesson) => lesson.status !== "archived" && (lesson.module_id === null || activeModules.some((module) => module.id === lesson.module_id)));
 
   return (
     <div className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
@@ -145,11 +148,13 @@ export default async function AdminCoursePage({ params }: PageProps) {
         </header>
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <MetricCard label="Modules" value={String(modules.length)} />
-          <MetricCard label="Lessons" value={String(lessons.length)} />
+          <MetricCard label="Active modules" value={String(activeModules.length)} />
+          <MetricCard label="Active lessons" value={String(activeLessons.length)} />
           <MetricCard label="Duration" value={formatDuration(course.estimated_minutes ?? 0)} />
           <MetricCard label="Difficulty" value={course.difficulty || "Not set"} />
         </section>
+
+        {role.role_rank >= 3 && <CreateModuleForm courseId={course.id} />}
 
         <section className="overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-default)] shadow-[var(--shadow-sm)]">
           <div className="border-b border-[var(--border-subtle)] px-5 py-5 sm:px-6">
@@ -177,6 +182,7 @@ export default async function AdminCoursePage({ params }: PageProps) {
                   <ModuleCard
                     key={module.id}
                     module={module}
+                    moduleNumber={moduleIndex + 1}
                     lessons={moduleLessons}
                     courseId={course.id}
                     canMoveUp={moduleIndex > 0}
@@ -208,12 +214,14 @@ export default async function AdminCoursePage({ params }: PageProps) {
 
 function ModuleCard({
   module,
+  moduleNumber,
   lessons,
   courseId,
   canMoveUp,
   canMoveDown,
 }: {
   module: ModuleRow;
+  moduleNumber: number;
   lessons: LessonRow[];
   courseId: string;
   canMoveUp: boolean;
@@ -224,7 +232,8 @@ function ModuleCard({
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-bold text-[var(--text-primary)]">{module.title}</h3>
+            <Link href={`/admin/courses/${courseId}/modules/${module.id}`} className="font-bold text-[var(--text-primary)] hover:text-[var(--primary)]">{module.title}</Link>
+            <span className="text-xs font-semibold text-[var(--text-muted)]">Module {moduleNumber}</span>
             <StatusBadge status={module.status ?? "draft"} />
           </div>
           {module.description ? (
@@ -237,6 +246,8 @@ function ModuleCard({
           </p>
         </div>
 
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href={`/admin/courses/${courseId}/modules/${module.id}`} className="rounded-lg border border-[var(--border-default)] px-3 py-2 text-sm font-semibold text-[var(--primary)]">Manage module</Link>
         <CurriculumItemControls
           entityType="module"
           entityId={module.id}
@@ -246,6 +257,7 @@ function ModuleCard({
           canMoveDown={canMoveDown}
           compact
         />
+        </div>
       </div>
 
       <LessonList
@@ -330,16 +342,20 @@ function MetricCard({ label, value }: { label: string; value: string }) {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const published = status === "published";
+  const normalized = status.toLowerCase();
+  const published = normalized === "published";
+  const archived = normalized === "archived";
   return (
     <span
       className={
         published
           ? "inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300"
-          : "inline-flex rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300"
+          : archived
+            ? "inline-flex rounded-full border border-slate-300 bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+            : "inline-flex rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300"
       }
     >
-      {published ? "Published" : "Draft"}
+      {published ? "Published" : archived ? "Archived" : "Draft"}
     </span>
   );
 }

@@ -278,7 +278,7 @@ export default function LessonProgressControls({
     startTransition(
       async () => {
         try {
-          await completeLessonAndContinueAction({
+          const result = await completeLessonAndContinueAction({
             courseId,
             courseSlug,
             moduleId,
@@ -286,6 +286,19 @@ export default function LessonProgressControls({
             lessonSlug,
             nextLessonSlug,
           });
+
+          if (!result.success) {
+            setErrorMessage(
+              result.message ||
+                "Unable to complete this lesson. Please try again.",
+            );
+            return;
+          }
+
+          // A successful action normally redirects on the server.
+          // Handle a returned success defensively if navigation changes.
+          setCompleted(true);
+          router.refresh();
         } catch (
           error
         ) {

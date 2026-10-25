@@ -144,6 +144,21 @@ export default async function AdminLessonPage({
   const module = moduleResult.data as ModuleRow;
   const lesson = lessonResult.data as LessonRow;
 
+  const lessonOrderResult = await admin
+    .from("university_lessons")
+    .select("id,sort_order")
+    .eq("course_id", courseId)
+    .eq("module_id", moduleId)
+    .order("sort_order", { ascending: true })
+    .order("id", { ascending: true });
+
+  if (lessonOrderResult.error) {
+    console.error("[CASE University Admin] Unable to load lesson order.", lessonOrderResult.error);
+    throw new Error("Unable to determine lesson position.");
+  }
+
+  const lessonPosition = (lessonOrderResult.data ?? []).findIndex((item) => item.id === lesson.id) + 1;
+
   const initialAssessment =
     await getAdminLessonAssessment({
       courseId: course.id,
@@ -211,7 +226,7 @@ export default async function AdminLessonPage({
             </h1>
 
             <p className="mt-2 text-sm text-[var(--text-muted)]">
-              Module: {module.title} · Lesson order {lesson.sort_order}
+              Module: {module.title} · Lesson {lessonPosition}
             </p>
 
             {lesson.short_description ? (

@@ -22,6 +22,7 @@ import {
   getAuthorizedUniversityLessonResources,
 } from "@/lib/university/lesson-resources";
 import { getCurrentUserLessonProgress } from "@/lib/university/progress";
+import { resolveCurrentUserRole } from "@/lib/auth/resolveCurrentUserRole";
 
 type LessonPageProps = {
   params: Promise<{
@@ -289,18 +290,39 @@ export default async function LessonPage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  const universityAccess =
-    await getCurrentUniversityAccess();
+  const [
+    universityAccess,
+    currentUserRole,
+  ] = await Promise.all([
+    getCurrentUniversityAccess(),
+    user
+      ? resolveCurrentUserRole()
+      : Promise.resolve(null),
+  ]);
 
   const courseEntitlement =
     getUniversityCourseEntitlement(course.slug);
 
+  const roleRank =
+    Number(
+      currentUserRole?.role_rank ??
+        0,
+    );
+
+  /*
+   * Rank 1+ bypasses published-course billing without changing
+   * the user's actual Free / Plus / Pro subscription tier.
+   */
+  const hasCourseRoleBypass =
+    roleRank >= 1;
+
   const hasFullCourseAccess =
-    courseEntitlement
+    hasCourseRoleBypass ||
+    (courseEntitlement
       ? universityAccess.entitlements[
           courseEntitlement
         ] === true
-      : universityAccess.tier === "pro";
+      : universityAccess.tier === "pro");
 
   const canAccessCurrentLesson =
     lesson.is_preview

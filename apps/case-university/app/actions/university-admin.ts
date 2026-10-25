@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
 
 import { resolveCurrentUserRole } from "@/lib/auth/resolveCurrentUserRole";
+import { requireActiveUniversityUser } from "@/lib/university/require-active-user";
+import { isUniversityLessonType } from "@/lib/university/lesson-types";
 import {
   isLessonContentPublishable,
   normalizeLessonContent,
@@ -36,6 +38,7 @@ const ALLOWED_DIFFICULTIES = new Set([
 export async function updateUniversityCourseSettingsAction(
   input: UpdateCourseSettingsInput,
 ): Promise<UpdateCourseSettingsResult> {
+  await requireActiveUniversityUser();
   const role =
     await resolveCurrentUserRole();
 
@@ -526,6 +529,7 @@ const ALLOWED_MODULE_STATUSES = new Set([
 export async function updateUniversityModuleSettingsAction(
   input: UpdateModuleSettingsInput,
 ): Promise<UpdateModuleSettingsResult> {
+  await requireActiveUniversityUser();
   const role = await resolveCurrentUserRole();
 
   if (!role || role.role_rank < 3) {
@@ -781,6 +785,7 @@ const ALLOWED_LESSON_STATUSES = new Set([
 export async function updateUniversityLessonSettingsAction(
   input: UpdateLessonSettingsInput,
 ): Promise<UpdateLessonSettingsResult> {
+  await requireActiveUniversityUser();
   const role = await resolveCurrentUserRole();
 
   if (!role || role.role_rank < 3) {
@@ -828,10 +833,10 @@ export async function updateUniversityLessonSettingsAction(
     };
   }
 
-  if (!lessonType) {
+  if (!isUniversityLessonType(lessonType)) {
     return {
       success: false,
-      message: "Lesson type is required.",
+      message: "Select a valid lesson type: Standard Lesson, Video Lesson, Reading, or Interactive Lesson.",
     };
   }
 
@@ -1107,6 +1112,7 @@ type PublishEntityResult = {
 };
 
 async function requireUniversityCurriculumManager() {
+  await requireActiveUniversityUser();
   const role = await resolveCurrentUserRole();
 
   return Boolean(
@@ -1116,6 +1122,7 @@ async function requireUniversityCurriculumManager() {
 }
 
 async function requireUniversityPublisher() {
+  await requireActiveUniversityUser();
   const role = await resolveCurrentUserRole();
 
   return Boolean(
@@ -1833,10 +1840,10 @@ export async function createUniversityLessonAction(
     };
   }
 
-  if (!lessonType) {
+  if (!isUniversityLessonType(lessonType)) {
     return {
       success: false,
-      message: "Lesson type is required.",
+      message: "Select a valid lesson type: Standard Lesson, Video Lesson, Reading, or Interactive Lesson.",
     };
   }
 
@@ -2034,6 +2041,13 @@ export async function moveUniversityCurriculumItemAction(
     };
   }
 
+  if (input.entityType === "course" && entityId !== courseId) {
+    return {
+      success: false,
+      message: "The course identifier does not match the curriculum item.",
+    };
+  }
+
   if (
     input.entityType === "lesson" &&
     !moduleId
@@ -2214,6 +2228,15 @@ export async function archiveUniversityCurriculumItemAction(
     };
   }
 
+  // Archiving can unpublish a published parent. Restrict that lifecycle
+  // operation to Master Admin rather than allowing a rank-3 bypass.
+  if (!(await requireUniversityPublisher())) {
+    return {
+      success: false,
+      message: "Only a Master Admin may archive curriculum.",
+    };
+  }
+
   return setUniversityCurriculumLifecycleStatus(
     input,
     "archived",
@@ -2240,11 +2263,11 @@ export async function restoreUniversityCurriculumItemAction(
 export async function deleteUniversityCurriculumItemAction(
   input: CurriculumLifecycleInput,
 ): Promise<CurriculumLifecycleResult> {
-  if (!(await requireUniversityCurriculumManager())) {
+  if (!(await requireUniversityPublisher())) {
     return {
       success: false,
       message:
-        "You do not have permission to delete CASE University curriculum.",
+        "Only a Master Admin may permanently delete CASE University curriculum.",
     };
   }
 
@@ -2256,6 +2279,13 @@ export async function deleteUniversityCurriculumItemAction(
     return {
       success: false,
       message: "The curriculum identifier is missing.",
+    };
+  }
+
+  if (input.entityType === "course" && entityId !== courseId) {
+    return {
+      success: false,
+      message: "The course identifier does not match the curriculum item.",
     };
   }
 
@@ -2418,10 +2448,23 @@ export async function deleteUniversityCurriculumItemAction(
       }
     }
 
-    const { error: deleteError } = await admin
+    let deleteQuery = admin
       .from(config.table)
       .delete()
-      .eq("id", entityId);
+      .eq("id", entityId)
+      .eq("status", "draft");
+
+    if (input.entityType === "module") {
+      deleteQuery = deleteQuery.eq("course_id", courseId);
+    }
+    if (input.entityType === "lesson") {
+      deleteQuery = deleteQuery
+        .eq("course_id", courseId)
+        .eq("module_id", moduleId!);
+    }
+
+    const { data: deletedItems, error: deleteError } =
+      await deleteQuery.select("id");
 
     if (deleteError) {
       console.error(
@@ -2433,6 +2476,13 @@ export async function deleteUniversityCurriculumItemAction(
         success: false,
         message:
           "Unable to permanently delete this item right now.",
+      };
+    }
+
+    if (!deletedItems || deletedItems.length !== 1) {
+      return {
+        success: false,
+        message: "Curriculum state changed before deletion. Refresh and try again.",
       };
     }
 
@@ -2464,9 +2514,25 @@ async function setUniversityCurriculumLifecycleStatus(
   input: CurriculumLifecycleInput,
   status: "archived" | "draft",
 ): Promise<CurriculumLifecycleResult> {
+  // These actions are also checked at their exported entry points.
+  // Keep authorization here to protect against future internal callers.
+  if (status === "archived") {
+    if (!(await requireUniversityPublisher())) {
+      return {
+        success: false,
+        message: "Only a Master Admin may archive curriculum.",
+      };
+    }
+  } else if (!(await requireUniversityCurriculumManager())) {
+    return {
+      success: false,
+      message: "You do not have permission to restore CASE University curriculum.",
+    };
+  }
+
   const entityId = input.entityId.trim();
   const courseId = input.courseId.trim();
-  const moduleId = input.moduleId?.trim();
+  const moduleId = input.moduleId?.trim() || null;
 
   if (!entityId || !courseId) {
     return {
@@ -2475,10 +2541,14 @@ async function setUniversityCurriculumLifecycleStatus(
     };
   }
 
-  if (
-    input.entityType === "lesson" &&
-    !moduleId
-  ) {
+  if (input.entityType === "course" && entityId !== courseId) {
+    return {
+      success: false,
+      message: "The course identifier does not match the curriculum item.",
+    };
+  }
+
+  if (input.entityType === "lesson" && !moduleId) {
     return {
       success: false,
       message: "The lesson module identifier is missing.",
@@ -2487,104 +2557,94 @@ async function setUniversityCurriculumLifecycleStatus(
 
   try {
     const admin = createAdminClient();
-    const config = getCurriculumTableConfig(input.entityType);
-    const now = new Date().toISOString();
 
-    const updatePayload: Record<string, unknown> = {
-      status,
-      updated_at: now,
-    };
+    const { data, error } = await admin.rpc(
+      "set_university_curriculum_lifecycle_state",
+      {
+        p_entity_type: input.entityType,
+        p_course_id: courseId,
+        p_entity_id: entityId,
+        p_module_id: input.entityType === "lesson" ? moduleId : null,
+        p_archive: status === "archived",
+      },
+    );
 
-    if (
-      input.entityType === "course" ||
-      input.entityType === "lesson"
-    ) {
-      updatePayload.published_at = null;
-    }
-
-    let updateQuery = admin
-      .from(config.table)
-      .update(updatePayload)
-      .eq("id", entityId);
-
-    if (input.entityType === "module") {
-      updateQuery = updateQuery.eq("course_id", courseId);
-    }
-
-    if (input.entityType === "lesson") {
-      updateQuery = updateQuery
-        .eq("course_id", courseId)
-        .eq("module_id", moduleId!);
-    }
-
-    const { error: updateError } = await updateQuery;
-
-    if (updateError) {
+    if (error) {
       console.error(
-        "[CASE University Admin] Curriculum lifecycle status update failed.",
-        updateError,
+        "[CASE University Admin] Transactional curriculum lifecycle RPC failed.",
+        error,
       );
+
+      const safeErrors = [
+        "Invalid curriculum entity type.",
+        "Course ID and entity ID are required.",
+        "Course ID and entity ID must match.",
+        "Invalid module identifier.",
+        "Module ID is required for a lesson.",
+        "The requested course could not be found.",
+        "The requested module could not be found in this course.",
+        "The requested lesson could not be found in this module.",
+        "This curriculum item is already archived.",
+        "Only archived curriculum can be restored to Draft.",
+      ];
 
       return {
         success: false,
-        message:
-          "Unable to update this curriculum item right now.",
+        message: safeErrors.includes(error.message)
+          ? error.message
+          : "Unable to update this curriculum item right now.",
       };
     }
 
-    if (status === "archived") {
-      if (input.entityType === "lesson") {
-        await admin
-          .from("university_modules")
-          .update({
-            status: "draft",
-            updated_at: now,
-          })
-          .eq("id", moduleId!)
-          .eq("course_id", courseId)
-          .eq("status", "published");
-      }
+    const rpcResult = data as
+      | {
+          success?: boolean;
+          message?: string;
+          status?: string;
+          entity_type?: string;
+          entity_id?: string;
+        }
+      | null;
 
-      if (
-        input.entityType === "lesson" ||
-        input.entityType === "module"
-      ) {
-        await admin
-          .from("university_courses")
-          .update({
-            status: "draft",
-            published_at: null,
-            updated_at: now,
-          })
-          .eq("id", courseId)
-          .eq("status", "published");
-      }
+    if (
+      !rpcResult ||
+      rpcResult.success !== true ||
+      rpcResult.status !== status ||
+      rpcResult.entity_type !== input.entityType ||
+      rpcResult.entity_id !== entityId
+    ) {
+      console.error(
+        "[CASE University Admin] Unexpected transactional lifecycle RPC response.",
+        data,
+      );
+      return {
+        success: false,
+        message: "Unable to verify the curriculum lifecycle change.",
+      };
     }
 
     await revalidateCurriculumLifecyclePaths(admin, {
       courseId,
-      moduleId,
-      lessonId:
-        input.entityType === "lesson" ? entityId : undefined,
+      moduleId: moduleId ?? undefined,
+      lessonId: input.entityType === "lesson" ? entityId : undefined,
     });
 
     return {
       success: true,
       message:
-        status === "archived"
+        rpcResult.message ??
+        (status === "archived"
           ? "Item archived successfully."
-          : "Item restored to Draft successfully.",
+          : "Item restored to Draft successfully."),
     };
   } catch (error) {
     console.error(
-      "[CASE University Admin] Unexpected curriculum lifecycle update failure.",
+      "[CASE University Admin] Unexpected transactional curriculum lifecycle failure.",
       error,
     );
-
     return {
       success: false,
-      message:
-        "Unable to update this curriculum item right now.",
+      message: "Unable to update this curriculum item right now.",
     };
   }
 }

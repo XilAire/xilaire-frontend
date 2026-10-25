@@ -782,37 +782,26 @@ export default function AppHeader({
   }
 
   async function handleSignOut() {
-    if (
-      isSigningOut
-    ) {
+    if (isSigningOut) {
       return;
     }
 
-    setIsSigningOut(
-      true,
-    );
-
-    setOpenMenu(
-      null,
-    );
+    setIsSigningOut(true);
+    setOpenMenu(null);
 
     try {
-      await signOutAction();
-    } catch (error) {
-      if (
-        !isNextRedirectError(
-          error,
-        )
-      ) {
-        console.error(
-          "Unable to sign out of CASE University",
-          error,
-        );
+      const result = await signOutAction();
 
-        setIsSigningOut(
-          false,
-        );
+      if (!result.success) {
+        throw new Error("CASE University sign-out was not confirmed.");
       }
+
+      // A full navigation discards authenticated client state and avoids
+      // depending on a server-action redirect after cookies are cleared.
+      window.location.replace("/auth/signin?status=signed_out");
+    } catch (error) {
+      console.error("Unable to sign out of CASE University", error);
+      setIsSigningOut(false);
     }
   }
 
@@ -1310,35 +1299,5 @@ function AccountLink({
       {icon}
       <span>{label}</span>
     </Link>
-  );
-}
-
-function isNextRedirectError(
-  error: unknown,
-) {
-  if (
-    typeof error !==
-      "object" ||
-    error ===
-      null
-  ) {
-    return false;
-  }
-
-  const digest =
-    "digest" in error
-      ? (
-          error as {
-            digest?: unknown;
-          }
-        ).digest
-      : undefined;
-
-  return (
-    typeof digest ===
-      "string" &&
-    digest.startsWith(
-      "NEXT_REDIRECT",
-    )
   );
 }

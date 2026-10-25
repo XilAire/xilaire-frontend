@@ -1,5 +1,7 @@
 "use server";
 
+import { requireActiveUniversityUser } from "@/lib/university/require-active-user";
+
 import { revalidatePath } from "next/cache";
 
 import {
@@ -63,6 +65,7 @@ export async function issueCertificateAction(
   input: IssueCertificateInput,
 ): Promise<UniversityCertificateActionState> {
   try {
+    await requireActiveUniversityUser();
     const courseId =
       requireValue(
         input.courseId,
@@ -179,6 +182,7 @@ export async function reconcileCompletedCourseCertificateAction(
   input: IssueCertificateInput,
 ): Promise<UniversityCertificateActionState> {
   try {
+    await requireActiveUniversityUser();
     const courseId = requireValue(
       input.courseId,
       "Course ID",

@@ -3,6 +3,7 @@ import "server-only";
 import type { User } from "@supabase/supabase-js";
 
 import {
+  getCurrentUniversityAdminContext,
   requireUniversityAdminCapability,
 } from "@/lib/university/admin-permissions";
 import { createSupabaseServerServiceClient } from "@/lib/supabase/serverService";
@@ -47,6 +48,7 @@ export type AdminUniversityPlanFilter =
 export type AdminUniversityRoleFilter =
   | "all"
   | "user"
+  | "power_user"
   | "admin"
   | "super_admin"
   | "master_admin";
@@ -97,6 +99,7 @@ export type AdminUniversityUsersStats = {
   freeUsers: number;
   plusUsers: number;
   proUsers: number;
+  powerUserUsers: number;
   adminUsers: number;
   superAdminUsers: number;
   masterAdminUsers: number;
@@ -177,6 +180,8 @@ export type AdminUniversityUserDetails = {
   plan: AdminUniversityPlan;
   billingStatus: string | null;
   bannedUntil: string | null;
+  universitySuspended: boolean;
+  universitySuspensionReason: string | null;
   mfaEnabled: boolean;
   lessonProgressCount: number;
   completedLessonCount: number;
@@ -299,20 +304,18 @@ export class UniversityAdminAccessError extends Error {
 }
 
 export async function canCurrentUserManageUniversity(): Promise<boolean> {
-  try {
-    await requireUniversityAdminCapability(
-      "canViewUsers",
-    );
+  const context =
+    await getCurrentUniversityAdminContext();
 
-    return true;
-  } catch {
-    return false;
-  }
+  return Boolean(
+    context.permissions
+      .canManageUsers,
+  );
 }
 
 export async function requireUniversityAdminAccess(): Promise<void> {
   await requireUniversityAdminCapability(
-    "canViewUsers",
+    "canAccessAdmin",
   );
 }
 
@@ -335,6 +338,7 @@ export function normalizeAdminUsersQuery(
 
   const role =
     query.role === "user" ||
+    query.role === "power_user" ||
     query.role === "admin" ||
     query.role === "super_admin" ||
     query.role === "master_admin"
@@ -557,7 +561,7 @@ function normalizeProfileRole(
   const roleRank =
     Number(
       relation?.rank ??
-        1,
+        0,
     );
 
   const normalizedRank =
@@ -565,12 +569,12 @@ function normalizeProfileRole(
       roleRank,
     )
       ? Math.max(
-          1,
+          0,
           Math.floor(
             roleRank,
           ),
         )
-      : 1;
+      : 0;
 
   let fallbackName =
     "user";
@@ -590,6 +594,11 @@ function normalizeProfileRole(
   ) {
     fallbackName =
       "admin";
+  } else if (
+    normalizedRank === 1
+  ) {
+    fallbackName =
+      "power_user";
   }
 
   return {
@@ -1093,7 +1102,9 @@ async function loadLearningSummaries(
 export async function getAdminUniversityUsers(
   query: AdminUsersQuery = {},
 ): Promise<AdminUniversityUsersResult> {
-  await requireUniversityAdminAccess();
+  await requireUniversityAdminCapability(
+    "canViewUsers",
+  );
 
   const normalized =
     normalizeAdminUsersQuery(
@@ -1228,6 +1239,13 @@ export async function getAdminUniversityUsers(
           (row) =>
             row.plan ===
             "pro",
+        ).length,
+
+      powerUserUsers:
+        baseRows.filter(
+          (row) =>
+            row.roleRank ===
+            1,
         ).length,
 
       adminUsers:
@@ -1526,7 +1544,9 @@ function normalizeNumber(
 export async function getAdminUniversityUserById(
   userId: string,
 ): Promise<AdminUniversityUserDetails | null> {
-  await requireUniversityAdminAccess();
+  await requireUniversityAdminCapability(
+    "canViewUserDetails",
+  );
 
   const normalizedUserId =
     String(
@@ -1578,6 +1598,12 @@ export async function getAdminUniversityUserById(
 
   const stripeMode =
     getUniversityStripeMode();
+
+  const { data: suspension, error: suspensionError } = await service
+    .from("case_university_account_suspensions")
+    .select("is_suspended,reason")
+    .eq("user_id", normalizedUserId).maybeSingle();
+  if (suspensionError) throw new Error("Unable to load University suspension status.");
 
   const [
     profileResult,
@@ -1968,6 +1994,9 @@ export async function getAdminUniversityUserById(
     bannedUntil:
       authUser.banned_until ??
       null,
+
+    universitySuspended: suspension?.is_suspended === true,
+    universitySuspensionReason: suspension?.reason ?? null,
 
     mfaEnabled,
 

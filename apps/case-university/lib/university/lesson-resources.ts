@@ -6,6 +6,7 @@ import {
   createSupabaseServerServiceClient,
 } from "@/lib/supabase/serverService";
 import { getUniversityLessonBySlug } from "@/lib/university/courses";
+import { isUniversityAccountSuspended } from "@/lib/university/account-suspension";
 
 export const UNIVERSITY_LESSON_RESOURCE_BUCKET =
   "university-lesson-resources";
@@ -176,6 +177,12 @@ async function getAuthorizedLessonResourceContext({
   } = await supabase.auth.getUser();
 
   if (userError || !user) {
+    return null;
+  }
+
+  // Enforce suspension here as well as at the route boundary so
+  // other callers cannot bypass the private resource authorization layer.
+  if (await isUniversityAccountSuspended(user.id)) {
     return null;
   }
 

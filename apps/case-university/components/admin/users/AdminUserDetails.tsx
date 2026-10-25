@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import AdminUserRoleManager from "@/components/admin/users/AdminUserRoleManager";
+import AdminUserSuspensionManager from "@/components/admin/users/AdminUserSuspensionManager";
 
 import type {
   UniversityAdminContext,
@@ -943,6 +944,13 @@ export default function AdminUserDetails({
                 ),
             },
           ]}
+        />
+
+        <AdminUserSuspensionManager
+          userId={user.id}
+          suspended={user.universitySuspended}
+          reason={user.universitySuspensionReason}
+          canManage={viewer.permissions.canManageUsers && (viewer.roleRank === 3 ? user.roleRank < 3 : viewer.roleRank >= 4 && user.roleRank <= 4)}
         />
 
         <p

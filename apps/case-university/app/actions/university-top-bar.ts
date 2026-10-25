@@ -1,6 +1,7 @@
 "use server";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { requireActiveUniversityUser } from "@/lib/university/require-active-user";
 import { getCurrentUserProfileSettings } from "@/lib/university/profile-settings";
 import {
   getCurrentUniversityNotifications,
@@ -43,6 +44,8 @@ export async function getUniversityTopBarBootstrapAction(): Promise<UniversityTo
     };
   }
 
+  await requireActiveUniversityUser();
+
   const [
     profileSettings,
     notifications,
@@ -75,6 +78,7 @@ export async function getUniversityTopBarBootstrapAction(): Promise<UniversityTo
 export async function searchUniversityTopBarAction(
   query: string,
 ): Promise<UniversityTopBarSearchResult[]> {
+  await requireActiveUniversityUser();
   return searchCurrentUniversityTopBar(
     query,
     12,
@@ -84,6 +88,7 @@ export async function searchUniversityTopBarAction(
 export async function markUniversityNotificationReadAction(
   notificationId: string,
 ): Promise<boolean> {
+  await requireActiveUniversityUser();
   const normalizedId =
     notificationId.trim();
 
@@ -99,5 +104,6 @@ export async function markUniversityNotificationReadAction(
 }
 
 export async function markAllUniversityNotificationsReadAction(): Promise<number> {
+  await requireActiveUniversityUser();
   return markAllCurrentUniversityNotificationsRead();
 }

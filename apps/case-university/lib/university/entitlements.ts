@@ -167,6 +167,36 @@ async function hasCurrentUniversityAdminOverride() {
   );
 }
 
+/**
+ * CASE University published-course role bypass.
+ *
+ * Rank 1+ may view published CASE University courses and lessons
+ * without requiring the normal Free / Plus / Pro course entitlement.
+ *
+ * This is intentionally narrower than the Master Admin override:
+ *
+ * - It does not change the user's billing tier.
+ * - It does not grant downloadable-resource entitlements.
+ * - It does not grant certificate entitlements.
+ * - It does not grant draft curriculum preview.
+ * - It does not bypass sequential learner progression.
+ */
+async function hasCurrentUniversityCourseOverride() {
+  const role =
+    await resolveCurrentUserRole();
+
+  if (!role) {
+    return false;
+  }
+
+  return (
+    Number(
+      role.role_rank ??
+        0,
+    ) >= 1
+  );
+}
+
 export async function getCurrentUniversityTier(): Promise<UniversityTier> {
   const supabase =
     await createSupabaseServerClient();
@@ -461,12 +491,22 @@ export async function canAccessUniversityCourse(
     await getCurrentUniversityAccess();
 
   /*
-   * The explicit administrator override is checked first so
-   * master_admin can exercise both mapped production curriculum
-   * and unmapped development/test curriculum.
+   * Master Admin retains the complete administrator/testing
+   * override, including unmapped development curriculum.
    */
   if (
     access.isAdminOverride
+  ) {
+    return true;
+  }
+
+  /*
+   * Power User, Admin, and Super Admin bypass billing for
+   * published course access only. This does not convert them
+   * to Pro or grant unrelated Pro entitlements.
+   */
+  if (
+    await hasCurrentUniversityCourseOverride()
   ) {
     return true;
   }
@@ -510,11 +550,24 @@ export async function canAccessUniversityLesson({
     await getCurrentUniversityAccess();
 
   /*
-   * Administrators can exercise the entire curriculum without
-   * Stripe or subscription constraints.
+   * Master Admin retains the complete administrator/testing
+   * override.
    */
   if (
     access.isAdminOverride
+  ) {
+    return true;
+  }
+
+  /*
+   * Power User, Admin, and Super Admin may view published
+   * lessons without normal course billing restrictions.
+   *
+   * Draft curriculum is still controlled separately by the
+   * trusted draft-preview authorization path.
+   */
+  if (
+    await hasCurrentUniversityCourseOverride()
   ) {
     return true;
   }

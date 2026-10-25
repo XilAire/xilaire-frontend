@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { isUniversityAccountSuspended } from "@/lib/university/account-suspension";
 import { getUniversityBillingState } from "@/lib/university/billing-checkout";
 import { getUniversityStripeClient } from "@/lib/university/stripe-server";
 import { getUniversityStripeMode } from "@/lib/university/stripe-mode";
@@ -20,6 +21,15 @@ export async function GET(request: Request) {
       return NextResponse.json(
         { error: "AUTH_REQUIRED" },
         { status: 401 },
+      );
+    }
+
+    // CASE University-specific restriction; shared CASE Trades authentication is unchanged.
+    // A database verification failure is handled by the route's catch block (fail closed).
+    if (await isUniversityAccountSuspended(user.id)) {
+      return NextResponse.json(
+        { error: "UNIVERSITY_ACCOUNT_SUSPENDED", message: "CASE University account access is suspended." },
+        { status: 403 },
       );
     }
 

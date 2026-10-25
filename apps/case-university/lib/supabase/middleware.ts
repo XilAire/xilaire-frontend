@@ -132,9 +132,14 @@ export async function updateSession(
     pathname ===
       "/favicon.ico";
 
+  // Next.js Server Actions require their own response protocol.
+  // Never replace that response with a middleware 307 redirect.
+  const isServerAction = Boolean(request.headers.get("next-action"));
+
   if (
     !user &&
-    !isPublicRoute
+    !isPublicRoute &&
+    !isServerAction
   ) {
     const redirectUrl =
       request.nextUrl.clone();

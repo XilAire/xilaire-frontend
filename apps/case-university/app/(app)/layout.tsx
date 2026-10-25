@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { redirect } from "next/navigation";
+import { isUniversityAccountSuspended } from "@/lib/university/account-suspension";
 
 import AppShell from "@/components/layout/AppShell";
 import UniversityThemeProvider, {
@@ -35,6 +37,10 @@ export default async function AppLayout({
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  if (user && await isUniversityAccountSuspended(user.id)) {
+    redirect("/auth/signin?error=university_suspended");
+  }
 
   const [
     currentUserRole,

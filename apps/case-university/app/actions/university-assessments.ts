@@ -1,5 +1,7 @@
 "use server";
 
+import { requireActiveUniversityUser } from "@/lib/university/require-active-user";
+
 import { revalidatePath } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
 
@@ -49,6 +51,7 @@ async function requireUniversityAdmin() {
 export async function getLearnerLessonAssessmentAction(
   lessonId: string,
 ): Promise<LearnerLessonAssessment | null> {
+  await requireActiveUniversityUser();
   const supabase = await createSupabaseServerClient();
 
   const {
@@ -88,6 +91,7 @@ export async function getLearnerLessonAssessmentAction(
 export async function getCurrentAssessmentAttemptSummaryAction(
   assessmentId: string,
 ): Promise<AssessmentAttemptSummary> {
+  await requireActiveUniversityUser();
   const supabase = await createSupabaseServerClient();
 
   const {
@@ -147,6 +151,7 @@ export async function submitLessonAssessmentAction(
   message: string;
   result?: AssessmentSubmissionResult;
 }> {
+  await requireActiveUniversityUser();
   const supabase = await createSupabaseServerClient();
 
   const {
@@ -212,6 +217,7 @@ export async function saveLessonAssessmentAction(
   message: string;
 }> {
   try {
+    await requireActiveUniversityUser();
     await requireUniversityAdmin();
   } catch {
     return {

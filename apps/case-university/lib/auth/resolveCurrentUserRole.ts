@@ -1,4 +1,7 @@
+import "server-only";
+
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { isUniversityAccountSuspended } from "@/lib/university/account-suspension";
 
 type RoleRow = {
   name: string;
@@ -14,6 +17,11 @@ export async function resolveCurrentUserRole() {
   } = await supabase.auth.getUser();
 
   if (userError || !user) {
+    return null;
+  }
+
+  // Fail closed if University access is suspended or cannot be verified.
+  if (await isUniversityAccountSuspended(user.id)) {
     return null;
   }
 
