@@ -9,13 +9,13 @@ export const metadata = {
 export default function RefundPage() {
   return (
     <section className="mx-auto max-w-3xl px-4 py-12">
-      <h1 className="mb-3 text-3xl font-bold text-slate-900">Refund</h1>
+      <h1 className="mb-3 text-3xl font-bold text-foreground">Refund</h1>
 
-      <p className="mb-4 text-sm text-slate-600">
+      <p className="mb-4 text-sm text-[color:var(--text-secondary)]">
         Last updated: {new Date().getFullYear()}
       </p>
 
-      <div className="space-y-4 text-sm leading-relaxed text-slate-700">
+      <div className="space-y-4 text-sm leading-relaxed text-[color:var(--text-secondary)]">
         <p>
           This Refund page explains how XilAire Technologies handles refunds,
           credits, and billing adjustments for subscriptions and one-time
@@ -23,7 +23,7 @@ export default function RefundPage() {
           agreement or order form.
         </p>
 
-        <h2 className="mt-4 text-base font-semibold text-slate-900">
+        <h2 className="mt-4 text-base font-semibold text-foreground">
           1. Subscription Services
         </h2>
         <p>
@@ -34,7 +34,7 @@ export default function RefundPage() {
           active until the end of the current paid term.
         </p>
 
-        <h2 className="mt-4 text-base font-semibold text-slate-900">
+        <h2 className="mt-4 text-base font-semibold text-foreground">
           2. One-Time and Project Services
         </h2>
         <p>
@@ -44,7 +44,7 @@ export default function RefundPage() {
           non-refundable as specified in your order.
         </p>
 
-        <h2 className="mt-4 text-base font-semibold text-slate-900">
+        <h2 className="mt-4 text-base font-semibold text-foreground">
           3. Billing Errors
         </h2>
         <p>
@@ -54,7 +54,7 @@ export default function RefundPage() {
           may include issuing a refund or account credit.
         </p>
 
-        <h2 className="mt-4 text-base font-semibold text-slate-900">
+        <h2 className="mt-4 text-base font-semibold text-foreground">
           4. Service Credits vs. Refunds
         </h2>
         <p>
@@ -64,7 +64,7 @@ export default function RefundPage() {
           invoices, not cash refunds. See the SLA for more details.
         </p>
 
-        <h2 className="mt-4 text-base font-semibold text-slate-900">
+        <h2 className="mt-4 text-base font-semibold text-foreground">
           5. Third-Party Licenses and Vendors
         </h2>
         <p>
@@ -74,7 +74,7 @@ export default function RefundPage() {
           provider and may be limited or unavailable.
         </p>
 
-        <h2 className="mt-4 text-base font-semibold text-slate-900">
+        <h2 className="mt-4 text-base font-semibold text-foreground">
           6. Chargebacks
         </h2>
         <p>
@@ -83,14 +83,14 @@ export default function RefundPage() {
           may suspend or terminate access to the Services pending resolution.
         </p>
 
-        <h2 className="mt-4 text-base font-semibold text-slate-900">
+        <h2 className="mt-4 text-base font-semibold text-foreground">
           7. How to Request a Refund or Review
         </h2>
         <p>
           For billing questions, refund requests, or corrections, contact:
         </p>
         <p>
-          <span className="font-medium text-slate-900">
+          <span className="font-medium text-foreground">
             billing@xilairetechnologies.com
           </span>
         </p>
@@ -100,7 +100,7 @@ export default function RefundPage() {
           efficiently.
         </p>
 
-        <p className="mt-6 text-[11px] text-slate-600 dark:text-slate-400">
+        <p className="mt-6 text-[11px] text-[color:var(--text-muted)]">
           This Refund page is a general summary and may be superseded by
           specific payment or refund terms in a signed agreement, SOW, or order
           form between you and XilAire Technologies.

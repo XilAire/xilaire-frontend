@@ -9,20 +9,20 @@ export const metadata = {
 export default function PrivacyPage() {
   return (
     <section className="mx-auto max-w-3xl px-4 py-12">
-      <h1 className="mb-3 text-3xl font-bold text-slate-900">Privacy Policy</h1>
+      <h1 className="mb-3 text-3xl font-bold text-foreground">Privacy Policy</h1>
 
-      <p className="mb-4 text-sm text-slate-600">
+      <p className="mb-4 text-sm text-[color:var(--text-secondary)]">
         Last updated: {new Date().getFullYear()}
       </p>
 
-      <div className="space-y-4 text-sm leading-relaxed text-slate-700">
+      <div className="space-y-4 text-sm leading-relaxed text-[color:var(--text-secondary)]">
         <p>
           This Privacy Policy explains how XilAire Technologies (&quot;XilAire,&quot;
           &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) collects, uses, and protects information in
           connection with our website, platform, and managed services.
         </p>
 
-        <h2 className="mt-4 text-base font-semibold text-slate-900">
+        <h2 className="mt-4 text-base font-semibold text-foreground">
           1. Information We Collect
         </h2>
         <p>We may collect the following types of information:</p>
@@ -47,7 +47,7 @@ export default function PrivacyPage() {
           </li>
         </ul>
 
-        <h2 className="mt-4 text-base font-semibold text-slate-900">
+        <h2 className="mt-4 text-base font-semibold text-foreground">
           2. How We Use Your Information
         </h2>
         <p>We use the information we collect to:</p>
@@ -65,7 +65,7 @@ export default function PrivacyPage() {
           </li>
         </ul>
 
-        <h2 className="mt-4 text-base font-semibold text-slate-900">
+        <h2 className="mt-4 text-base font-semibold text-foreground">
           3. How We Share Information
         </h2>
         <p>
@@ -88,7 +88,7 @@ export default function PrivacyPage() {
           </li>
         </ul>
 
-        <h2 className="mt-4 text-base font-semibold text-slate-900">
+        <h2 className="mt-4 text-base font-semibold text-foreground">
           4. Data Security
         </h2>
         <p>
@@ -99,7 +99,7 @@ export default function PrivacyPage() {
           security.
         </p>
 
-        <h2 className="mt-4 text-base font-semibold text-slate-900">
+        <h2 className="mt-4 text-base font-semibold text-foreground">
           5. Data Retention
         </h2>
         <p>
@@ -109,7 +109,7 @@ export default function PrivacyPage() {
           analytics.
         </p>
 
-        <h2 className="mt-4 text-base font-semibold text-slate-900">
+        <h2 className="mt-4 text-base font-semibold text-foreground">
           6. Your Choices
         </h2>
         <p>You may be able to:</p>
@@ -127,7 +127,7 @@ export default function PrivacyPage() {
           </li>
         </ul>
 
-        <h2 className="mt-4 text-base font-semibold text-slate-900">
+        <h2 className="mt-4 text-base font-semibold text-foreground">
           7. International Considerations
         </h2>
         <p>
@@ -137,7 +137,7 @@ export default function PrivacyPage() {
           organization.
         </p>
 
-        <h2 className="mt-4 text-base font-semibold text-slate-900">
+        <h2 className="mt-4 text-base font-semibold text-foreground">
           8. Changes to This Policy
         </h2>
         <p>
@@ -147,18 +147,18 @@ export default function PrivacyPage() {
           updated policy.
         </p>
 
-        <h2 className="mt-4 text-base font-semibold text-slate-900">
+        <h2 className="mt-4 text-base font-semibold text-foreground">
           9. Contact Us
         </h2>
         <p>
           If you have questions about this Privacy Policy, contact us at{" "}
-          <span className="font-medium text-slate-900">
+          <span className="font-medium text-foreground">
             privacy@xilairetechnologies.com
           </span>
           .
         </p>
 
-        <p className="mt-6 text-[11px] text-slate-600 dark:text-slate-400">
+        <p className="mt-6 text-[11px] text-[color:var(--text-muted)]">
           This document is provided for general informational purposes only and
           does not constitute legal advice.
         </p>

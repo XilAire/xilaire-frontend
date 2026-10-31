@@ -9,8 +9,8 @@ export const metadata: Metadata = {
 
 export default function ServicesPage() {
   return (
-    <section className="bg-slate-50">
-      <div className="mx-auto max-w-6xl px-4 py-20 space-y-16 text-slate-900">
+    <section className="bg-background text-foreground">
+      <div className="mx-auto max-w-6xl px-4 py-20 space-y-16">
 
         {/* =====================================================
             PAGE INTRO (SERVER-RENDERED)
@@ -21,7 +21,7 @@ export default function ServicesPage() {
             <span className="text-sky-600">how you operate</span>
           </h1>
 
-          <p className="text-slate-600">
+          <p className="text-slate-600 dark:text-slate-300">
             XilAire adapts its platform based on whether you’re managing personal
             technology or running a business — delivering the right tools,
             automation, and support for your needs.

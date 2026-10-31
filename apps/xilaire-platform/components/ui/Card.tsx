@@ -12,7 +12,7 @@ export default function Card({
     <div
       {...props}
       className={clsx(
-        "rounded-lg border border-slate-200 bg-white",
+        "rounded-lg border border-border bg-surface text-foreground",
         className
       )}
     >

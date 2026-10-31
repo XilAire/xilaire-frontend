@@ -7,7 +7,7 @@ import { setStoredExperience } from "@/lib/experience";
 
 export default function IndividualExperienceClient() {
   return (
-    <section className="bg-slate-50">
+    <section className="bg-background text-foreground">
       <div className="mx-auto max-w-6xl px-4 py-24 space-y-20">
 
         {/* ================= HERO ================= */}
@@ -16,7 +16,7 @@ export default function IndividualExperienceClient() {
             IT support built for{" "}
             <span className="text-sky-600">individuals</span>
           </h1>
-          <p className="text-slate-600">
+          <p className="text-slate-600 dark:text-slate-300">
             Secure your devices, manage Microsoft 365, and get expert support —
             without enterprise complexity.
           </p>
@@ -26,7 +26,7 @@ export default function IndividualExperienceClient() {
         <section className="grid gap-8 md:grid-cols-2">
           <Card className="p-8 space-y-4">
             <h3 className="text-lg font-semibold">What you get</h3>
-            <ul className="space-y-3 text-sm text-slate-600">
+            <ul className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
               {[
                 "Personal device security & monitoring",
                 "Microsoft 365 setup & support",
@@ -43,7 +43,7 @@ export default function IndividualExperienceClient() {
 
           <Card className="p-8 space-y-4">
             <h3 className="text-lg font-semibold">Who it’s for</h3>
-            <p className="text-sm text-slate-600 leading-relaxed">
+            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
               Professionals, freelancers, families, and anyone who wants
               enterprise-grade IT without enterprise overhead.
             </p>

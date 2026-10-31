@@ -45,7 +45,7 @@ export default function BusinessServices() {
         <h2 className="text-xl font-semibold">
           What Microsoft 365 license does your organization have?
         </h2>
-        <p className="text-slate-600 text-sm">
+        <p className="text-slate-600 dark:text-slate-300 text-sm">
           Business services and enforcement capabilities depend on your
           Microsoft 365 license.
         </p>
@@ -73,7 +73,7 @@ export default function BusinessServices() {
       <section className="space-y-12">
         <header className="max-w-3xl space-y-4">
           <h2 className="text-2xl font-semibold">Business service tiers</h2>
-          <p className="text-slate-600">
+          <p className="text-slate-600 dark:text-slate-300">
             Choose the level of control, automation, and governance your
             organization requires — aligned to your Microsoft 365 license.
           </p>
@@ -199,9 +199,9 @@ export default function BusinessServices() {
           Compare business capabilities
         </h2>
 
-        <div className="overflow-x-auto rounded-lg border bg-white">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 border-b">
+        <div className="overflow-x-auto rounded-lg border border-border bg-surface text-foreground">
+          <table className="w-full text-sm text-foreground">
+            <thead className="bg-surface-secondary text-foreground border-b border-border">
               <tr>
                 <th className="px-4 py-3 text-left">Capability</th>
                 <th className="px-4 py-3 text-center">Core</th>
@@ -214,7 +214,7 @@ export default function BusinessServices() {
               </tr>
             </thead>
 
-            <tbody className="divide-y">
+            <tbody className="divide-y divide-[var(--border)]">
               {capabilityMatrix.map(
                 ([label, core, adv, ent, premium]) => (
                   <tr key={label}>

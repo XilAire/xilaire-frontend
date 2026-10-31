@@ -7,7 +7,7 @@ import { setStoredExperience } from "@/lib/experience";
 
 export default function BusinessExperienceClient() {
   return (
-    <section className="bg-slate-50">
+    <section className="bg-background text-foreground">
       <div className="mx-auto max-w-6xl px-4 py-24 space-y-20">
 
         <header className="max-w-3xl space-y-4">
@@ -15,7 +15,7 @@ export default function BusinessExperienceClient() {
             IT operations built for{" "}
             <span className="text-sky-600">business</span>
           </h1>
-          <p className="text-slate-600">
+          <p className="text-slate-600 dark:text-slate-300">
             Secure, automate, and govern your IT environment with a platform
             built to scale.
           </p>
@@ -50,7 +50,7 @@ export default function BusinessExperienceClient() {
           ].map(card => (
             <Card key={card.title} className="p-8 space-y-4">
               <h3 className="text-lg font-semibold">{card.title}</h3>
-              <ul className="space-y-3 text-sm text-slate-600">
+              <ul className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
                 {card.items.map(item => (
                   <li key={item} className="flex gap-3">
                     <span className="text-sky-600">✓</span>

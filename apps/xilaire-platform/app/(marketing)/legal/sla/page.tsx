@@ -9,15 +9,15 @@ export const metadata = {
 export default function SlaPage() {
   return (
     <section className="mx-auto max-w-3xl px-4 py-12">
-      <h1 className="mb-3 text-3xl font-bold text-slate-900">
+      <h1 className="mb-3 text-3xl font-bold text-foreground">
         Service Level Agreement (SLA)
       </h1>
 
-      <p className="mb-4 text-sm text-slate-600">
+      <p className="mb-4 text-sm text-[color:var(--text-secondary)]">
         Last updated: {new Date().getFullYear()}
       </p>
 
-      <div className="space-y-4 text-sm leading-relaxed text-slate-700">
+      <div className="space-y-4 text-sm leading-relaxed text-[color:var(--text-secondary)]">
         <p>
           This Service Level Agreement (&quot;SLA&quot;) describes the service
           levels that XilAire Technologies aims to provide for eligible
@@ -25,7 +25,7 @@ export default function SlaPage() {
           agreement with XilAire.
         </p>
 
-        <h2 className="mt-4 text-base font-semibold text-slate-900">
+        <h2 className="mt-4 text-base font-semibold text-foreground">
           1. Uptime Commitment
         </h2>
         <p>
@@ -50,7 +50,7 @@ export default function SlaPage() {
           </li>
         </ul>
 
-        <h2 className="mt-4 text-base font-semibold text-slate-900">
+        <h2 className="mt-4 text-base font-semibold text-foreground">
           2. Support Hours
         </h2>
         <p>
@@ -58,7 +58,7 @@ export default function SlaPage() {
           excluding holidays, unless otherwise agreed in a separate contract.
         </p>
 
-        <h2 className="mt-4 text-base font-semibold text-slate-900">
+        <h2 className="mt-4 text-base font-semibold text-foreground">
           3. Response Targets
         </h2>
         <p>We use the following target initial response times:</p>
@@ -81,7 +81,7 @@ export default function SlaPage() {
           ticket volume and complexity.
         </p>
 
-        <h2 className="mt-4 text-base font-semibold text-slate-900">
+        <h2 className="mt-4 text-base font-semibold text-foreground">
           4. Maintenance
         </h2>
         <p>
@@ -91,7 +91,7 @@ export default function SlaPage() {
           notice.
         </p>
 
-        <h2 className="mt-4 text-base font-semibold text-slate-900">
+        <h2 className="mt-4 text-base font-semibold text-foreground">
           5. Service Credits
         </h2>
         <p>
@@ -113,7 +113,7 @@ export default function SlaPage() {
           </li>
         </ul>
 
-        <h2 className="mt-4 text-base font-semibold text-slate-900">
+        <h2 className="mt-4 text-base font-semibold text-foreground">
           6. Customer Responsibilities
         </h2>
         <p>You agree to:</p>
@@ -132,7 +132,7 @@ export default function SlaPage() {
           </li>
         </ul>
 
-        <h2 className="mt-4 text-base font-semibold text-slate-900">
+        <h2 className="mt-4 text-base font-semibold text-foreground">
           7. Changes to This SLA
         </h2>
         <p>
@@ -141,19 +141,19 @@ export default function SlaPage() {
           term, unless otherwise agreed in writing.
         </p>
 
-        <h2 className="mt-4 text-base font-semibold text-slate-900">
+        <h2 className="mt-4 text-base font-semibold text-foreground">
           8. Questions
         </h2>
         <p>
           For questions about this SLA, contact your account representative or
           email{" "}
-          <span className="font-medium text-slate-900">
+          <span className="font-medium text-foreground">
             support@xilairetechnologies.com
           </span>
           .
         </p>
 
-        <p className="mt-6 text-[11px] text-slate-600 dark:text-slate-400">
+        <p className="mt-6 text-[11px] text-[color:var(--text-muted)]">
           This SLA outlines general targets and does not override any specific
           commitments documented in a signed master agreement or statement of
           work.

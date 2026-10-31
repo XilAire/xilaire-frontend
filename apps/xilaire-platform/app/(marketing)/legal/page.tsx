@@ -10,14 +10,14 @@ export const metadata = {
 export default function LegalIndexPage() {
   return (
     <section className="mx-auto max-w-3xl px-4 py-12">
-      <h1 className="mb-3 text-3xl font-bold text-slate-900">Legal</h1>
+      <h1 className="mb-3 text-3xl font-bold text-foreground">Legal</h1>
 
-      <p className="mb-6 text-sm text-slate-600">
+      <p className="mb-6 text-sm text-[color:var(--text-secondary)]">
         Here you&apos;ll find the core legal documents that govern your use of
         the XilAire Technologies platform and services.
       </p>
 
-      <ul className="space-y-3 text-sm text-sky-700">
+      <ul className="space-y-3 text-sm text-sky-700 dark:text-sky-300">
         <li>
           <Link href="/legal/privacy" className="hover:underline">
             Privacy Policy
@@ -40,7 +40,7 @@ export default function LegalIndexPage() {
         </li>
       </ul>
 
-      <p className="mt-6 text-[11px] text-slate-600 dark:text-slate-400">
+      <p className="mt-6 text-[11px] text-[color:var(--text-muted)]">
         These documents are provided for informational purposes only and do not
         constitute legal advice. For specific questions, please consult your
         legal counsel.

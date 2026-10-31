@@ -19,7 +19,7 @@ export default function Button({
         variant === "primary" &&
           "bg-sky-600 text-white hover:bg-sky-700",
         variant === "outline" &&
-          "border border-slate-300 bg-white text-slate-700 hover:border-slate-400",
+          "border border-border bg-surface text-foreground hover:bg-surface-secondary",
         className
       )}
     >

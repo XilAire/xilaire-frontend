@@ -9,15 +9,15 @@ export const metadata = {
 export default function TermsPage() {
   return (
     <section className="mx-auto max-w-3xl px-4 py-12">
-      <h1 className="mb-3 text-3xl font-bold text-slate-900">
+      <h1 className="mb-3 text-3xl font-bold text-foreground">
         Terms of Service
       </h1>
 
-      <p className="mb-4 text-sm text-slate-600">
+      <p className="mb-4 text-sm text-[color:var(--text-secondary)]">
         Last updated: {new Date().getFullYear()}
       </p>
 
-      <div className="space-y-4 text-sm leading-relaxed text-slate-700">
+      <div className="space-y-4 text-sm leading-relaxed text-[color:var(--text-secondary)]">
         <p>
           These Terms of Service (&quot;Terms&quot;) govern your access to and use
           of the XilAire Technologies platform, website, and related services
@@ -25,7 +25,7 @@ export default function TermsPage() {
           you agree to be bound by these Terms.
         </p>
 
-        <h2 className="mt-4 text-base font-semibold text-slate-900">
+        <h2 className="mt-4 text-base font-semibold text-foreground">
           1. Accounts and Eligibility
         </h2>
         <p>
@@ -35,7 +35,7 @@ export default function TermsPage() {
           occurs under them.
         </p>
 
-        <h2 className="mt-4 text-base font-semibold text-slate-900">
+        <h2 className="mt-4 text-base font-semibold text-foreground">
           2. Use of the Services
         </h2>
         <p>You agree to:</p>
@@ -54,7 +54,7 @@ export default function TermsPage() {
           </li>
         </ul>
 
-        <h2 className="mt-4 text-base font-semibold text-slate-900">
+        <h2 className="mt-4 text-base font-semibold text-foreground">
           3. Customer Data
         </h2>
         <p>
@@ -65,7 +65,7 @@ export default function TermsPage() {
           Policy.
         </p>
 
-        <h2 className="mt-4 text-base font-semibold text-slate-900">
+        <h2 className="mt-4 text-base font-semibold text-foreground">
           4. Third-Party Services
         </h2>
         <p>
@@ -75,7 +75,7 @@ export default function TermsPage() {
           terms and policies, which are solely between you and the third party.
         </p>
 
-        <h2 className="mt-4 text-base font-semibold text-slate-900">
+        <h2 className="mt-4 text-base font-semibold text-foreground">
           5. Fees and Billing
         </h2>
         <p>
@@ -85,7 +85,7 @@ export default function TermsPage() {
           taxes, and charges associated with your account.
         </p>
 
-        <h2 className="mt-4 text-base font-semibold text-slate-900">
+        <h2 className="mt-4 text-base font-semibold text-foreground">
           6. Intellectual Property
         </h2>
         <p>
@@ -96,7 +96,7 @@ export default function TermsPage() {
           agreement.
         </p>
 
-        <h2 className="mt-4 text-base font-semibold text-slate-900">
+        <h2 className="mt-4 text-base font-semibold text-foreground">
           7. Confidentiality
         </h2>
         <p>
@@ -106,7 +106,7 @@ export default function TermsPage() {
           obligations may be set out in a separate contract or NDA.
         </p>
 
-        <h2 className="mt-4 text-base font-semibold text-slate-900">
+        <h2 className="mt-4 text-base font-semibold text-foreground">
           8. Disclaimers
         </h2>
         <p>
@@ -117,7 +117,7 @@ export default function TermsPage() {
           particular purpose, and non-infringement.
         </p>
 
-        <h2 className="mt-4 text-base font-semibold text-slate-900">
+        <h2 className="mt-4 text-base font-semibold text-foreground">
           9. Limitation of Liability
         </h2>
         <p>
@@ -130,7 +130,7 @@ export default function TermsPage() {
           event giving rise to the claim, unless otherwise agreed in writing.
         </p>
 
-        <h2 className="mt-4 text-base font-semibold text-slate-900">
+        <h2 className="mt-4 text-base font-semibold text-foreground">
           10. Termination
         </h2>
         <p>
@@ -141,7 +141,7 @@ export default function TermsPage() {
           applicable data retention or export terms will apply.
         </p>
 
-        <h2 className="mt-4 text-base font-semibold text-slate-900">
+        <h2 className="mt-4 text-base font-semibold text-foreground">
           11. Changes to These Terms
         </h2>
         <p>
@@ -151,18 +151,18 @@ export default function TermsPage() {
           effective date of changes constitutes acceptance of the updated Terms.
         </p>
 
-        <h2 className="mt-4 text-base font-semibold text-slate-900">
+        <h2 className="mt-4 text-base font-semibold text-foreground">
           12. Contact
         </h2>
         <p>
           Questions about these Terms can be sent to{" "}
-          <span className="font-medium text-slate-900">
+          <span className="font-medium text-foreground">
             legal@xilairetechnologies.com
           </span>
           .
         </p>
 
-        <p className="mt-6 text-[11px] text-slate-600 dark:text-slate-400">
+        <p className="mt-6 text-[11px] text-[color:var(--text-muted)]">
           This summary of Terms is provided for convenience and does not replace
           any fully executed master service agreement or order form between you
           and XilAire Technologies.

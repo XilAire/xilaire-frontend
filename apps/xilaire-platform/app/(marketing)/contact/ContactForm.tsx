@@ -138,7 +138,7 @@ ${message}
       <div>
         <label
           htmlFor="name"
-          className="block text-sm font-medium text-slate-700"
+          className="block text-sm font-medium text-slate-700 dark:text-slate-300"
         >
           Full name
         </label>
@@ -146,7 +146,7 @@ ${message}
           id="name"
           name="name"
           type="text"
-          className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+          className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
           placeholder="Calix St Hilaire"
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -157,7 +157,7 @@ ${message}
       <div>
         <label
           htmlFor="email"
-          className="block text-sm font-medium text-slate-700"
+          className="block text-sm font-medium text-slate-700 dark:text-slate-300"
         >
           Work email
         </label>
@@ -165,7 +165,7 @@ ${message}
           id="email"
           name="email"
           type="email"
-          className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+          className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
           placeholder="you@company.com"
           value={workEmail}
           onChange={(e) => setWorkEmail(e.target.value)}
@@ -176,7 +176,7 @@ ${message}
       <div>
         <label
           htmlFor="company"
-          className="block text-sm font-medium text-slate-700"
+          className="block text-sm font-medium text-slate-700 dark:text-slate-300"
         >
           Company
         </label>
@@ -184,7 +184,7 @@ ${message}
           id="company"
           name="company"
           type="text"
-          className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+          className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
           placeholder="Your company name"
           value={company}
           onChange={(e) => setCompany(e.target.value)}
@@ -195,7 +195,7 @@ ${message}
         <div>
           <label
             htmlFor="employees"
-            className="block text-sm font-medium text-slate-700"
+            className="block text-sm font-medium text-slate-700 dark:text-slate-300"
           >
             # of employees
           </label>
@@ -203,7 +203,7 @@ ${message}
             id="employees"
             name="employees"
             type="text"
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+            className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
             placeholder="e.g. 25"
             value={employees}
             onChange={(e) => setEmployees(e.target.value)}
@@ -213,14 +213,14 @@ ${message}
         <div>
           <label
             htmlFor="services"
-            className="block text-sm font-medium text-slate-700"
+            className="block text-sm font-medium text-slate-700 dark:text-slate-300"
           >
             Interested in
           </label>
           <select
             id="services"
             name="services"
-            className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+            className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
             value={services}
             onChange={(e) => setServices(e.target.value)}
           >
@@ -237,7 +237,7 @@ ${message}
       <div>
         <label
           htmlFor="message"
-          className="block text-sm font-medium text-slate-700"
+          className="block text-sm font-medium text-slate-700 dark:text-slate-300"
         >
           How can we help?
         </label>
@@ -245,7 +245,7 @@ ${message}
           id="message"
           name="message"
           rows={4}
-          className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+          className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
           placeholder="Share a bit about your current setup and goals."
           value={message}
           onChange={(e) => setMessage(e.target.value)}
