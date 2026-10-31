@@ -108,7 +108,7 @@ function getStatusBadgeClass(status: EstimateStatus) {
       return "border-rose-500/30 bg-rose-500/10 text-rose-300";
     case "draft":
     default:
-      return "border-slate-700 bg-slate-800 text-slate-300";
+      return "border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300";
   }
 }
 
@@ -466,10 +466,10 @@ export default function InfrastructureEstimatesPage() {
             <p className="text-xs uppercase tracking-[0.18em] text-sky-300">
               Infrastructure
             </p>
-            <h1 className="text-2xl font-semibold text-slate-100">
+            <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
               Infrastructure Estimates
             </h1>
-            <p className="text-slate-400">
+            <p className="text-slate-600 dark:text-slate-400">
               Review all project-linked vendor estimates, manage internal approval
               state, and move estimates through the approval pipeline.
             </p>
@@ -480,21 +480,21 @@ export default function InfrastructureEstimatesPage() {
               type="button"
               onClick={() => loadAll()}
               disabled={loading}
-              className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-700 px-4 text-sm text-slate-300 transition hover:border-sky-600 hover:text-white disabled:opacity-50"
+              className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 dark:border-slate-700 px-4 text-sm text-slate-700 dark:text-slate-300 transition hover:border-sky-600 hover:text-white disabled:opacity-50"
             >
               {loading ? "Refreshing..." : "Refresh"}
             </button>
 
             <Link
               href="/infrastructure/projects"
-              className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-700 px-4 text-sm text-slate-300 transition hover:border-sky-600 hover:text-white"
+              className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 dark:border-slate-700 px-4 text-sm text-slate-700 dark:text-slate-300 transition hover:border-sky-600 hover:text-white"
             >
               Open Projects
             </Link>
 
             <Link
               href="/infrastructure/invoices"
-              className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-700 px-4 text-sm text-slate-300 transition hover:border-sky-600 hover:text-white"
+              className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 dark:border-slate-700 px-4 text-sm text-slate-700 dark:text-slate-300 transition hover:border-sky-600 hover:text-white"
             >
               Open Invoices
             </Link>
@@ -502,10 +502,10 @@ export default function InfrastructureEstimatesPage() {
         </div>
 
         <div className="flex flex-wrap gap-2 pt-1 text-xs text-slate-500">
-          <span className="rounded-full border border-slate-800 bg-slate-900 px-3 py-1">
+          <span className="rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 py-1">
             Org-wide review
           </span>
-          <span className="rounded-full border border-slate-800 bg-slate-900 px-3 py-1">
+          <span className="rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 py-1">
             Total estimates: {counts.all}
           </span>
         </div>
@@ -557,7 +557,7 @@ export default function InfrastructureEstimatesPage() {
       </div>
 
       {loading && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-slate-400">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6 text-slate-600 dark:text-slate-400">
           Loading infrastructure estimates...
         </div>
       )}
@@ -569,7 +569,7 @@ export default function InfrastructureEstimatesPage() {
       )}
 
       {!loading && !error && filteredEstimates.length === 0 && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-slate-400">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6 text-slate-600 dark:text-slate-400">
           No estimates found for the selected filter.
         </div>
       )}
@@ -590,7 +590,7 @@ export default function InfrastructureEstimatesPage() {
             return (
               <div
                 key={estimate.id}
-                className="rounded-2xl border border-slate-800 bg-slate-900 p-5"
+                className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5"
               >
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="space-y-3">
@@ -609,18 +609,18 @@ export default function InfrastructureEstimatesPage() {
                     </div>
 
                     <div>
-                      <h2 className="text-lg font-semibold text-slate-100">
+                      <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                         {estimate.project_name}
                       </h2>
-                      <p className="text-sm text-slate-400">
+                      <p className="text-sm text-slate-600 dark:text-slate-400">
                         Client: {estimate.client_name}
                       </p>
-                      <p className="mt-1 text-sm text-slate-400">
+                      <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
                         Vendor: {estimate.vendor_name}
                       </p>
                     </div>
 
-                    <div className="grid gap-2 text-sm text-slate-400 sm:grid-cols-2">
+                    <div className="grid gap-2 text-sm text-slate-600 dark:text-slate-400 sm:grid-cols-2">
                       <p>Created: {formatDateTime(estimate.created_at)}</p>
                       <p>Updated: {formatDateTime(estimate.updated_at)}</p>
                       <p>Approved: {formatDateTime(estimate.approved_at)}</p>
@@ -647,16 +647,16 @@ export default function InfrastructureEstimatesPage() {
                 </div>
 
                 <div className="mt-5 grid gap-4 lg:grid-cols-2">
-                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4">
                     <p className="text-xs uppercase tracking-wide text-slate-500">
                       Vendor Notes
                     </p>
-                    <p className="mt-2 whitespace-pre-wrap text-sm text-slate-200">
+                    <p className="mt-2 whitespace-pre-wrap text-sm text-slate-800 dark:text-slate-200">
                       {estimate.notes || "No notes provided."}
                     </p>
                   </div>
 
-                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4">
                     <p className="text-xs uppercase tracking-wide text-slate-500">
                       Internal Review Notes
                     </p>
@@ -670,7 +670,7 @@ export default function InfrastructureEstimatesPage() {
                         }))
                       }
                       rows={5}
-                      className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-sky-600"
+                      className="mt-2 w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 outline-none transition focus:border-sky-600"
                       placeholder="Internal approval notes, revision comments, rejection reason..."
                     />
                   </div>
@@ -679,14 +679,14 @@ export default function InfrastructureEstimatesPage() {
                 <div className="mt-5 flex flex-wrap gap-3">
                   <Link
                     href={`/infrastructure/projects/${estimate.project_id}`}
-                    className="inline-flex rounded-xl border border-slate-700 bg-slate-950 px-4 py-2 text-sm text-slate-200 transition hover:bg-slate-800"
+                    className="inline-flex rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-2 text-sm text-slate-800 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-800"
                   >
                     Open Project
                   </Link>
 
                   <Link
                     href="/vendor/estimates"
-                    className="inline-flex rounded-xl border border-slate-700 bg-slate-950 px-4 py-2 text-sm text-slate-200 transition hover:bg-slate-800"
+                    className="inline-flex rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-2 text-sm text-slate-800 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-800"
                   >
                     Open Vendor Estimates
                   </Link>
@@ -727,7 +727,7 @@ export default function InfrastructureEstimatesPage() {
                       type="button"
                       onClick={() => returnToDraft(estimate.id)}
                       disabled={isBusy || isConverting}
-                      className="inline-flex rounded-xl bg-slate-700 px-4 py-2 text-sm text-white transition hover:bg-slate-600 disabled:opacity-50"
+                      className="inline-flex rounded-xl bg-slate-200 dark:bg-slate-700 px-4 py-2 text-sm text-slate-900 dark:text-white transition hover:bg-slate-600 disabled:opacity-50"
                     >
                       {isBusy ? "Saving..." : "Return to Draft"}
                     </button>
@@ -771,11 +771,11 @@ function SummaryCard({
       className={`rounded-2xl border p-5 text-left transition ${
         active
           ? "border-sky-700 bg-sky-950/30"
-          : "border-slate-800 bg-slate-900 hover:border-slate-700"
+          : "border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 hover:border-slate-700"
       }`}
     >
-      <p className="text-sm text-slate-400">{label}</p>
-      <p className="mt-3 text-3xl font-semibold text-slate-100">{value}</p>
+      <p className="text-sm text-slate-600 dark:text-slate-400">{label}</p>
+      <p className="mt-3 text-3xl font-semibold text-slate-900 dark:text-slate-100">{value}</p>
     </button>
   );
 }
@@ -788,11 +788,11 @@ function MetricCard({
   value: string;
 }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+    <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4">
       <p className="text-xs uppercase tracking-wide text-slate-500">
         {label}
       </p>
-      <p className="mt-2 text-base font-semibold text-slate-100">{value}</p>
+      <p className="mt-2 text-base font-semibold text-slate-900 dark:text-slate-100">{value}</p>
     </div>
   );
 }

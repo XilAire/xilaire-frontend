@@ -46,8 +46,8 @@ export default function TaskActionPill({
       <Link
         href={`?tab=details&mode=edit`}
         className="inline-flex items-center gap-2
-          px-3 py-1 rounded border border-slate-600
-          text-sm text-slate-200 hover:bg-slate-800"
+          px-3 py-1 rounded border border-slate-400 dark:border-slate-600
+          text-sm text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
       >
         <Pencil size={14} />
         Edit
@@ -59,8 +59,8 @@ export default function TaskActionPill({
           <button
             onClick={() => setOpen((v) => !v)}
             className="inline-flex items-center gap-2
-              px-3 py-1 rounded border border-slate-600
-              text-sm text-slate-200 hover:bg-slate-800"
+              px-3 py-1 rounded border border-slate-400 dark:border-slate-600
+              text-sm text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
             <RefreshCcw size={14} />
             Status
@@ -69,8 +69,8 @@ export default function TaskActionPill({
           {open && (
             <div
               className="absolute right-0 mt-2 w-44
-                rounded-md border border-slate-700
-                bg-slate-900 shadow-lg z-50"
+                rounded-md border border-slate-300 dark:border-slate-700
+                bg-slate-50 dark:bg-slate-900 shadow-lg z-50"
             >
               {allowedNext.map((next) => (
                 <button
@@ -80,14 +80,13 @@ export default function TaskActionPill({
                     startTransition(async () => {
                       await updateTaskStatus(
                         task.id,
-                        next as any,
-                        userId
+                        next as any
                       );
                       setOpen(false);
                     })
                   }
                   className="block w-full text-left px-3 py-2 text-sm
-                    text-slate-200 hover:bg-slate-800 disabled:opacity-50"
+                    text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50"
                 >
                   {TASK_STATUS_LABELS[next]}
                 </button>

@@ -192,12 +192,6 @@ async function getVaultRolesForOrg(orgId: string, userId: string): Promise<Vault
     throw new Error(`Unable to resolve Vault roles: ${error.message}`);
   }
 
-  console.log("VAULT ROLE LOOKUP DEBUG", {
-    input_org_id: orgId,
-    input_user_id: userId,
-    rows: data,
-  });
-
   return (data ?? [])
     .map((row) => String(row.role || "").trim())
     .filter(Boolean) as VaultRole[];
@@ -305,12 +299,14 @@ export async function requireVaultAccess(
 
   const sameOrg = actor.orgId === targetOrgId;
 
+  // An active organization profile alone does not authorize Vault access.
+  // Callers that omit requiredVaultRoles still require at least one Vault role.
+  // Mutating routes must specify their own required roles explicitly.
   const orgRoleAllowed =
     sameOrg &&
-    (
-      requiredVaultRoles.length === 0 ||
-      arrayHasIntersection(vaultRolesForTargetOrg, requiredVaultRoles)
-    );
+    vaultRolesForTargetOrg.length > 0 &&
+    (requiredVaultRoles.length === 0 ||
+      arrayHasIntersection(vaultRolesForTargetOrg, requiredVaultRoles));
 
   if (orgRoleAllowed) {
     return {

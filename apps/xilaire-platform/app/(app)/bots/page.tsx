@@ -120,8 +120,8 @@ export default async function BotsPage() {
       {/* Header */}
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-50">Bots</h1>
-          <p className="text-sm text-slate-400">
+          <h1 className="text-2xl font-semibold text-slate-950 dark:text-slate-50">Bots</h1>
+          <p className="text-sm text-slate-600 dark:text-slate-400">
             Core automation agents that handle sales, health checks,
             reporting, and support.
           </p>
@@ -133,32 +133,32 @@ export default async function BotsPage() {
       </header>
 
       {/* Table */}
-      <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/40">
-        <table className="min-w-full divide-y divide-slate-800 text-sm">
-          <thead className="bg-slate-900/70">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-950/40">
+        <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800 text-sm">
+          <thead className="bg-slate-100/70 dark:bg-slate-900/70">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
                 Bot
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
                 Slug
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
                 Description
               </th>
-              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
                 Open tickets
               </th>
-              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
                 Runs (24h)
               </th>
-              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
                 Created
               </th>
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-slate-900/60 bg-slate-950/40">
+          <tbody className="divide-y divide-slate-100/60 dark:divide-slate-900/60 bg-slate-50/40 dark:bg-slate-950/40">
             {bots.length === 0 && (
               <tr>
                 <td
@@ -171,7 +171,7 @@ export default async function BotsPage() {
             )}
 
             {bots.map((bot) => (
-              <tr key={bot.id} className="hover:bg-slate-900/60">
+              <tr key={bot.id} className="hover:bg-slate-100/60 dark:hover:bg-slate-900/60">
                 <td className="px-4 py-3">
                   <Link
                     href={`/bots/${bot.id}`}
@@ -190,7 +190,7 @@ export default async function BotsPage() {
                 <td className="px-4 py-3 text-right">
                   {bot.runs24h}
                 </td>
-                <td className="px-4 py-3 text-right text-slate-400">
+                <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-400">
                   {new Date(bot.created_at).toLocaleString()}
                 </td>
               </tr>

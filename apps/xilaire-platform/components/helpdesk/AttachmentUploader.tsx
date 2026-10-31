@@ -51,14 +51,14 @@ export default function AttachmentUploader({
   }
 
   return (
-    <div className="border border-slate-700 bg-slate-900 rounded-lg p-4">
+    <div className="border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 rounded-lg p-4">
       <h3 className="text-white mb-3 font-semibold">Attachments</h3>
 
       <input
         type="file"
         multiple
         onChange={(e) => setFiles(e.target.files)}
-        className="text-slate-300"
+        className="text-slate-700 dark:text-slate-300"
       />
 
       <button

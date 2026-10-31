@@ -217,8 +217,8 @@ export default async function BotDetailPage({
   if (!bot) {
     return (
       <div className="space-y-2">
-        <h1 className="text-2xl font-semibold text-slate-50">Bot not found</h1>
-        <p className="text-sm text-slate-400">
+        <h1 className="text-2xl font-semibold text-slate-950 dark:text-slate-50">Bot not found</h1>
+        <p className="text-sm text-slate-600 dark:text-slate-400">
           We couldn&apos;t find a bot with that ID.
         </p>
       </div>
@@ -238,13 +238,13 @@ export default async function BotDetailPage({
       {/* Header */}
       <header className="space-y-2">
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-semibold text-slate-50">{bot.name}</h1>
-          <span className="rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-200">
+          <h1 className="text-2xl font-semibold text-slate-950 dark:text-slate-50">{bot.name}</h1>
+          <span className="rounded bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-xs text-slate-800 dark:text-slate-200">
             {bot.slug}
           </span>
         </div>
         {bot.description && (
-          <p className="text-sm text-slate-400">{bot.description}</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400">{bot.description}</p>
         )}
         <p className="text-xs text-slate-500">
           Created {new Date(bot.created_at).toLocaleString()}
@@ -253,24 +253,24 @@ export default async function BotDetailPage({
 
       {/* Stats strip */}
       <section className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/60 p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-600 dark:text-slate-400">
             Open tickets
           </p>
           <p className="mt-2 text-2xl font-semibold text-amber-300">
             {openTickets}
           </p>
         </div>
-        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/60 p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-600 dark:text-slate-400">
             Total tickets
           </p>
-          <p className="mt-2 text-2xl font-semibold text-slate-50">
+          <p className="mt-2 text-2xl font-semibold text-slate-950 dark:text-slate-50">
             {tickets.length}
           </p>
         </div>
-        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/60 p-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-600 dark:text-slate-400">
             Runs (24h)
           </p>
           <p className="mt-2 text-2xl font-semibold text-sky-400">
@@ -282,8 +282,8 @@ export default async function BotDetailPage({
       {/* Timelines */}
       <section className="grid gap-4 md:grid-cols-2">
         {/* Tickets */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-5">
-          <h2 className="text-sm font-semibold text-slate-50">Tickets</h2>
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/60 p-5">
+          <h2 className="text-sm font-semibold text-slate-950 dark:text-slate-50">Tickets</h2>
           {tickets.length === 0 ? (
             <p className="mt-3 text-xs text-slate-500">
               No tickets associated with this bot yet.
@@ -293,13 +293,13 @@ export default async function BotDetailPage({
               {tickets.map((t) => (
                 <li
                   key={t.id}
-                  className="flex items-start justify-between gap-3 rounded-lg bg-slate-900/60 px-3 py-2"
+                  className="flex items-start justify-between gap-3 rounded-lg bg-slate-100/60 dark:bg-slate-900/60 px-3 py-2"
                 >
                   <div>
-                    <p className="text-sm font-medium text-slate-50">
+                    <p className="text-sm font-medium text-slate-950 dark:text-slate-50">
                       {t.title}
                     </p>
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-[11px] text-slate-600 dark:text-slate-400">
                       Created{" "}
                       {new Date(t.created_at).toLocaleString(undefined, {
                         month: "short",
@@ -320,8 +320,8 @@ export default async function BotDetailPage({
         </div>
 
         {/* Runs */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-5">
-          <h2 className="text-sm font-semibold text-slate-50">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/60 p-5">
+          <h2 className="text-sm font-semibold text-slate-950 dark:text-slate-50">
             Automation runs
           </h2>
           {runs.length === 0 ? (
@@ -333,13 +333,13 @@ export default async function BotDetailPage({
               {runs.map((r) => (
                 <li
                   key={r.id}
-                  className="flex items-start justify-between gap-3 rounded-lg bg-slate-900/60 px-3 py-2"
+                  className="flex items-start justify-between gap-3 rounded-lg bg-slate-100/60 dark:bg-slate-900/60 px-3 py-2"
                 >
                   <div>
-                    <p className="text-sm font-medium text-slate-50">
+                    <p className="text-sm font-medium text-slate-950 dark:text-slate-50">
                       {r.automation_name}
                     </p>
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-[11px] text-slate-600 dark:text-slate-400">
                       Started{" "}
                       {new Date(r.started_at).toLocaleString(undefined, {
                         month: "short",

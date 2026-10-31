@@ -14,7 +14,7 @@ import AttachmentUploader from "@/components/helpdesk/AttachmentUploader";
 /* ============================================================================
    SERVER ACTION — Create Incident
 ============================================================================ */
-export async function createIncident(formData: FormData) {
+async function createIncident(formData: FormData) {
   "use server";
 
   const title = formData.get("title") as string;
@@ -73,9 +73,9 @@ export default function NewIncidentPage() {
       </Link>
 
       {/* HEADER CARD */}
-      <div className="rounded-2xl p-6 border border-slate-800 bg-[#0f1628] shadow-xl">
+      <div className="rounded-2xl p-6 border border-slate-200 dark:border-slate-800 bg-[#0f1628] shadow-xl">
         <h1 className="text-3xl font-bold text-white">Create New Incident</h1>
-        <p className="text-slate-400 text-sm mt-2">
+        <p className="text-slate-600 dark:text-slate-400 text-sm mt-2">
           Log a new operational issue and attach relevant details.
         </p>
       </div>
@@ -94,7 +94,7 @@ export default function NewIncidentPage() {
               name="title"
               required
               placeholder="Example: Email service outage"
-              className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white"
+              className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
             />
           </FieldWrapper>
 
@@ -103,7 +103,7 @@ export default function NewIncidentPage() {
             <select
               name="severity"
               required
-              className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white"
+              className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
             >
               <option value="low">Low</option>
               <option value="medium">Medium</option>
@@ -117,7 +117,7 @@ export default function NewIncidentPage() {
             <input
               name="affected_system"
               placeholder="Exchange, Firewall, Network, Email..."
-              className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white"
+              className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
             />
           </FieldWrapper>
 
@@ -127,7 +127,7 @@ export default function NewIncidentPage() {
               name="description"
               rows={5}
               placeholder="Describe the incident and initial findings..."
-              className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white"
+              className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
             />
           </FieldWrapper>
         </Section>
@@ -137,11 +137,11 @@ export default function NewIncidentPage() {
         ============================ */}
         <Section>
           <SectionTitle>Attachments (optional)</SectionTitle>
-          <p className="text-slate-400 text-sm mb-4">
+          <p className="text-slate-600 dark:text-slate-400 text-sm mb-4">
             You can upload screenshots or logs after you create the incident.
           </p>
 
-          <div className="rounded-lg border border-slate-700 bg-slate-900 text-slate-400 px-4 py-3">
+          <div className="rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400 px-4 py-3">
             Attachments can be added on the Incident Detail page.
           </div>
         </Section>
@@ -168,12 +168,12 @@ export default function NewIncidentPage() {
 ============================================================================ */
 
 function Label({ children }) {
-  return <label className="block text-slate-300 mb-2">{children}</label>;
+  return <label className="block text-slate-700 dark:text-slate-300 mb-2">{children}</label>;
 }
 
 function FieldWrapper({ children }) {
   return (
-    <div className="rounded-xl p-5 border border-slate-800 bg-[#0b1120] shadow-lg mb-4">
+    <div className="rounded-xl p-5 border border-slate-200 dark:border-slate-800 bg-[#0b1120] shadow-lg mb-4">
       {children}
     </div>
   );
@@ -181,7 +181,7 @@ function FieldWrapper({ children }) {
 
 function Section({ children }) {
   return (
-    <section className="rounded-xl p-6 border border-slate-800 bg-[#0b1120] shadow-xl space-y-5">
+    <section className="rounded-xl p-6 border border-slate-200 dark:border-slate-800 bg-[#0b1120] shadow-xl space-y-5">
       {children}
     </section>
   );

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { stripe } from "@/lib/stripePlatform"
 import { supabaseAdmin } from "@/lib/supabaseAdmin"
-import { getProfile } from "@/lib/getProfile"
+import { requirePlatformBillingActor } from "@/lib/auth/requirePlatformBillingActor"
 
 export const runtime = "nodejs"
 
@@ -9,9 +9,12 @@ export async function POST(req: Request) {
   /* ---------------------------------------------
      1. Role gate
   --------------------------------------------- */
-  const profile = await getProfile()
+  const profile = await requirePlatformBillingActor([
+    "finance",
+    "master_admin",
+  ]);
 
-  if (!profile || !["finance", "master_admin"].includes(profile.role)) {
+  if (!profile) {
     return NextResponse.json(
       { error: "FORBIDDEN" },
       { status: 403 }

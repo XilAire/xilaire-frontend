@@ -181,16 +181,16 @@ export default async function ReportsPage({
       {/* Header */}
       <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-50">
+          <h1 className="text-2xl font-semibold text-slate-950 dark:text-slate-50">
             Reports
           </h1>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-600 dark:text-slate-400">
             High-level trends across tickets and automations (
             {rangeLabel}).
           </p>
         </div>
 
-        <div className="inline-flex rounded-full border border-slate-700 bg-slate-900/60 p-1 text-xs">
+        <div className="inline-flex rounded-full border border-slate-300 dark:border-slate-700 bg-slate-100/60 dark:bg-slate-900/60 p-1 text-xs">
           {(["24h", "7d", "30d"] as RangeOption[]).map((opt) => (
             <Link
               key={opt}
@@ -199,7 +199,7 @@ export default async function ReportsPage({
                 "px-3 py-1 rounded-full transition",
                 range === opt
                   ? "bg-slate-100 text-slate-900"
-                  : "text-slate-400 hover:text-slate-100",
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-100",
               ].join(" ")}
             >
               {opt}
@@ -210,17 +210,17 @@ export default async function ReportsPage({
 
       {/* Summary */}
       <section className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
-          <p className="text-xs uppercase text-slate-400">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/60 p-4">
+          <p className="text-xs uppercase text-slate-600 dark:text-slate-400">
             Total tickets
           </p>
-          <p className="mt-2 text-3xl font-semibold text-slate-50">
+          <p className="mt-2 text-3xl font-semibold text-slate-950 dark:text-slate-50">
             {tickets.total}
           </p>
         </div>
 
-        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
-          <p className="text-xs uppercase text-slate-400">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/60 p-4">
+          <p className="text-xs uppercase text-slate-600 dark:text-slate-400">
             Automation runs
           </p>
           <p className="mt-2 text-3xl font-semibold text-sky-400">
@@ -228,8 +228,8 @@ export default async function ReportsPage({
           </p>
         </div>
 
-        <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
-          <p className="text-xs uppercase text-slate-400">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/60 p-4">
+          <p className="text-xs uppercase text-slate-600 dark:text-slate-400">
             Success rate
           </p>
           <p className="mt-2 text-3xl font-semibold text-emerald-400">

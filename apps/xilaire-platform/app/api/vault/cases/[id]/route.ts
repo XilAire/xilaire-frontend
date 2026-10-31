@@ -325,7 +325,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const { id: caseId } = await context.params;
 
     const access = await requireVaultAccess(request, {
-      supportScope: "vault_read_only",
+      requiredVaultRoles: ["vault_admin", "vault_compliance_admin"],
     });
 
     const orgId = getAccessOrgId(access);
@@ -484,7 +484,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     const { id: caseId } = await context.params;
 
     const access = await requireVaultAccess(request, {
-      supportScope: "vault_read_only",
+      requiredVaultRoles: ["vault_admin", "vault_compliance_admin"],
     });
 
     const orgId = getAccessOrgId(access);

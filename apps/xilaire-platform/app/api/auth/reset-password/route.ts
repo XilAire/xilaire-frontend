@@ -1,52 +1,70 @@
-import { NextResponse } from "next/server";
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
+﻿import { NextResponse } from "next/server";
+import { requestPasswordReset } from "@/lib/auth/password-recovery";
 
-export async function POST(req: Request) {
-  const { email } = await req.json();
+export const runtime = "nodejs";
 
-  if (!email) {
+const PRODUCTION_ORIGIN = "https://xilairetechnologies.com";
+const DEVELOPMENT_ORIGIN = "http://localhost:3002";
+
+function isAllowedOrigin(originHeader: string | null): boolean {
+  if (!originHeader) return true;
+
+  try {
+    const parsed = new URL(originHeader);
+
+    if (parsed.href !== `${parsed.origin}/`) {
+      return false;
+    }
+
+    if (parsed.origin === PRODUCTION_ORIGIN) {
+      return true;
+    }
+
+    if (
+      process.env.NODE_ENV === "development" &&
+      parsed.origin === DEVELOPMENT_ORIGIN
+    ) {
+      return true;
+    }
+
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+export async function POST(request: Request) {
+  if (!isAllowedOrigin(request.headers.get("origin"))) {
     return NextResponse.json(
-      { error: "Email is required." },
+      { error: "Invalid origin." },
+      { status: 403 }
+    );
+  }
+
+  let body: unknown;
+
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { error: "Invalid JSON." },
       { status: 400 }
     );
   }
 
-  // Create a mutable response
-  const res = NextResponse.json({ ok: true });
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return NextResponse.json(
+      { error: "Invalid request." },
+      { status: 400 }
+    );
+  }
 
-  // Create Supabase SSR client
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL_PLATFORM!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY_PLATFORM!,
-    {
-      cookies: {
-        get(name: string) {
-          return req.headers.get("cookie") ?? "";
-        },
-        set(name: string, value: string, options: CookieOptions) {
-          res.cookies.set(name, value, options);
-        },
-        remove(name: string) {
-          res.cookies.delete(name);
-        },
-      },
-    }
+  const result = await requestPasswordReset(
+    (body as { email?: unknown }).email
   );
 
-  // Request Supabase to send password reset email
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/update-password`,
-  });
-
-  if (error) {
-    return NextResponse.json(
-      { error: error.message },
-      { status: 400 }
-    );
-  }
-
   return NextResponse.json(
-    { message: "Password reset email sent" },
-    { status: 200 }
+    { message: result.message },
+    { status: result.status }
   );
 }

@@ -63,7 +63,7 @@ export default function IncidentsClient({
      BADGE STYLES (OVAL PILLS)
   ------------------------------------------------- */
   const severityBadge: Record<string, string> = {
-    low: "bg-gray-500/10 text-gray-300",
+    low: "bg-gray-500/10 text-gray-700 dark:text-gray-300",
     medium: "bg-blue-500/10 text-blue-300",
     high: "bg-orange-500/10 text-orange-300",
     critical: "bg-red-500/10 text-red-300",
@@ -81,7 +81,7 @@ export default function IncidentsClient({
       <div className="flex items-center justify-between pt-6">
         <div>
           <h1 className="text-2xl font-semibold text-white">Incidents</h1>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-600 dark:text-slate-400">
             Live tracking for outages, anomalies, and system issues.
           </p>
         </div>
@@ -94,19 +94,19 @@ export default function IncidentsClient({
             + New Incident
           </Link>
 
-          <div className="w-9 h-9 rounded-full flex items-center justify-center bg-slate-700 text-white font-semibold">
+          <div className="w-9 h-9 rounded-full flex items-center justify-center bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white font-semibold">
             {userEmail?.[0]?.toUpperCase() ?? "?"}
           </div>
         </div>
       </div>
 
       {/* FILTER BAR */}
-      <div className="rounded-xl p-5 space-y-6 border border-slate-800 bg-slate-900">
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800">
-          <Search size={18} className="text-slate-400" />
+      <div className="rounded-xl p-5 space-y-6 border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800">
+          <Search size={18} className="text-slate-600 dark:text-slate-400" />
           <input
             placeholder="Search incidents..."
-            className="w-full bg-transparent text-sm text-slate-200 outline-none"
+            className="w-full bg-transparent text-sm text-slate-800 dark:text-slate-200 outline-none"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -143,7 +143,7 @@ export default function IncidentsClient({
               setStatusFilter(null);
               setSystemFilter(null);
             }}
-            className="flex items-center gap-1 text-xs text-slate-400 hover:text-white"
+            className="flex items-center gap-1 text-xs text-slate-600 dark:text-slate-400 hover:text-white"
           >
             <X size={14} />
             Clear Filters
@@ -152,8 +152,8 @@ export default function IncidentsClient({
       </div>
 
       {/* TABLE */}
-      <div className="rounded-xl overflow-hidden border border-slate-800 bg-slate-950">
-        <div className="grid grid-cols-[1fr,140px,160px,160px] px-6 py-4 text-xs uppercase text-slate-400 border-b border-slate-800">
+      <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
+        <div className="grid grid-cols-[1fr,140px,160px,160px] px-6 py-4 text-xs uppercase text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
           <div>Incident</div>
           <div className="text-center">Severity</div>
           <div className="text-center">Status</div>
@@ -168,12 +168,12 @@ export default function IncidentsClient({
           <Link
             key={i.id}
             href={`/helpdesk/incidents/${i.id}`}
-            className="grid grid-cols-[1fr,140px,160px,160px] px-6 py-5 border-b border-slate-900 hover:bg-slate-900"
+            className="grid grid-cols-[1fr,140px,160px,160px] px-6 py-5 border-b border-slate-900 hover:bg-slate-100 dark:hover:bg-slate-900"
           >
             <div>
               <p className="font-medium text-white">{i.title}</p>
               <p className="text-[10px] text-slate-500">ID: {i.id}</p>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-600 dark:text-slate-400">
                 {i.affected_system}
               </p>
             </div>
@@ -204,7 +204,7 @@ export default function IncidentsClient({
               </span>
             </div>
 
-            <div className="text-right text-xs text-slate-400">
+            <div className="text-right text-xs text-slate-600 dark:text-slate-400">
               {new Date(i.created_at).toLocaleString()}
             </div>
           </Link>

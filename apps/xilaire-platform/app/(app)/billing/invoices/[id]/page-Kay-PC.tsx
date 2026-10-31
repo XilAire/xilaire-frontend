@@ -118,7 +118,7 @@ export default function InvoiceDetailPage() {
           <p className="text-sm text-slate-500">
             {invoice.period_start} → {invoice.period_end}
           </p>
-          <p className="text-xs text-slate-400">Status: {invoice.status}</p>
+          <p className="text-xs text-slate-600 dark:text-slate-400">Status: {invoice.status}</p>
         </div>
 
         {invoice.status === "draft" && (

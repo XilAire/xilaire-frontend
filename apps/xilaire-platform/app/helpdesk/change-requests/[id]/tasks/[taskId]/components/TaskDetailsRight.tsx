@@ -2,7 +2,7 @@
 
 export default function TaskDetailsRight({ task }: { task: any }) {
   return (
-    <div className="rounded-lg border border-slate-700 bg-slate-900/50 p-4 space-y-4">
+    <div className="rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100/50 dark:bg-slate-900/50 p-4 space-y-4">
       <Section title="Implementation Plan" text={task.implementation_plan} />
       <Section title="Pre-Test Plan" text={task.pre_test_plan} />
       <Section title="Post-Test Plan" text={task.post_test_plan} />
@@ -14,8 +14,8 @@ export default function TaskDetailsRight({ task }: { task: any }) {
 function Section({ title, text }: { title: string; text?: string }) {
   return (
     <div>
-      <p className="text-xs text-slate-400">{title}</p>
-      <p className="text-sm text-slate-200 whitespace-pre-wrap">
+      <p className="text-xs text-slate-600 dark:text-slate-400">{title}</p>
+      <p className="text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap">
         {text || "—"}
       </p>
     </div>

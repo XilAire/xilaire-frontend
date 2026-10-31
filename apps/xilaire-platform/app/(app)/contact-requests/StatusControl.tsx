@@ -48,7 +48,7 @@ export function StatusControl({ id, initialStatus }: StatusControlProps) {
         value={status}
         onChange={handleChange}
         disabled={isSaving}
-        className="w-full rounded-full border border-slate-700 bg-slate-900 px-2 py-1 text-[11px] text-slate-100 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+        className="w-full rounded-full border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-2 py-1 text-[11px] text-slate-900 dark:text-slate-100 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
       >
         <option value="new">New</option>
         <option value="in_review">In review</option>

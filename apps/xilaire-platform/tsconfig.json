@@ -3,9 +3,15 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"],
-      "@/lib/*": ["./lib/*"],
-      "@/components/*": ["./components/*"]
+      "@/*": [
+        "./*"
+      ],
+      "@/lib/*": [
+        "./lib/*"
+      ],
+      "@/components/*": [
+        "./components/*"
+      ]
     },
     "incremental": true,
     "plugins": [
@@ -18,9 +24,12 @@
     "**/*.ts",
     "**/*.tsx",
     "next-env.d.ts",
-    ".next/types/**/*.ts"
+    ".next/types/**/*.ts",
+    ".next-dev/types/**/*.ts",
+    ".next-build/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "scripts/backfill-stripe-contracts.ts"
   ]
 }

@@ -120,8 +120,8 @@ export default function VendorOnboardingPage() {
 
   if (loadingUser) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950 px-4">
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 w-full max-w-md shadow-xl text-slate-300">
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950 px-4">
+        <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 w-full max-w-md shadow-xl text-slate-700 dark:text-slate-300">
           Loading vendor onboarding...
         </div>
       </div>
@@ -129,13 +129,13 @@ export default function VendorOnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-950 px-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 w-full max-w-lg shadow-xl">
+    <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950 px-4">
+      <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 w-full max-w-lg shadow-xl">
         <div className="mb-6 space-y-2 text-center">
           <h1 className="text-2xl font-semibold text-white">
             Complete Your Vendor Profile
           </h1>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-600 dark:text-slate-400">
             Add your licensing and insurance details to finish onboarding.
           </p>
           <p className="text-xs text-slate-500">
@@ -183,7 +183,7 @@ export default function VendorOnboardingPage() {
           </button>
 
           {message && (
-            <p className="text-center text-sm text-slate-300 mt-2">
+            <p className="text-center text-sm text-slate-700 dark:text-slate-300 mt-2">
               {message}
             </p>
           )}

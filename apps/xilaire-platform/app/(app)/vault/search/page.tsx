@@ -469,8 +469,8 @@ function StatCard({
   value: number;
 }) {
   return (
-    <div className="min-w-[90px] rounded-2xl border border-slate-700 bg-slate-900/70 px-5 py-4 text-center shadow-sm">
-      <div className="text-xs uppercase tracking-[0.14em] text-slate-400">
+    <div className="min-w-[90px] rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-100/70 dark:bg-slate-900/70 px-5 py-4 text-center shadow-sm">
+      <div className="text-xs uppercase tracking-[0.14em] text-slate-600 dark:text-slate-400">
         {label}
       </div>
       <div className="mt-2 text-2xl font-semibold text-white">{value}</div>
@@ -486,8 +486,8 @@ function SectionCard({
   children: ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-800 bg-[#071224] shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
-      <div className="border-b border-slate-800 bg-slate-950/40 px-5 py-4">
+    <section className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-[#071224] shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
+      <div className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-950/40 px-5 py-4">
         <h2 className="text-base font-semibold text-white">{title}</h2>
       </div>
       <div className="p-5">{children}</div>
@@ -511,7 +511,7 @@ function MessagePill({
           ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
           : tone === "purple"
             ? "border-purple-500/30 bg-purple-500/10 text-purple-200"
-            : "border-slate-700 bg-slate-900/70 text-slate-200";
+            : "border-slate-300 dark:border-slate-700 bg-slate-100/70 dark:bg-slate-900/70 text-slate-800 dark:text-slate-200";
 
   return (
     <span
@@ -603,7 +603,7 @@ export default async function VaultSearchPage({ searchParams }: PageProps) {
   return (
     <div className="min-h-screen bg-transparent">
       <div className="mx-auto max-w-7xl px-6 py-8">
-        <div className="mb-6 rounded-3xl border border-slate-800 bg-[#071224] p-6 shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
+        <div className="mb-6 rounded-3xl border border-slate-200 dark:border-slate-800 bg-[#071224] p-6 shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-3">
               <div className="flex flex-wrap gap-2">
@@ -622,13 +622,13 @@ export default async function VaultSearchPage({ searchParams }: PageProps) {
                 <h1 className="text-3xl font-semibold tracking-tight text-white">
                   Message Search
                 </h1>
-                <p className="mt-2 text-sm text-slate-400">
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
                   Search archived communications and open message overview,
                   attachments, occurrences, or holds directly from the result set.
                 </p>
               </div>
 
-              <div className="flex flex-wrap gap-3 text-xs text-slate-400">
+              <div className="flex flex-wrap gap-3 text-xs text-slate-600 dark:text-slate-400">
                 <span>Access Path: {response.accessPath || "—"}</span>
                 <span>Org: {response.targetOrgId || "—"}</span>
                 <span>Page: {page}</span>
@@ -656,7 +656,7 @@ export default async function VaultSearchPage({ searchParams }: PageProps) {
                   className={`inline-flex rounded-2xl px-4 py-2 text-sm font-semibold transition ${
                     pageMessageIds.length > 0
                       ? "bg-purple-500 text-white hover:bg-purple-400"
-                      : "pointer-events-none cursor-not-allowed bg-slate-800 text-slate-500"
+                      : "pointer-events-none cursor-not-allowed bg-slate-100 dark:bg-slate-800 text-slate-500"
                   }`}
                   aria-disabled={pageMessageIds.length === 0}
                 >
@@ -685,7 +685,7 @@ export default async function VaultSearchPage({ searchParams }: PageProps) {
             ) : null}
 
             <div className="lg:col-span-2">
-              <label className="mb-2 block text-xs uppercase tracking-[0.12em] text-slate-400">
+              <label className="mb-2 block text-xs uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
                 Keyword Search
               </label>
               <input
@@ -693,12 +693,12 @@ export default async function VaultSearchPage({ searchParams }: PageProps) {
                 name="q"
                 defaultValue={filters.q}
                 placeholder="subject, sender, body, ids..."
-                className="w-full rounded-2xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-500/60"
+                className="w-full rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-100/70 dark:bg-slate-900/70 px-4 py-3 text-sm text-slate-900 dark:text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-500/60"
               />
             </div>
 
             <div>
-              <label className="mb-2 block text-xs uppercase tracking-[0.12em] text-slate-400">
+              <label className="mb-2 block text-xs uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
                 Sender Email
               </label>
               <input
@@ -706,12 +706,12 @@ export default async function VaultSearchPage({ searchParams }: PageProps) {
                 name="senderEmail"
                 defaultValue={filters.senderEmail}
                 placeholder="sender@example.com"
-                className="w-full rounded-2xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-500/60"
+                className="w-full rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-100/70 dark:bg-slate-900/70 px-4 py-3 text-sm text-slate-900 dark:text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-500/60"
               />
             </div>
 
             <div>
-              <label className="mb-2 block text-xs uppercase tracking-[0.12em] text-slate-400">
+              <label className="mb-2 block text-xs uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
                 Recipient Email
               </label>
               <input
@@ -719,12 +719,12 @@ export default async function VaultSearchPage({ searchParams }: PageProps) {
                 name="recipientEmail"
                 defaultValue={filters.recipientEmail}
                 placeholder="recipient@example.com"
-                className="w-full rounded-2xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-500/60"
+                className="w-full rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-100/70 dark:bg-slate-900/70 px-4 py-3 text-sm text-slate-900 dark:text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-500/60"
               />
             </div>
 
             <div>
-              <label className="mb-2 block text-xs uppercase tracking-[0.12em] text-slate-400">
+              <label className="mb-2 block text-xs uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
                 Subject
               </label>
               <input
@@ -732,12 +732,12 @@ export default async function VaultSearchPage({ searchParams }: PageProps) {
                 name="subject"
                 defaultValue={filters.subject}
                 placeholder="subject contains..."
-                className="w-full rounded-2xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-500/60"
+                className="w-full rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-100/70 dark:bg-slate-900/70 px-4 py-3 text-sm text-slate-900 dark:text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-500/60"
               />
             </div>
 
             <div>
-              <label className="mb-2 block text-xs uppercase tracking-[0.12em] text-slate-400">
+              <label className="mb-2 block text-xs uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
                 Internet Message ID
               </label>
               <input
@@ -745,12 +745,12 @@ export default async function VaultSearchPage({ searchParams }: PageProps) {
                 name="internetMessageId"
                 defaultValue={filters.internetMessageId}
                 placeholder="&lt;message-id&gt;"
-                className="w-full rounded-2xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-500/60"
+                className="w-full rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-100/70 dark:bg-slate-900/70 px-4 py-3 text-sm text-slate-900 dark:text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-500/60"
               />
             </div>
 
             <div>
-              <label className="mb-2 block text-xs uppercase tracking-[0.12em] text-slate-400">
+              <label className="mb-2 block text-xs uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
                 Conversation ID
               </label>
               <input
@@ -758,18 +758,18 @@ export default async function VaultSearchPage({ searchParams }: PageProps) {
                 name="conversationId"
                 defaultValue={filters.conversationId}
                 placeholder="conversation id"
-                className="w-full rounded-2xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-500/60"
+                className="w-full rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-100/70 dark:bg-slate-900/70 px-4 py-3 text-sm text-slate-900 dark:text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-500/60"
               />
             </div>
 
             <div>
-              <label className="mb-2 block text-xs uppercase tracking-[0.12em] text-slate-400">
+              <label className="mb-2 block text-xs uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
                 Hold Status
               </label>
               <select
                 name="onHold"
                 defaultValue={filters.onHold}
-                className="w-full rounded-2xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-500/60"
+                className="w-full rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-100/70 dark:bg-slate-900/70 px-4 py-3 text-sm text-slate-900 dark:text-white outline-none transition focus:border-cyan-500/60"
               >
                 <option value="">All</option>
                 <option value="true">On Hold</option>
@@ -778,13 +778,13 @@ export default async function VaultSearchPage({ searchParams }: PageProps) {
             </div>
 
             <div>
-              <label className="mb-2 block text-xs uppercase tracking-[0.12em] text-slate-400">
+              <label className="mb-2 block text-xs uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
                 Attachments
               </label>
               <select
                 name="hasAttachments"
                 defaultValue={filters.hasAttachments}
-                className="w-full rounded-2xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-500/60"
+                className="w-full rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-100/70 dark:bg-slate-900/70 px-4 py-3 text-sm text-slate-900 dark:text-white outline-none transition focus:border-cyan-500/60"
               >
                 <option value="">All</option>
                 <option value="true">Has Attachments</option>
@@ -793,13 +793,13 @@ export default async function VaultSearchPage({ searchParams }: PageProps) {
             </div>
 
             <div>
-              <label className="mb-2 block text-xs uppercase tracking-[0.12em] text-slate-400">
+              <label className="mb-2 block text-xs uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
                 Export Status
               </label>
               <select
                 name="exported"
                 defaultValue={filters.exported}
-                className="w-full rounded-2xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-500/60"
+                className="w-full rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-100/70 dark:bg-slate-900/70 px-4 py-3 text-sm text-slate-900 dark:text-white outline-none transition focus:border-cyan-500/60"
               >
                 <option value="">All</option>
                 <option value="true">Exported</option>
@@ -808,26 +808,26 @@ export default async function VaultSearchPage({ searchParams }: PageProps) {
             </div>
 
             <div>
-              <label className="mb-2 block text-xs uppercase tracking-[0.12em] text-slate-400">
+              <label className="mb-2 block text-xs uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
                 Date From
               </label>
               <input
                 type="datetime-local"
                 name="dateFrom"
                 defaultValue={filters.dateFrom}
-                className="w-full rounded-2xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-500/60"
+                className="w-full rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-100/70 dark:bg-slate-900/70 px-4 py-3 text-sm text-slate-900 dark:text-white outline-none transition focus:border-cyan-500/60"
               />
             </div>
 
             <div>
-              <label className="mb-2 block text-xs uppercase tracking-[0.12em] text-slate-400">
+              <label className="mb-2 block text-xs uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
                 Date To
               </label>
               <input
                 type="datetime-local"
                 name="dateTo"
                 defaultValue={filters.dateTo}
-                className="w-full rounded-2xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-500/60"
+                className="w-full rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-100/70 dark:bg-slate-900/70 px-4 py-3 text-sm text-slate-900 dark:text-white outline-none transition focus:border-cyan-500/60"
               />
             </div>
 
@@ -841,7 +841,7 @@ export default async function VaultSearchPage({ searchParams }: PageProps) {
 
               <Link
                 href={buildResetHref(filters)}
-                className="inline-flex rounded-2xl border border-slate-700 bg-slate-900/70 px-5 py-3 text-sm font-medium text-slate-200 transition hover:bg-slate-800"
+                className="inline-flex rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-100/70 dark:bg-slate-900/70 px-5 py-3 text-sm font-medium text-slate-800 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 Reset
               </Link>
@@ -850,7 +850,7 @@ export default async function VaultSearchPage({ searchParams }: PageProps) {
                 <>
                   <Link
                     href="/vault/search"
-                    className="inline-flex rounded-2xl border border-slate-700 bg-slate-900/70 px-5 py-3 text-sm font-medium text-slate-200 transition hover:bg-slate-800"
+                    className="inline-flex rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-100/70 dark:bg-slate-900/70 px-5 py-3 text-sm font-medium text-slate-800 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-800"
                   >
                     Clear Case Scope
                   </Link>
@@ -903,7 +903,7 @@ export default async function VaultSearchPage({ searchParams }: PageProps) {
               </div>
 
               {items.length === 0 ? (
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-8 text-center text-sm text-slate-400">
+                <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/50 dark:bg-slate-900/50 p-8 text-center text-sm text-slate-600 dark:text-slate-400">
                   No Vault messages matched the current search filters.
                 </div>
               ) : (
@@ -911,7 +911,7 @@ export default async function VaultSearchPage({ searchParams }: PageProps) {
                   {items.map((message) => (
                     <div
                       key={message.id}
-                      className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 transition hover:border-cyan-500/40 hover:bg-slate-900"
+                      className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-900/60 p-5 transition hover:border-cyan-500/40 hover:bg-slate-100 dark:hover:bg-slate-900"
                     >
                       <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                         <div className="min-w-0 flex-1">
@@ -921,7 +921,7 @@ export default async function VaultSearchPage({ searchParams }: PageProps) {
                                 type="checkbox"
                                 name="messageIds"
                                 value={message.id}
-                                className="h-4 w-4 rounded border-slate-600 bg-slate-950"
+                                className="h-4 w-4 rounded border-slate-400 dark:border-slate-600 bg-white dark:bg-slate-950"
                               />
                               Select
                             </label>
@@ -957,15 +957,15 @@ export default async function VaultSearchPage({ searchParams }: PageProps) {
                             ) : null}
                           </div>
 
-                          <div className="mt-2 text-sm text-slate-300">
+                          <div className="mt-2 text-sm text-slate-700 dark:text-slate-300">
                             {getDisplaySender(message)}
                           </div>
 
-                          <div className="mt-3 line-clamp-2 text-sm text-slate-400">
+                          <div className="mt-3 line-clamp-2 text-sm text-slate-600 dark:text-slate-400">
                             {message.body_preview || "No preview available."}
                           </div>
 
-                          <div className="mt-4 grid gap-2 text-xs text-slate-400 md:grid-cols-2 xl:grid-cols-3">
+                          <div className="mt-4 grid gap-2 text-xs text-slate-600 dark:text-slate-400 md:grid-cols-2 xl:grid-cols-3">
                             <span>Received: {formatDateTime(message.received_at)}</span>
                             <span>Sent: {formatDateTime(message.sent_at)}</span>
                             <span>Archived: {formatDateTime(message.archived_at)}</span>
@@ -996,33 +996,33 @@ export default async function VaultSearchPage({ searchParams }: PageProps) {
 
                         <div className="grid min-w-[280px] gap-3 xl:w-[360px]">
                           <div className="grid grid-cols-1 gap-3">
-                            <div className="rounded-xl border border-slate-800 bg-[#071224] p-3">
-                              <div className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
+                            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-[#071224] p-3">
+                              <div className="text-[11px] uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
                                 Source
                               </div>
-                              <div className="mt-2 truncate text-sm text-slate-100">
+                              <div className="mt-2 truncate text-sm text-slate-900 dark:text-slate-100">
                                 {message.source?.display_name ||
                                   message.source?.name ||
                                   "—"}
                               </div>
                             </div>
 
-                            <div className="rounded-xl border border-slate-800 bg-[#071224] p-3">
-                              <div className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
+                            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-[#071224] p-3">
+                              <div className="text-[11px] uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
                                 Custodian
                               </div>
-                              <div className="mt-2 truncate text-sm text-slate-100">
+                              <div className="mt-2 truncate text-sm text-slate-900 dark:text-slate-100">
                                 {message.custodian?.display_name ||
                                   message.custodian?.primary_email ||
                                   "—"}
                               </div>
                             </div>
 
-                            <div className="rounded-xl border border-slate-800 bg-[#071224] p-3">
-                              <div className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
+                            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-[#071224] p-3">
+                              <div className="text-[11px] uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
                                 Internet Message ID
                               </div>
-                              <div className="mt-2 truncate text-sm text-slate-100">
+                              <div className="mt-2 truncate text-sm text-slate-900 dark:text-slate-100">
                                 {message.internet_message_id || "—"}
                               </div>
                             </div>
@@ -1038,21 +1038,21 @@ export default async function VaultSearchPage({ searchParams }: PageProps) {
 
                             <Link
                               href={`/vault/messages/${message.id}/attachments`}
-                              className="inline-flex rounded-2xl border border-slate-700 bg-slate-950/70 px-4 py-2 text-sm font-medium text-slate-100 transition hover:bg-slate-800"
+                              className="inline-flex rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-950/70 px-4 py-2 text-sm font-medium text-slate-900 dark:text-slate-100 transition hover:bg-slate-100 dark:hover:bg-slate-800"
                             >
                               Attachments
                             </Link>
 
                             <Link
                               href={`/vault/messages/${message.id}/occurrences`}
-                              className="inline-flex rounded-2xl border border-slate-700 bg-slate-950/70 px-4 py-2 text-sm font-medium text-slate-100 transition hover:bg-slate-800"
+                              className="inline-flex rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-950/70 px-4 py-2 text-sm font-medium text-slate-900 dark:text-slate-100 transition hover:bg-slate-100 dark:hover:bg-slate-800"
                             >
                               Occurrences
                             </Link>
 
                             <Link
                               href={`/vault/messages/${message.id}/holds`}
-                              className="inline-flex rounded-2xl border border-slate-700 bg-slate-950/70 px-4 py-2 text-sm font-medium text-slate-100 transition hover:bg-slate-800"
+                              className="inline-flex rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-950/70 px-4 py-2 text-sm font-medium text-slate-900 dark:text-slate-100 transition hover:bg-slate-100 dark:hover:bg-slate-800"
                             >
                               Holds
                             </Link>
@@ -1071,8 +1071,8 @@ export default async function VaultSearchPage({ searchParams }: PageProps) {
                 </div>
               )}
 
-              <div className="mt-6 flex flex-col gap-4 border-t border-slate-800 pt-5 sm:flex-row sm:items-center sm:justify-between">
-                <div className="text-sm text-slate-400">
+              <div className="mt-6 flex flex-col gap-4 border-t border-slate-200 dark:border-slate-800 pt-5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="text-sm text-slate-600 dark:text-slate-400">
                   Page {page} of {pageCount}
                 </div>
 
@@ -1080,12 +1080,12 @@ export default async function VaultSearchPage({ searchParams }: PageProps) {
                   {hasPreviousPage ? (
                     <Link
                       href={buildSearchHref(filters, page - 1)}
-                      className="inline-flex rounded-2xl border border-slate-700 bg-slate-900/70 px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800"
+                      className="inline-flex rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-100/70 dark:bg-slate-900/70 px-4 py-2 text-sm font-medium text-slate-800 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-800"
                     >
                       Previous
                     </Link>
                   ) : (
-                    <span className="inline-flex cursor-not-allowed rounded-2xl border border-slate-800 bg-slate-900/40 px-4 py-2 text-sm text-slate-600">
+                    <span className="inline-flex cursor-not-allowed rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/40 dark:bg-slate-900/40 px-4 py-2 text-sm text-slate-600">
                       Previous
                     </span>
                   )}
@@ -1093,12 +1093,12 @@ export default async function VaultSearchPage({ searchParams }: PageProps) {
                   {hasNextPage ? (
                     <Link
                       href={buildSearchHref(filters, page + 1)}
-                      className="inline-flex rounded-2xl border border-slate-700 bg-slate-900/70 px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800"
+                      className="inline-flex rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-100/70 dark:bg-slate-900/70 px-4 py-2 text-sm font-medium text-slate-800 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-800"
                     >
                       Next
                     </Link>
                   ) : (
-                    <span className="inline-flex cursor-not-allowed rounded-2xl border border-slate-800 bg-slate-900/40 px-4 py-2 text-sm text-slate-600">
+                    <span className="inline-flex cursor-not-allowed rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/40 dark:bg-slate-900/40 px-4 py-2 text-sm text-slate-600">
                       Next
                     </span>
                   )}

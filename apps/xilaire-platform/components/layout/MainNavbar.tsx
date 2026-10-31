@@ -15,7 +15,7 @@ export default function MainNavbar() {
   const pathname = usePathname();
 
   return (
-    <header className="border-b border-slate-800 bg-slate-950/80 backdrop-blur">
+    <header className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/80 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
         <Link href="/" className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-xl bg-sky-500" />
@@ -36,7 +36,7 @@ export default function MainNavbar() {
                 href={link.href}
                 className={
                   "transition hover:text-sky-400" +
-                  (active ? " text-sky-400 font-semibold" : " text-slate-300")
+                  (active ? " text-sky-400 font-semibold" : " text-slate-700 dark:text-slate-300")
                 }
               >
                 {link.label}
@@ -48,7 +48,7 @@ export default function MainNavbar() {
         <div className="flex items-center gap-3">
           <Link
             href="/auth/signin"
-            className="hidden text-sm text-slate-300 md:inline"
+            className="hidden text-sm text-slate-700 dark:text-slate-300 md:inline"
           >
             Sign in
           </Link>

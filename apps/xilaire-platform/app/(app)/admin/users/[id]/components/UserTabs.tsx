@@ -15,7 +15,7 @@ export default function UserTabs({ userId }: { userId: string }) {
   const activeTab = searchParams.get("tab") ?? "details";
 
   return (
-    <div className="border-b border-slate-800">
+    <div className="border-b border-slate-200 dark:border-slate-800">
       <nav className="flex gap-6">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.key;
@@ -28,7 +28,7 @@ export default function UserTabs({ userId }: { userId: string }) {
                 "relative pb-3 text-sm font-medium transition-colors",
                 isActive
                   ? "text-slate-100"
-                  : "text-slate-400 hover:text-slate-200"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-200"
               )}
             >
               {tab.label}

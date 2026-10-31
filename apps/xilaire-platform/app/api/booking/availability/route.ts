@@ -4,6 +4,7 @@ import { DateTime } from "luxon";
 import { BOOKING_PAYMENT_LINKS } from "@/lib/bookingPaymentLinks";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 /* -------------------------------------------------
    CONFIG

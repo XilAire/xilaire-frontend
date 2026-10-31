@@ -101,11 +101,11 @@ export function TicketStatusControls({
    * UI
    * -------------------------------------*/
   return (
-    <div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-950/60 p-4 text-xs text-slate-200">
+    <div className="space-y-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/60 p-4 text-xs text-slate-800 dark:text-slate-200">
 
       {/* Status */}
       <div className="space-y-2">
-        <h3 className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+        <h3 className="text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
           Status
         </h3>
 
@@ -119,7 +119,7 @@ export function TicketStatusControls({
               className={`rounded-full px-3 py-1 text-[11px] font-medium transition ${
                 isActive(opt.value, status)
                   ? "bg-sky-500 text-white"
-                  : "bg-slate-900 text-slate-300 hover:bg-slate-800"
+                  : "bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
               }`}
             >
               {opt.label}
@@ -130,12 +130,12 @@ export function TicketStatusControls({
 
       {/* Priority */}
       <div className="space-y-2">
-        <h3 className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+        <h3 className="text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
           Priority
         </h3>
 
-        <div className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900 px-3 py-1">
-          <span className="text-[11px] text-slate-400">Level</span>
+        <div className="inline-flex items-center gap-2 rounded-full border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-1">
+          <span className="text-[11px] text-slate-600 dark:text-slate-400">Level</span>
 
           <select
             value={priority}
@@ -143,13 +143,13 @@ export function TicketStatusControls({
               handlePriorityChange(e.target.value as TicketPriority)
             }
             disabled={isPending}
-            className="bg-transparent text-xs font-medium text-slate-100 focus:outline-none"
+            className="bg-transparent text-xs font-medium text-slate-900 dark:text-slate-100 focus:outline-none"
           >
             {PRIORITY_OPTIONS.map((opt) => (
               <option
                 key={opt.value}
                 value={opt.value}
-                className="bg-slate-900 text-slate-100"
+                className="bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100"
               >
                 {opt.label}
               </option>

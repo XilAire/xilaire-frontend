@@ -415,11 +415,11 @@ export default function VendorDocumentsPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-200">
+        <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-200">
           Vendor Documents
         </h1>
 
-        <p className="text-slate-400">
+        <p className="text-slate-600 dark:text-slate-400">
           {isAdminView
             ? "Admin view of all vendor compliance documents."
             : `Documents assigned to ${vendorName || "your company"}.`}
@@ -434,26 +434,26 @@ export default function VendorDocumentsPage() {
         <SummaryCard label="Needs Review" value={counts.expiringOrExpired} />
       </div>
 
-      <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-        <h2 className="text-lg font-semibold text-slate-100">
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6">
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
           Upload Compliance Document
         </h2>
 
-        <p className="mt-1 text-sm text-slate-400">
+        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
           Upload W9s, insurance certificates, licenses, permits, and other compliance files.
         </p>
 
         <form onSubmit={handleUpload} className="mt-6 grid gap-4">
           {isAdminView && (
             <div className="grid gap-2">
-              <label htmlFor="vendor_id" className="text-sm font-medium text-slate-300">
+              <label htmlFor="vendor_id" className="text-sm font-medium text-slate-700 dark:text-slate-300">
                 Vendor
               </label>
               <select
                 id="vendor_id"
                 value={selectedVendorId}
                 onChange={(e) => setSelectedVendorId(e.target.value)}
-                className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none transition focus:border-cyan-500"
+                className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 text-slate-900 dark:text-slate-100 outline-none transition focus:border-cyan-500"
               >
                 <option value="">All Vendors / Select Vendor</option>
                 {vendors.map((vendor) => (
@@ -469,7 +469,7 @@ export default function VendorDocumentsPage() {
             <div className="grid gap-2">
               <label
                 htmlFor="document_type"
-                className="text-sm font-medium text-slate-300"
+                className="text-sm font-medium text-slate-700 dark:text-slate-300"
               >
                 Document Type
               </label>
@@ -477,7 +477,7 @@ export default function VendorDocumentsPage() {
                 id="document_type"
                 value={documentType}
                 onChange={(e) => setDocumentType(e.target.value)}
-                className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none transition focus:border-cyan-500"
+                className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 text-slate-900 dark:text-slate-100 outline-none transition focus:border-cyan-500"
               >
                 {DOCUMENT_TYPES.map((type) => (
                   <option key={type} value={type}>
@@ -490,7 +490,7 @@ export default function VendorDocumentsPage() {
             <div className="grid gap-2">
               <label
                 htmlFor="expiration_date"
-                className="text-sm font-medium text-slate-300"
+                className="text-sm font-medium text-slate-700 dark:text-slate-300"
               >
                 Expiration Date
               </label>
@@ -499,13 +499,13 @@ export default function VendorDocumentsPage() {
                 type="date"
                 value={expirationDate}
                 onChange={(e) => setExpirationDate(e.target.value)}
-                className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none transition focus:border-cyan-500"
+                className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 text-slate-900 dark:text-slate-100 outline-none transition focus:border-cyan-500"
               />
             </div>
           </div>
 
           <div className="grid gap-2">
-            <label htmlFor="notes" className="text-sm font-medium text-slate-300">
+            <label htmlFor="notes" className="text-sm font-medium text-slate-700 dark:text-slate-300">
               Notes
             </label>
             <textarea
@@ -514,14 +514,14 @@ export default function VendorDocumentsPage() {
               onChange={(e) => setNotes(e.target.value)}
               rows={4}
               placeholder="Add notes for this document"
-              className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 placeholder:text-slate-500 outline-none transition focus:border-cyan-500"
+              className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 text-slate-900 dark:text-slate-100 placeholder:text-slate-500 outline-none transition focus:border-cyan-500"
             />
           </div>
 
           <div className="grid gap-2">
             <label
               htmlFor="vendor-document-file"
-              className="text-sm font-medium text-slate-300"
+              className="text-sm font-medium text-slate-700 dark:text-slate-300"
             >
               File
             </label>
@@ -529,7 +529,7 @@ export default function VendorDocumentsPage() {
               id="vendor-document-file"
               type="file"
               onChange={(e) => setFile(e.target.files?.[0] || null)}
-              className="block w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 file:mr-4 file:rounded-lg file:border-0 file:bg-cyan-600 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-cyan-500"
+              className="block w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 text-slate-900 dark:text-slate-100 file:mr-4 file:rounded-lg file:border-0 file:bg-cyan-600 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-cyan-500"
             />
           </div>
 
@@ -549,7 +549,7 @@ export default function VendorDocumentsPage() {
             <button
               type="submit"
               disabled={uploading}
-              className="rounded-xl border border-slate-600 bg-slate-950 px-5 py-3 text-slate-100 transition hover:border-cyan-500 hover:text-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-xl border border-slate-400 dark:border-slate-600 bg-white dark:bg-slate-950 px-5 py-3 text-slate-900 dark:text-slate-100 transition hover:border-cyan-500 hover:text-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {uploading ? "Uploading..." : "Upload Document"}
             </button>
@@ -561,7 +561,7 @@ export default function VendorDocumentsPage() {
                 setError(null);
                 setRefreshKey((prev) => prev + 1);
               }}
-              className="rounded-xl border border-slate-600 bg-slate-950 px-5 py-3 text-slate-100 transition hover:border-cyan-500 hover:text-cyan-300"
+              className="rounded-xl border border-slate-400 dark:border-slate-600 bg-white dark:bg-slate-950 px-5 py-3 text-slate-900 dark:text-slate-100 transition hover:border-cyan-500 hover:text-cyan-300"
             >
               Refresh
             </button>
@@ -570,13 +570,13 @@ export default function VendorDocumentsPage() {
       </div>
 
       {loading && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-slate-400">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6 text-slate-600 dark:text-slate-400">
           Loading documents...
         </div>
       )}
 
       {!loading && !error && visibleDocuments.length === 0 && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-slate-400">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6 text-slate-600 dark:text-slate-400">
           No documents found.
         </div>
       )}
@@ -589,15 +589,15 @@ export default function VendorDocumentsPage() {
             return (
               <div
                 key={doc.id}
-                className="rounded-2xl border border-slate-800 bg-slate-900 p-5"
+                className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5"
               >
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   <div className="space-y-2">
                     <div>
-                      <h2 className="text-lg font-semibold text-slate-100">
+                      <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                         {doc.file_name || "Untitled Document"}
                       </h2>
-                      <p className="text-sm text-slate-400">
+                      <p className="text-sm text-slate-600 dark:text-slate-400">
                         Type: {formatStatus(doc.document_type)}
                       </p>
                       {isAdminView && (
@@ -608,11 +608,11 @@ export default function VendorDocumentsPage() {
                     </div>
 
                     <div className="flex flex-wrap gap-2">
-                      <span className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-300">
+                      <span className="rounded-full border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs text-slate-700 dark:text-slate-300">
                         {formatStatus(doc.status)}
                       </span>
 
-                      <span className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-300">
+                      <span className="rounded-full border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs text-slate-700 dark:text-slate-300">
                         Expires: {formatDate(doc.expiration_date)}
                       </span>
 
@@ -626,28 +626,28 @@ export default function VendorDocumentsPage() {
 
                   <div className="text-sm md:text-right">
                     <p className="text-slate-500">Uploaded</p>
-                    <p className="text-slate-200">{formatDate(doc.created_at)}</p>
+                    <p className="text-slate-800 dark:text-slate-200">{formatDate(doc.created_at)}</p>
                     <p className="mt-2 text-slate-500">Reviewed</p>
-                    <p className="text-slate-200">{formatDate(doc.reviewed_at)}</p>
+                    <p className="text-slate-800 dark:text-slate-200">{formatDate(doc.reviewed_at)}</p>
                   </div>
                 </div>
 
                 {(doc.notes || doc.storage_path || doc.file_url) && (
                   <div className="mt-4 grid gap-4 md:grid-cols-2">
-                    <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                    <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4">
                       <p className="text-xs uppercase tracking-wide text-slate-500">
                         Notes
                       </p>
-                      <p className="mt-2 text-sm text-slate-300">
+                      <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">
                         {doc.notes || "No notes provided."}
                       </p>
                     </div>
 
-                    <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                    <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4">
                       <p className="text-xs uppercase tracking-wide text-slate-500">
                         File Reference
                       </p>
-                      <div className="mt-2 break-words space-y-1 text-sm text-slate-300">
+                      <div className="mt-2 break-words space-y-1 text-sm text-slate-700 dark:text-slate-300">
                         <p>URL: {doc.file_url || "Not set"}</p>
                         <p>Path: {doc.storage_path || "Not set"}</p>
                       </div>
@@ -671,9 +671,9 @@ function SummaryCard({
   value: number;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-      <p className="text-sm text-slate-400">{label}</p>
-      <p className="mt-3 text-3xl font-semibold text-slate-100">{value}</p>
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5">
+      <p className="text-sm text-slate-600 dark:text-slate-400">{label}</p>
+      <p className="mt-3 text-3xl font-semibold text-slate-900 dark:text-slate-100">{value}</p>
     </div>
   );
 }

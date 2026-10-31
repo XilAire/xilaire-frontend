@@ -6,7 +6,7 @@ export default function TaskDetailsLeft({
   task: any;
 }) {
   return (
-    <div className="space-y-4 rounded-xl border border-slate-700 bg-slate-900/40 p-4">
+    <div className="space-y-4 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-100/40 dark:bg-slate-900/40 p-4">
 
       {/* ASSIGNED TO (UUID-based, saves correctly) */}
       <InlineField

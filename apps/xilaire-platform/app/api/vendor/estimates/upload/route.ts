@@ -401,36 +401,26 @@ async function insertAttachmentMetadata(params: {
     file_size_bytes: params.fileSizeBytes,
   };
 
-  const attempts = [
-    {
-      ...basePayload,
-      storage_path: params.storagePath,
-    },
-    {
-      ...basePayload,
-      file_path: params.storagePath,
-    },
-  ];
+  const payload = {
+    ...basePayload,
+    storage_path: params.storagePath,
+  };
 
-  let lastError: unknown = null;
+  const { data, error } = await admin
+    .from("infrastructure_estimate_attachments")
+    .insert(payload)
+    .select("*")
+    .single();
 
-  for (const payload of attempts) {
-    const { data, error } = await admin
-      .from("infrastructure_estimate_attachments")
-      .insert(payload)
-      .select("*")
-      .single();
-
-    if (!error && data) {
-      return data as InsertedAttachmentRow;
-    }
-
-    lastError = error;
+  if (error) {
+    throw new Error(`Failed to insert attachment metadata: ${error.message}`);
   }
 
-  throw lastError instanceof Error
-    ? lastError
-    : new Error("Failed to insert attachment metadata.");
+  if (!data) {
+    throw new Error("Attachment metadata insert returned no record.");
+  }
+
+  return data as InsertedAttachmentRow;
 }
 
 /* =========================================================

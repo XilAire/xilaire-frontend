@@ -84,13 +84,13 @@ export default function InvoicesPage() {
         <h1 className="text-xl font-semibold">Invoices</h1>
       </div>
 
-      <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-900/40">
+      <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-slate-100/40 dark:bg-slate-900/40">
         {/* HEADER */}
         <div
           className="grid grid-cols-12 gap-4 px-6 py-3 text-xs font-semibold uppercase tracking-wide
-                     text-slate-400
-                     bg-slate-900/60
-                     border-b border-slate-700/60"
+                     text-slate-600 dark:text-slate-400
+                     bg-slate-100/60 dark:bg-slate-900/60
+                     border-b border-slate-300/60 dark:border-slate-700/60"
         >
           <div className="col-span-4">Period</div>
           <div className="col-span-2">Status</div>
@@ -117,7 +117,7 @@ export default function InvoicesPage() {
           return (
             <div
               key={inv.id}
-              className="grid grid-cols-12 gap-4 items-center px-6 py-4 border-b border-slate-800"
+              className="grid grid-cols-12 gap-4 items-center px-6 py-4 border-b border-slate-200 dark:border-slate-800"
             >
               {/* PERIOD */}
               <div className="col-span-4">
@@ -147,7 +147,7 @@ export default function InvoicesPage() {
               <div className="col-span-4 flex justify-end gap-2">
                 <Link
                   href={`/billing/invoices/${inv.id}`}
-                  className="rounded-lg border border-slate-600 px-3 py-1.5 text-sm hover:bg-slate-800"
+                  className="rounded-lg border border-slate-400 dark:border-slate-600 px-3 py-1.5 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
                 >
                   View
                 </Link>
@@ -157,7 +157,7 @@ export default function InvoicesPage() {
                     href={inv.hosted_invoice_url!}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="rounded-lg border border-slate-600 px-3 py-1.5 text-sm hover:bg-slate-800"
+                    className="rounded-lg border border-slate-400 dark:border-slate-600 px-3 py-1.5 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
                   >
                     PDF
                   </a>

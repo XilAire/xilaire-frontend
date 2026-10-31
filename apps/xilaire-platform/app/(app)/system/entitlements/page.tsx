@@ -58,7 +58,7 @@ function StatusBadge({ status }: { status: "ok" | "warning" | "exceeded" }) {
   }
 
   return (
-    <span className="rounded-full bg-slate-800 px-2 py-0.5 text-xs font-medium text-slate-300">
+    <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-xs font-medium text-slate-700 dark:text-slate-300">
       OK
     </span>
   )
@@ -99,10 +99,10 @@ export default async function AdminEntitlementsPage() {
     <section className="space-y-8">
       {/* Header */}
       <header>
-        <h1 className="text-2xl font-bold text-slate-100">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
           Entitlements
         </h1>
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-slate-600 dark:text-slate-400">
           Read-only view of contract entitlements and usage.
           Soft warnings indicate low or exceeded usage.
         </p>
@@ -113,20 +113,20 @@ export default async function AdminEntitlementsPage() {
         {contracts.map((contract) => (
           <div
             key={contract.id}
-            className="rounded-xl border border-slate-800 bg-slate-900/80 p-6 shadow-md"
+            className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100/80 dark:bg-slate-900/80 p-6 shadow-md"
           >
             {/* Contract Header */}
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="font-semibold text-slate-100">
+                <h2 className="font-semibold text-slate-900 dark:text-slate-100">
                   Contract
                 </h2>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-600 dark:text-slate-400">
                   Contract ID: {contract.id}
                 </p>
               </div>
 
-              <span className="rounded-full bg-slate-800 px-3 py-1 text-xs font-medium text-slate-200">
+              <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs font-medium text-slate-800 dark:text-slate-200">
                 {contract.stripe_subscription_status}
               </span>
             </div>
@@ -135,7 +135,7 @@ export default async function AdminEntitlementsPage() {
             <div className="mt-4 overflow-x-auto">
               <table className="w-full border-collapse text-sm">
                 <thead>
-                  <tr className="border-b border-slate-800 text-left text-slate-400">
+                  <tr className="border-b border-slate-200 dark:border-slate-800 text-left text-slate-600 dark:text-slate-400">
                     <th className="py-2">Entitlement</th>
                     <th className="py-2">Period</th>
                     <th className="py-2">Allocated</th>
@@ -163,21 +163,21 @@ export default async function AdminEntitlementsPage() {
                     return (
                       <tr
                         key={entitlement.id}
-                        className="border-b border-slate-800 last:border-0"
+                        className="border-b border-slate-200 dark:border-slate-800 last:border-0"
                       >
-                        <td className="py-2 font-medium text-slate-100">
+                        <td className="py-2 font-medium text-slate-900 dark:text-slate-100">
                           {entitlement.entitlement_type}
                         </td>
-                        <td className="py-2 text-slate-200">
+                        <td className="py-2 text-slate-800 dark:text-slate-200">
                           {entitlement.period}
                         </td>
-                        <td className="py-2 text-slate-200">
+                        <td className="py-2 text-slate-800 dark:text-slate-200">
                           {allocated}
                         </td>
-                        <td className="py-2 text-slate-200">
+                        <td className="py-2 text-slate-800 dark:text-slate-200">
                           {used}
                         </td>
-                        <td className="py-2 text-slate-200">
+                        <td className="py-2 text-slate-800 dark:text-slate-200">
                           {remaining}
                         </td>
                         <td className="py-2">
@@ -204,7 +204,7 @@ export default async function AdminEntitlementsPage() {
         ))}
 
         {contracts.length === 0 && (
-          <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-6 text-center text-slate-400">
+          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100/80 dark:bg-slate-900/80 p-6 text-center text-slate-600 dark:text-slate-400">
             No contracts found.
           </div>
         )}

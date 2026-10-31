@@ -100,9 +100,9 @@ export default async function NewTaskPage({
         <h1 className="text-2xl font-semibold text-white">
           Add Task
         </h1>
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-slate-600 dark:text-slate-400">
           Change Request:{" "}
-          <span className="text-slate-200 font-medium">
+          <span className="text-slate-800 dark:text-slate-200 font-medium">
             {change.title}
           </span>
         </p>
@@ -110,7 +110,7 @@ export default async function NewTaskPage({
 
       <form
         action={submit}
-        className="rounded-xl border border-slate-700 bg-slate-900/50 p-6 space-y-8"
+        className="rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-100/50 dark:bg-slate-900/50 p-6 space-y-8"
       >
         {/* SUMMARY */}
         <Field label="Task Summary">
@@ -196,7 +196,7 @@ export default async function NewTaskPage({
 
         {/* OUTAGE */}
         <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-300">
+          <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
             Outage Expected?
           </label>
           <div className="flex gap-6">
@@ -223,13 +223,13 @@ export default async function NewTaskPage({
         </label>
 
         {/* ACTIONS */}
-        <div className="flex gap-4 pt-6 border-t border-slate-700">
+        <div className="flex gap-4 pt-6 border-t border-slate-300 dark:border-slate-700">
           <button className="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded text-white">
             Create Task
           </button>
           <a
             href={`/helpdesk/change-requests/${changeRequestId}`}
-            className="px-6 py-2 rounded border border-slate-600"
+            className="px-6 py-2 rounded border border-slate-400 dark:border-slate-600"
           >
             Cancel
           </a>
@@ -243,7 +243,7 @@ export default async function NewTaskPage({
    SHARED INPUT STYLES
 ---------------------------------------- */
 const inputClass =
-  "w-full rounded-md bg-slate-900 border border-slate-700 px-3 py-2 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500";
+  "w-full rounded-md bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 px-3 py-2 text-slate-900 dark:text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500";
 
 /* ----------------------------------------
    FIELD WRAPPER
@@ -257,7 +257,7 @@ function Field({
 }) {
   return (
     <div className="space-y-1">
-      <label className="block text-sm font-medium text-slate-300">
+      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
         {label}
       </label>
       {children}

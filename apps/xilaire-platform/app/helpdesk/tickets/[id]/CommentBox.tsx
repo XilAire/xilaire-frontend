@@ -31,9 +31,9 @@ export default function CommentBox({ ticketId, onPost }) {
   }
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900 p-4 space-y-3">
+    <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-4 space-y-3">
       <textarea
-        className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-sm text-slate-200"
+        className="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded p-2 text-sm text-slate-800 dark:text-slate-200"
         placeholder="Write a comment..."
         value={message}
         onChange={(e) => setMessage(e.target.value)}

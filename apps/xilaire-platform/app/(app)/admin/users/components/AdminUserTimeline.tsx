@@ -41,7 +41,7 @@ export function UserTimeline({ events }: { events: TimelineEvent[] }) {
     if (msg.includes("status"))
       return <ArrowRight className="h-4 w-4 text-blue-600" />;
 
-    return <Clock className="h-4 w-4 text-slate-400" />;
+    return <Clock className="h-4 w-4 text-slate-600 dark:text-slate-400" />;
   }
 
   function formatTimestamp(ts: string | Date) {

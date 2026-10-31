@@ -1,10 +1,12 @@
 import { NextRequest } from "next/server";
 import {
   getVaultAdminClient,
+  getBearerToken,
   jsonError,
   requireVaultAccess,
   writeUnifiedVaultAccessAuditLog,
 } from "@/lib/vault/server";
+import type { VaultRole } from "@/lib/vault/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -48,11 +50,10 @@ type ParsedStorageLocation = {
 };
 
 const DEFAULT_DOWNLOAD_BUCKET = "vault-exports";
-const ALLOWED_VAULT_ROLES = new Set([
+const ALLOWED_VAULT_ROLES: VaultRole[] = [
   "vault_admin",
   "vault_compliance_admin",
-  "master_admin",
-]);
+];
 
 function coerceSingleMessage(
   value: VaultAttachmentRow["vault_messages"],
@@ -152,128 +153,6 @@ function getPreferredSize(row: VaultAttachmentRow) {
   return null;
 }
 
-function getAccessOrgId(access: unknown): string | null {
-  if (!access || typeof access !== "object") return null;
-
-  const record = access as Record<string, unknown>;
-
-  if (typeof record.orgId === "string" && record.orgId.trim()) {
-    return record.orgId;
-  }
-
-  if (typeof record.org_id === "string" && record.org_id.trim()) {
-    return record.org_id;
-  }
-
-  if (
-    typeof record.effectiveOrgId === "string" &&
-    record.effectiveOrgId.trim()
-  ) {
-    return record.effectiveOrgId;
-  }
-
-  if (
-    typeof record.sessionOrgId === "string" &&
-    record.sessionOrgId.trim()
-  ) {
-    return record.sessionOrgId;
-  }
-
-  const profile = record.profile;
-  if (profile && typeof profile === "object") {
-    const profileRecord = profile as Record<string, unknown>;
-
-    if (
-      typeof profileRecord.org_id === "string" &&
-      profileRecord.org_id.trim()
-    ) {
-      return profileRecord.org_id;
-    }
-
-    if (
-      typeof profileRecord.orgId === "string" &&
-      profileRecord.orgId.trim()
-    ) {
-      return profileRecord.orgId;
-    }
-  }
-
-  const membership = record.membership;
-  if (membership && typeof membership === "object") {
-    const membershipRecord = membership as Record<string, unknown>;
-
-    if (
-      typeof membershipRecord.org_id === "string" &&
-      membershipRecord.org_id.trim()
-    ) {
-      return membershipRecord.org_id;
-    }
-
-    if (
-      typeof membershipRecord.orgId === "string" &&
-      membershipRecord.orgId.trim()
-    ) {
-      return membershipRecord.orgId;
-    }
-  }
-
-  return null;
-}
-
-function collectAccessRoles(access: unknown): string[] {
-  if (!access || typeof access !== "object") return [];
-
-  const record = access as Record<string, unknown>;
-  const roles = new Set<string>();
-
-  const pushRole = (value: unknown) => {
-    if (typeof value === "string" && value.trim()) {
-      roles.add(value.trim());
-    }
-  };
-
-  const pushRoleList = (value: unknown) => {
-    if (!Array.isArray(value)) return;
-    for (const item of value) {
-      pushRole(item);
-    }
-  };
-
-  pushRole(record.role);
-  pushRole(record.vault_role);
-  pushRole(record.profile_role);
-
-  pushRoleList(record.roles);
-  pushRoleList(record.vault_roles);
-
-  const profile = record.profile;
-  if (profile && typeof profile === "object") {
-    const profileRecord = profile as Record<string, unknown>;
-    pushRole(profileRecord.role);
-    pushRole(profileRecord.vault_role);
-    pushRole(profileRecord.profile_role);
-    pushRoleList(profileRecord.roles);
-    pushRoleList(profileRecord.vault_roles);
-  }
-
-  const membership = record.membership;
-  if (membership && typeof membership === "object") {
-    const membershipRecord = membership as Record<string, unknown>;
-    pushRole(membershipRecord.role);
-    pushRole(membershipRecord.vault_role);
-    pushRole(membershipRecord.profile_role);
-    pushRoleList(membershipRecord.roles);
-    pushRoleList(membershipRecord.vault_roles);
-  }
-
-  return Array.from(roles);
-}
-
-function hasAllowedVaultRole(access: unknown) {
-  const roles = collectAccessRoles(access);
-  return roles.some((role) => ALLOWED_VAULT_ROLES.has(role));
-}
-
 async function loadAttachmentById(
   attachmentId: string,
 ): Promise<{
@@ -326,7 +205,7 @@ async function loadAttachmentById(
   };
 }
 
-export async function GET(request: NextRequest, context: RouteContext) {
+export async function GET(request: NextRequest, context: RouteContext): Promise<Response> {
   const { id } = await context.params;
 
   if (!id) {
@@ -350,37 +229,37 @@ export async function GET(request: NextRequest, context: RouteContext) {
     return jsonError("Attachment org context could not be resolved.", 500);
   }
 
-  const access = await requireVaultAccess(request);
-
-  if ("response" in access) {
-    return access.response;
-  }
-
-  const accessOrgId = getAccessOrgId(access);
-  const allowedByRole = hasAllowedVaultRole(access);
-
-  if (!allowedByRole) {
-    await writeUnifiedVaultAccessAuditLog({
-      access,
-      action: "vault_attachment_download_denied",
-      entityType: "vault_attachment",
-      entityId: attachment.id,
-      status: "failure",
-      details: {
-        attachment_id: attachment.id,
-        message_id: attachment.message_id,
-        subject: message?.subject ?? null,
-        reason: "Missing required vault role",
-        required_roles: Array.from(ALLOWED_VAULT_ROLES),
-        resolved_roles: collectAccessRoles(access),
-      },
-      request,
+  // The helper throws on denial; it does not return { response }.
+  // Resolve permissions against the attachment's actual organization,
+  // never an organization supplied by the requesting client.
+  let access;
+  try {
+    access = await requireVaultAccess(request, {
+      targetOrgId: orgId,
+      requiredVaultRoles: ALLOWED_VAULT_ROLES,
+      supportScope: "vault_read_only",
     });
-
-    return jsonError("You do not have permission to download this attachment.", 403);
+  } catch (error) {
+    console.error("Vault attachment authorization failed");
+    void error;
+    return jsonError(
+      getBearerToken(request) ? "You do not have access to this attachment." : "Authentication required.",
+      getBearerToken(request) ? 403 : 401,
+    );
   }
 
-  if (accessOrgId && accessOrgId !== orgId) {
+  // Defense in depth: the returned authorization must be for this
+  // attachment's organization and carry the required access path.
+  const sameTargetOrg = access.targetOrgId === orgId;
+  const permittedOrgRole =
+    access.accessPath === "org_role" &&
+    access.actorHomeOrgId === orgId &&
+    access.grantedVaultRoles.some((role) => ALLOWED_VAULT_ROLES.includes(role));
+  // requireVaultAccess already validated vault_read_only using
+  // support_scope_allows before returning this access path.
+  const permittedSupportGrant = access.accessPath === "support_grant";
+
+  if (!sameTargetOrg || (!permittedOrgRole && !permittedSupportGrant)) {
     await writeUnifiedVaultAccessAuditLog({
       access,
       action: "vault_attachment_download_denied",
@@ -390,14 +269,13 @@ export async function GET(request: NextRequest, context: RouteContext) {
       details: {
         attachment_id: attachment.id,
         message_id: attachment.message_id,
-        subject: message?.subject ?? null,
-        reason: "Org mismatch",
+        reason: "Authorization context does not permit attachment download",
         requested_org_id: orgId,
-        access_org_id: accessOrgId,
+        authorized_target_org_id: access.targetOrgId,
+        access_path: access.accessPath,
       },
       request,
     });
-
     return jsonError("You do not have access to this attachment.", 403);
   }
 
@@ -476,10 +354,6 @@ export async function GET(request: NextRequest, context: RouteContext) {
   headers.set("Content-Disposition", buildContentDisposition(fileName, inline));
   headers.set("Cache-Control", "private, no-store, max-age=0");
   headers.set("X-Content-Type-Options", "nosniff");
-
-  if (typeof contentLength === "number" && Number.isFinite(contentLength)) {
-    headers.set("Content-Length", String(contentLength));
-  }
 
   return new Response(fileData.stream(), {
     status: 200,

@@ -1,106 +1,16 @@
 "use client";
 
-import Image from "next/image";
+import ThemeLogo from "@/components/ui/ThemeLogo";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useMemo } from "react";
-import {
-  ChevronDown,
-  ChevronRight,
-  LifeBuoy,
-  Monitor,
-  Activity,
-  Cpu,
-  Settings,
-  Shield,
-  AlertTriangle,
-  Bell,
-  LayoutDashboard,
-  Bot,
-  FileBarChart,
-  CreditCard,
-  Users,
-  UserPlus,
-  Briefcase,
-  FolderKanban,
-  MapPinned,
-  ClipboardList,
-  Receipt,
-  FileText,
-  Building2,
-} from "lucide-react";
+import { ChevronDown, ChevronRight, LayoutDashboard, FileBarChart, FileText, FolderKanban, Shield, Receipt, Cpu, Building2, Users, ClipboardList } from "lucide-react";
 import { supabase } from "@/lib/supabasePlatformClient";
-import {
-  buildPortalNav,
-  type SidebarNavItem,
-} from "@/components/layout/buildPortalNav";
+import { buildPortalNav } from "@/components/layout/buildPortalNav";
 import type { AccessContext } from "@/lib/portalAccess";
+import { convertPortalNavToGroups, itemIsActive, staticOperationalGroups } from "./sidebar-navigation";
+import type { HelpdeskCounts, MonitoringCounts, NavBadges, NavGroup, SidebarProfile, ResolvedProfile, VendorAccessState } from "./sidebar-navigation";
 
-/* -------------------------------------------------
-   TYPES
-------------------------------------------------- */
-type HelpdeskCounts = {
-  tickets: number;
-  incidents: number;
-  serviceRequests: number;
-  changeRequests: number;
-  approvals: number;
-};
-
-type MonitoringCounts = {
-  endpoints: number;
-  telemetryStale: number;
-};
-
-type NavBadges = {
-  alerts: number;
-  notificationsFailed: number;
-};
-
-type NavItem = {
-  href: string;
-  label: string;
-  icon?: React.ElementType;
-  key?: keyof HelpdeskCounts;
-  badge?: keyof NavBadges;
-  countKey?: keyof MonitoringCounts;
-};
-
-type NavGroup = {
-  label: string;
-  icon: React.ElementType;
-  items: NavItem[];
-};
-
-type SidebarProfile = {
-  full_name: string | null;
-  email: string;
-  role: string | null;
-  account_type?: string | null;
-  status?: string | null;
-  org_id?: string | null;
-} | null;
-
-type ResolvedProfile = {
-  full_name: string | null;
-  email: string;
-  role: string | null;
-  account_type: string | null;
-  status: string | null;
-  org_id: string | null;
-};
-
-type VendorAccessState = {
-  vendorRecordExists: boolean;
-  vendorIsActive: boolean;
-  vendorLegacyActive: boolean;
-  vendorOnboardingStatus: string | null;
-  vendorOnboardingCompletedAt: string | null;
-};
-
-/* -------------------------------------------------
-   HELPERS
-------------------------------------------------- */
 function normalize(value: unknown) {
   return String(value || "").trim().toLowerCase();
 }
@@ -125,304 +35,10 @@ function profileNeedsHydration(profile: ResolvedProfile) {
   );
 }
 
-function itemIsActive(pathname: string, href: string) {
-  return pathname === href || pathname.startsWith(href + "/");
-}
-
-function getGroupIcon(label: string): React.ElementType {
-  switch (label) {
-    case "Platform":
-      return LayoutDashboard;
-    case "Help Desk":
-      return LifeBuoy;
-    case "Monitoring":
-      return Monitor;
-    case "Infrastructure":
-      return Cpu;
-    case "Vendor Portal":
-      return Briefcase;
-    case "Client Portal":
-      return Building2;
-    case "Operations":
-      return ClipboardList;
-    case "Finance":
-      return CreditCard;
-    case "Administration":
-      return Shield;
-    case "System":
-      return Settings;
-    case "Vault":
-      return FileText;
-    default:
-      return LayoutDashboard;
-  }
-}
-
-function getItemIcon(href: string): React.ElementType | undefined {
-  switch (href) {
-    case "/dashboard":
-    case "/helpdesk":
-    case "/infrastructure":
-    case "/vendor":
-    case "/client":
-    case "/operations":
-    case "/finance":
-    case "/admin":
-    case "/system":
-    case "/vault":
-      return LayoutDashboard;
-
-    case "/automations":
-      return Cpu;
-    case "/bots":
-      return Bot;
-    case "/reports":
-    case "/finance/overages":
-    case "/vault/search":
-    case "/vault/audit":
-      return FileBarChart;
-    case "/billing":
-    case "/admin/finance":
-      return CreditCard;
-    case "/settings":
-    case "/system/settings":
-    case "/admin/settings":
-      return Settings;
-
-    case "/helpdesk/tickets":
-      return LifeBuoy;
-    case "/helpdesk/incidents":
-      return AlertTriangle;
-    case "/helpdesk/service-requests":
-      return Cpu;
-    case "/helpdesk/change-requests":
-      return Settings;
-    case "/helpdesk/approvals":
-      return Shield;
-
-    case "/endpoints":
-      return Monitor;
-    case "/telemetry":
-      return Activity;
-    case "/alerts":
-      return AlertTriangle;
-    case "/alerts/notifications":
-      return Bell;
-    case "/endpoints/onboarding":
-      return UserPlus;
-
-    case "/client/requests":
-      return ClipboardList;
-
-    case "/infrastructure/projects":
-    case "/vendor/projects":
-    case "/client/projects":
-      return FolderKanban;
-    case "/infrastructure/scheduling":
-    case "/infrastructure/site-visits":
-    case "/vendor/site-visits":
-      return MapPinned;
-    case "/infrastructure/estimates":
-    case "/vendor/estimates":
-    case "/client/estimates":
-      return ClipboardList;
-    case "/infrastructure/invoices":
-    case "/vendor/invoices":
-    case "/client/invoices":
-    case "/finance/invoices":
-    case "/admin/finance/invoices":
-    case "/vault/exports":
-      return Receipt;
-    case "/infrastructure/documents":
-    case "/vendor/documents":
-    case "/client/documents":
-    case "/vault/messages":
-      return FileText;
-    case "/vendor/profile":
-      return Building2;
-
-    case "/operations/intake":
-    case "/operations/assignments":
-    case "/operations/approvals":
-    case "/operations/delivery":
-      return ClipboardList;
-
-    case "/vault/cases":
-      return FolderKanban;
-    case "/vault/holds":
-      return Shield;
-    case "/vault/ingest":
-      return Cpu;
-    case "/vault/sources":
-      return Building2;
-    case "/vault/custodians":
-      return Users;
-    case "/vault/retention":
-      return ClipboardList;
-
-    case "/finance/vendor-bills":
-    case "/finance/recurring":
-    case "/finance/profitability":
-      return CreditCard;
-
-    case "/admin/users":
-      return Users;
-    case "/admin/organizations":
-    case "/admin/vendors":
-      return Building2;
-    case "/admin/compliance":
-    case "/system/entitlements":
-      return Shield;
-    case "/admin/audit":
-    case "/system/logs":
-      return FileBarChart;
-
-    default:
-      return undefined;
-  }
-}
-
-function getGroupLabelForTopLevel(href: string): string {
-  if (href === "/dashboard") return "Platform";
-  if (href === "/client") return "Client Portal";
-  if (href === "/vendor") return "Vendor Portal";
-  if (href === "/infrastructure") return "Infrastructure";
-  if (href === "/operations") return "Operations";
-  if (href === "/finance") return "Finance";
-  if (href === "/admin") return "Administration";
-  if (href === "/system") return "System";
-  return "Platform";
-}
-
-function convertPortalNavToGroups(items: SidebarNavItem[]): NavGroup[] {
-  return items.map((item) => {
-    const groupLabel = getGroupLabelForTopLevel(item.href);
-
-    const groupItems: NavItem[] = [
-      {
-        href: item.href,
-        label: item.title === "Dashboard" ? "Dashboard" : "Overview",
-        icon: getItemIcon(item.href),
-      },
-      ...(item.children ?? []).map((child) => ({
-        href: child.href,
-        label: child.title,
-        icon: getItemIcon(child.href),
-      })),
-    ];
-
-    const dedupedItems = groupItems.filter(
-      (entry, index, arr) =>
-        arr.findIndex((x) => x.href === entry.href) === index,
-    );
-
-    return {
-      label: groupLabel,
-      icon: getGroupIcon(groupLabel),
-      items: dedupedItems,
-    };
-  });
-}
-
-/* -------------------------------------------------
-   STATIC GROUPS
-   These stay separate because they are not part of
-   buildPortalNav() yet, but still belong in the sidebar.
-------------------------------------------------- */
-const staticOperationalGroups: NavGroup[] = [
-  {
-    label: "Platform",
-    icon: LayoutDashboard,
-    items: [
-      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { href: "/automations", label: "Automations", icon: Cpu },
-      { href: "/bots", label: "Bots", icon: Bot },
-      { href: "/reports", label: "Reports", icon: FileBarChart },
-      { href: "/billing", label: "Billing", icon: CreditCard },
-      { href: "/settings", label: "Settings", icon: Settings },
-    ],
-  },
-  {
-    label: "Help Desk",
-    icon: LifeBuoy,
-    items: [
-      {
-        href: "/helpdesk",
-        label: "Dashboard",
-        icon: LayoutDashboard,
-      },
-      {
-        href: "/helpdesk/tickets",
-        label: "Tickets",
-        icon: LifeBuoy,
-        key: "tickets",
-      },
-      {
-        href: "/helpdesk/incidents",
-        label: "Incidents",
-        icon: AlertTriangle,
-        key: "incidents",
-      },
-      {
-        href: "/helpdesk/service-requests",
-        label: "Service Requests",
-        icon: Cpu,
-        key: "serviceRequests",
-      },
-      {
-        href: "/helpdesk/change-requests",
-        label: "Change Requests",
-        icon: Settings,
-        key: "changeRequests",
-      },
-      {
-        href: "/helpdesk/approvals",
-        label: "Approvals",
-        icon: Shield,
-        key: "approvals",
-      },
-    ],
-  },
-  {
-    label: "Monitoring",
-    icon: Monitor,
-    items: [
-      {
-        href: "/endpoints",
-        label: "Endpoints",
-        icon: Monitor,
-        countKey: "endpoints",
-      },
-      {
-        href: "/telemetry",
-        label: "Telemetry",
-        icon: Activity,
-        countKey: "telemetryStale",
-      },
-      {
-        href: "/alerts",
-        label: "Active Alerts",
-        icon: AlertTriangle,
-        badge: "alerts",
-      },
-      {
-        href: "/alerts/notifications",
-        label: "Notification Audit",
-        icon: Bell,
-        badge: "notificationsFailed",
-      },
-      {
-        href: "/endpoints/onboarding",
-        label: "Agent Onboarding",
-        icon: UserPlus,
-      },
-    ],
-  },
-];
-
 /* -------------------------------------------------
    SIDEBAR
 ------------------------------------------------- */
+
 export default function AppSidebar({
   profile,
   counts,
@@ -729,12 +345,12 @@ export default function AppSidebar({
             {
               href: "/finance/invoices",
               label: "Finance Invoices",
-              icon: getItemIcon("/finance/invoices"),
+              icon: Receipt,
             },
             {
               href: "/finance/overages",
               label: "Overage Usage",
-              icon: getItemIcon("/finance/overages"),
+              icon: FileBarChart,
             },
           ].filter(
             (entry, index, arr) =>
@@ -817,24 +433,18 @@ export default function AppSidebar({
   }
 
   return (
-    <aside className="hidden w-64 flex-col border-r border-slate-800 bg-slate-950/90 px-3 py-4 md:flex">
+    <aside aria-label="Primary navigation" className="hidden h-full min-h-0 w-64 flex-col border-r border-[var(--sidebar-border)] bg-[var(--sidebar-background)] px-3 py-4 md:flex">
       <Link href="/dashboard" className="mb-6 flex items-center gap-3 px-2">
-        <Image
-          src="/icon-light.png"
-          alt="XilAire Technologies"
-          width={32}
-          height={32}
-          priority
-        />
+        <ThemeLogo size={32} priority />
         <div>
-          <p className="text-sm font-semibold text-slate-200">
+          <p className="text-sm font-semibold text-[var(--sidebar-foreground)]">
             XilAire Platform
           </p>
-          <p className="text-xs text-slate-400">Operations & Automation</p>
+          <p className="text-xs text-[var(--sidebar-muted-foreground)]">Operations & Automation</p>
         </div>
       </Link>
 
-      <nav className="space-y-4 text-sm">
+      <nav aria-label="Main sections" className="min-h-0 flex-1 space-y-4 overflow-y-auto text-sm">
         {visibleNavGroups.map((group) => {
           const GroupIcon = group.icon;
           const open = openSections[group.label] ?? false;
@@ -843,7 +453,9 @@ export default function AppSidebar({
             <div key={group.label}>
               <button
                 onClick={() => toggleSection(group.label)}
-                className="flex w-full items-center justify-between px-2 py-2 text-xs uppercase tracking-wide text-slate-500 hover:text-slate-300"
+                aria-expanded={open}
+                aria-label={`${group.label} navigation`}
+                className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-xs uppercase tracking-wide text-[var(--sidebar-section-foreground)] hover:text-[var(--sidebar-foreground)]"
               >
                 <span className="flex items-center gap-2">
                   <GroupIcon className="h-4 w-4" />
@@ -878,8 +490,8 @@ export default function AppSidebar({
                         className={
                           "flex items-center justify-between rounded-lg px-2 py-2 transition " +
                           (active
-                            ? "bg-sky-600/20 text-sky-300"
-                            : "text-slate-300 hover:bg-slate-900")
+                            ? "bg-[var(--sidebar-active-background)] text-[var(--sidebar-active-foreground)]"
+                            : "text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-hover-background)]")
                         }
                       >
                         <span className="flex items-center gap-2">
@@ -888,7 +500,7 @@ export default function AppSidebar({
                         </span>
 
                         {typeof count === "number" && count > 0 && (
-                          <span className="rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-300">
+                          <span className="rounded-full bg-[var(--sidebar-surface)] px-2 py-0.5 text-xs text-[var(--sidebar-foreground)]">
                             {count}
                           </span>
                         )}
@@ -902,14 +514,14 @@ export default function AppSidebar({
         })}
       </nav>
 
-      <div className="mt-auto border-t border-slate-800 pt-3 text-xs text-slate-500">
-        <p className="font-medium text-slate-300">{resolvedProfile.full_name}</p>
+      <div className="mt-3 shrink-0 border-t border-[var(--sidebar-border)] pt-3 text-xs text-slate-500">
+        <p className="font-medium text-slate-700 dark:text-slate-300">{resolvedProfile.full_name}</p>
         <p className="mb-3 text-[11px]">{resolvedProfile.email}</p>
 
         <button
           onClick={handleLogout}
           disabled={loading}
-          className="w-full rounded-lg bg-slate-800 px-3 py-2 text-left text-slate-300 transition hover:bg-slate-700 disabled:opacity-50"
+          className="w-full rounded-lg bg-[var(--sidebar-surface)] px-3 py-2 text-left text-[var(--sidebar-foreground)] transition hover:bg-[var(--sidebar-hover-background)] disabled:opacity-50"
         >
           {loading ? "Signing out…" : "Sign out"}
         </button>

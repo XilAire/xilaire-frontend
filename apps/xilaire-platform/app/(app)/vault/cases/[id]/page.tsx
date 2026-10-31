@@ -241,11 +241,11 @@ function getStatusClass(status: string | null | undefined) {
     case "pending":
       return "border-yellow-500/30 bg-yellow-500/10 text-yellow-300";
     case "closed":
-      return "border-zinc-500/30 bg-zinc-500/10 text-zinc-300";
+      return "border-zinc-500/30 bg-zinc-500/10 text-zinc-700 dark:text-zinc-300";
     case "archived":
       return "border-purple-500/30 bg-purple-500/10 text-purple-300";
     default:
-      return "border-zinc-500/30 bg-zinc-500/10 text-zinc-300";
+      return "border-zinc-500/30 bg-zinc-500/10 text-zinc-700 dark:text-zinc-300";
   }
 }
 
@@ -260,9 +260,9 @@ function getPriorityClass(priority: string | null | undefined) {
     case "normal":
       return "border-blue-500/30 bg-blue-500/10 text-blue-300";
     case "low":
-      return "border-zinc-500/30 bg-zinc-500/10 text-zinc-300";
+      return "border-zinc-500/30 bg-zinc-500/10 text-zinc-700 dark:text-zinc-300";
     default:
-      return "border-zinc-500/30 bg-zinc-500/10 text-zinc-300";
+      return "border-zinc-500/30 bg-zinc-500/10 text-zinc-700 dark:text-zinc-300";
   }
 }
 
@@ -275,9 +275,9 @@ function getRoleClass(role: string | null | undefined) {
     case "reviewer":
       return "border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
     case "viewer":
-      return "border-zinc-500/30 bg-zinc-500/10 text-zinc-300";
+      return "border-zinc-500/30 bg-zinc-500/10 text-zinc-700 dark:text-zinc-300";
     default:
-      return "border-slate-500/30 bg-slate-500/10 text-slate-300";
+      return "border-slate-500/30 bg-slate-500/10 text-slate-700 dark:text-slate-300";
   }
 }
 
@@ -1136,7 +1136,7 @@ export default async function VaultCaseDetailPage({
 
   if (!item) {
     return (
-      <main className="min-h-screen bg-zinc-950 px-6 py-8 text-zinc-100">
+      <main className="min-h-screen bg-white dark:bg-zinc-950 px-6 py-8 text-zinc-900 dark:text-zinc-100">
         <div className="mx-auto max-w-4xl rounded-2xl border border-red-500/30 bg-red-500/10 p-6 text-red-200">
           <h1 className="text-xl font-semibold">Case not found</h1>
           <p className="mt-2 text-sm text-red-200/80">
@@ -1144,7 +1144,7 @@ export default async function VaultCaseDetailPage({
           </p>
           <Link
             href="/vault/cases"
-            className="mt-5 inline-flex rounded-xl border border-zinc-700 px-4 py-2 text-sm text-zinc-200 hover:bg-zinc-800"
+            className="mt-5 inline-flex rounded-xl border border-zinc-300 dark:border-zinc-700 px-4 py-2 text-sm text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800"
           >
             Back to cases
           </Link>
@@ -1182,9 +1182,9 @@ export default async function VaultCaseDetailPage({
     }, {});
 
   return (
-    <main className="min-h-screen bg-zinc-950 px-6 py-8 text-zinc-100">
+    <main className="min-h-screen bg-white dark:bg-zinc-950 px-6 py-8 text-zinc-900 dark:text-zinc-100">
       <div className="mx-auto flex max-w-7xl flex-col gap-6">
-        <section className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-6 shadow-xl">
+        <section className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 p-6 shadow-xl">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <p className="text-sm uppercase tracking-[0.3em] text-zinc-500">
@@ -1193,7 +1193,7 @@ export default async function VaultCaseDetailPage({
               <h1 className="mt-2 text-3xl font-semibold tracking-tight">
                 {item.name ?? "Untitled Case"}
               </h1>
-              <p className="mt-2 max-w-3xl whitespace-pre-wrap text-sm leading-6 text-zinc-400">
+              <p className="mt-2 max-w-3xl whitespace-pre-wrap text-sm leading-6 text-zinc-600 dark:text-zinc-400">
                 {item.description || "No description provided."}
               </p>
 
@@ -1219,7 +1219,7 @@ export default async function VaultCaseDetailPage({
             <div className="flex flex-wrap gap-2">
               <Link
                 href="/vault/cases"
-                className="inline-flex items-center justify-center rounded-xl border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-300 hover:bg-zinc-800"
+                className="inline-flex items-center justify-center rounded-xl border border-zinc-300 dark:border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
               >
                 Back to cases
               </Link>
@@ -1255,10 +1255,10 @@ export default async function VaultCaseDetailPage({
           </div>
         </section>
 
-        <section className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-3 shadow-xl">
+        <section className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 p-3 shadow-xl">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="px-2">
-              <p className="text-sm font-medium text-zinc-300">Case workspace</p>
+              <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Case workspace</p>
               <p className="mt-1 text-xs text-zinc-500">
                 {getCurrentTabDescription(activeTab)}
               </p>
@@ -1284,7 +1284,7 @@ export default async function VaultCaseDetailPage({
                       "rounded-xl border px-3 py-2 text-xs font-medium transition " +
                       (isActive
                         ? "border-blue-500/50 bg-blue-500/15 text-blue-200"
-                        : "border-zinc-800 bg-zinc-950 text-zinc-400 hover:border-zinc-700 hover:bg-zinc-800 hover:text-zinc-200")
+                        : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 hover:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-200")
                     }
                     title={workspaceTab.description}
                   >
@@ -1299,7 +1299,7 @@ export default async function VaultCaseDetailPage({
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           <Link
             href={`/vault/cases/${item.id}/summary`}
-            className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5 hover:border-purple-500/40 hover:bg-purple-500/10"
+            className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 p-5 hover:border-purple-500/40 hover:bg-purple-500/10"
           >
             <p className="text-sm font-medium text-purple-200">Case Summary</p>
             <p className="mt-2 text-sm leading-6 text-zinc-500">
@@ -1310,7 +1310,7 @@ export default async function VaultCaseDetailPage({
 
           <Link
             href={`/vault/cases/${item.id}/search`}
-            className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5 hover:border-blue-500/40 hover:bg-blue-500/10"
+            className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 p-5 hover:border-blue-500/40 hover:bg-blue-500/10"
           >
             <p className="text-sm font-medium text-blue-200">Case Search</p>
             <p className="mt-2 text-sm leading-6 text-zinc-500">
@@ -1321,7 +1321,7 @@ export default async function VaultCaseDetailPage({
 
           <Link
             href={`/vault/cases/${item.id}/holds`}
-            className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5 hover:border-amber-500/40 hover:bg-amber-500/10"
+            className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 p-5 hover:border-amber-500/40 hover:bg-amber-500/10"
           >
             <p className="text-sm font-medium text-amber-200">Case Holds</p>
             <p className="mt-2 text-sm leading-6 text-zinc-500">
@@ -1332,7 +1332,7 @@ export default async function VaultCaseDetailPage({
 
           <Link
             href={`/vault/cases/${item.id}/exports`}
-            className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5 hover:border-emerald-500/40 hover:bg-emerald-500/10"
+            className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 p-5 hover:border-emerald-500/40 hover:bg-emerald-500/10"
           >
             <p className="text-sm font-medium text-emerald-200">Case Exports</p>
             <p className="mt-2 text-sm leading-6 text-zinc-500">
@@ -1343,7 +1343,7 @@ export default async function VaultCaseDetailPage({
 
           <Link
             href={`/vault/cases/${item.id}/review-sets`}
-            className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5 hover:border-fuchsia-500/40 hover:bg-fuchsia-500/10"
+            className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 p-5 hover:border-fuchsia-500/40 hover:bg-fuchsia-500/10"
           >
             <p className="text-sm font-medium text-fuchsia-200">Review Sets</p>
             <p className="mt-2 text-sm leading-6 text-zinc-500">
@@ -1368,35 +1368,35 @@ export default async function VaultCaseDetailPage({
         )}
 
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
+          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 p-5">
             <p className="text-sm text-zinc-500">Members</p>
             <p className="mt-2 text-2xl font-semibold">{memberCount}</p>
           </div>
 
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
+          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 p-5">
             <p className="text-sm text-zinc-500">Custodians</p>
             <p className="mt-2 text-2xl font-semibold">{custodianCount}</p>
           </div>
 
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
+          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 p-5">
             <p className="text-sm text-zinc-500">Admins</p>
             <p className="mt-2 text-2xl font-semibold">{adminCount}</p>
           </div>
 
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
+          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 p-5">
             <p className="text-sm text-zinc-500">Reviewers</p>
             <p className="mt-2 text-2xl font-semibold">{reviewerCount}</p>
           </div>
 
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
+          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 p-5">
             <p className="text-sm text-zinc-500">Mailboxes</p>
             <p className="mt-2 text-2xl font-semibold">{mailboxCount}</p>
           </div>
         </section>
 
         {Object.keys(departmentMemberCounts).length ? (
-          <section className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
-            <p className="text-sm font-medium text-zinc-300">
+          <section className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 p-5">
+            <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
               Assigned custodian departments
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
@@ -1405,7 +1405,7 @@ export default async function VaultCaseDetailPage({
                 .map(([department, count]) => (
                   <span
                     key={department}
-                    className="rounded-full border border-zinc-800 bg-zinc-950 px-3 py-1 text-xs text-zinc-400"
+                    className="rounded-full border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-1 text-xs text-zinc-600 dark:text-zinc-400"
                   >
                     {department} ({count})
                   </span>
@@ -1448,10 +1448,10 @@ export default async function VaultCaseDetailPage({
         ) : null}
 
         {activeTab === "overview" ? (
-          <section className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
+          <section className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 p-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <p className="text-sm font-medium text-zinc-200">Overview workspace</p>
+                <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">Overview workspace</p>
                 <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-500">
                   This overview shows the case summary, current member counts,
                   custodian scope, mailbox coverage, and quick links into the
@@ -1473,7 +1473,7 @@ export default async function VaultCaseDetailPage({
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <p className="text-sm font-medium text-blue-200">Searches workspace</p>
-                <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">
                   Search case-scoped evidence across assigned custodians and
                   connected mailbox sources. This keeps discovery activity tied
                   directly to this case workspace.
@@ -1494,7 +1494,7 @@ export default async function VaultCaseDetailPage({
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <p className="text-sm font-medium text-amber-200">Hold policies workspace</p>
-                <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">
                   Review preservation scope, active holds, released holds, and
                   case-related custodian hold coverage.
                 </p>
@@ -1514,7 +1514,7 @@ export default async function VaultCaseDetailPage({
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <p className="text-sm font-medium text-fuchsia-200">Review sets workspace</p>
-                <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">
                   Manage evidence batches, reviewer assignments, tagging,
                   privileged evidence, and export-ready review items for this
                   case.
@@ -1535,7 +1535,7 @@ export default async function VaultCaseDetailPage({
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <p className="text-sm font-medium text-emerald-200">Exports workspace</p>
-                <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">
                   Review export jobs, package preparation, manifests, filters,
                   and case-linked production history.
                 </p>
@@ -1555,7 +1555,7 @@ export default async function VaultCaseDetailPage({
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
                 <p className="text-sm font-medium text-cyan-200">Data sources workspace</p>
-                <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">
                   Review connected mailbox sources, ingestion coverage, and
                   custodian data scope currently attached through case members.
                 </p>
@@ -1571,10 +1571,10 @@ export default async function VaultCaseDetailPage({
         ) : null}
 
         {activeTab === "activity" ? (
-          <section className="rounded-2xl border border-zinc-700 bg-zinc-900/70 p-5">
+          <section className="rounded-2xl border border-zinc-300 dark:border-zinc-700 bg-zinc-100/70 dark:bg-zinc-900/70 p-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <p className="text-sm font-medium text-zinc-200">Activity workspace</p>
+                <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">Activity workspace</p>
                 <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-500">
                   Review case activity, audit events, membership updates, hold
                   actions, search activity, review updates, and export actions.
@@ -1582,7 +1582,7 @@ export default async function VaultCaseDetailPage({
               </div>
               <Link
                 href={`/vault/cases/${item.id}/activity`}
-                className="inline-flex items-center justify-center rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-2 text-sm font-medium text-zinc-200 hover:bg-zinc-800"
+                className="inline-flex items-center justify-center rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-4 py-2 text-sm font-medium text-zinc-800 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800"
               >
                 Open activity
               </Link>
@@ -1592,8 +1592,8 @@ export default async function VaultCaseDetailPage({
 
         {activeTab === "members" ? (
         <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70">
-            <div className="border-b border-zinc-800 px-5 py-4">
+          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70">
+            <div className="border-b border-zinc-200 dark:border-zinc-800 px-5 py-4">
               <h2 className="text-lg font-semibold">Case Members</h2>
               <p className="mt-1 text-sm text-zinc-500">
                 Custodians and Vault admins currently assigned to this case.
@@ -1601,12 +1601,12 @@ export default async function VaultCaseDetailPage({
             </div>
 
             {memberResult.items.length ? (
-              <div className="divide-y divide-zinc-800">
+              <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
                 {memberResult.items.map((member) => (
                   <div key={member.id} className="p-5">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                       <div>
-                        <p className="font-medium text-zinc-100">
+                        <p className="font-medium text-zinc-900 dark:text-zinc-100">
                           {member.display_name ?? "Unnamed member"}
                         </p>
                         <p className="mt-1 text-sm text-zinc-500">
@@ -1657,7 +1657,7 @@ export default async function VaultCaseDetailPage({
                           <select
                             name="role"
                             defaultValue={member.role}
-                            className="rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-200 outline-none focus:border-blue-500/60"
+                            className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 outline-none focus:border-blue-500/60"
                           >
                             <option value="owner">Owner</option>
                             <option value="admin">Admin</option>
@@ -1691,7 +1691,7 @@ export default async function VaultCaseDetailPage({
                     </div>
 
                     {member.mailboxes.length ? (
-                      <div className="mt-4 rounded-xl border border-zinc-800 bg-zinc-950/70 p-3">
+                      <div className="mt-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-950/70 p-3">
                         <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">
                           Mailboxes
                         </p>
@@ -1699,7 +1699,7 @@ export default async function VaultCaseDetailPage({
                           {member.mailboxes.map((mailbox) => (
                             <div
                               key={mailbox.id}
-                              className="rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-300"
+                              className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-100/50 dark:bg-zinc-900/50 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300"
                             >
                               <div>{mailbox.mailbox_address ?? "Unknown mailbox"}</div>
                               <div className="mt-1 text-xs text-zinc-600">
@@ -1723,18 +1723,18 @@ export default async function VaultCaseDetailPage({
             )}
           </div>
 
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70">
-            <div className="border-b border-zinc-800 px-5 py-4">
+          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70">
+            <div className="border-b border-zinc-200 dark:border-zinc-800 px-5 py-4">
               <h2 className="text-lg font-semibold">Add Members</h2>
               <p className="mt-1 text-sm text-zinc-500">
                 Add custodians, departments, or Vault admins to this case.
               </p>
             </div>
 
-            <div className="border-b border-zinc-800 p-5">
+            <div className="border-b border-zinc-200 dark:border-zinc-800 p-5">
               <form className="grid gap-4" action={`/vault/cases/${item.id}`}>
                 <div>
-                  <label className="text-sm text-zinc-400" htmlFor="memberQ">
+                  <label className="text-sm text-zinc-600 dark:text-zinc-400" htmlFor="memberQ">
                     Search eligible members
                   </label>
                   <input
@@ -1742,13 +1742,13 @@ export default async function VaultCaseDetailPage({
                     name="memberQ"
                     defaultValue={memberQ}
                     placeholder="Search by name, email, mailbox, department, or role"
-                    className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                    className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                   />
                 </div>
 
                 <div>
                   <label
-                    className="text-sm text-zinc-400"
+                    className="text-sm text-zinc-600 dark:text-zinc-400"
                     htmlFor="departments"
                   >
                     Departments
@@ -1758,13 +1758,13 @@ export default async function VaultCaseDetailPage({
                     name="departments"
                     defaultValue={departments}
                     placeholder="Example: HR, SALES, ADMIN"
-                    className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                    className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                   />
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-3">
                   <input type="hidden" name="showCustodians" value="false" />
-                  <label className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-300">
+                  <label className="flex items-center gap-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300">
                     <input
                       type="checkbox"
                       name="showCustodians"
@@ -1775,7 +1775,7 @@ export default async function VaultCaseDetailPage({
                   </label>
 
                   <input type="hidden" name="showAdmins" value="false" />
-                  <label className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-300">
+                  <label className="flex items-center gap-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300">
                     <input
                       type="checkbox"
                       name="showAdmins"
@@ -1785,7 +1785,7 @@ export default async function VaultCaseDetailPage({
                     Admins
                   </label>
 
-                  <label className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-300">
+                  <label className="flex items-center gap-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300">
                     <input
                       type="checkbox"
                       name="includeAssigned"
@@ -1831,7 +1831,7 @@ export default async function VaultCaseDetailPage({
                             "rounded-full border px-3 py-1 text-xs " +
                             (active
                               ? "border-blue-500/50 bg-blue-500/15 text-blue-200"
-                              : "border-zinc-800 bg-zinc-950 text-zinc-400 hover:bg-zinc-800")
+                              : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800")
                           }
                         >
                           {department}{" "}
@@ -1847,8 +1847,8 @@ export default async function VaultCaseDetailPage({
             </div>
 
             {eligibleResult.departments.length ? (
-              <div className="border-b border-zinc-800 p-5">
-                <p className="text-sm font-medium text-zinc-300">
+              <div className="border-b border-zinc-200 dark:border-zinc-800 p-5">
+                <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
                   Add entire department
                 </p>
                 <div className="mt-3 grid gap-2">
@@ -1856,10 +1856,10 @@ export default async function VaultCaseDetailPage({
                     <form
                       key={department}
                       action={addDepartmentCustodians}
-                      className="flex flex-col gap-2 rounded-xl border border-zinc-800 bg-zinc-950 p-3 sm:flex-row sm:items-center sm:justify-between"
+                      className="flex flex-col gap-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-3 sm:flex-row sm:items-center sm:justify-between"
                     >
                       <div>
-                        <p className="text-sm text-zinc-200">{department}</p>
+                        <p className="text-sm text-zinc-800 dark:text-zinc-200">{department}</p>
                         <p className="text-xs text-zinc-600">
                           {eligibleResult.departmentCounts[department] ?? 0} active
                           custodian(s)
@@ -1875,7 +1875,7 @@ export default async function VaultCaseDetailPage({
                         <select
                           name="role"
                           defaultValue="member"
-                          className="rounded-xl border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-200"
+                          className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 px-2 py-1.5 text-xs text-zinc-800 dark:text-zinc-200"
                         >
                           <option value="reviewer">Reviewer</option>
                           <option value="viewer">Viewer</option>
@@ -1895,7 +1895,7 @@ export default async function VaultCaseDetailPage({
             ) : null}
 
             {eligibleResult.items.length ? (
-              <div className="max-h-[720px] divide-y divide-zinc-800 overflow-y-auto">
+              <div className="max-h-[720px] divide-y divide-zinc-200 dark:divide-zinc-800 overflow-y-auto">
                 {eligibleResult.items.map((eligible) => (
                   <div
                     key={`${eligible.assignable_type}:${eligible.id}`}
@@ -1903,7 +1903,7 @@ export default async function VaultCaseDetailPage({
                   >
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                       <div>
-                        <p className="font-medium text-zinc-100">
+                        <p className="font-medium text-zinc-900 dark:text-zinc-100">
                           {eligible.display_name}
                         </p>
                         <p className="mt-1 text-sm text-zinc-500">
@@ -1947,7 +1947,7 @@ export default async function VaultCaseDetailPage({
                       </div>
 
                       {eligible.is_assigned ? (
-                        <div className="rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-500">
+                        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-1.5 text-xs text-zinc-500">
                           Assigned
                         </div>
                       ) : (
@@ -1966,7 +1966,7 @@ export default async function VaultCaseDetailPage({
                           <select
                             name="role"
                             defaultValue={eligible.default_case_role ?? "member"}
-                            className="rounded-xl border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs text-zinc-200"
+                            className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-2 py-1.5 text-xs text-zinc-800 dark:text-zinc-200"
                           >
                             <option value="owner">Owner</option>
                             <option value="admin">Admin</option>

@@ -102,7 +102,7 @@ function statusBadgeClasses(status: string | null | undefined) {
     return "border-rose-500/30 bg-rose-500/10 text-rose-300";
   }
 
-  return "border-slate-700 bg-slate-800 text-slate-300";
+  return "border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300";
 }
 
 async function resolveVendorForUser(params: {
@@ -414,11 +414,11 @@ export default function VendorProjectsPage() {
       <div className="space-y-2">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-slate-200">
+            <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-200">
               Vendor Projects
             </h1>
 
-            <p className="text-slate-400">
+            <p className="text-slate-600 dark:text-slate-400">
               {headerDescription}
             </p>
 
@@ -428,7 +428,7 @@ export default function VendorProjectsPage() {
           <div className="flex flex-wrap gap-2">
             <Link
               href="/vendor"
-              className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-700 px-4 text-sm text-slate-300 transition hover:border-sky-600 hover:text-white"
+              className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 dark:border-slate-700 px-4 text-sm text-slate-700 dark:text-slate-300 transition hover:border-sky-600 hover:text-white"
             >
               Back to Vendor Portal
             </Link>
@@ -438,13 +438,13 @@ export default function VendorProjectsPage() {
         {(isVendorView || isAdminView) && (
           <div className="flex flex-wrap gap-2 text-xs text-slate-500">
             {isVendorView && !isAdminView && resolvedVendorId ? (
-              <span className="rounded-full border border-slate-800 bg-slate-900 px-3 py-1">
+              <span className="rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 py-1">
                 Vendor scope active
               </span>
             ) : null}
 
             {isAdminView ? (
-              <span className="rounded-full border border-slate-800 bg-slate-900 px-3 py-1">
+              <span className="rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 py-1">
                 Admin org-wide view
               </span>
             ) : null}
@@ -455,44 +455,44 @@ export default function VendorProjectsPage() {
       {!loading && !error && (
         <>
           <div className="grid gap-4 md:grid-cols-4">
-            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5">
               <p className="text-xs uppercase tracking-[0.16em] text-slate-500">
                 Total
               </p>
-              <p className="mt-2 text-3xl font-semibold text-slate-100">
+              <p className="mt-2 text-3xl font-semibold text-slate-900 dark:text-slate-100">
                 {stats.total}
               </p>
             </div>
 
-            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5">
               <p className="text-xs uppercase tracking-[0.16em] text-slate-500">
                 Active / Scheduled
               </p>
-              <p className="mt-2 text-3xl font-semibold text-slate-100">
+              <p className="mt-2 text-3xl font-semibold text-slate-900 dark:text-slate-100">
                 {stats.active}
               </p>
             </div>
 
-            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5">
               <p className="text-xs uppercase tracking-[0.16em] text-slate-500">
                 Pending / Draft
               </p>
-              <p className="mt-2 text-3xl font-semibold text-slate-100">
+              <p className="mt-2 text-3xl font-semibold text-slate-900 dark:text-slate-100">
                 {stats.pending}
               </p>
             </div>
 
-            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5">
               <p className="text-xs uppercase tracking-[0.16em] text-slate-500">
                 Completed
               </p>
-              <p className="mt-2 text-3xl font-semibold text-slate-100">
+              <p className="mt-2 text-3xl font-semibold text-slate-900 dark:text-slate-100">
                 {stats.completed}
               </p>
             </div>
           </div>
 
-          <div className="grid gap-3 rounded-2xl border border-slate-800 bg-slate-900 p-4 md:grid-cols-[1fr_220px]">
+          <div className="grid gap-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-4 md:grid-cols-[1fr_220px]">
             <div className="space-y-1">
               <label
                 htmlFor="project-search"
@@ -505,7 +505,7 @@ export default function VendorProjectsPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Project, client, vendor, role..."
-                className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-sky-600"
+                className="h-11 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 text-sm text-slate-900 dark:text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-sky-600"
               />
             </div>
 
@@ -520,7 +520,7 @@ export default function VendorProjectsPage() {
                 id="status-filter"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 outline-none transition focus:border-sky-600"
+                className="h-11 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 text-sm text-slate-900 dark:text-slate-100 outline-none transition focus:border-sky-600"
               >
                 <option value="all">All</option>
                 <option value="pending">Pending</option>
@@ -538,7 +538,7 @@ export default function VendorProjectsPage() {
       )}
 
       {loading && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-slate-400">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6 text-slate-600 dark:text-slate-400">
           Loading projects...
         </div>
       )}
@@ -550,7 +550,7 @@ export default function VendorProjectsPage() {
       )}
 
       {!loading && !error && filteredProjects.length === 0 && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-slate-400">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6 text-slate-600 dark:text-slate-400">
           No projects found.
         </div>
       )}
@@ -561,7 +561,7 @@ export default function VendorProjectsPage() {
             <Link
               key={project.id}
               href={`/vendor/projects/${project.id}`}
-              className="block rounded-2xl border border-slate-800 bg-slate-900 p-5 transition hover:border-sky-600 hover:bg-slate-900/70"
+              className="block rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5 transition hover:border-sky-600 hover:bg-slate-100/70 dark:hover:bg-slate-900/70"
             >
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0 flex-1">
@@ -577,18 +577,18 @@ export default function VendorProjectsPage() {
                     {project.assignment_roles.map((role) => (
                       <span
                         key={`${project.id}-${role}`}
-                        className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-300"
+                        className="rounded-full border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs text-slate-700 dark:text-slate-300"
                       >
                         {formatStatus(role)}
                       </span>
                     ))}
                   </div>
 
-                  <h2 className="mt-3 text-lg font-semibold text-slate-100">
+                  <h2 className="mt-3 text-lg font-semibold text-slate-900 dark:text-slate-100">
                     {project.project_name}
                   </h2>
 
-                  <p className="mt-1 text-sm text-slate-400">
+                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
                     Client: {project.client_name}
                   </p>
 

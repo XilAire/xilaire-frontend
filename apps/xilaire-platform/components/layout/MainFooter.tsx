@@ -1,6 +1,6 @@
 export default function MainFooter() {
   return (
-    <footer className="border-t border-slate-800 bg-slate-950/80">
+    <footer className="border-t border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/80">
       <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-4 text-xs text-slate-500 md:flex-row md:items-center md:justify-between">
         <p>© {new Date().getFullYear()} XilAire Technologies. All rights reserved.</p>
 

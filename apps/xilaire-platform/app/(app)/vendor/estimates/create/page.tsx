@@ -484,7 +484,7 @@ export default function CreateEstimatePage() {
   if (loading) {
     return (
       <div className="p-6">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-slate-400">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6 text-slate-600 dark:text-slate-400">
           Loading create estimate page...
         </div>
       </div>
@@ -502,20 +502,20 @@ export default function CreateEstimatePage() {
             ← Back
           </Link>
 
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-100">
+          <h1 className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
             Create Estimate
           </h1>
 
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-600 dark:text-slate-400">
             Create a new project-linked estimate for the vendor workflow.
           </p>
 
           {!isAdmin && isVendor && resolvedVendorName ? (
             <div className="flex flex-wrap gap-2 pt-1 text-xs text-slate-500">
-              <span className="rounded-full border border-slate-800 bg-slate-900 px-3 py-1">
+              <span className="rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 py-1">
                 Vendor scope active
               </span>
-              <span className="rounded-full border border-slate-800 bg-slate-900 px-3 py-1">
+              <span className="rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 py-1">
                 {resolvedVendorName}
               </span>
             </div>
@@ -523,7 +523,7 @@ export default function CreateEstimatePage() {
 
           {isAdmin ? (
             <div className="flex flex-wrap gap-2 pt-1 text-xs text-slate-500">
-              <span className="rounded-full border border-slate-800 bg-slate-900 px-3 py-1">
+              <span className="rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 py-1">
                 Admin org-wide create view
               </span>
             </div>
@@ -560,13 +560,13 @@ export default function CreateEstimatePage() {
 
         <form
           onSubmit={handleSubmit}
-          className="rounded-2xl border border-slate-800 bg-slate-900"
+          className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900"
         >
-          <div className="border-b border-slate-800 px-6 py-5">
-            <h2 className="text-lg font-semibold text-slate-100">
+          <div className="border-b border-slate-200 dark:border-slate-800 px-6 py-5">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
               Estimate Details
             </h2>
-            <p className="mt-1 text-sm text-slate-400">
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
               Fill out the estimate information below, then save it as a draft.
             </p>
           </div>
@@ -579,7 +579,7 @@ export default function CreateEstimatePage() {
                   value={projectId}
                   onChange={(e) => setProjectId(e.target.value)}
                   disabled={isProjectLocked || submitting}
-                  className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 outline-none transition focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="h-11 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 text-sm text-slate-900 dark:text-slate-100 outline-none transition focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <option value="">Select project</option>
                   {projects.map((project) => (
@@ -602,7 +602,7 @@ export default function CreateEstimatePage() {
                     value={vendorId}
                     onChange={(e) => setVendorId(e.target.value)}
                     disabled={submitting}
-                    className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 outline-none transition focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="h-11 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 text-sm text-slate-900 dark:text-slate-100 outline-none transition focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <option value="">Select vendor</option>
                     {vendors.map((vendor) => (
@@ -615,7 +615,7 @@ export default function CreateEstimatePage() {
               ) : (
                 <Field>
                   <Label>Vendor</Label>
-                  <div className="flex h-11 items-center rounded-xl border border-slate-800 bg-slate-950 px-3 text-sm text-slate-200">
+                  <div className="flex h-11 items-center rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-sm text-slate-800 dark:text-slate-200">
                     {resolvedVendorName || "Resolved automatically"}
                   </div>
                   <HelpText>
@@ -627,9 +627,9 @@ export default function CreateEstimatePage() {
 
             <Field>
               <Label>Assigned Tasks</Label>
-              <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4">
                 {taskLoading ? (
-                  <p className="text-sm text-slate-400">Loading assigned tasks...</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Loading assigned tasks...</p>
                 ) : assignedTaskCodes.length ? (
                   <div className="flex flex-wrap gap-2">
                     {assignedTaskCodes.map((task) => (
@@ -661,7 +661,7 @@ export default function CreateEstimatePage() {
                   onChange={(e) => setSiteVisitId(e.target.value)}
                   placeholder="Optional UUID"
                   disabled={submitting}
-                  className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="h-11 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 text-sm text-slate-900 dark:text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
                 />
               </Field>
             </div>
@@ -678,7 +678,7 @@ export default function CreateEstimatePage() {
                   }
                   placeholder="0.00"
                   disabled={submitting}
-                  className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="h-11 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 text-sm text-slate-900 dark:text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
                 />
               </Field>
 
@@ -693,7 +693,7 @@ export default function CreateEstimatePage() {
                   }
                   placeholder="0.00"
                   disabled={submitting}
-                  className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="h-11 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 text-sm text-slate-900 dark:text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
                 />
               </Field>
 
@@ -708,7 +708,7 @@ export default function CreateEstimatePage() {
                   }
                   placeholder="0.00"
                   disabled={submitting}
-                  className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="h-11 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 text-sm text-slate-900 dark:text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
                 />
                 <HelpText>
                   Total auto-calculates from labor + material, but can still be adjusted.
@@ -724,7 +724,7 @@ export default function CreateEstimatePage() {
                 rows={7}
                 placeholder="Scope notes, assumptions, exclusions, labor details, material details..."
                 disabled={submitting}
-                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-3 text-sm text-slate-900 dark:text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
               />
             </Field>
 
@@ -735,7 +735,7 @@ export default function CreateEstimatePage() {
                   value={taskSnapshotPreview}
                   readOnly
                   rows={Math.max(4, assignedTaskCodes.length + 1)}
-                  className="w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-3 text-sm text-slate-300 outline-none"
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 py-3 text-sm text-slate-700 dark:text-slate-300 outline-none"
                 />
                 <HelpText>
                   This snapshot is attached automatically on create so the estimate keeps the assigned-task context.
@@ -744,7 +744,7 @@ export default function CreateEstimatePage() {
             ) : null}
           </div>
 
-          <div className="flex flex-wrap gap-3 border-t border-slate-800 px-6 py-5">
+          <div className="flex flex-wrap gap-3 border-t border-slate-200 dark:border-slate-800 px-6 py-5">
             <button
               type="submit"
               disabled={submitting || !assignedTaskCodes.length}
@@ -763,7 +763,7 @@ export default function CreateEstimatePage() {
                 }
               }}
               disabled={submitting}
-              className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-700 bg-slate-950 px-5 text-sm font-medium text-slate-200 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-5 text-sm font-medium text-slate-800 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Cancel
             </button>
@@ -782,11 +782,11 @@ function SummaryCard({
   value: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5">
       <p className="text-xs uppercase tracking-[0.16em] text-slate-500">
         {label}
       </p>
-      <p className="mt-2 line-clamp-2 text-sm text-slate-100">{value}</p>
+      <p className="mt-2 line-clamp-2 text-sm text-slate-900 dark:text-slate-100">{value}</p>
     </div>
   );
 }

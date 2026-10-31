@@ -107,14 +107,14 @@ export default async function NewChangeRequestPage() {
         <h1 className="text-2xl font-semibold text-white">
           New Change Request
         </h1>
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-slate-600 dark:text-slate-400">
           Define scope, ownership, timing, and approvals
         </p>
       </div>
 
       <form
         action={submit}
-        className="rounded-xl border border-slate-700 bg-slate-900/60 p-6 space-y-8"
+        className="rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-100/60 dark:bg-slate-900/60 p-6 space-y-8"
       >
         <Field label="Change Title">
           <input
@@ -157,23 +157,23 @@ export default async function NewChangeRequestPage() {
           </select>
         </Field>
 
-        <label className="flex items-center gap-3 text-slate-300">
+        <label className="flex items-center gap-3 text-slate-700 dark:text-slate-300">
           <input type="checkbox" name="requiresApproval" defaultChecked />
           Requires approval before execution
         </label>
 
-        <div className="rounded-lg border border-slate-700 bg-slate-900 p-4 text-sm text-slate-400">
+        <div className="rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4 text-sm text-slate-600 dark:text-slate-400">
           Approval stages will be created automatically.
           Tasks may not be completed until approvals are granted.
         </div>
 
-        <div className="flex gap-4 pt-6 border-t border-slate-700">
+        <div className="flex gap-4 pt-6 border-t border-slate-300 dark:border-slate-700">
           <button className="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded text-white">
             Create Change Request
           </button>
           <a
             href="/helpdesk/change-requests"
-            className="px-6 py-2 rounded border border-slate-600 text-slate-300 hover:bg-slate-800"
+            className="px-6 py-2 rounded border border-slate-400 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
             Cancel
           </a>
@@ -187,7 +187,7 @@ export default async function NewChangeRequestPage() {
    SHARED STYLES
 ---------------------------------------- */
 const inputClass =
-  "w-full rounded-md bg-slate-900 border border-slate-700 px-3 py-2 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500";
+  "w-full rounded-md bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 px-3 py-2 text-slate-900 dark:text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500";
 
 function Field({
   label,
@@ -198,7 +198,7 @@ function Field({
 }) {
   return (
     <div className="space-y-1">
-      <label className="block text-sm font-medium text-slate-300">
+      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
         {label}
       </label>
       {children}

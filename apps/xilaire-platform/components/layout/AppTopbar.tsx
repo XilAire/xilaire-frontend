@@ -22,13 +22,13 @@ export default function AppTopbar({
     <header
       className="
         sticky top-0 z-30
-        border-b border-slate-800
-        bg-slate-950/95
+        border-b border-[var(--border-default)]
+        bg-[var(--surface-elevated)]/95
         backdrop-blur
         transition-colors
       "
     >
-      <div className="flex min-h-[76px] items-center justify-between gap-4 px-5 py-4 lg:px-6">
+      <div className="flex min-h-[76px] items-center justify-between gap-3 px-4 py-3 lg:px-6">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span
@@ -36,37 +36,37 @@ export default function AppTopbar({
                 inline-flex items-center rounded-full
                 border border-sky-500/20 bg-sky-500/10
                 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]
-                text-sky-300
+                text-sky-700 dark:text-sky-300
               "
             >
               XilAire Platform
             </span>
           </div>
 
-          <h1 className="mt-2 truncate text-2xl font-semibold tracking-tight text-white">
+          <h1 className="mt-2 truncate text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
             {title}
           </h1>
 
           {subtitle && (
-            <p className="mt-1 max-w-3xl truncate text-sm text-slate-400">
+            <p className="mt-1 max-w-3xl truncate text-sm text-[var(--text-secondary)]">
               {subtitle}
             </p>
           )}
         </div>
 
         <div className="flex shrink-0 items-center gap-2 lg:gap-3">
-          <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-1">
+          <div className="rounded-xl border border-[var(--border-default)] bg-[var(--surface-muted)] p-1">
             <ThemeToggle />
           </div>
 
-          <Link href="/tickets">
+          <Link href="/tickets" className="hidden sm:block">
             <Button
               variant="outline"
               className="
                 inline-flex h-10 items-center gap-2 rounded-xl
-                border-slate-700 bg-slate-900 px-4 text-sm font-medium text-slate-200
-                hover:border-slate-600 hover:bg-slate-800
-                dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800
+                border-[var(--border-default)] bg-[var(--surface-default)] px-4 text-sm font-medium text-foreground
+                hover:border-[var(--border-strong)] hover:bg-[var(--surface-hover)]
+                dark:border-[var(--border-default)] dark:bg-[var(--surface-default)] dark:text-foreground dark:hover:bg-[var(--surface-hover)]
               "
             >
               <Ticket className="h-4 w-4" />
@@ -74,7 +74,7 @@ export default function AppTopbar({
             </Button>
           </Link>
 
-          <Link href="/automations/new">
+          <Link href="/automations/new" className="hidden lg:block">
             <Button
               className="
                 inline-flex h-10 items-center gap-2 rounded-xl
@@ -88,9 +88,7 @@ export default function AppTopbar({
             </Button>
           </Link>
 
-          <div className="ml-1 rounded-xl border border-slate-800 bg-slate-900/80 p-1">
-            <UserMenu profile={profile} />
-          </div>
+          <UserMenu profile={profile} />
         </div>
       </div>
     </header>

@@ -25,7 +25,7 @@ export default function CRTimeline({ change }: CRTimelineProps) {
     label: "Change Request Created",
     detail: `Initial status: ${status || "unknown"}`,
     date: created_at,
-    icon: <Clock className="h-4 w-4 text-slate-400" />,
+    icon: <Clock className="h-4 w-4 text-slate-600 dark:text-slate-400" />,
   });
 
   // APPROVAL STATUS
@@ -76,22 +76,22 @@ export default function CRTimeline({ change }: CRTimelineProps) {
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-sm">
+    <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
       <h2 className="text-xl font-semibold text-white mb-6">Timeline</h2>
 
       {events.length === 0 ? (
-        <p className="text-slate-400 text-sm">No timeline events recorded.</p>
+        <p className="text-slate-600 dark:text-slate-400 text-sm">No timeline events recorded.</p>
       ) : (
         <div className="relative">
           {/* Vertical Line */}
-          <div className="absolute left-4 top-0 bottom-0 w-px bg-slate-700"></div>
+          <div className="absolute left-4 top-0 bottom-0 w-px bg-slate-200 dark:bg-slate-700"></div>
 
           <div className="space-y-8">
             {events.map((event, index) => (
               <div key={index} className="relative pl-12 flex flex-col">
                 {/* Dot + Icon */}
                 <div className="absolute left-0 h-8 w-8 flex items-center justify-center 
-                  bg-slate-800 border border-slate-700 rounded-full">
+                  bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-full">
                   {event.icon}
                 </div>
 
@@ -100,7 +100,7 @@ export default function CRTimeline({ change }: CRTimelineProps) {
 
                 {/* Event Detail */}
                 {event.detail && (
-                  <p className="text-slate-400 text-sm mt-1 whitespace-pre-line">
+                  <p className="text-slate-600 dark:text-slate-400 text-sm mt-1 whitespace-pre-line">
                     {event.detail}
                   </p>
                 )}

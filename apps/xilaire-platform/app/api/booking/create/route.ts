@@ -5,7 +5,6 @@ import { getGraphClient } from "@/lib/msGraph";
 import { consumeBookingEligibility } from "@/lib/booking/bookingEligibility";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import Stripe from "stripe";
-import jwt from "jsonwebtoken";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
@@ -16,80 +15,80 @@ export const runtime = "nodejs";
 ================================================= */
 
 const STRIPE_MODE = process.env.STRIPE_MODE ?? "test";
+// Closed by design. Requires separate explicit approval after concurrency and reconciliation work.
+const BOOKING_CREATE_ACTIVATION_APPROVED: boolean = false;
 
 const STRIPE_SECRET =
   STRIPE_MODE === "live"
     ? process.env.STRIPE_SECRET_KEY_LIVE
     : process.env.STRIPE_SECRET_KEY_TEST;
 
+if (STRIPE_MODE !== "test" && STRIPE_MODE !== "live") {
+  throw new Error("INVALID_STRIPE_MODE");
+}
+
 if (!STRIPE_SECRET) {
   throw new Error(`Missing Stripe secret for mode: ${STRIPE_MODE}`);
 }
 
 const stripe = new Stripe(STRIPE_SECRET, {
-  apiVersion: "2025-08-27.basil",
+  apiVersion: "2026-07-29.dahlia",
 });
 
-/* -------------------------------------------------
-   DEBUG ACCOUNT + MODE
-------------------------------------------------- */
 
-async function verifyStripeBoot() {
-  try {
-    const account = await stripe.accounts.retrieve();
-    console.log("Stripe Account ID:", account.id);
-    console.log("Stripe Mode:", STRIPE_MODE);
-    console.log("Stripe Key Preview:", STRIPE_SECRET.slice(0, 12));
-  } catch (err) {
-    console.error("Stripe Account Verification Failed:", err);
-  }
-}
-
-verifyStripeBoot();
 
 /* =================================================
    CONFIG
 ================================================= */
 
 const BOOKING_MAILBOX = process.env.BOOKING_MAILBOX_EMAIL!;
-const GRAPH_TIMEZONE = "Eastern Standard Time";
-const DISPLAY_TIMEZONE = "America/New_York";
-const ALLOWED_DURATIONS = [15, 30, 60, 90];
-const TOKEN_SECRET = process.env.BOOKING_TOKEN_SECRET!;
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL!;
 
 if (!BOOKING_MAILBOX) throw new Error("BOOKING_MAILBOX_EMAIL missing");
-if (!TOKEN_SECRET) throw new Error("BOOKING_TOKEN_SECRET missing");
 if (!BASE_URL) throw new Error("NEXT_PUBLIC_BASE_URL missing");
 
 /* =================================================
    HELPERS
 ================================================= */
 
-function buildGraphDateTime(date: string, time: string) {
-  return { dateTime: `${date}T${time}:00`, timeZone: GRAPH_TIMEZONE };
+// Fixed service catalog. Never infer payment status from a nullable Stripe ID.
+const SERVICE_CATALOG: Record<string, { duration: number; paid: boolean; priority: boolean }> = {
+  free_consult: { duration: 30, paid: false, priority: false },
+  demo: { duration: 30, paid: false, priority: false },
+  sales: { duration: 30, paid: false, priority: false },
+  technical_consult_business: { duration: 60, paid: true, priority: false },
+  technical_consult_after_hours: { duration: 60, paid: true, priority: false },
+  ai_strategy_session: { duration: 60, paid: true, priority: false },
+  security_assessment_call: { duration: 60, paid: true, priority: false },
+  m365_implementation_session: { duration: 60, paid: true, priority: false },
+  enterprise_architecture_review: { duration: 90, paid: true, priority: false },
+  priority_support_block_business: { duration: 60, paid: true, priority: true },
+  priority_support_block_after_hours: { duration: 60, paid: true, priority: true },
+};
+
+const EASTERN = "America/New_York";
+const easternParts = new Intl.DateTimeFormat("en-US", {
+  timeZone: EASTERN, year: "numeric", month: "2-digit", day: "2-digit",
+  hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+});
+
+function formatEasternKey(instant: Date): string {
+  const parts = easternParts.formatToParts(instant);
+  const field = (type: string) => parts.find(part => part.type === type)?.value ?? "";
+  return `${field("year")}-${field("month")}-${field("day")}T${field("hour")}:${field("minute")}`;
 }
 
-function addMinutes(time: string, minutes: number) {
-  const [h, m] = time.split(":").map(Number);
-  const total = h * 60 + m + minutes;
-  return `${Math.floor(total / 60)
-    .toString()
-    .padStart(2, "0")}:${(total % 60)
-    .toString()
-    .padStart(2, "0")}`;
-}
-
-function formatDateET(iso: string) {
-  return new Date(iso).toLocaleString("en-US", {
-    timeZone: DISPLAY_TIMEZONE,
-    dateStyle: "full",
-    timeStyle: "short",
-  });
-}
-
-function formatIcsDate(d: Date) {
-  return d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+// Resolve wall-clock Eastern time without using the deployment host's timezone.
+// Reject nonexistent/ambiguous DST wall times rather than guessing a booking instant.
+function resolveEasternInstant(date: string, time: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return null;
+  const wallUtcMs = Date.parse(`${date}T${time}:00.000Z`);
+  if (!Number.isFinite(wallUtcMs)) return null;
+  const target = `${date}T${time}`;
+  const possible = [4, 5]
+    .map(hours => new Date(wallUtcMs + hours * 60 * 60 * 1000))
+    .filter(candidate => formatEasternKey(candidate) === target);
+  return possible.length === 1 ? possible[0] : null;
 }
 
 /* =================================================
@@ -97,6 +96,14 @@ function formatIcsDate(d: Date) {
 ================================================= */
 
 export async function POST(req: Request) {
+  // No DB, Stripe or Graph operations are reachable until this gate is
+  // separately reviewed and explicitly changed in a future approved stage.
+  if (!BOOKING_CREATE_ACTIVATION_APPROVED) {
+    return NextResponse.json(
+      { error: "BOOKING_CREATION_DISABLED_PENDING_SAFETY_REVIEW" },
+      { status: 503 }
+    );
+  }
   try {
     const { date, time, name, email, bookingType, duration } =
       await req.json();
@@ -107,6 +114,19 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+
+    const service = typeof bookingType === "string" ? SERVICE_CATALOG[bookingType] : undefined;
+    if (!service || typeof duration !== "number" || duration !== service.duration ||
+        typeof name !== "string" || typeof email !== "string" ||
+        typeof date !== "string" || typeof time !== "string" ||
+        !name.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      return NextResponse.json({ error: "INVALID_BOOKING_REQUEST" }, { status: 400 });
+    }
+    const startInstant = resolveEasternInstant(date, time);
+    if (!startInstant) {
+      return NextResponse.json({ error: "INVALID_OR_AMBIGUOUS_EASTERN_TIME" }, { status: 400 });
+    }
+    const endInstant = new Date(startInstant.getTime() + duration * 60000);
 
     const { data: pricing, error: pricingError } =
       await supabaseAdmin
@@ -164,15 +184,11 @@ export async function POST(req: Request) {
 
     const isEnterprise = entitlementSet.has("enterprise_features");
     const isAfterHours = bookingType.includes("after_hours");
-    const isPriorityBooking =
-      pricing.requires_priority && isEnterprise;
-
-    if (!isEnterprise && !ALLOWED_DURATIONS.includes(duration)) {
-      return NextResponse.json(
-        { error: "INVALID_DURATION" },
-        { status: 400 }
-      );
+    // Enforce the chosen priority_access policy even if a pricing flag is misconfigured.
+    if (service.priority && pricing.requires_priority !== true) {
+      return NextResponse.json({ error: "PRIORITY_PRICING_MISCONFIGURED" }, { status: 503 });
     }
+    const isPriorityBooking = service.priority && entitlementSet.has("priority_access");
 
     if (pricing.requires_premium && !entitlementSet.has("premium_bookings")) {
       return NextResponse.json(
@@ -210,16 +226,22 @@ export async function POST(req: Request) {
       await consumeBookingEligibility(email, bookingType);
     }
 
-    const endTime = addMinutes(time, duration);
-    const startISO = new Date(`${date}T${time}:00`).toISOString();
-    const endISO = new Date(`${date}T${endTime}:00`).toISOString();
+    const startISO = startInstant.toISOString();
+    const endISO = endInstant.toISOString();
 
     const selectedPriceId =
       STRIPE_MODE === "live"
         ? pricing.price_id_live
         : pricing.price_id_test;
 
-    const requiresPayment = !!selectedPriceId;
+    if (service.paid &&
+        (typeof selectedPriceId !== "string" || !/^price_[A-Za-z0-9]+$/.test(selectedPriceId))) {
+      return NextResponse.json({ error: "PAID_BOOKING_PRICE_MISSING" }, { status: 503 });
+    }
+    if (!service.paid && (pricing.price_id_test || pricing.price_id_live)) {
+      return NextResponse.json({ error: "FREE_BOOKING_PRICE_MISCONFIGURED" }, { status: 503 });
+    }
+    const requiresPayment = service.paid;
 
     const { data: inserted, error: insertError } =
       await supabaseAdmin
@@ -261,6 +283,7 @@ export async function POST(req: Request) {
 
       const session = await stripe.checkout.sessions.create({
         mode: "payment",
+        client_reference_id: bookingId,
         line_items: [{ price: selectedPriceId!, quantity: 1 }],
         customer: stripeCustomerId ?? undefined,
         customer_email: stripeCustomerId ? undefined : email,
@@ -272,7 +295,40 @@ export async function POST(req: Request) {
           stripe_mode: STRIPE_MODE,
           org_id: profile.org_id,
         },
-      });
+      }, { idempotencyKey: `xilaire-booking-${bookingId}` });
+
+      if (
+        typeof session.id !== "string" ||
+        !session.id.startsWith("cs_") ||
+        typeof session.url !== "string" ||
+        !session.url
+      ) {
+        throw new Error("BOOKING_CHECKOUT_SESSION_INVALID");
+      }
+
+      const { data: associated, error: associationError } =
+        await supabaseAdmin
+          .from("bookings")
+          .update({
+            stripe_checkout_session_id: session.id,
+          })
+          .eq("id", bookingId)
+          .eq("status", "pending_payment")
+          .eq("payment_status", "pending")
+          .eq("requires_payment", true)
+          .is("stripe_checkout_session_id", null)
+          .select("id")
+          .maybeSingle();
+
+      if (
+        associationError ||
+        !associated ||
+        associated.id !== bookingId
+      ) {
+        throw new Error(
+          "BOOKING_CHECKOUT_ASSOCIATION_REQUIRES_RECONCILIATION"
+        );
+      }
 
       return NextResponse.json({
         requiresPayment: true,
@@ -291,99 +347,29 @@ export async function POST(req: Request) {
       .api(`/users/${BOOKING_MAILBOX}/events`)
       .post({
         subject: `XilAire – ${bookingType.replace(/_/g, " ")}`,
-        start: buildGraphDateTime(date, time),
-        end: buildGraphDateTime(date, endTime),
+        start: { dateTime: startISO.replace("Z", ""), timeZone: "UTC" },
+        end: { dateTime: endISO.replace("Z", ""), timeZone: "UTC" },
         attendees: [
-          {
-            emailAddress: { address: email, name },
-            type: "required",
-          },
+          { emailAddress: { address: email, name }, type: "required" },
         ],
         isOnlineMeeting: true,
         onlineMeetingProvider: "teamsForBusiness",
       });
 
-    await supabaseAdmin
+    if (!graphEvent?.id) throw new Error("GRAPH_EVENT_ID_MISSING");
+    const { data: associatedEvent, error: graphAssociationError } = await supabaseAdmin
       .from("bookings")
       .update({ event_id: graphEvent.id })
-      .eq("id", bookingId);
+      .eq("id", bookingId)
+      .select("id")
+      .maybeSingle();
+    if (graphAssociationError || associatedEvent?.id !== bookingId) {
+      throw new Error("BOOKING_GRAPH_ASSOCIATION_REQUIRES_RECONCILIATION");
+    }
 
-    const token = jwt.sign(
-      { eventId: graphEvent.id, email, name },
-      TOKEN_SECRET,
-      { expiresIn: "7d" }
-    );
-
-    const cancelUrl = `${BASE_URL}/api/booking/cancel?token=${token}`;
-    const rescheduleUrl = `${BASE_URL}/book/reschedule?token=${token}`;
-    const formattedDate = formatDateET(startISO);
-
-    const ics = `
-BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:-//XilAire Technologies//Booking//EN
-METHOD:REQUEST
-BEGIN:VEVENT
-UID:${graphEvent.id}
-DTSTAMP:${formatIcsDate(new Date())}
-DTSTART:${formatIcsDate(new Date(startISO))}
-DTEND:${formatIcsDate(new Date(endISO))}
-SUMMARY:XilAire Booking
-ORGANIZER:MAILTO:${BOOKING_MAILBOX}
-ATTENDEE;CN=${name}:MAILTO:${email}
-DESCRIPTION:Reschedule: ${rescheduleUrl} \\nCancel: ${cancelUrl}
-END:VEVENT
-END:VCALENDAR
-`.trim();
-
-    await client.api(`/users/${BOOKING_MAILBOX}/sendMail`).post({
-      message: {
-        subject: "Your XilAire Booking Is Confirmed",
-        body: {
-          contentType: "HTML",
-          content: `
-            <p><strong>Scheduled For:</strong> ${formattedDate}</p>
-            <p>
-              <a href="${rescheduleUrl}">Reschedule</a> |
-              <a href="${cancelUrl}">Cancel</a>
-            </p>
-          `,
-        },
-        toRecipients: [{ emailAddress: { address: email } }],
-        attachments: [
-          {
-            "@odata.type": "#microsoft.graph.fileAttachment",
-            name: "xilaire-booking.ics",
-            contentType: "text/calendar",
-            contentBytes: Buffer.from(ics).toString("base64"),
-          },
-        ],
-      },
-      saveToSentItems: true,
-    });
-
-    await client.api(`/users/${BOOKING_MAILBOX}/sendMail`).post({
-      message: {
-        subject: `BOOKING CONFIRMED – ${email}`,
-        body: {
-          contentType: "HTML",
-          content: `
-            <p><strong>Name:</strong> ${name}</p>
-            <p><strong>Email:</strong> ${email}</p>
-            <p><strong>Date:</strong> ${formattedDate}</p>
-            <p><strong>Booking ID:</strong> ${bookingId}</p>
-            <p>
-              <a href="${rescheduleUrl}">Reschedule</a> |
-              <a href="${cancelUrl}">Cancel</a>
-            </p>
-          `,
-        },
-        toRecipients: [
-          { emailAddress: { address: BOOKING_MAILBOX } },
-        ],
-      },
-      saveToSentItems: true,
-    });
+    // No direct sendMail calls. Notification worker remains separately disabled.
+    // Graph event creation can itself send invitations to attendees;
+    // this route stays gated until that behavior is explicitly approved.
 
     return NextResponse.json({ success: true, bookingId });
 

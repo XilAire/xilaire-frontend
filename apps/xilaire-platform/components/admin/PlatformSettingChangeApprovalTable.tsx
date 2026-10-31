@@ -37,7 +37,7 @@ export default function PlatformSettingChangeApprovalTable({
                 Requested: {r.requested_value ? "Enable" : "Disable"}
               </p>
               {r.reason && (
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                   Reason: {r.reason}
                 </p>
               )}

@@ -30,7 +30,7 @@ function StatusModal({
       onClick={onClose}
     >
       <div
-        className="bg-slate-900 border border-slate-700 rounded-xl p-6 w-80 shadow-xl"
+        className="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl p-6 w-80 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-white font-semibold mb-4">Change Status</h2>
@@ -39,7 +39,7 @@ function StatusModal({
           {statuses.map((s) => (
             <button
               key={s.value}
-              className="w-full px-3 py-2 text-left text-slate-200 rounded-lg hover:bg-slate-800 transition"
+              className="w-full px-3 py-2 text-left text-slate-800 dark:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition"
               onClick={() => {
                 onChange(s.value);
                 onClose();
@@ -52,7 +52,7 @@ function StatusModal({
 
         <button
           onClick={onClose}
-          className="mt-4 w-full px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-sm"
+          className="mt-4 w-full px-3 py-2 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-600 text-slate-900 dark:text-white text-sm"
         >
           Cancel
         </button>

@@ -28,7 +28,7 @@ export default function CRTabs({ activeTab, id }: CRTabsProps) {
   };
 
   return (
-    <div className="border-b border-slate-800 flex gap-6 text-sm overflow-x-auto pb-1">
+    <div className="border-b border-slate-200 dark:border-slate-800 flex gap-6 text-sm overflow-x-auto pb-1">
       {tabs.map((tab) => {
         const isActive = activeTab === tab.id;
 
@@ -43,7 +43,7 @@ export default function CRTabs({ activeTab, id }: CRTabsProps) {
               ${
                 isActive
                   ? "text-blue-400 border-b-2 border-blue-500"
-                  : "text-slate-400 hover:text-slate-200"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-200"
               }
             `}
           >

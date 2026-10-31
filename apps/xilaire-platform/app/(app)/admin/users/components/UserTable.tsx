@@ -53,10 +53,10 @@ export default function UserTable({
   onRemove,
 }: Props) {
   return (
-    <div className="relative overflow-visible rounded-md border border-slate-800 bg-slate-950">
+    <div className="relative overflow-visible rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
       <div className="overflow-x-auto">
         <table className="w-full text-sm border-collapse">
-          <thead className="bg-slate-900 text-slate-300 border-b border-slate-800">
+          <thead className="bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-800">
             <tr>
               <th className="px-4 py-3 text-left font-medium">Name</th>
               <th className="px-4 py-3 text-left font-medium">Email</th>
@@ -66,7 +66,7 @@ export default function UserTable({
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-slate-800">
+          <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
             {users.map((user) => (
               <UserRow
                 key={user.id}

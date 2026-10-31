@@ -8,7 +8,7 @@ export default function TaskHeader({ task }: { task: any }) {
       </h1>
 
       {task.description && (
-        <p className="mt-1 text-sm text-slate-400">
+        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
           {task.description}
         </p>
       )}

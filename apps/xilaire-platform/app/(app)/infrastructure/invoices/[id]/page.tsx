@@ -98,7 +98,7 @@ function formatDate(value?: string | null) {
 function getStatusClasses(status: string) {
   switch ((status || "").toLowerCase()) {
     case "draft":
-      return "border border-slate-700 bg-slate-800 text-slate-200";
+      return "border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200";
     case "submitted":
       return "border border-sky-500/30 bg-sky-500/10 text-sky-300";
     case "approved":
@@ -108,7 +108,7 @@ function getStatusClasses(status: string) {
     case "cancelled":
       return "border border-rose-500/30 bg-rose-500/10 text-rose-300";
     default:
-      return "border border-slate-700 bg-slate-800 text-slate-200";
+      return "border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200";
   }
 }
 
@@ -237,16 +237,16 @@ export default function InfrastructureInvoiceDetailPage({
 
   return (
     <div className="p-6 space-y-6">
-      <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.18em] text-sky-300">
               Infrastructure
             </p>
-            <h1 className="text-2xl font-semibold text-slate-100">
+            <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
               Invoice Detail
             </h1>
-            <p className="text-slate-400">
+            <p className="text-slate-600 dark:text-slate-400">
               Review invoice details, linked estimate context, invoice items, and billing status.
             </p>
           </div>
@@ -254,7 +254,7 @@ export default function InfrastructureInvoiceDetailPage({
           <div className="flex flex-wrap gap-2">
             <Link
               href="/infrastructure/invoices"
-              className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-700 px-4 text-sm text-slate-300 transition hover:border-sky-600 hover:text-white"
+              className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 dark:border-slate-700 px-4 text-sm text-slate-700 dark:text-slate-300 transition hover:border-sky-600 hover:text-white"
             >
               Back to Invoices
             </Link>
@@ -263,7 +263,7 @@ export default function InfrastructureInvoiceDetailPage({
               type="button"
               onClick={loadInvoice}
               disabled={loading || actionLoading !== null}
-              className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-700 px-4 text-sm text-slate-300 transition hover:border-sky-600 hover:text-white disabled:opacity-50"
+              className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 dark:border-slate-700 px-4 text-sm text-slate-700 dark:text-slate-300 transition hover:border-sky-600 hover:text-white disabled:opacity-50"
             >
               {loading ? "Refreshing..." : "Refresh"}
             </button>
@@ -276,7 +276,7 @@ export default function InfrastructureInvoiceDetailPage({
               {formatStatusLabel(invoice.status)}
             </span>
 
-            <span className="rounded-full border border-slate-700 bg-slate-950 px-3 py-1 text-xs text-slate-300">
+            <span className="rounded-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-1 text-xs text-slate-700 dark:text-slate-300">
               Invoice #{invoice.invoice_number || invoice.id}
             </span>
 
@@ -300,18 +300,18 @@ export default function InfrastructureInvoiceDetailPage({
       </div>
 
       {loading ? (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-slate-400">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6 text-slate-600 dark:text-slate-400">
           Loading invoice...
         </div>
       ) : !invoice ? (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-slate-400">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6 text-slate-600 dark:text-slate-400">
           Invoice not found.
         </div>
       ) : (
         <div className="grid gap-6 xl:grid-cols-3">
           <div className="space-y-6 xl:col-span-2">
-            <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-              <h2 className="text-lg font-semibold text-slate-100">
+            <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 Billing Actions
               </h2>
 
@@ -361,8 +361,8 @@ export default function InfrastructureInvoiceDetailPage({
               </div>
             </section>
 
-            <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-              <h2 className="text-lg font-semibold text-slate-100">
+            <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 Invoice Items
               </h2>
 
@@ -371,10 +371,10 @@ export default function InfrastructureInvoiceDetailPage({
                   {invoice.items.map((item) => (
                     <div
                       key={item.id}
-                      className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-950 p-4 md:flex-row md:items-center md:justify-between"
+                      className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4 md:flex-row md:items-center md:justify-between"
                     >
                       <div>
-                        <p className="text-sm text-slate-100">
+                        <p className="text-sm text-slate-900 dark:text-slate-100">
                           {item.description || "Invoice item"}
                         </p>
                         <p className="text-xs text-slate-500">
@@ -382,33 +382,33 @@ export default function InfrastructureInvoiceDetailPage({
                         </p>
                       </div>
 
-                      <p className="text-sm font-medium text-slate-100">
+                      <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
                         {formatCurrency(getItemTotal(item))}
                       </p>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-400">
+                <div className="mt-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4 text-sm text-slate-600 dark:text-slate-400">
                   No invoice items found.
                 </div>
               )}
             </section>
 
-            <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-              <h2 className="text-lg font-semibold text-slate-100">
+            <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 Notes
               </h2>
 
-              <div className="mt-4 whitespace-pre-wrap rounded-xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-200">
+              <div className="mt-4 whitespace-pre-wrap rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4 text-sm text-slate-800 dark:text-slate-200">
                 {invoice.notes?.trim() || "No invoice notes recorded."}
               </div>
             </section>
           </div>
 
           <div className="space-y-6">
-            <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-              <h2 className="text-lg font-semibold text-slate-100">
+            <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 Invoice Details
               </h2>
 
@@ -426,8 +426,8 @@ export default function InfrastructureInvoiceDetailPage({
               </div>
             </section>
 
-            <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-              <h2 className="text-lg font-semibold text-slate-100">
+            <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 Project
               </h2>
 
@@ -441,20 +441,20 @@ export default function InfrastructureInvoiceDetailPage({
 
                   <Link
                     href={`/infrastructure/projects/${invoice.project.id}`}
-                    className="inline-flex rounded-xl border border-slate-700 bg-slate-950 px-4 py-2 text-sm text-slate-200 transition hover:bg-slate-800"
+                    className="inline-flex rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-2 text-sm text-slate-800 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-800"
                   >
                     Open Project
                   </Link>
                 </div>
               ) : (
-                <div className="mt-4 text-sm text-slate-400">
+                <div className="mt-4 text-sm text-slate-600 dark:text-slate-400">
                   No project linked.
                 </div>
               )}
             </section>
 
-            <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-              <h2 className="text-lg font-semibold text-slate-100">
+            <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 Vendor
               </h2>
 
@@ -467,14 +467,14 @@ export default function InfrastructureInvoiceDetailPage({
                   <DetailRow label="Category" value={invoice.vendor.vendor_category || "-"} />
                 </div>
               ) : (
-                <div className="mt-4 text-sm text-slate-400">
+                <div className="mt-4 text-sm text-slate-600 dark:text-slate-400">
                   No vendor linked.
                 </div>
               )}
             </section>
 
-            <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-              <h2 className="text-lg font-semibold text-slate-100">
+            <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 Source Estimate
               </h2>
 
@@ -495,13 +495,13 @@ export default function InfrastructureInvoiceDetailPage({
 
                   <Link
                     href="/infrastructure/estimates"
-                    className="inline-flex rounded-xl border border-slate-700 bg-slate-950 px-4 py-2 text-sm text-slate-200 transition hover:bg-slate-800"
+                    className="inline-flex rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-2 text-sm text-slate-800 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-800"
                   >
                     Open Estimates
                   </Link>
                 </div>
               ) : (
-                <div className="mt-4 text-sm text-slate-400">
+                <div className="mt-4 text-sm text-slate-600 dark:text-slate-400">
                   No estimate linked.
                 </div>
               )}
@@ -523,7 +523,7 @@ function DetailRow({
   return (
     <div>
       <p className="text-slate-500">{label}</p>
-      <p className="text-slate-100">{value}</p>
+      <p className="text-slate-900 dark:text-slate-100">{value}</p>
     </div>
   );
 }
@@ -536,11 +536,11 @@ function MetricCard({
   value: string;
 }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+    <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4">
       <p className="text-xs uppercase tracking-wide text-slate-500">
         {label}
       </p>
-      <p className="mt-2 text-base font-semibold text-slate-100">{value}</p>
+      <p className="mt-2 text-base font-semibold text-slate-900 dark:text-slate-100">{value}</p>
     </div>
   );
 }

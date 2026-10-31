@@ -60,18 +60,18 @@ export default async function ContactRequestsPage() {
     <div className="space-y-6">
       {/* Page header */}
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold text-slate-50">
+        <h1 className="text-2xl font-semibold text-slate-950 dark:text-slate-50">
           Contact requests
         </h1>
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-slate-600 dark:text-slate-400">
           All inbound form submissions captured by the XilAire Platform.
         </p>
       </header>
 
       {/* Table */}
-      <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/60">
-        <table className="min-w-full text-left text-xs text-slate-300">
-          <thead className="bg-slate-900/60 text-[11px] uppercase tracking-wide text-slate-400">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/60">
+        <table className="min-w-full text-left text-xs text-slate-700 dark:text-slate-300">
+          <thead className="bg-slate-100/60 dark:bg-slate-900/60 text-[11px] uppercase tracking-wide text-slate-600 dark:text-slate-400">
             <tr>
               <th className="px-4 py-3 font-medium">Contact</th>
               <th className="px-4 py-3 font-medium">Topic / Service</th>
@@ -95,17 +95,17 @@ export default async function ContactRequestsPage() {
               </tr>
             </tbody>
           ) : (
-            <tbody className="divide-y divide-slate-800">
+            <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
               {requests.map((r) => (
-                <tr key={r.id} className="hover:bg-slate-900/40">
+                <tr key={r.id} className="hover:bg-slate-100/40 dark:hover:bg-slate-900/40">
                   {/* CONTACT */}
                   <td className="px-4 py-3 align-top">
                     <div className="flex flex-col">
-                      <span className="text-xs font-medium text-slate-50">
+                      <span className="text-xs font-medium text-slate-950 dark:text-slate-50">
                         {r.full_name || "Unknown contact"}
                       </span>
                       {r.email && (
-                        <span className="text-[11px] text-slate-400">
+                        <span className="text-[11px] text-slate-600 dark:text-slate-400">
                           {r.email}
                         </span>
                       )}
@@ -115,7 +115,7 @@ export default async function ContactRequestsPage() {
                   {/* TOPIC / SERVICE */}
                   <td className="px-4 py-3 align-top">
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-xs text-slate-100">
+                      <span className="text-xs text-slate-900 dark:text-slate-100">
                         {r.topic || r.service_name || "General inquiry"}
                       </span>
                       {(r.service_sku || r.service_name) && (
@@ -134,7 +134,7 @@ export default async function ContactRequestsPage() {
 
                   {/* SOURCE PATH */}
                   <td className="px-4 py-3 align-top">
-                    <span className="text-[11px] text-slate-400">
+                    <span className="text-[11px] text-slate-600 dark:text-slate-400">
                       {r.source_path || "/contact"}
                     </span>
                   </td>
@@ -147,7 +147,7 @@ export default async function ContactRequestsPage() {
                           ? "bg-sky-500/15 text-sky-300"
                           : (r.status || "new") === "converted"
                           ? "bg-emerald-500/15 text-emerald-300"
-                          : "bg-slate-500/15 text-slate-300"
+                          : "bg-slate-500/15 text-slate-700 dark:text-slate-300"
                       }`}
                     >
                       {(r.status || "new").toUpperCase()}
@@ -170,7 +170,7 @@ export default async function ContactRequestsPage() {
 
                   {/* CREATED */}
                   <td className="px-4 py-3 text-right align-top">
-                    <span className="text-[11px] text-slate-400">
+                    <span className="text-[11px] text-slate-600 dark:text-slate-400">
                       {new Date(r.created_at).toLocaleString(undefined, {
                         month: "short",
                         day: "numeric",

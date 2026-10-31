@@ -50,9 +50,8 @@ type Attachment = {
   estimate_id: string | null;
   vendor_id: string | null;
   file_name: string;
-  file_path: string | null;
+  storage_path: string | null;
   file_url: string | null;
-  notes: string | null;
   created_at: string | null;
 };
 
@@ -266,7 +265,7 @@ function canAdminReturnToDraft(status: string | null | undefined) {
 }
 
 function getAttachmentHref(attachment: Attachment) {
-  return attachment.file_url || attachment.file_path || null;
+  return attachment.file_url || null;
 }
 
 function normalizeEstimate(row: any): Estimate {
@@ -564,9 +563,8 @@ export default function EstimateDetailPage() {
           estimate_id,
           vendor_id,
           file_name,
-          file_path,
+          storage_path,
           file_url,
-          notes,
           created_at
         `)
         .eq("estimate_id", estimateId)
@@ -598,9 +596,8 @@ export default function EstimateDetailPage() {
           estimate_id: row?.estimate_id ? String(row.estimate_id).trim() : null,
           vendor_id: row?.vendor_id ? String(row.vendor_id).trim() : null,
           file_name: String(row?.file_name || "Unnamed File").trim(),
-          file_path: row?.file_path ? String(row.file_path).trim() : null,
+          storage_path: row?.storage_path ? String(row.storage_path).trim() : null,
           file_url: row?.file_url ? String(row.file_url).trim() : null,
-          notes: row?.notes ? String(row.notes).trim() : null,
           created_at: row?.created_at ? String(row.created_at) : null,
         }))
       );
@@ -834,7 +831,7 @@ export default function EstimateDetailPage() {
   if (loading) {
     return (
       <div className="p-6">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-slate-400">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6 text-slate-600 dark:text-slate-400">
           Loading estimate details...
         </div>
       </div>
@@ -868,7 +865,7 @@ export default function EstimateDetailPage() {
           ← Back to Estimates
         </Link>
 
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-slate-300">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6 text-slate-700 dark:text-slate-300">
           Estimate not found.
         </div>
       </div>
@@ -886,26 +883,26 @@ export default function EstimateDetailPage() {
             ← Back to Estimates
           </Link>
 
-          <h1 className="text-2xl font-semibold text-slate-200">
+          <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-200">
             Estimate Details
           </h1>
 
-          <p className="text-sm text-slate-400">Estimate ID: {estimate.id}</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400">Estimate ID: {estimate.id}</p>
 
           <div className="flex flex-wrap gap-2 text-xs text-slate-500">
             {isAdmin ? (
-              <span className="rounded-full border border-slate-800 bg-slate-900 px-3 py-1">
+              <span className="rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 py-1">
                 Admin org-wide view
               </span>
             ) : null}
 
             {!isAdmin && isVendor && resolvedVendorName ? (
-              <span className="rounded-full border border-slate-800 bg-slate-900 px-3 py-1">
+              <span className="rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 py-1">
                 Vendor scope: {resolvedVendorName}
               </span>
             ) : null}
 
-            <span className="rounded-full border border-slate-800 bg-slate-900 px-3 py-1">
+            <span className="rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 py-1">
               Status: {formatStatus(estimate.status)}
             </span>
           </div>
@@ -915,7 +912,7 @@ export default function EstimateDetailPage() {
           {project?.id ? (
             <Link
               href={`/vendor/projects/${project.id}`}
-              className="inline-flex items-center justify-center rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-slate-100 transition hover:bg-slate-800"
+              className="inline-flex items-center justify-center rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2 text-sm text-slate-900 dark:text-slate-100 transition hover:bg-slate-100 dark:hover:bg-slate-800"
             >
               Open Project
             </Link>
@@ -944,7 +941,7 @@ export default function EstimateDetailPage() {
         </div>
       ) : null}
 
-      <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5">
         <div className="flex flex-wrap items-center gap-3">
           <span
             className={`inline-flex rounded-full border px-3 py-1 text-xs ${getEstimateStatusPillClass(
@@ -954,7 +951,7 @@ export default function EstimateDetailPage() {
             {formatStatus(estimate.status)}
           </span>
 
-          <span className="text-sm text-slate-400">
+          <span className="text-sm text-slate-600 dark:text-slate-400">
             Vendor: {estimate.vendor_name || "Not assigned"}
           </span>
         </div>
@@ -999,7 +996,7 @@ export default function EstimateDetailPage() {
         <DetailCard label="Attachment Count" value={String(attachments.length)} />
       </div>
 
-      <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5 space-y-3">
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5 space-y-3">
         <p className="text-xs uppercase tracking-wide text-slate-500">Estimate Notes</p>
 
         <textarea
@@ -1008,7 +1005,7 @@ export default function EstimateDetailPage() {
           rows={6}
           disabled={!canEditEstimate || isBusy}
           placeholder="Scope notes, assumptions, exclusions, labor details, material details..."
-          className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 outline-none transition focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
         />
 
         {canEditEstimate ? (
@@ -1026,7 +1023,7 @@ export default function EstimateDetailPage() {
       </div>
 
       {(isAdmin || estimate.review_notes || form.review_notes) ? (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5 space-y-4">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5 space-y-4">
           <p className="text-xs uppercase tracking-wide text-slate-500">Review Notes</p>
 
           {isAdmin ? (
@@ -1037,7 +1034,7 @@ export default function EstimateDetailPage() {
                 rows={5}
                 placeholder="Internal review notes, approval comments, rejection reason..."
                 disabled={isBusy}
-                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 outline-none transition focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
               />
 
               <div className="flex flex-wrap gap-3">
@@ -1085,7 +1082,7 @@ export default function EstimateDetailPage() {
               </div>
             </>
           ) : (
-            <p className="whitespace-pre-wrap text-sm text-slate-200">
+            <p className="whitespace-pre-wrap text-sm text-slate-800 dark:text-slate-200">
               {estimate.review_notes || "No review notes yet."}
             </p>
           )}
@@ -1093,7 +1090,7 @@ export default function EstimateDetailPage() {
       ) : null}
 
       {canSubmit ? (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5">
           <div className="flex flex-wrap gap-3">
             <button
               type="button"
@@ -1117,7 +1114,7 @@ export default function EstimateDetailPage() {
           </div>
         </div>
       ) : canVendorReturnThisToDraft ? (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5">
           <button
             type="button"
             onClick={() => handleStatusUpdate("draft")}
@@ -1129,7 +1126,7 @@ export default function EstimateDetailPage() {
         </div>
       ) : null}
 
-      <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5 space-y-4">
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5 space-y-4">
         <p className="text-xs uppercase tracking-wide text-slate-500">
           Upload Attachment
         </p>
@@ -1138,11 +1135,11 @@ export default function EstimateDetailPage() {
           type="file"
           onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
           disabled={isBusy}
-          className="block w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-300 file:mr-4 file:rounded-lg file:border-0 file:bg-cyan-600 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-60"
+          className="block w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 text-sm text-slate-700 dark:text-slate-300 file:mr-4 file:rounded-lg file:border-0 file:bg-cyan-600 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-60"
         />
 
         {selectedFile ? (
-          <p className="text-xs text-slate-400">Selected file: {selectedFile.name}</p>
+          <p className="text-xs text-slate-600 dark:text-slate-400">Selected file: {selectedFile.name}</p>
         ) : null}
 
         <button
@@ -1155,14 +1152,14 @@ export default function EstimateDetailPage() {
         </button>
       </div>
 
-      <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5 space-y-4">
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5 space-y-4">
         <div className="flex items-center justify-between gap-4">
-          <h2 className="text-sm font-medium text-slate-100">Attachments</h2>
-          <span className="text-xs text-slate-400">{attachments.length} total</span>
+          <h2 className="text-sm font-medium text-slate-900 dark:text-slate-100">Attachments</h2>
+          <span className="text-xs text-slate-600 dark:text-slate-400">{attachments.length} total</span>
         </div>
 
         {attachments.length === 0 ? (
-          <div className="rounded-xl border border-slate-800 bg-slate-950 p-6 text-sm text-slate-400">
+          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-6 text-sm text-slate-600 dark:text-slate-400">
             No attachments found for this estimate yet.
           </div>
         ) : (
@@ -1173,25 +1170,20 @@ export default function EstimateDetailPage() {
               return (
                 <div
                   key={attachment.id}
-                  className="rounded-xl border border-slate-800 bg-slate-950 p-4"
+                  className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4"
                 >
                   <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div className="space-y-1">
-                      <p className="text-sm text-slate-100">{attachment.file_name}</p>
+                      <p className="text-sm text-slate-900 dark:text-slate-100">{attachment.file_name}</p>
 
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-slate-600 dark:text-slate-400">
                         Uploaded: {formatDateTime(attachment.created_at)}
                       </p>
 
-                      {attachment.notes ? (
-                        <p className="text-xs text-slate-400">
-                          Notes: {attachment.notes}
-                        </p>
-                      ) : null}
 
-                      {attachment.file_path ? (
+                      {attachment.storage_path ? (
                         <p className="break-all text-xs text-slate-500">
-                          Path: {attachment.file_path}
+                          Path: {attachment.storage_path}
                         </p>
                       ) : null}
                     </div>
@@ -1202,12 +1194,12 @@ export default function EstimateDetailPage() {
                           href={href}
                           target="_blank"
                           rel="noreferrer"
-                          className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 transition hover:bg-slate-800"
+                          className="rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 transition hover:bg-slate-100 dark:hover:bg-slate-800"
                         >
                           Open File
                         </a>
                       ) : (
-                        <span className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-500">
+                        <span className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-sm text-slate-500">
                           File reference not available
                         </span>
                       )}
@@ -1231,9 +1223,9 @@ function DetailCard({
   value: string | number | null | undefined;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5">
       <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-2 text-base text-slate-100">{value ?? "Not set"}</p>
+      <p className="mt-2 text-base text-slate-900 dark:text-slate-100">{value ?? "Not set"}</p>
     </div>
   );
 }
@@ -1250,7 +1242,7 @@ function MoneyInputCard({
   onChange: (value: string) => void;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5">
       <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
       <input
         type="text"
@@ -1259,7 +1251,7 @@ function MoneyInputCard({
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
         placeholder="0.00"
-        className="mt-3 block w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-base text-slate-100 outline-none transition focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+        className="mt-3 block w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-base text-slate-900 dark:text-slate-100 outline-none transition focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
       />
       {!disabled ? (
         <p className="mt-2 text-xs text-slate-500">

@@ -48,7 +48,7 @@ export default function HeaderBar({
       <div>
         <h1 className="text-xl font-semibold text-white">{title}</h1>
         {subtitle && (
-          <p className="text-sm text-slate-400 mt-1">{subtitle}</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{subtitle}</p>
         )}
       </div>
 
@@ -74,7 +74,7 @@ export default function HeaderBar({
         )}
 
         {/* USER AVATAR */}
-        <div className="w-9 h-9 flex items-center justify-center rounded-full bg-slate-700 text-white font-semibold text-sm">
+        <div className="w-9 h-9 flex items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white font-semibold text-sm">
           {initials || "?"}
         </div>
       </div>

@@ -64,6 +64,9 @@ function formatBookingTitle(type: string) {
 ================================================= */
 
 export async function POST(req: Request) {
+  let claimedEventId: string | null = null
+  let claimToken: string | null = null
+
   try {
     const rawBody = await req.text()
     const sig = req.headers.get("stripe-signature")
@@ -86,21 +89,53 @@ export async function POST(req: Request) {
        IDEMPOTENCY GUARD
     ================================================= */
 
-    const { data: existing } = await supabase
-      .from("stripe_events")
-      .select("id")
-      .eq("stripe_event_id", event.id)
-      .maybeSingle()
+    const { data: claimRows, error: claimError } = await supabase.rpc(
+      "claim_stripe_webhook_event",
+      {
+        p_event_id: event.id,
+        p_event_type: event.type,
+        p_api_version: event.api_version ?? null,
+        p_livemode: event.livemode,
+        p_payload: event,
+      }
+    )
 
-    if (existing) return new Response("OK", { status: 200 })
+    if (claimError) {
+      console.error("Stripe event claim failed:", claimError)
+      return new Response("Event claim failed", { status: 500 })
+    }
 
-    await supabase.from("stripe_events").insert({
-      stripe_event_id: event.id,
-      event_type: event.type,
-      api_version: event.api_version,
-      livemode: event.livemode,
-      payload: event,
-    })
+    const claim = Array.isArray(claimRows) ? claimRows[0] : null
+
+    if (!claim || typeof claim.outcome !== "string") {
+      return new Response("Invalid event claim result", { status: 500 })
+    }
+
+    if (claim.outcome === "completed") {
+      return new Response("OK", { status: 200 })
+    }
+
+    if (claim.outcome === "in_progress") {
+      return new Response("Event already processing", { status: 503 })
+    }
+
+    if (
+      claim.outcome === "legacy_review" ||
+      claim.outcome === "manual_review"
+    ) {
+      return new Response("Event requires manual review", { status: 503 })
+    }
+
+    if (
+      claim.outcome !== "claimed" ||
+      typeof claim.token !== "string" ||
+      !claim.token
+    ) {
+      return new Response("Event claim denied", { status: 500 })
+    }
+
+    claimedEventId = event.id
+    claimToken = claim.token
         switch (event.type) {
 
       /* =================================================
@@ -139,7 +174,7 @@ export async function POST(req: Request) {
               await supabase
                 .from("orgs")
                 .update({ stripe_customer_id: stripeCustomerId })
-                .eq("id", profile.org_id)
+                .eq("id", profile.org_id).throwOnError()
 
               const { data: refreshed } = await supabase
                 .from("orgs")
@@ -156,18 +191,18 @@ export async function POST(req: Request) {
           await supabase
             .from("orgs")
             .update({ stripe_subscription_id: stripeSubscriptionId })
-            .eq("id", org.id)
+            .eq("id", org.id).throwOnError()
 
           await supabase
             .from("org_entitlements")
             .delete()
             .eq("org_id", org.id)
-            .eq("source", "stripe_subscription")
+            .eq("source", "stripe_subscription").throwOnError()
 
           const { data: mappings } = await supabase
             .from("subscription_entitlement_map")
             .select("entitlement_key")
-            .eq("stripe_price_id", priceId)
+            .eq("stripe_price_id", priceId).throwOnError()
 
           if (mappings) {
             for (const m of mappings) {
@@ -176,7 +211,7 @@ export async function POST(req: Request) {
                 entitlement_key: m.entitlement_key,
                 status: "active",
                 source: "stripe_subscription",
-              })
+              }).throwOnError()
             }
           }
         }
@@ -191,7 +226,7 @@ export async function POST(req: Request) {
             billing_status: subscription.status,
             updated_at: new Date().toISOString(),
           })
-          .eq("stripe_subscription_id", subscription.id)
+          .eq("stripe_subscription_id", subscription.id).throwOnError()
 
         break
       }
@@ -219,12 +254,12 @@ export async function POST(req: Request) {
             .from("org_entitlements")
             .delete()
             .eq("org_id", org.id)
-            .eq("source", "stripe_subscription")
+            .eq("source", "stripe_subscription").throwOnError()
 
           await supabase
             .from("orgs")
             .update({ stripe_subscription_id: null })
-            .eq("id", org.id)
+            .eq("id", org.id).throwOnError()
         }
 
         /* ---------------------------------------------
@@ -237,7 +272,7 @@ export async function POST(req: Request) {
             billing_status: "cancelled",
             updated_at: new Date().toISOString(),
           })
-          .eq("stripe_subscription_id", subscription.id)
+          .eq("stripe_subscription_id", subscription.id).throwOnError()
 
         const { data: recurring } = await supabase
           .from("infrastructure_recurring")
@@ -252,14 +287,14 @@ export async function POST(req: Request) {
               status: "cancelled",
               updated_at: new Date().toISOString(),
             })
-            .eq("id", recurring.project_id)
+            .eq("id", recurring.project_id).throwOnError()
 
           await supabase.from("infrastructure_project_logs").insert({
             project_id: recurring.project_id,
             log_type: "subscription_cancelled",
             message: "Subscription cancelled in Stripe",
             created_at: new Date().toISOString(),
-          })
+          }).throwOnError()
         }
 
         break
@@ -286,7 +321,7 @@ export async function POST(req: Request) {
               billing_status: "paid",
               updated_at: new Date().toISOString(),
             })
-            .eq("stripe_subscription_id", subscriptionId)
+            .eq("stripe_subscription_id", subscriptionId).throwOnError()
 
           const { data: recurring } = await supabase
             .from("infrastructure_recurring")
@@ -302,14 +337,14 @@ export async function POST(req: Request) {
                 status: "active",
                 updated_at: new Date().toISOString(),
               })
-              .eq("id", recurring.project_id)
+              .eq("id", recurring.project_id).throwOnError()
 
             await supabase.from("infrastructure_project_logs").insert({
               project_id: recurring.project_id,
               log_type: "billing_restored",
               message: "Billing restored after successful payment",
               created_at: new Date().toISOString(),
-            })
+            }).throwOnError()
           }
         }
 
@@ -337,7 +372,7 @@ export async function POST(req: Request) {
               billing_status: "payment_failed",
               updated_at: new Date().toISOString(),
             })
-            .eq("stripe_subscription_id", subscriptionId)
+            .eq("stripe_subscription_id", subscriptionId).throwOnError()
 
           const { data: recurring } = await supabase
             .from("infrastructure_recurring")
@@ -353,14 +388,14 @@ export async function POST(req: Request) {
                 status: "billing_hold",
                 updated_at: new Date().toISOString(),
               })
-              .eq("id", recurring.project_id)
+              .eq("id", recurring.project_id).throwOnError()
 
             await supabase.from("infrastructure_project_logs").insert({
               project_id: recurring.project_id,
               log_type: "billing_hold",
               message: "Project placed on billing hold due to payment failure",
               created_at: new Date().toISOString(),
-            })
+            }).throwOnError()
           }
         }
 
@@ -379,37 +414,63 @@ export async function POST(req: Request) {
         const bookingId = session.metadata?.booking_id
         if (!bookingId) break
 
-        const { data: booking } = await supabase
+        const { data: booking, error: bookingError } = await supabase
           .from("bookings")
           .select("*")
           .eq("id", bookingId)
           .single()
 
-        if (!booking) break
-        if (booking.payment_status === "paid") break
+        if (bookingError || !booking) {
+          throw new Error("CHECKOUT_BOOKING_LOOKUP_REQUIRES_RECONCILIATION")
+        }
+        // AUTH-04T-24Q-R2: New paid booking identity guard.
+        // Do not claim or create a Graph event for an
+        // unassociated or mismatched Checkout session.
 
-        /* ---------------------------------------------
-           PAYMENT WINDOW ENFORCEMENT
-        --------------------------------------------- */
-
-        const created = new Date(booking.created_at).getTime()
-        const minutesElapsed = (Date.now() - created) / 1000 / 60
-
-        if (minutesElapsed > BOOKING_PAYMENT_TIMEOUT_MINUTES) {
-
-          await supabase
-            .from("bookings")
-            .update({
-              status: "cancelled",
-              payment_status: "expired",
-              cancelled_by: "system",
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", bookingId)
-
-          break
+        if (
+          !session.client_reference_id ||
+          session.client_reference_id !== bookingId
+        ) {
+          throw new Error(
+            "CHECKOUT_CLIENT_REFERENCE_MISMATCH"
+          )
         }
 
+        if (
+          typeof session.id !== "string" ||
+          !session.id.startsWith("cs_") ||
+          typeof booking.stripe_checkout_session_id !== "string" ||
+          booking.stripe_checkout_session_id !== session.id
+        ) {
+          throw new Error(
+            "CHECKOUT_SESSION_ASSOCIATION_MISMATCH"
+          )
+        }
+
+        if (booking.payment_status === "paid") {
+          if (
+            booking.stripe_checkout_session_id === session.id &&
+            booking.status === "scheduled" &&
+            typeof booking.event_id === "string" &&
+            booking.event_id.length > 0
+          ) {
+            break
+          }
+
+          throw new Error("PAID_CHECKOUT_EXISTING_BOOKING_REQUIRES_RECONCILIATION")
+        }
+
+
+
+        if (
+          booking.requires_payment !== true ||
+          booking.status !== "pending_payment" ||
+          booking.payment_status !== "pending"
+        ) {
+          throw new Error(
+            "CHECKOUT_BOOKING_STATE_REQUIRES_RECONCILIATION"
+          )
+        }
         /* ---------------------------------------------
            PRICE VALIDATION
         --------------------------------------------- */
@@ -419,152 +480,189 @@ export async function POST(req: Request) {
 
         if (!paidPriceId || paidPriceId !== booking.price_id) {
           console.error("PRICE_ID_MISMATCH", paidPriceId, booking.price_id)
-          break
+          throw new Error("PAID_CHECKOUT_PRICE_MISMATCH_REQUIRES_RECONCILIATION")
         }
 
-        if (session.payment_status !== "paid") break
+        if (session.payment_status !== "paid") {
+          throw new Error(
+            "CHECKOUT_PAYMENT_NOT_CONFIRMED"
+          )
+        }
+
+        // A verified payment arriving late must not be expired by
+        // webhook delivery time. Existing cancelled/expired bookings
+        // require reconciliation before any calendar creation.
+        if (
+          booking.status === "cancelled" ||
+          booking.status === "expired" ||
+          booking.payment_status === "expired"
+        ) {
+          throw new Error("PAID_CHECKOUT_BOOKING_REQUIRES_RECONCILIATION")
+        }
 
         /* ---------------------------------------------
-           CREATE GRAPH EVENT
+           CLAIM DURABLE BOOKING FULFILLMENT
+        --------------------------------------------- */
+
+        const { data: fulfillmentRows, error: fulfillmentClaimError } =
+          await supabase.rpc("claim_booking_fulfillment", {
+            p_booking_id: bookingId,
+            p_checkout_session_id: session.id,
+          })
+
+        if (fulfillmentClaimError) {
+          throw new Error("BOOKING_FULFILLMENT_CLAIM_ERROR")
+        }
+
+        const fulfillmentClaim = Array.isArray(fulfillmentRows)
+          ? fulfillmentRows[0]
+          : null
+
+        if (
+          !fulfillmentClaim ||
+          fulfillmentClaim.outcome !== "claimed" ||
+          typeof fulfillmentClaim.token !== "string" ||
+          typeof fulfillmentClaim.graph_transaction_id !== "string"
+        ) {
+          // An existing claim must not be automatically reclaimed.
+          // In-progress and ambiguous outcomes require reconciliation.
+          throw new Error(
+            "BOOKING_FULFILLMENT_NOT_CLAIMED_REQUIRES_REVIEW"
+          )
+        }
+
+        const fulfillmentToken = fulfillmentClaim.token
+        const graphTransactionId =
+          fulfillmentClaim.graph_transaction_id
+
+        /* ---------------------------------------------
+           DURABLE GRAPH START CHECKPOINT
+        --------------------------------------------- */
+
+        const { data: graphStarted, error: graphStartError } =
+          await supabase.rpc("mark_booking_graph_started", {
+            p_booking_id: bookingId,
+            p_claim_token: fulfillmentToken,
+          })
+
+        if (graphStartError || graphStarted !== true) {
+          // No Graph creation request has been issued.
+          // Preserve the claim for operator reconciliation.
+          throw new Error("BOOKING_GRAPH_START_CHECKPOINT_FAILED")
+        }
+
+        /* ---------------------------------------------
+           CREATE GRAPH EVENT WITH TRANSACTION ID
         --------------------------------------------- */
 
         const client = getGraphClient()
 
-        const graphEvent = await client
-          .api(`/users/${BOOKING_MAILBOX}/events`)
-          .post({
-            subject: `XilAire – ${formatBookingTitle(booking.booking_type)}`,
-            start: buildGraphDateTime(booking.scheduled_start),
-            end: buildGraphDateTime(booking.scheduled_end),
-            attendees: [
-              {
-                emailAddress: {
-                  address: booking.attendee_email,
-                  name: booking.attendee_name,
+        let graphEventId: string | null = null
+
+        try {
+          const graphEvent = await client
+            .api(`/users/${BOOKING_MAILBOX}/events`)
+            .post({
+              transactionId: graphTransactionId,
+              subject: `XilAire – ${formatBookingTitle(booking.booking_type)}`,
+              start: buildGraphDateTime(booking.scheduled_start),
+              end: buildGraphDateTime(booking.scheduled_end),
+              attendees: [
+                {
+                  emailAddress: {
+                    address: booking.attendee_email,
+                    name: booking.attendee_name,
+                  },
+                  type: "required",
                 },
-                type: "required",
-              },
-            ],
-            isOnlineMeeting: true,
-            onlineMeetingProvider: "teamsForBusiness",
+              ],
+              isOnlineMeeting: true,
+              onlineMeetingProvider: "teamsForBusiness",
+            })
+
+          if (
+            !graphEvent ||
+            typeof graphEvent.id !== "string" ||
+            graphEvent.id.length === 0
+          ) {
+            throw new Error("GRAPH_EVENT_ID_MISSING")
+          }
+
+          graphEventId = graphEvent.id
+
+        } catch {
+
+          // Graph may have created the event before returning
+          // an error or timeout. Do not automatically retry POST.
+
+          const { data: markedUnknown, error: unknownError } =
+            await supabase.rpc("mark_booking_fulfillment_unknown", {
+              p_booking_id: bookingId,
+              p_claim_token: fulfillmentToken,
+              p_graph_transaction_id: graphTransactionId,
+              p_error: "GRAPH_CREATE_RESULT_UNKNOWN",
+            })
+
+          if (unknownError || markedUnknown !== true) {
+            throw new Error(
+              "BOOKING_GRAPH_UNKNOWN_CHECKPOINT_FAILED_REQUIRES_REVIEW"
+            )
+          }
+
+          throw new Error(
+            "BOOKING_GRAPH_RESULT_UNKNOWN_REQUIRES_REVIEW"
+          )
+        }
+
+        /* ---------------------------------------------
+           CONFIRM DURABLE GRAPH EVENT
+        --------------------------------------------- */
+
+        const { data: graphConfirmed, error: graphConfirmError } =
+          await supabase.rpc("confirm_booking_graph_event", {
+            p_booking_id: bookingId,
+            p_claim_token: fulfillmentToken,
+            p_graph_transaction_id: graphTransactionId,
+            p_graph_event_id: graphEventId,
           })
 
-        await supabase
-          .from("bookings")
-          .update({
-            payment_status: "paid",
-            status: "scheduled",
-            stripe_checkout_session_id: session.id,
-            event_id: graphEvent.id,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", bookingId)
+        if (graphConfirmError || graphConfirmed !== true) {
+          // The Graph event may already exist.
+          // No automatic second Graph POST is permitted.
+          throw new Error(
+            "BOOKING_GRAPH_CONFIRMATION_REQUIRES_REVIEW"
+          )
+        }
 
         /* ---------------------------------------------
-           TOKEN GENERATION
+           ATOMIC BOOKING COMPLETION + OUTBOX
         --------------------------------------------- */
 
-        const token = jwt.sign(
-          {
-            eventId: graphEvent.id,
-            email: booking.attendee_email,
-            name: booking.attendee_name,
-          },
-          TOKEN_SECRET,
-          { expiresIn: "7d" }
-        )
-
-        const cancelUrl = `${BASE_URL}/api/booking/cancel?token=${token}`
-        const rescheduleUrl = `${BASE_URL}/book/reschedule?token=${token}`
-        const formattedDate = formatDateET(booking.scheduled_start)
-        const teamsJoin = graphEvent?.onlineMeeting?.joinUrl ?? null
-
-        /* ---------------------------------------------
-           ICS GENERATION
-        --------------------------------------------- */
-
-        const ics = `
-BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:-//XilAire Technologies//Booking//EN
-METHOD:REQUEST
-BEGIN:VEVENT
-UID:${graphEvent.id}
-DTSTAMP:${formatIcsDate(new Date())}
-DTSTART:${formatIcsDate(new Date(booking.scheduled_start))}
-DTEND:${formatIcsDate(new Date(booking.scheduled_end))}
-SUMMARY:XilAire – ${formatBookingTitle(booking.booking_type)}
-ORGANIZER:MAILTO:${BOOKING_MAILBOX}
-ATTENDEE;CN=${booking.attendee_name}:MAILTO:${booking.attendee_email}
-DESCRIPTION:Reschedule: ${rescheduleUrl}\\nCancel: ${cancelUrl}
-SEQUENCE:0
-END:VEVENT
-END:VCALENDAR
-`.trim()
-
-        /* ---------------------------------------------
-           CLIENT EMAIL
-        --------------------------------------------- */
-
-        await client.api(`/users/${BOOKING_MAILBOX}/sendMail`).post({
-          message: {
-            subject: "Your XilAire Booking Is Confirmed",
-            body: {
-              contentType: "HTML",
-              content: `
-                <div style="font-family:Arial,sans-serif;max-width:600px">
-                  <h2 style="color:#0ea5e9">Your XilAire Booking Is Confirmed</h2>
-                  <p>Hi ${booking.attendee_name},</p>
-                  <p><strong>Scheduled For:</strong> ${formattedDate}</p>
-                  ${teamsJoin ? `<p><a href="${teamsJoin}">Join Meeting</a></p>` : ""}
-                  <p>
-                    <a href="${rescheduleUrl}">Reschedule</a> |
-                    <a href="${cancelUrl}">Cancel</a>
-                  </p>
-                </div>
-              `,
-            },
-            toRecipients: [
-              { emailAddress: { address: booking.attendee_email } },
-            ],
-            attachments: [
-              {
-                "@odata.type": "#microsoft.graph.fileAttachment",
-                name: "xilaire-booking.ics",
-                contentType: "text/calendar",
-                contentBytes: Buffer.from(ics).toString("base64"),
-              },
-            ],
-          },
-          saveToSentItems: true,
+        const {
+          data: fulfillmentCompleted,
+          error: fulfillmentCompleteError,
+        } = await supabase.rpc("complete_booking_fulfillment", {
+          p_booking_id: bookingId,
+          p_claim_token: fulfillmentToken,
+          p_graph_transaction_id: graphTransactionId,
         })
 
-        /* ---------------------------------------------
-           INTERNAL SUMMARY EMAIL
-        --------------------------------------------- */
+        if (
+          fulfillmentCompleteError ||
+          fulfillmentCompleted !== true
+        ) {
+          // Graph state is durable; operator reconciliation
+          // is required if completion cannot be recorded.
+          throw new Error(
+            "BOOKING_FULFILLMENT_COMPLETION_REQUIRES_REVIEW"
+          )
+        }
 
-        await client.api(`/users/${BOOKING_MAILBOX}/sendMail`).post({
-          message: {
-            subject: `BOOKING CONFIRMED – ${booking.attendee_email}`,
-            body: {
-              contentType: "HTML",
-              content: `
-                <p><strong>Name:</strong> ${booking.attendee_name}</p>
-                <p><strong>Email:</strong> ${booking.attendee_email}</p>
-                <p><strong>Type:</strong> ${formatBookingTitle(booking.booking_type)}</p>
-                <p><strong>Date:</strong> ${formattedDate}</p>
-                <p><strong>Stripe Session:</strong> ${session.id}</p>
-                <p><strong>Booking ID:</strong> ${booking.id}</p>
-              `,
-            },
-            toRecipients: [
-              { emailAddress: { address: BOOKING_MAILBOX } },
-            ],
-          },
-          saveToSentItems: true,
-        })
+        // The RPC commits booking + both notification jobs.
+        // Notification delivery is handled by a separate worker.
+        // No Graph sendMail operation occurs in this webhook.
 
-        console.log("Booking finalized:", bookingId)
+        console.log("Booking fulfillment committed:", bookingId)
 
         break
       }
@@ -573,10 +671,45 @@ END:VCALENDAR
         break
     }
 
+    
+    const { data: completed, error: completionError } =
+      await supabase.rpc("complete_stripe_webhook_event", {
+        p_event_id: claimedEventId,
+        p_claim_token: claimToken,
+      })
+
+    if (completionError || completed !== true) {
+      throw new Error("Stripe event completion recording failed")
+    }
+
+    claimedEventId = null
+    claimToken = null
+
     return new Response("OK", { status: 200 })
 
   } catch (err) {
     console.error("Webhook handler failed:", err)
-    return new Response("OK", { status: 200 })
+
+    if (claimedEventId && claimToken) {
+      try {
+        const { data: failed, error: failureError } =
+          await supabase.rpc("fail_stripe_webhook_event", {
+            p_event_id: claimedEventId,
+            p_claim_token: claimToken,
+            p_error: "Webhook processing failed",
+          })
+
+        if (failureError || failed !== true) {
+          console.error("Unable to record Stripe event failure")
+        }
+      } catch (failureRecordingError) {
+        console.error(
+          "Stripe event failure recording raised an exception",
+          failureRecordingError
+        )
+      }
+    }
+
+    return new Response("Webhook processing failed", { status: 500 })
   }
 }

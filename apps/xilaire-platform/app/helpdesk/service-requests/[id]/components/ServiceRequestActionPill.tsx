@@ -69,7 +69,7 @@ export default function ServiceRequestActionPill({
       <button
         onClick={() => setOpen(!open)}
         className="px-3 py-1.5 flex items-center gap-2 rounded-lg
-          bg-slate-800 border border-slate-700 text-slate-200
+          bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200
           hover:bg-slate-700 text-sm"
       >
         <MoreVertical size={16} />
@@ -78,8 +78,8 @@ export default function ServiceRequestActionPill({
 
       {open && (
         <div
-          className="absolute right-0 mt-2 w-56 bg-slate-900
-            border border-slate-700 rounded-xl shadow-xl
+          className="absolute right-0 mt-2 w-56 bg-slate-50 dark:bg-slate-900
+            border border-slate-300 dark:border-slate-700 rounded-xl shadow-xl
             z-50 overflow-hidden"
           onMouseLeave={() => setOpen(false)}
         >
@@ -89,7 +89,7 @@ export default function ServiceRequestActionPill({
               <button
                 onClick={() => run(() => updateStatus("in_progress"))}
                 className="w-full flex items-center gap-2 px-3 py-2
-                  hover:bg-slate-800 text-slate-200 text-sm"
+                  hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm"
               >
                 <Play size={16} />
                 Start Work
@@ -97,7 +97,7 @@ export default function ServiceRequestActionPill({
 
               <button
                 className="w-full flex items-center gap-2 px-3 py-2
-                  hover:bg-slate-800 text-slate-200 text-sm"
+                  hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm"
                 disabled
               >
                 <UserPlus size={16} />
@@ -122,7 +122,7 @@ export default function ServiceRequestActionPill({
 
               <button
                 className="w-full flex items-center gap-2 px-3 py-2
-                  hover:bg-slate-800 text-slate-200 text-sm"
+                  hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm"
                 disabled
               >
                 <UserPlus size={16} />
@@ -139,7 +139,7 @@ export default function ServiceRequestActionPill({
               <button
                 onClick={() => run(() => updateStatus("in_progress"))}
                 className="w-full flex items-center gap-2 px-3 py-2
-                  hover:bg-slate-800 text-slate-200 text-sm"
+                  hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm"
               >
                 <RotateCcw size={16} />
                 Reopen
@@ -182,5 +182,5 @@ export default function ServiceRequestActionPill({
 }
 
 function Divider() {
-  return <div className="border-t border-slate-700 my-1" />;
+  return <div className="border-t border-slate-300 dark:border-slate-700 my-1" />;
 }

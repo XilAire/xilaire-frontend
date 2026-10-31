@@ -33,7 +33,7 @@ export default function TaskStatusControl({
 
   if (nextStatuses.length === 0) {
     return (
-      <p className="text-sm text-slate-400">
+      <p className="text-sm text-slate-600 dark:text-slate-400">
         Status is final
       </p>
     );
@@ -47,13 +47,13 @@ export default function TaskStatusControl({
           disabled={isPending}
           onClick={() =>
             startTransition(() =>
-              updateTaskStatus(taskId, next as any, userId)
+              updateTaskStatus(taskId, next as any)
             )
           }
           className="inline-flex items-center gap-2
-            px-3 py-1 rounded border border-slate-600
-            text-sm text-slate-200
-            hover:bg-slate-800
+            px-3 py-1 rounded border border-slate-400 dark:border-slate-600
+            text-sm text-slate-800 dark:text-slate-200
+            hover:bg-slate-100 dark:hover:bg-slate-800
             disabled:opacity-50"
         >
           {isPending && <Loader2 size={14} className="animate-spin" />}

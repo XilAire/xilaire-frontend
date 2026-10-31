@@ -85,12 +85,12 @@ export function NewAutomationForm({ bots }: NewAutomationFormProps) {
       <div className="grid gap-4 md:grid-cols-2">
         {/* Name */}
         <div>
-          <label className="block text-xs font-medium uppercase tracking-wide text-slate-400">
+          <label className="block text-xs font-medium uppercase tracking-wide text-slate-600 dark:text-slate-400">
             Automation name
           </label>
           <input
             type="text"
-            className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+            className="mt-1 w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm text-slate-950 dark:text-slate-50 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
             placeholder="Example: Auto-assign P1 Nova alerts"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -100,18 +100,18 @@ export function NewAutomationForm({ bots }: NewAutomationFormProps) {
           {/* 🔥 Slug Preview */}
           {name.trim() !== "" && (
             <p className="mt-1 text-[11px] text-slate-500">
-              Slug: <span className="text-slate-300">{slugify(name)}</span>
+              Slug: <span className="text-slate-700 dark:text-slate-300">{slugify(name)}</span>
             </p>
           )}
         </div>
 
         {/* Bot */}
         <div>
-          <label className="block text-xs font-medium uppercase tracking-wide text-slate-400">
+          <label className="block text-xs font-medium uppercase tracking-wide text-slate-600 dark:text-slate-400">
             Bot
           </label>
           <select
-            className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+            className="mt-1 w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm text-slate-950 dark:text-slate-50 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
             value={botId}
             onChange={(e) => setBotId(e.target.value)}
           >
@@ -128,11 +128,11 @@ export function NewAutomationForm({ bots }: NewAutomationFormProps) {
 
       {/* Description */}
       <div>
-        <label className="block text-xs font-medium uppercase tracking-wide text-slate-400">
+        <label className="block text-xs font-medium uppercase tracking-wide text-slate-600 dark:text-slate-400">
           Description
         </label>
         <textarea
-          className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-50 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+          className="mt-1 w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm text-slate-950 dark:text-slate-50 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
           rows={4}
           placeholder="Describe what this automation should do. For now this is just documentation; we’ll wire triggers and actions in the next phase."
           value={description}

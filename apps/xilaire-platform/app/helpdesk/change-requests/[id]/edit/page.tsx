@@ -157,7 +157,7 @@ export default function EditChangeRequestPage() {
 
   if (loading || !change) {
     return (
-      <div className="p-6 text-slate-400">
+      <div className="p-6 text-slate-600 dark:text-slate-400">
         Loading change request…
       </div>
     );
@@ -171,13 +171,13 @@ export default function EditChangeRequestPage() {
           <h1 className="text-2xl font-semibold text-white">
             Edit Change Request
           </h1>
-          <p className="text-sm text-slate-400">ID: {change.id}</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400">ID: {change.id}</p>
         </div>
 
         <div className="flex gap-3">
           <Link
             href={`/helpdesk/change-requests/${change.id}`}
-            className="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700"
+            className="px-4 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-700"
           >
             Cancel
           </Link>
@@ -194,8 +194,8 @@ export default function EditChangeRequestPage() {
 
       {/* APPROVAL */}
       {approval && (
-        <div className="rounded-xl border border-slate-700 bg-slate-900 p-4 space-y-3">
-          <h3 className="text-sm font-semibold text-slate-300">
+        <div className="rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4 space-y-3">
+          <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">
             Approval
           </h3>
 
@@ -220,13 +220,13 @@ export default function EditChangeRequestPage() {
       )}
 
       {/* FORM */}
-      <div className="rounded-xl border border-slate-800 bg-slate-900 p-6 space-y-6">
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6 space-y-6">
         <input
           value={change.title}
           onChange={(e) =>
             setChange({ ...change, title: e.target.value })
           }
-          className="w-full rounded-lg bg-slate-800 px-3 py-2"
+          className="w-full rounded-lg bg-slate-100 dark:bg-slate-800 px-3 py-2"
         />
 
         <textarea
@@ -235,7 +235,7 @@ export default function EditChangeRequestPage() {
           onChange={(e) =>
             setChange({ ...change, description: e.target.value })
           }
-          className="w-full rounded-lg bg-slate-800 px-3 py-2"
+          className="w-full rounded-lg bg-slate-100 dark:bg-slate-800 px-3 py-2"
         />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -245,7 +245,7 @@ export default function EditChangeRequestPage() {
             onChange={(e) =>
               setChange({ ...change, requested_by: e.target.value })
             }
-            className="rounded-lg bg-slate-800 px-3 py-2"
+            className="rounded-lg bg-slate-100 dark:bg-slate-800 px-3 py-2"
           >
             <option value="">Requested By…</option>
             {users.map((u) => (
@@ -261,7 +261,7 @@ export default function EditChangeRequestPage() {
             onChange={(e) =>
               setChange({ ...change, assigned_to: e.target.value })
             }
-            className="rounded-lg bg-slate-800 px-3 py-2"
+            className="rounded-lg bg-slate-100 dark:bg-slate-800 px-3 py-2"
           >
             <option value="">Assigned To…</option>
             {users.map((u) => (
@@ -277,7 +277,7 @@ export default function EditChangeRequestPage() {
             onChange={(e) =>
               setChange({ ...change, status: e.target.value })
             }
-            className="rounded-lg bg-slate-800 px-3 py-2"
+            className="rounded-lg bg-slate-100 dark:bg-slate-800 px-3 py-2"
           >
             <option value="" disabled>
               Select status…
@@ -295,7 +295,7 @@ export default function EditChangeRequestPage() {
             onChange={(e) =>
               setChange({ ...change, risk_level: e.target.value })
             }
-            className="rounded-lg bg-slate-800 px-3 py-2"
+            className="rounded-lg bg-slate-100 dark:bg-slate-800 px-3 py-2"
           >
             <option value="">Risk Level…</option>
             <option value="low">Low</option>
@@ -312,7 +312,7 @@ export default function EditChangeRequestPage() {
                 scheduled_start: e.target.value,
               })
             }
-            className="rounded-lg bg-slate-800 px-3 py-2"
+            className="rounded-lg bg-slate-100 dark:bg-slate-800 px-3 py-2"
           />
 
           <input
@@ -324,7 +324,7 @@ export default function EditChangeRequestPage() {
                 scheduled_end: e.target.value,
               })
             }
-            className="rounded-lg bg-slate-800 px-3 py-2"
+            className="rounded-lg bg-slate-100 dark:bg-slate-800 px-3 py-2"
           />
         </div>
       </div>

@@ -221,7 +221,7 @@ export default function BusinessServices() {
                     <td className="px-4 py-3">
                       {label}
                       {premium && (
-                        <span className="ml-2 text-xs text-slate-400">
+                        <span className="ml-2 text-xs text-slate-600 dark:text-slate-400">
                           (Business Premium)
                         </span>
                       )}

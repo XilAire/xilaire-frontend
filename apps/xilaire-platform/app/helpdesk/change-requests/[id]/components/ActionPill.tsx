@@ -95,7 +95,7 @@ export default function ActionPill({
         <button
           onClick={() => setOpen(!open)}
           className="px-3 py-1.5 flex items-center gap-2 rounded-lg 
-            bg-slate-800 border border-slate-700 text-slate-200 
+            bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 
             hover:bg-slate-700 text-sm"
         >
           <MoreVertical size={16} />
@@ -104,8 +104,8 @@ export default function ActionPill({
 
         {open && (
           <div
-            className="absolute right-0 mt-2 w-56 bg-slate-900 
-              border border-slate-700 rounded-xl shadow-xl 
+            className="absolute right-0 mt-2 w-56 bg-slate-50 dark:bg-slate-900 
+              border border-slate-300 dark:border-slate-700 rounded-xl shadow-xl 
               z-50 overflow-hidden"
             onMouseLeave={() => setOpen(false)}
           >
@@ -115,13 +115,13 @@ export default function ActionPill({
                 <button
                   onClick={() => setEditOpen(true)}
                   className="w-full flex items-center gap-2 px-3 py-2 
-                    hover:bg-slate-800 text-slate-200 text-sm"
+                    hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm"
                 >
                   <Edit size={16} />
                   Edit Request
                 </button>
 
-                <div className="border-t border-slate-700 my-1" />
+                <div className="border-t border-slate-300 dark:border-slate-700 my-1" />
               </>
             )}
 
@@ -130,7 +130,7 @@ export default function ActionPill({
               <button
                 onClick={() => run(() => updateStatus("in_progress"))}
                 className="w-full flex items-center gap-2 px-3 py-2 
-                  hover:bg-slate-800 text-slate-200 text-sm"
+                  hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm"
               >
                 <Clock size={16} />
                 Start
@@ -141,7 +141,7 @@ export default function ActionPill({
               <button
                 onClick={() => run(() => updateStatus("resolved"))}
                 className="w-full flex items-center gap-2 px-3 py-2 
-                  hover:bg-slate-800 text-emerald-400 text-sm"
+                  hover:bg-slate-100 dark:hover:bg-slate-800 text-emerald-400 text-sm"
               >
                 <CheckCircle size={16} />
                 Resolve
@@ -150,7 +150,7 @@ export default function ActionPill({
 
             {change.status === "resolved" && (
               <>
-                <div className="border-t border-slate-700 my-1" />
+                <div className="border-t border-slate-300 dark:border-slate-700 my-1" />
 
                 {canComplete ? (
                   <button
@@ -164,7 +164,7 @@ export default function ActionPill({
                 ) : (
                   <div
                     className="w-full flex items-start gap-2 px-3 py-2 
-                      text-slate-400 text-xs cursor-not-allowed"
+                      text-slate-600 dark:text-slate-400 text-xs cursor-not-allowed"
                     title="All tasks must be completed first"
                   >
                     <Ban size={16} className="mt-0.5" />
@@ -180,7 +180,7 @@ export default function ActionPill({
               </>
             )}
 
-            <div className="border-t border-slate-700 my-1" />
+            <div className="border-t border-slate-300 dark:border-slate-700 my-1" />
 
             {/* DELETE */}
             <button

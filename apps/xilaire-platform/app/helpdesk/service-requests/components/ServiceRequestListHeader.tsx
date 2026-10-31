@@ -14,8 +14,8 @@ export default function ServiceRequestListHeader({
   return (
     <div
       className="grid grid-cols-12 gap-4 px-6 py-3
-                 border-b border-slate-800
-                 text-xs uppercase tracking-wide text-slate-400"
+                 border-b border-slate-200 dark:border-slate-800
+                 text-xs uppercase tracking-wide text-slate-600 dark:text-slate-400"
     >
       {/* SELECT ALL */}
       <div className="col-span-1 flex items-center">
@@ -26,8 +26,8 @@ export default function ServiceRequestListHeader({
             if (el) el.indeterminate = someSelected && !allSelected;
           }}
           onChange={onToggleAll}
-          className="h-4 w-4 rounded border-slate-600
-                     bg-slate-900 text-blue-500"
+          className="h-4 w-4 rounded border-slate-400 dark:border-slate-600
+                     bg-slate-50 dark:bg-slate-900 text-blue-500"
         />
       </div>
 

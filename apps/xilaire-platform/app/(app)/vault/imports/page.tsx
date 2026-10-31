@@ -76,7 +76,7 @@ function getStatusClass(status: ImportCard["status"]) {
     case "Planned":
       return "border-yellow-500/30 bg-yellow-500/10 text-yellow-300";
     default:
-      return "border-zinc-500/30 bg-zinc-500/10 text-zinc-300";
+      return "border-zinc-500/30 bg-zinc-500/10 text-zinc-700 dark:text-zinc-300";
   }
 }
 
@@ -84,10 +84,10 @@ function ImportTypeCard({ item }: { item: ImportCard }) {
   const isReady = item.status === "Ready";
 
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
+    <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 p-5">
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-zinc-100">
+          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
             {item.title}
           </h2>
 
@@ -100,7 +100,7 @@ function ImportTypeCard({ item }: { item: ImportCard }) {
           </span>
         </div>
 
-        <p className="text-sm leading-6 text-zinc-400">{item.description}</p>
+        <p className="text-sm leading-6 text-zinc-600 dark:text-zinc-400">{item.description}</p>
 
         <div className="grid gap-2 text-xs text-zinc-500 sm:grid-cols-2">
           <div>Source type: {item.sourceType}</div>
@@ -115,7 +115,7 @@ function ImportTypeCard({ item }: { item: ImportCard }) {
             Open import
           </Link>
         ) : (
-          <span className="inline-flex w-fit rounded-xl border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-500">
+          <span className="inline-flex w-fit rounded-xl border border-zinc-300 dark:border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-500">
             Coming later
           </span>
         )}
@@ -131,9 +131,9 @@ export default async function VaultImportsPage() {
   ).length;
 
   return (
-    <main className="min-h-screen bg-zinc-950 px-6 py-8 text-zinc-100">
+    <main className="min-h-screen bg-white dark:bg-zinc-950 px-6 py-8 text-zinc-900 dark:text-zinc-100">
       <div className="mx-auto flex max-w-7xl flex-col gap-6">
-        <section className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-6 shadow-xl">
+        <section className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 p-6 shadow-xl">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <p className="text-sm uppercase tracking-[0.3em] text-zinc-500">
@@ -144,7 +144,7 @@ export default async function VaultImportsPage() {
                 Manual Evidence Imports
               </h1>
 
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">
                 Register uploaded mailbox archives and individual evidence files
                 for Vault ingestion. This area supports historical imports that
                 are not pulled directly from live mail systems.
@@ -154,14 +154,14 @@ export default async function VaultImportsPage() {
             <div className="flex flex-wrap gap-2">
               <Link
                 href="/vault"
-                className="inline-flex rounded-xl border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-300 hover:bg-zinc-800"
+                className="inline-flex rounded-xl border border-zinc-300 dark:border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
               >
                 Vault overview
               </Link>
 
               <Link
                 href="/vault/sources"
-                className="inline-flex rounded-xl border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-300 hover:bg-zinc-800"
+                className="inline-flex rounded-xl border border-zinc-300 dark:border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
               >
                 Sources
               </Link>
@@ -177,17 +177,17 @@ export default async function VaultImportsPage() {
         </section>
 
         <section className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
+          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 p-5">
             <p className="text-sm text-zinc-500">Import Types</p>
             <p className="mt-2 text-2xl font-semibold">{importCards.length}</p>
           </div>
 
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
+          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 p-5">
             <p className="text-sm text-zinc-500">Ready</p>
             <p className="mt-2 text-2xl font-semibold">{readyCount}</p>
           </div>
 
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
+          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 p-5">
             <p className="text-sm text-zinc-500">Planned</p>
             <p className="mt-2 text-2xl font-semibold">{plannedCount}</p>
           </div>
@@ -199,35 +199,35 @@ export default async function VaultImportsPage() {
           ))}
         </section>
 
-        <section className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-6">
-          <h2 className="text-lg font-semibold text-zinc-100">
+        <section className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 p-6">
+          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
             Import workflow
           </h2>
 
           <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
-              <p className="font-medium text-zinc-200">1. Upload file</p>
+            <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-4">
+              <p className="font-medium text-zinc-800 dark:text-zinc-200">1. Upload file</p>
               <p className="mt-1 text-sm leading-6 text-zinc-500">
                 Place the evidence file in the Vault import storage bucket.
               </p>
             </div>
 
-            <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
-              <p className="font-medium text-zinc-200">2. Register metadata</p>
+            <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-4">
+              <p className="font-medium text-zinc-800 dark:text-zinc-200">2. Register metadata</p>
               <p className="mt-1 text-sm leading-6 text-zinc-500">
                 Submit mailbox, file, storage, hash, and retention metadata.
               </p>
             </div>
 
-            <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
-              <p className="font-medium text-zinc-200">3. Queue ingestion</p>
+            <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-4">
+              <p className="font-medium text-zinc-800 dark:text-zinc-200">3. Queue ingestion</p>
               <p className="mt-1 text-sm leading-6 text-zinc-500">
                 Vault creates parse/import jobs for the ingestion worker.
               </p>
             </div>
 
-            <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
-              <p className="font-medium text-zinc-200">4. Process evidence</p>
+            <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-4">
+              <p className="font-medium text-zinc-800 dark:text-zinc-200">4. Process evidence</p>
               <p className="mt-1 text-sm leading-6 text-zinc-500">
                 Workers normalize messages, attachments, metadata, and custody
                 records.

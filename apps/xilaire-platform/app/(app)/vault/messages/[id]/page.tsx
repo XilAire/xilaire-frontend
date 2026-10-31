@@ -303,7 +303,7 @@ function renderRecipient(recipient: Recipient, index: number) {
   return (
     <div
       key={`${recipient.email ?? recipient.name ?? "recipient"}-${index}`}
-      className="rounded-xl border border-slate-700/70 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 shadow-sm"
+      className="rounded-xl border border-slate-300/70 dark:border-slate-700/70 bg-slate-100/70 dark:bg-slate-900/70 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 shadow-sm"
     >
       {label}
     </div>
@@ -410,8 +410,8 @@ function SectionCard({
   action?: React.ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-800 bg-[#071224] shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
-      <div className="flex items-center justify-between gap-4 border-b border-slate-800 bg-slate-950/40 px-5 py-4">
+    <section className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-[#071224] shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
+      <div className="flex items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-950/40 px-5 py-4">
         <h2 className="text-base font-semibold text-white">{title}</h2>
         {action}
       </div>
@@ -433,12 +433,12 @@ function FieldGrid({
       {items.map((item) => (
         <div
           key={item.label}
-          className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-sm"
+          className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-900/60 p-4 shadow-sm"
         >
-          <div className="text-xs uppercase tracking-[0.12em] text-slate-400">
+          <div className="text-xs uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
             {item.label}
           </div>
-          <div className="mt-2 break-words text-sm text-slate-100">
+          <div className="mt-2 break-words text-sm text-slate-900 dark:text-slate-100">
             {item.value}
           </div>
         </div>
@@ -455,8 +455,8 @@ function MiniStatCard({
   value: string | number;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-      <div className="text-xs uppercase tracking-[0.12em] text-slate-400">
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-900/60 p-4">
+      <div className="text-xs uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
         {label}
       </div>
       <div className="mt-2 text-lg font-semibold text-white">{value}</div>
@@ -479,7 +479,7 @@ function ActionButton({
       className={
         tone === "primary"
           ? "inline-flex rounded-2xl bg-cyan-500 px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-cyan-400"
-          : "inline-flex rounded-2xl border border-slate-700 bg-slate-950/70 px-4 py-2 text-sm font-medium text-slate-100 transition hover:bg-slate-800"
+          : "inline-flex rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-950/70 px-4 py-2 text-sm font-medium text-slate-900 dark:text-slate-100 transition hover:bg-slate-100 dark:hover:bg-slate-800"
       }
     >
       {children}
@@ -514,15 +514,15 @@ export default async function VaultMessageDetailPage({ params }: PageProps) {
   return (
     <div className="min-h-screen bg-transparent">
       <div className="mx-auto max-w-7xl px-6 py-8">
-        <div className="mb-6 rounded-3xl border border-slate-800 bg-[#071224] p-6 shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
+        <div className="mb-6 rounded-3xl border border-slate-200 dark:border-slate-800 bg-[#071224] p-6 shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
           <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
             <div className="space-y-3">
               <div>
                 <h1 className="text-3xl font-semibold tracking-tight text-white">
                   Overview
                 </h1>
-                <p className="mt-2 text-sm text-slate-300">{sender}</p>
-                <p className="mt-1 text-sm text-slate-400">
+                <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">{sender}</p>
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
                   {message.subject || "(No Subject)"}
                 </p>
                 <p className="mt-1 text-sm text-slate-500">
@@ -682,47 +682,47 @@ export default async function VaultMessageDetailPage({ params }: PageProps) {
           <SectionCard title="Recipients">
             <div className="grid gap-6 lg:grid-cols-2">
               <div>
-                <div className="mb-3 text-sm font-medium text-slate-200">To</div>
+                <div className="mb-3 text-sm font-medium text-slate-800 dark:text-slate-200">To</div>
                 <div className="grid gap-2">
                   {toRecipients.length > 0 ? (
                     toRecipients.map(renderRecipient)
                   ) : (
-                    <div className="text-sm text-slate-400">No recipients</div>
+                    <div className="text-sm text-slate-600 dark:text-slate-400">No recipients</div>
                   )}
                 </div>
               </div>
 
               <div>
-                <div className="mb-3 text-sm font-medium text-slate-200">CC</div>
+                <div className="mb-3 text-sm font-medium text-slate-800 dark:text-slate-200">CC</div>
                 <div className="grid gap-2">
                   {ccRecipients.length > 0 ? (
                     ccRecipients.map(renderRecipient)
                   ) : (
-                    <div className="text-sm text-slate-400">No recipients</div>
+                    <div className="text-sm text-slate-600 dark:text-slate-400">No recipients</div>
                   )}
                 </div>
               </div>
 
               <div>
-                <div className="mb-3 text-sm font-medium text-slate-200">BCC</div>
+                <div className="mb-3 text-sm font-medium text-slate-800 dark:text-slate-200">BCC</div>
                 <div className="grid gap-2">
                   {bccRecipients.length > 0 ? (
                     bccRecipients.map(renderRecipient)
                   ) : (
-                    <div className="text-sm text-slate-400">No recipients</div>
+                    <div className="text-sm text-slate-600 dark:text-slate-400">No recipients</div>
                   )}
                 </div>
               </div>
 
               <div>
-                <div className="mb-3 text-sm font-medium text-slate-200">
+                <div className="mb-3 text-sm font-medium text-slate-800 dark:text-slate-200">
                   Reply-To
                 </div>
                 <div className="grid gap-2">
                   {replyToRecipients.length > 0 ? (
                     replyToRecipients.map(renderRecipient)
                   ) : (
-                    <div className="text-sm text-slate-400">No recipients</div>
+                    <div className="text-sm text-slate-600 dark:text-slate-400">No recipients</div>
                   )}
                 </div>
               </div>
@@ -732,37 +732,37 @@ export default async function VaultMessageDetailPage({ params }: PageProps) {
           <SectionCard title="Message Body">
             <div className="space-y-4">
               <div>
-                <div className="mb-2 text-sm font-medium text-slate-200">
+                <div className="mb-2 text-sm font-medium text-slate-800 dark:text-slate-200">
                   Preview
                 </div>
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-100">
+                <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-900/60 p-4 text-sm text-slate-900 dark:text-slate-100">
                   {message.body_preview || "—"}
                 </div>
               </div>
 
               <div>
-                <div className="mb-2 text-sm font-medium text-slate-200">
+                <div className="mb-2 text-sm font-medium text-slate-800 dark:text-slate-200">
                   Body Text
                 </div>
-                <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-100">
+                <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-900/60 p-4 text-sm text-slate-900 dark:text-slate-100">
                   {message.body_text || "—"}
                 </pre>
               </div>
 
               <div>
-                <div className="mb-2 text-sm font-medium text-slate-200">
+                <div className="mb-2 text-sm font-medium text-slate-800 dark:text-slate-200">
                   Raw Storage Path
                 </div>
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-100">
+                <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-900/60 p-4 text-sm text-slate-900 dark:text-slate-100">
                   {message.raw_storage_path || "—"}
                 </div>
               </div>
 
               <div>
-                <div className="mb-2 text-sm font-medium text-slate-200">
+                <div className="mb-2 text-sm font-medium text-slate-800 dark:text-slate-200">
                   Normalized Storage Path
                 </div>
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-100">
+                <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-900/60 p-4 text-sm text-slate-900 dark:text-slate-100">
                   {message.normalized_storage_path || "—"}
                 </div>
               </div>
@@ -778,38 +778,38 @@ export default async function VaultMessageDetailPage({ params }: PageProps) {
             }
           >
             {attachments.length === 0 ? (
-              <div className="text-sm text-slate-400">No attachments found.</div>
+              <div className="text-sm text-slate-600 dark:text-slate-400">No attachments found.</div>
             ) : (
               <div className="space-y-4">
                 {attachments.slice(0, 3).map((attachment) => (
                   <div
                     key={attachment.id}
-                    className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4"
+                    className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-900/60 p-4"
                   >
                     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                       <div>
-                        <div className="text-xs uppercase tracking-[0.12em] text-slate-400">
+                        <div className="text-xs uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
                           File Name
                         </div>
-                        <div className="mt-2 break-words text-sm text-slate-100">
+                        <div className="mt-2 break-words text-sm text-slate-900 dark:text-slate-100">
                           {attachment.display_name || attachment.file_name || "—"}
                         </div>
                       </div>
 
                       <div>
-                        <div className="text-xs uppercase tracking-[0.12em] text-slate-400">
+                        <div className="text-xs uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
                           Content Type
                         </div>
-                        <div className="mt-2 break-words text-sm text-slate-100">
+                        <div className="mt-2 break-words text-sm text-slate-900 dark:text-slate-100">
                           {attachment.content_type || "—"}
                         </div>
                       </div>
 
                       <div>
-                        <div className="text-xs uppercase tracking-[0.12em] text-slate-400">
+                        <div className="text-xs uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
                           Size
                         </div>
-                        <div className="mt-2 text-sm text-slate-100">
+                        <div className="mt-2 text-sm text-slate-900 dark:text-slate-100">
                           {formatBytes(attachment.size_bytes)}
                         </div>
                       </div>
@@ -829,7 +829,7 @@ export default async function VaultMessageDetailPage({ params }: PageProps) {
                 ))}
 
                 {attachments.length > 3 ? (
-                  <div className="text-sm text-slate-400">
+                  <div className="text-sm text-slate-600 dark:text-slate-400">
                     Showing 3 of {attachments.length} attachments.
                   </div>
                 ) : null}
@@ -846,29 +846,29 @@ export default async function VaultMessageDetailPage({ params }: PageProps) {
             }
           >
             {occurrences.length === 0 ? (
-              <div className="text-sm text-slate-400">No occurrences found.</div>
+              <div className="text-sm text-slate-600 dark:text-slate-400">No occurrences found.</div>
             ) : (
               <div className="space-y-4">
                 {occurrences.slice(0, 3).map((occurrence) => (
                   <div
                     key={occurrence.id}
-                    className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4"
+                    className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-900/60 p-4"
                   >
                     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                       <div>
-                        <div className="text-xs uppercase tracking-[0.12em] text-slate-400">
+                        <div className="text-xs uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
                           Occurrence Type
                         </div>
-                        <div className="mt-2 text-sm text-slate-100">
+                        <div className="mt-2 text-sm text-slate-900 dark:text-slate-100">
                           {occurrence.occurrence_type || "—"}
                         </div>
                       </div>
 
                       <div>
-                        <div className="text-xs uppercase tracking-[0.12em] text-slate-400">
+                        <div className="text-xs uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
                           Mailbox
                         </div>
-                        <div className="mt-2 break-words text-sm text-slate-100">
+                        <div className="mt-2 break-words text-sm text-slate-900 dark:text-slate-100">
                           {occurrence.mailbox?.mailbox_address ||
                             occurrence.mailbox?.display_name ||
                             occurrence.mailbox_address ||
@@ -877,19 +877,19 @@ export default async function VaultMessageDetailPage({ params }: PageProps) {
                       </div>
 
                       <div>
-                        <div className="text-xs uppercase tracking-[0.12em] text-slate-400">
+                        <div className="text-xs uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
                           Folder Path
                         </div>
-                        <div className="mt-2 break-words text-sm text-slate-100">
+                        <div className="mt-2 break-words text-sm text-slate-900 dark:text-slate-100">
                           {occurrence.folder_path || "—"}
                         </div>
                       </div>
 
                       <div>
-                        <div className="text-xs uppercase tracking-[0.12em] text-slate-400">
+                        <div className="text-xs uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
                           Deleted at Source
                         </div>
-                        <div className="mt-2 text-sm text-slate-100">
+                        <div className="mt-2 text-sm text-slate-900 dark:text-slate-100">
                           {formatBoolean(
                             occurrence.is_deleted_at_source ??
                               occurrence.deleted_at_source,
@@ -901,7 +901,7 @@ export default async function VaultMessageDetailPage({ params }: PageProps) {
                 ))}
 
                 {occurrences.length > 3 ? (
-                  <div className="text-sm text-slate-400">
+                  <div className="text-sm text-slate-600 dark:text-slate-400">
                     Showing 3 of {occurrences.length} occurrences.
                   </div>
                 ) : null}
@@ -918,7 +918,7 @@ export default async function VaultMessageDetailPage({ params }: PageProps) {
             }
           >
             {holds.length === 0 ? (
-              <div className="text-sm text-slate-400">
+              <div className="text-sm text-slate-600 dark:text-slate-400">
                 No holds linked to this message.
               </div>
             ) : (
@@ -926,50 +926,50 @@ export default async function VaultMessageDetailPage({ params }: PageProps) {
                 {holds.slice(0, 3).map((hold) => (
                   <div
                     key={hold.id}
-                    className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4"
+                    className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-900/60 p-4"
                   >
                     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                       <div>
-                        <div className="text-xs uppercase tracking-[0.12em] text-slate-400">
+                        <div className="text-xs uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
                           Hold Name
                         </div>
-                        <div className="mt-2 text-sm text-slate-100">
+                        <div className="mt-2 text-sm text-slate-900 dark:text-slate-100">
                           {hold.name || hold.hold_name || "—"}
                         </div>
                       </div>
 
                       <div>
-                        <div className="text-xs uppercase tracking-[0.12em] text-slate-400">
+                        <div className="text-xs uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
                           Hold Type
                         </div>
-                        <div className="mt-2 text-sm text-slate-100">
+                        <div className="mt-2 text-sm text-slate-900 dark:text-slate-100">
                           {hold.hold_type || "—"}
                         </div>
                       </div>
 
                       <div>
-                        <div className="text-xs uppercase tracking-[0.12em] text-slate-400">
+                        <div className="text-xs uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
                           Status
                         </div>
-                        <div className="mt-2 text-sm text-slate-100">
+                        <div className="mt-2 text-sm text-slate-900 dark:text-slate-100">
                           {hold.status || "—"}
                         </div>
                       </div>
 
                       <div>
-                        <div className="text-xs uppercase tracking-[0.12em] text-slate-400">
+                        <div className="text-xs uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
                           Created
                         </div>
-                        <div className="mt-2 text-sm text-slate-100">
+                        <div className="mt-2 text-sm text-slate-900 dark:text-slate-100">
                           {formatDateTime(hold.created_at)}
                         </div>
                       </div>
 
                       <div className="md:col-span-2 xl:col-span-3">
-                        <div className="text-xs uppercase tracking-[0.12em] text-slate-400">
+                        <div className="text-xs uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
                           Description
                         </div>
-                        <div className="mt-2 text-sm text-slate-100">
+                        <div className="mt-2 text-sm text-slate-900 dark:text-slate-100">
                           {hold.description || "—"}
                         </div>
                       </div>
@@ -978,7 +978,7 @@ export default async function VaultMessageDetailPage({ params }: PageProps) {
                 ))}
 
                 {holds.length > 3 ? (
-                  <div className="text-sm text-slate-400">
+                  <div className="text-sm text-slate-600 dark:text-slate-400">
                     Showing 3 of {holds.length} holds.
                   </div>
                 ) : null}
@@ -987,7 +987,7 @@ export default async function VaultMessageDetailPage({ params }: PageProps) {
           </SectionCard>
 
           <SectionCard title="Metadata">
-            <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-100">
+            <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-900/60 p-4 text-sm text-slate-900 dark:text-slate-100">
               {message.metadata
                 ? JSON.stringify(message.metadata, null, 2)
                 : "—"}

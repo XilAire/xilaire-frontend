@@ -48,7 +48,7 @@ export default function ChangeTasksClient({
 
       {/* EMPTY STATE */}
       {tasks.length === 0 && (
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-slate-600 dark:text-slate-400">
           No tasks have been created for this change request yet.
         </p>
       )}
@@ -60,9 +60,9 @@ export default function ChangeTasksClient({
             <Link
               href={`/helpdesk/change-requests/${changeId}/tasks/${task.id}`}
               className="
-                block rounded-lg border border-slate-700
-                bg-slate-900/40 p-4
-                hover:bg-slate-800/60 transition
+                block rounded-lg border border-slate-300 dark:border-slate-700
+                bg-slate-100/40 dark:bg-slate-900/40 p-4
+                hover:bg-slate-200/60 dark:hover:bg-slate-800/60 transition
               "
             >
               <div className="flex justify-between gap-6">
@@ -73,7 +73,7 @@ export default function ChangeTasksClient({
                   </h4>
 
                   {task.description && (
-                    <p className="text-sm text-slate-400">
+                    <p className="text-sm text-slate-600 dark:text-slate-400">
                       {task.description}
                     </p>
                   )}

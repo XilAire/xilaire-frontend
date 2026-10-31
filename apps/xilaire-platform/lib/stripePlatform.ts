@@ -39,5 +39,5 @@ if (!ACTIVE_KEY) {
 ================================================= */
 
 export const stripe = new Stripe(ACTIVE_KEY, {
-  apiVersion: "2025-08-27.basil",
+  apiVersion: "2026-07-29.dahlia",
 })

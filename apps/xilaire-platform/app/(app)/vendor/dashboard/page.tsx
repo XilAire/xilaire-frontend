@@ -345,7 +345,7 @@ export default function VendorDashboardPage() {
   if (redirecting) {
     return (
       <div className="p-6">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-sm text-slate-300">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6 text-sm text-slate-700 dark:text-slate-300">
           Redirecting to the correct vendor page...
         </div>
       </div>
@@ -356,10 +356,10 @@ export default function VendorDashboardPage() {
     <div className="p-6 space-y-8">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-200">
+          <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-200">
             Vendor Dashboard
           </h1>
-          <p className="mt-2 text-slate-400">
+          <p className="mt-2 text-slate-600 dark:text-slate-400">
             Track invited projects, site visits, estimates, invoices, and required documents.
           </p>
 
@@ -387,7 +387,7 @@ export default function VendorDashboardPage() {
         <button
           onClick={loadDashboard}
           disabled={loading}
-          className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-2 text-sm text-slate-200 transition hover:bg-slate-800 disabled:opacity-60"
+          className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-2 text-sm text-slate-800 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-60"
         >
           {loading ? "Refreshing..." : "Refresh"}
         </button>
@@ -445,11 +445,11 @@ export default function VendorDashboardPage() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-3">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 xl:col-span-2">
-          <h2 className="text-lg font-semibold text-slate-200">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6 xl:col-span-2">
+          <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">
             Vendor Workspace
           </h2>
-          <p className="mt-2 text-sm text-slate-400">
+          <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
             Use the vendor portal to review project opportunities, respond to site visit requests,
             submit estimates, upload invoices, and keep your vendor information current.
           </p>
@@ -457,54 +457,54 @@ export default function VendorDashboardPage() {
           <div className="mt-6 grid gap-3 md:grid-cols-2">
             <Link
               href="/vendor/projects"
-              className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-200 transition hover:bg-slate-800"
+              className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 text-sm text-slate-800 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-800"
             >
               View Projects
             </Link>
 
             <Link
               href="/vendor/site-visits"
-              className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-200 transition hover:bg-slate-800"
+              className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 text-sm text-slate-800 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-800"
             >
               View Site Visits
             </Link>
 
             <Link
               href="/vendor/estimates"
-              className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-200 transition hover:bg-slate-800"
+              className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 text-sm text-slate-800 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-800"
             >
               Manage Estimates
             </Link>
 
             <Link
               href="/vendor/invoices"
-              className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-200 transition hover:bg-slate-800"
+              className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 text-sm text-slate-800 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-800"
             >
               Manage Invoices
             </Link>
 
             <Link
               href="/vendor/documents"
-              className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-200 transition hover:bg-slate-800"
+              className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 text-sm text-slate-800 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-800"
             >
               Upload Documents
             </Link>
 
             <Link
               href="/vendor/profile"
-              className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-200 transition hover:bg-slate-800"
+              className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 text-sm text-slate-800 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-800"
             >
               Update Profile
             </Link>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-          <h2 className="text-lg font-semibold text-slate-200">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6">
+          <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">
             Getting Started
           </h2>
 
-          <div className="mt-4 space-y-3 text-sm text-slate-400">
+          <div className="mt-4 space-y-3 text-sm text-slate-600 dark:text-slate-400">
             <p>1. Review any invited projects assigned to your company.</p>
             <p>2. Confirm or complete requested site visits.</p>
             <p>3. Submit your estimate for open opportunities.</p>
@@ -527,9 +527,9 @@ function DashboardCard({
   helper: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-      <p className="text-sm text-slate-400">{label}</p>
-      <p className="mt-3 text-3xl font-semibold text-slate-100">{value}</p>
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6">
+      <p className="text-sm text-slate-600 dark:text-slate-400">{label}</p>
+      <p className="mt-3 text-3xl font-semibold text-slate-900 dark:text-slate-100">{value}</p>
       <p className="mt-2 text-sm text-slate-500">{helper}</p>
     </div>
   );

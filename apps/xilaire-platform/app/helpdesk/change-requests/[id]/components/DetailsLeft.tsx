@@ -16,26 +16,26 @@ export default function DetailsLeft({ change }: DetailsLeftProps) {
     <div className="space-y-6">
       {/* SUMMARY */}
       <CardBlock title="Summary">
-        <p className="text-slate-300">{title || "No summary provided."}</p>
+        <p className="text-slate-700 dark:text-slate-300">{title || "No summary provided."}</p>
       </CardBlock>
 
       {/* DESCRIPTION */}
       <CardBlock title="Description">
-        <p className="text-slate-300 whitespace-pre-line">
+        <p className="text-slate-700 dark:text-slate-300 whitespace-pre-line">
           {description || "No description provided."}
         </p>
       </CardBlock>
 
       {/* IMPLEMENTATION PLAN */}
       <CardBlock title="Implementation Plan">
-        <p className="text-slate-300 whitespace-pre-line">
+        <p className="text-slate-700 dark:text-slate-300 whitespace-pre-line">
           {implementation_plan || "No implementation plan provided."}
         </p>
       </CardBlock>
 
       {/* ROLLBACK PLAN */}
       <CardBlock title="Rollback Plan">
-        <p className="text-slate-300 whitespace-pre-line">
+        <p className="text-slate-700 dark:text-slate-300 whitespace-pre-line">
           {rollback_plan || "No rollback plan provided."}
         </p>
       </CardBlock>
@@ -54,7 +54,7 @@ function CardBlock({
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
+    <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
       <h2 className="text-lg font-semibold text-white mb-3">{title}</h2>
       {children}
     </div>

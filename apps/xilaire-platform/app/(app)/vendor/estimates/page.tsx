@@ -253,7 +253,7 @@ function statusBadgeClasses(status: string | null | undefined) {
     return "border-rose-500/30 bg-rose-500/10 text-rose-300";
   }
 
-  return "border-slate-700 bg-slate-800 text-slate-300";
+  return "border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300";
 }
 
 function getAttachmentHref(attachment: EstimateAttachmentRow) {
@@ -871,11 +871,11 @@ export default function VendorEstimatesPage() {
       <div className="space-y-2">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-slate-200">
+            <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-200">
               Vendor Estimates
             </h1>
 
-            <p className="text-slate-400">
+            <p className="text-slate-600 dark:text-slate-400">
               {isAdminView
                 ? "Admin view of all vendor estimates in your organization."
                 : `Estimates assigned to ${vendorName || "your company"}.`}
@@ -887,7 +887,7 @@ export default function VendorEstimatesPage() {
           <div className="flex flex-wrap gap-2">
             <Link
               href="/vendor"
-              className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-700 px-4 text-sm text-slate-300 transition hover:border-sky-600 hover:text-white"
+              className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 dark:border-slate-700 px-4 text-sm text-slate-700 dark:text-slate-300 transition hover:border-sky-600 hover:text-white"
             >
               Back to Vendor Portal
             </Link>
@@ -897,18 +897,18 @@ export default function VendorEstimatesPage() {
         {(isVendorView || isAdminView) && (
           <div className="flex flex-wrap gap-2 text-xs text-slate-500">
             {isVendorView && !isAdminView && resolvedVendorId ? (
-              <span className="rounded-full border border-slate-800 bg-slate-900 px-3 py-1">
+              <span className="rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 py-1">
                 Vendor scope active
               </span>
             ) : null}
 
             {isAdminView ? (
-              <span className="rounded-full border border-slate-800 bg-slate-900 px-3 py-1">
+              <span className="rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 py-1">
                 Admin org-wide view
               </span>
             ) : null}
 
-            <span className="rounded-full border border-slate-800 bg-slate-900 px-3 py-1">
+            <span className="rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 py-1">
               Total loaded: {counts.total}
             </span>
           </div>
@@ -924,7 +924,7 @@ export default function VendorEstimatesPage() {
       </div>
 
       {!loading && !error && (
-        <div className="grid gap-3 rounded-2xl border border-slate-800 bg-slate-900 p-4 md:grid-cols-[1fr_220px]">
+        <div className="grid gap-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-4 md:grid-cols-[1fr_220px]">
           <div className="space-y-1">
             <label
               htmlFor="estimate-search"
@@ -937,7 +937,7 @@ export default function VendorEstimatesPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Project, client, estimate #, notes..."
-              className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-sky-600"
+              className="h-11 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 text-sm text-slate-900 dark:text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-sky-600"
             />
           </div>
 
@@ -952,7 +952,7 @@ export default function VendorEstimatesPage() {
               id="estimate-status-filter"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 outline-none transition focus:border-sky-600"
+              className="h-11 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 text-sm text-slate-900 dark:text-slate-100 outline-none transition focus:border-sky-600"
             >
               <option value="all">All</option>
               <option value="draft">Draft</option>
@@ -965,7 +965,7 @@ export default function VendorEstimatesPage() {
       )}
 
       {loading && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-slate-400">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6 text-slate-600 dark:text-slate-400">
           Loading estimates...
         </div>
       )}
@@ -983,7 +983,7 @@ export default function VendorEstimatesPage() {
       )}
 
       {!loading && !error && filteredEstimates.length === 0 && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-slate-400">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6 text-slate-600 dark:text-slate-400">
           No estimates found for the current filter. Estimate attachments will appear here once estimate
           records and uploaded files exist.
         </div>
@@ -1014,15 +1014,15 @@ export default function VendorEstimatesPage() {
             return (
               <div
                 key={estimate.id}
-                className="rounded-2xl border border-slate-800 bg-slate-900 p-5"
+                className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5"
               >
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   <div className="space-y-2">
                     <div>
-                      <h2 className="text-lg font-semibold text-slate-100">
+                      <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                         {estimate.project_name}
                       </h2>
-                      <p className="text-sm text-slate-400">
+                      <p className="text-sm text-slate-600 dark:text-slate-400">
                         Client: {estimate.client_name}
                       </p>
                       <p className="mt-1 text-xs text-slate-500">
@@ -1040,18 +1040,18 @@ export default function VendorEstimatesPage() {
                       </span>
 
                       {estimate.estimate_number ? (
-                        <span className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-300">
+                        <span className="rounded-full border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs text-slate-700 dark:text-slate-300">
                           Estimate #{estimate.estimate_number}
                         </span>
                       ) : null}
 
                       {estimate.site_visit_id ? (
-                        <span className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-300">
+                        <span className="rounded-full border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs text-slate-700 dark:text-slate-300">
                           Site Visit: {formatDate(estimate.site_visit_date)}
                         </span>
                       ) : null}
 
-                      <span className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-300">
+                      <span className="rounded-full border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs text-slate-700 dark:text-slate-300">
                         Attachments: {estimate.attachments.length}
                       </span>
                     </div>
@@ -1059,7 +1059,7 @@ export default function VendorEstimatesPage() {
 
                   <div className="text-sm md:text-right">
                     <p className="text-slate-500">Total Amount</p>
-                    <p className="text-lg font-semibold text-slate-100">
+                    <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                       {formatCurrency(getDisplayAmount(estimate))}
                     </p>
                     <p className="mt-1 text-xs text-slate-500">
@@ -1069,7 +1069,7 @@ export default function VendorEstimatesPage() {
                 </div>
 
                 <div className="mt-4 grid gap-4 md:grid-cols-3">
-                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4">
                     <label className="text-xs uppercase tracking-wide text-slate-500">
                       Labor Cost
                     </label>
@@ -1084,11 +1084,11 @@ export default function VendorEstimatesPage() {
                         )
                       }
                       disabled={!canEditThis || saving || statusLoading}
-                      className="mt-2 block w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="mt-2 block w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
                     />
                   </div>
 
-                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4">
                     <label className="text-xs uppercase tracking-wide text-slate-500">
                       Material Cost
                     </label>
@@ -1103,11 +1103,11 @@ export default function VendorEstimatesPage() {
                         )
                       }
                       disabled={!canEditThis || saving || statusLoading}
-                      className="mt-2 block w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="mt-2 block w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
                     />
                   </div>
 
-                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4">
                     <label className="text-xs uppercase tracking-wide text-slate-500">
                       Total Cost
                     </label>
@@ -1122,13 +1122,13 @@ export default function VendorEstimatesPage() {
                         )
                       }
                       disabled={!canEditThis || saving || statusLoading}
-                      className="mt-2 block w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="mt-2 block w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
                     />
                   </div>
                 </div>
 
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4">
                     <label className="text-xs uppercase tracking-wide text-slate-500">
                       Notes
                     </label>
@@ -1139,11 +1139,11 @@ export default function VendorEstimatesPage() {
                       }
                       disabled={!canEditThis || saving || statusLoading}
                       rows={4}
-                      className="mt-2 block w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="mt-2 block w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
                     />
                   </div>
 
-                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4">
                     <label className="text-xs uppercase tracking-wide text-slate-500">
                       Review Notes
                     </label>
@@ -1158,7 +1158,7 @@ export default function VendorEstimatesPage() {
                       }
                       disabled={!isAdminView || saving || statusLoading}
                       rows={4}
-                      className="mt-2 block w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="mt-2 block w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
                     />
                   </div>
                 </div>
@@ -1237,7 +1237,7 @@ export default function VendorEstimatesPage() {
                   ) : null}
                 </div>
 
-                <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950 p-4">
+                <div className="mt-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4">
                   <p className="text-xs uppercase tracking-wide text-slate-500">
                     Upload Estimate File
                   </p>
@@ -1246,7 +1246,7 @@ export default function VendorEstimatesPage() {
                     <div className="grid gap-2">
                       <label
                         htmlFor={`estimate-file-${estimate.id}`}
-                        className="text-sm font-medium text-slate-300"
+                        className="text-sm font-medium text-slate-700 dark:text-slate-300"
                       >
                         File
                       </label>
@@ -1260,7 +1260,7 @@ export default function VendorEstimatesPage() {
                           }))
                         }
                         disabled={attachmentUploadDisabled}
-                        className="block w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 disabled:cursor-not-allowed disabled:opacity-60 file:mr-4 file:rounded-lg file:border-0 file:bg-cyan-600 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-cyan-500"
+                        className="block w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 text-slate-900 dark:text-slate-100 disabled:cursor-not-allowed disabled:opacity-60 file:mr-4 file:rounded-lg file:border-0 file:bg-cyan-600 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-cyan-500"
                       />
                     </div>
 
@@ -1268,7 +1268,7 @@ export default function VendorEstimatesPage() {
                       type="button"
                       onClick={() => handleAttachmentUpload(estimate.id)}
                       disabled={attachmentUploadDisabled}
-                      className="inline-flex rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-200 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="inline-flex rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-3 text-sm text-slate-800 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {uploading ? "Uploading..." : "Upload Attachment"}
                     </button>
@@ -1276,7 +1276,7 @@ export default function VendorEstimatesPage() {
                 </div>
 
                 {estimate.attachments.length > 0 ? (
-                  <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950 p-4">
+                  <div className="mt-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4">
                     <p className="text-xs uppercase tracking-wide text-slate-500">
                       Estimate Files
                     </p>
@@ -1288,10 +1288,10 @@ export default function VendorEstimatesPage() {
                         return (
                           <div
                             key={attachment.id}
-                            className="flex flex-col gap-2 border-b border-slate-800 pb-3 last:border-b-0 last:pb-0 md:flex-row md:items-center md:justify-between"
+                            className="flex flex-col gap-2 border-b border-slate-200 dark:border-slate-800 pb-3 last:border-b-0 last:pb-0 md:flex-row md:items-center md:justify-between"
                           >
                             <div>
-                              <p className="text-sm text-slate-200">
+                              <p className="text-sm text-slate-800 dark:text-slate-200">
                                 {attachment.file_name || "Attachment"}
                               </p>
                               <p className="text-xs text-slate-500">
@@ -1301,7 +1301,7 @@ export default function VendorEstimatesPage() {
                               </p>
                             </div>
 
-                            <div className="break-words text-xs text-slate-400 md:max-w-[420px] md:text-right">
+                            <div className="break-words text-xs text-slate-600 dark:text-slate-400 md:max-w-[420px] md:text-right">
                               {href ? (
                                 <a
                                   href={href}
@@ -1323,11 +1323,11 @@ export default function VendorEstimatesPage() {
                 ) : null}
 
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4">
                     <p className="text-xs uppercase tracking-wide text-slate-500">
                       Timeline
                     </p>
-                    <div className="mt-2 space-y-1 text-sm text-slate-300">
+                    <div className="mt-2 space-y-1 text-sm text-slate-700 dark:text-slate-300">
                       <p>Created: {formatDate(estimate.created_at)}</p>
                       <p>Submitted: {formatDate(estimate.submitted_at)}</p>
                       <p>Approved: {formatDate(estimate.approved_at)}</p>
@@ -1336,11 +1336,11 @@ export default function VendorEstimatesPage() {
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4">
                     <p className="text-xs uppercase tracking-wide text-slate-500">
                       Site Visit / Links
                     </p>
-                    <div className="mt-2 space-y-2 text-sm text-slate-300">
+                    <div className="mt-2 space-y-2 text-sm text-slate-700 dark:text-slate-300">
                       <p>
                         Site Visit Date: {formatDate(estimate.site_visit_date)}
                       </p>
@@ -1354,7 +1354,7 @@ export default function VendorEstimatesPage() {
                         {estimate.project_id ? (
                           <Link
                             href={`/vendor/projects/${estimate.project_id}`}
-                            className="inline-flex rounded-xl border border-slate-700 bg-slate-950 px-4 py-2 text-sm text-slate-200 transition hover:bg-slate-800"
+                            className="inline-flex rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-2 text-sm text-slate-800 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-800"
                           >
                             Open Project
                           </Link>
@@ -1363,7 +1363,7 @@ export default function VendorEstimatesPage() {
                         {estimate.site_visit_id ? (
                           <Link
                             href="/vendor/site-visits"
-                            className="inline-flex rounded-xl border border-slate-700 bg-slate-950 px-4 py-2 text-sm text-slate-200 transition hover:bg-slate-800"
+                            className="inline-flex rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-2 text-sm text-slate-800 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-800"
                           >
                             View Site Visits
                           </Link>
@@ -1389,9 +1389,9 @@ function SummaryCard({
   value: number;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-      <p className="text-sm text-slate-400">{label}</p>
-      <p className="mt-3 text-3xl font-semibold text-slate-100">{value}</p>
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5">
+      <p className="text-sm text-slate-600 dark:text-slate-400">{label}</p>
+      <p className="mt-3 text-3xl font-semibold text-slate-900 dark:text-slate-100">{value}</p>
     </div>
   );
 }

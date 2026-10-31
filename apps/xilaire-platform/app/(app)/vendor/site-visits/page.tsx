@@ -328,11 +328,11 @@ export default function VendorSiteVisitsPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-200">
+        <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-200">
           Vendor Site Visits
         </h1>
 
-        <p className="text-slate-400">
+        <p className="text-slate-600 dark:text-slate-400">
           {isAdminView
             ? "Admin view of all vendor site visits."
             : `Site visits assigned to ${vendorName || "your company"}.`}
@@ -348,7 +348,7 @@ export default function VendorSiteVisitsPage() {
       </div>
 
       {loading && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-slate-400">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6 text-slate-600 dark:text-slate-400">
           Loading site visits...
         </div>
       )}
@@ -360,7 +360,7 @@ export default function VendorSiteVisitsPage() {
       )}
 
       {!loading && !error && siteVisits.length === 0 && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-slate-400">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6 text-slate-600 dark:text-slate-400">
           No site visits found.
         </div>
       )}
@@ -370,15 +370,15 @@ export default function VendorSiteVisitsPage() {
           {siteVisits.map((visit) => (
             <div
               key={visit.id}
-              className="rounded-2xl border border-slate-800 bg-slate-900 p-5"
+              className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5"
             >
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div className="space-y-2">
                   <div>
-                    <h2 className="text-lg font-semibold text-slate-100">
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                       {visit.project_name}
                     </h2>
-                    <p className="text-sm text-slate-400">
+                    <p className="text-sm text-slate-600 dark:text-slate-400">
                       Client: {visit.client_name}
                     </p>
                     {isAdminView && (
@@ -389,13 +389,13 @@ export default function VendorSiteVisitsPage() {
                   </div>
 
                   <div className="flex flex-wrap gap-2">
-                    <span className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-300">
+                    <span className="rounded-full border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs text-slate-700 dark:text-slate-300">
                       {formatStatus(visit.status)}
                     </span>
-                    <span className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-300">
+                    <span className="rounded-full border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs text-slate-700 dark:text-slate-300">
                       {formatDate(visit.visit_date)}
                     </span>
-                    <span className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-300">
+                    <span className="rounded-full border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs text-slate-700 dark:text-slate-300">
                       {formatTimeRange(
                         visit.visit_time_start,
                         visit.visit_time_end
@@ -406,7 +406,7 @@ export default function VendorSiteVisitsPage() {
 
                 <div className="text-sm text-slate-500 md:text-right">
                   <p>Created</p>
-                  <p className="text-slate-300">
+                  <p className="text-slate-700 dark:text-slate-300">
                     {formatDate(visit.created_at)}
                   </p>
                 </div>
@@ -414,20 +414,20 @@ export default function VendorSiteVisitsPage() {
 
               {(visit.notes || visit.outcome) && (
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4">
                     <p className="text-xs uppercase tracking-wide text-slate-500">
                       Notes
                     </p>
-                    <p className="mt-2 text-sm text-slate-300">
+                    <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">
                       {visit.notes || "No notes provided."}
                     </p>
                   </div>
 
-                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4">
                     <p className="text-xs uppercase tracking-wide text-slate-500">
                       Outcome
                     </p>
-                    <p className="mt-2 text-sm text-slate-300">
+                    <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">
                       {visit.outcome || "No outcome recorded."}
                     </p>
                   </div>
@@ -437,7 +437,7 @@ export default function VendorSiteVisitsPage() {
               <div className="mt-4">
                 <Link
                   href={`/vendor/projects/${visit.project_id}`}
-                  className="inline-flex rounded-xl border border-slate-700 bg-slate-950 px-4 py-2 text-sm text-slate-200 transition hover:bg-slate-800"
+                  className="inline-flex rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-2 text-sm text-slate-800 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-800"
                 >
                   Open Project
                 </Link>
@@ -458,9 +458,9 @@ function SummaryCard({
   value: number;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-      <p className="text-sm text-slate-400">{label}</p>
-      <p className="mt-3 text-3xl font-semibold text-slate-100">{value}</p>
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5">
+      <p className="text-sm text-slate-600 dark:text-slate-400">{label}</p>
+      <p className="mt-3 text-3xl font-semibold text-slate-900 dark:text-slate-100">{value}</p>
     </div>
   );
 }

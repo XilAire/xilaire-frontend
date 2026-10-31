@@ -64,9 +64,9 @@ export default function BulkServiceRequestActions({
     <div
       className="sticky top-0 z-40 flex items-center gap-3
         px-6 py-3 mb-2
-        bg-slate-900 border border-slate-800 rounded-lg"
+        bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg"
     >
-      <span className="text-sm text-slate-300">
+      <span className="text-sm text-slate-700 dark:text-slate-300">
         {selected.length} selected
       </span>
 
@@ -96,7 +96,7 @@ export default function BulkServiceRequestActions({
         onClick={() => bulkUpdate("closed")}
         className="inline-flex items-center gap-1
           rounded px-3 py-1 text-xs
-          bg-slate-600/20 text-slate-300
+          bg-slate-600/20 text-slate-700 dark:text-slate-300
           hover:bg-slate-600/30"
       >
         <XCircle size={14} />

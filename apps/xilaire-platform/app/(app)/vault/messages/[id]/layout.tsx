@@ -160,7 +160,7 @@ function StatPill({
       ? "border-amber-500/30 bg-amber-500/10 text-amber-200"
       : tone === "green"
       ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
-      : "border-slate-700 bg-slate-900/70 text-slate-200";
+      : "border-slate-300 dark:border-slate-700 bg-slate-100/70 dark:bg-slate-900/70 text-slate-800 dark:text-slate-200";
 
   return (
     <div
@@ -190,7 +190,7 @@ function WorkspaceTab({
         "inline-flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-medium transition",
         active
           ? "border-cyan-500/40 bg-cyan-500/10 text-cyan-200 shadow-[inset_0_0_0_1px_rgba(34,211,238,0.08)]"
-          : "border-slate-700 bg-slate-900/70 text-slate-200 hover:border-cyan-500/30 hover:bg-slate-800 hover:text-white",
+          : "border-slate-300 dark:border-slate-700 bg-slate-100/70 dark:bg-slate-900/70 text-slate-800 dark:text-slate-200 hover:border-cyan-500/30 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-white",
       ].join(" ")}
     >
       <span>{label}</span>
@@ -200,7 +200,7 @@ function WorkspaceTab({
             "inline-flex min-w-[1.5rem] items-center justify-center rounded-full px-2 py-0.5 text-xs",
             active
               ? "border border-cyan-400/30 bg-cyan-400/10 text-cyan-100"
-              : "border border-slate-600 bg-slate-950/80 text-slate-300",
+              : "border border-slate-400 dark:border-slate-600 bg-slate-50/80 dark:bg-slate-950/80 text-slate-700 dark:text-slate-300",
           ].join(" ")}
         >
           {count}
@@ -292,7 +292,7 @@ export default async function VaultMessageLayout({
 
   return (
     <div className="space-y-6">
-      <section className="rounded-3xl border border-slate-800 bg-[#071224] p-6 shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
+      <section className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-[#071224] p-6 shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
           <div className="space-y-4">
             <div className="flex flex-wrap gap-3">
@@ -305,7 +305,7 @@ export default async function VaultMessageLayout({
 
               <Link
                 href="/vault/search"
-                className="inline-flex text-sm text-slate-400 transition hover:text-slate-200"
+                className="inline-flex text-sm text-slate-600 dark:text-slate-400 transition hover:text-slate-200"
               >
                 Back to Search
               </Link>
@@ -315,7 +315,7 @@ export default async function VaultMessageLayout({
               <h1 className="text-3xl font-semibold tracking-tight text-white">
                 {message.subject || "(No Subject)"}
               </h1>
-              <p className="mt-2 text-sm text-slate-300">{sender}</p>
+              <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">{sender}</p>
               <p className="mt-1 text-sm text-slate-500">
                 Received: {formatDateTime(message.received_at)}
               </p>

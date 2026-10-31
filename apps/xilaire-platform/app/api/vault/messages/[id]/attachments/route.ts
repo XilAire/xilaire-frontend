@@ -122,74 +122,6 @@ function getAttachmentObjectPath(row: VaultAttachmentRow) {
   );
 }
 
-function getAccessOrgId(access: unknown): string | null {
-  if (!access || typeof access !== "object") return null;
-
-  const record = access as Record<string, unknown>;
-
-  if (typeof record.orgId === "string" && record.orgId.trim()) {
-    return record.orgId;
-  }
-
-  if (typeof record.org_id === "string" && record.org_id.trim()) {
-    return record.org_id;
-  }
-
-  if (
-    typeof record.effectiveOrgId === "string" &&
-    record.effectiveOrgId.trim()
-  ) {
-    return record.effectiveOrgId;
-  }
-
-  if (
-    typeof record.sessionOrgId === "string" &&
-    record.sessionOrgId.trim()
-  ) {
-    return record.sessionOrgId;
-  }
-
-  const profile = record.profile;
-  if (profile && typeof profile === "object") {
-    const profileRecord = profile as Record<string, unknown>;
-
-    if (
-      typeof profileRecord.org_id === "string" &&
-      profileRecord.org_id.trim()
-    ) {
-      return profileRecord.org_id;
-    }
-
-    if (
-      typeof profileRecord.orgId === "string" &&
-      profileRecord.orgId.trim()
-    ) {
-      return profileRecord.orgId;
-    }
-  }
-
-  const membership = record.membership;
-  if (membership && typeof membership === "object") {
-    const membershipRecord = membership as Record<string, unknown>;
-
-    if (
-      typeof membershipRecord.org_id === "string" &&
-      membershipRecord.org_id.trim()
-    ) {
-      return membershipRecord.org_id;
-    }
-
-    if (
-      typeof membershipRecord.orgId === "string" &&
-      membershipRecord.orgId.trim()
-    ) {
-      return membershipRecord.orgId;
-    }
-  }
-
-  return null;
-}
-
 function normalizeAttachment(row: VaultAttachmentRow): NormalizedAttachment {
   const displayName = getAttachmentName(row);
 
@@ -297,7 +229,7 @@ async function loadAttachments(
   };
 }
 
-export async function GET(request: NextRequest, context: RouteContext) {
+export async function GET(request: NextRequest, context: RouteContext): Promise<Response> {
   const { id } = await context.params;
 
   if (!id) {
@@ -318,15 +250,20 @@ export async function GET(request: NextRequest, context: RouteContext) {
     return jsonError("Message org context could not be resolved.", 500);
   }
 
-  const access = await requireVaultAccess(request);
+  let access: Awaited<ReturnType<typeof requireVaultAccess>>;
 
-  if ("response" in access) {
-    return access.response;
+  try {
+    access = await requireVaultAccess(request, {
+      targetOrgId: message.org_id,
+      supportScope: "vault_read_only",
+    });
+  } catch {
+    return jsonError("You do not have access to this message.", 403);
   }
 
-  const accessOrgId = getAccessOrgId(access);
+  const accessOrgId = access.targetOrgId;
 
-  if (accessOrgId && accessOrgId !== message.org_id) {
+  if (accessOrgId !== message.org_id) {
     await writeUnifiedVaultAccessAuditLog({
       access,
       action: "vault_message_attachments_view_denied",

@@ -28,7 +28,7 @@ export default function AdminShell({
 
   if (!ready) {
     return (
-      <div className="flex items-center justify-center min-h-screen text-slate-400">
+      <div className="flex items-center justify-center min-h-screen text-slate-600 dark:text-slate-400">
         Loading...
       </div>
     );

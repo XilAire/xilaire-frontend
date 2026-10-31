@@ -131,7 +131,7 @@ function getStatusClass(status: string | null | undefined) {
     case "removed":
       return "border-red-500/30 bg-red-500/10 text-red-300";
     default:
-      return "border-zinc-500/30 bg-zinc-500/10 text-zinc-300";
+      return "border-zinc-500/30 bg-zinc-500/10 text-zinc-700 dark:text-zinc-300";
   }
 }
 
@@ -143,11 +143,11 @@ function getCaseStatusClass(status: string | null | undefined) {
     case "pending":
       return "border-yellow-500/30 bg-yellow-500/10 text-yellow-300";
     case "closed":
-      return "border-zinc-500/30 bg-zinc-500/10 text-zinc-300";
+      return "border-zinc-500/30 bg-zinc-500/10 text-zinc-700 dark:text-zinc-300";
     case "archived":
       return "border-purple-500/30 bg-purple-500/10 text-purple-300";
     default:
-      return "border-zinc-500/30 bg-zinc-500/10 text-zinc-300";
+      return "border-zinc-500/30 bg-zinc-500/10 text-zinc-700 dark:text-zinc-300";
   }
 }
 
@@ -162,9 +162,9 @@ function getPriorityClass(priority: string | null | undefined) {
     case "normal":
       return "border-blue-500/30 bg-blue-500/10 text-blue-300";
     case "low":
-      return "border-zinc-500/30 bg-zinc-500/10 text-zinc-300";
+      return "border-zinc-500/30 bg-zinc-500/10 text-zinc-700 dark:text-zinc-300";
     default:
-      return "border-zinc-500/30 bg-zinc-500/10 text-zinc-300";
+      return "border-zinc-500/30 bg-zinc-500/10 text-zinc-700 dark:text-zinc-300";
   }
 }
 
@@ -183,9 +183,9 @@ function getCategoryClass(category: TimelineEvent["category"]) {
     case "ingestion":
       return "border-cyan-500/30 bg-cyan-500/10 text-cyan-300";
     case "system":
-      return "border-zinc-500/30 bg-zinc-500/10 text-zinc-300";
+      return "border-zinc-500/30 bg-zinc-500/10 text-zinc-700 dark:text-zinc-300";
     default:
-      return "border-zinc-500/30 bg-zinc-500/10 text-zinc-300";
+      return "border-zinc-500/30 bg-zinc-500/10 text-zinc-700 dark:text-zinc-300";
   }
 }
 
@@ -549,18 +549,18 @@ export default async function VaultCaseActivityPage({ params }: PageContext) {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-2xl border border-zinc-800 bg-zinc-950 p-6">
+      <section className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-2">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
               Vault Case Workspace
             </p>
 
-            <h1 className="text-2xl font-semibold text-zinc-100">
+            <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
               Case Activity
             </h1>
 
-            <p className="max-w-3xl text-sm text-zinc-400">
+            <p className="max-w-3xl text-sm text-zinc-600 dark:text-zinc-400">
               Review case audit activity, member changes, search events, hold actions, export events, ingestion activity, and system history.
             </p>
 
@@ -579,21 +579,21 @@ export default async function VaultCaseActivityPage({ params }: PageContext) {
 
             <Link
               href={`/vault/cases/${caseId}/search`}
-              className="rounded-lg border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-200 transition hover:bg-zinc-900"
+              className="rounded-lg border border-zinc-300 dark:border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-800 dark:text-zinc-200 transition hover:bg-zinc-900"
             >
               Search
             </Link>
 
             <Link
               href={`/vault/cases/${caseId}/holds`}
-              className="rounded-lg border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-200 transition hover:bg-zinc-900"
+              className="rounded-lg border border-zinc-300 dark:border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-800 dark:text-zinc-200 transition hover:bg-zinc-900"
             >
               Holds
             </Link>
 
             <Link
               href={`/vault/cases/${caseId}/exports`}
-              className="rounded-lg border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-200 transition hover:bg-zinc-900"
+              className="rounded-lg border border-zinc-300 dark:border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-800 dark:text-zinc-200 transition hover:bg-zinc-900"
             >
               Exports
             </Link>
@@ -602,14 +602,14 @@ export default async function VaultCaseActivityPage({ params }: PageContext) {
       </section>
 
       {caseRow ? (
-        <section className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
+        <section className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <h2 className="text-lg font-semibold text-zinc-100">
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
                 {caseRow.name ?? "Untitled Case"}
               </h2>
 
-              <p className="mt-1 text-sm text-zinc-400">
+              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                 Created {formatDate(caseRow.created_at)} · Updated {formatDate(caseRow.updated_at)}
               </p>
             </div>
@@ -660,77 +660,77 @@ export default async function VaultCaseActivityPage({ params }: PageContext) {
       ) : null}
 
       <section className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
+        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-5">
           <p className="text-xs uppercase tracking-wide text-zinc-500">
             Total Events
           </p>
-          <p className="mt-2 text-2xl font-semibold text-zinc-100">
+          <p className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
             {summary.total}
           </p>
         </div>
 
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
+        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-5">
           <p className="text-xs uppercase tracking-wide text-zinc-500">
             Searches
           </p>
-          <p className="mt-2 text-2xl font-semibold text-zinc-100">
+          <p className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
             {summary.search}
           </p>
         </div>
 
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
+        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-5">
           <p className="text-xs uppercase tracking-wide text-zinc-500">
             Holds
           </p>
-          <p className="mt-2 text-2xl font-semibold text-zinc-100">
+          <p className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
             {summary.hold}
           </p>
         </div>
 
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
+        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-5">
           <p className="text-xs uppercase tracking-wide text-zinc-500">
             Exports
           </p>
-          <p className="mt-2 text-2xl font-semibold text-zinc-100">
+          <p className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
             {summary.export}
           </p>
         </div>
 
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
+        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-5">
           <p className="text-xs uppercase tracking-wide text-zinc-500">
             Members
           </p>
-          <p className="mt-2 text-2xl font-semibold text-zinc-100">
+          <p className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
             {summary.member}
           </p>
         </div>
 
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5">
+        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-5">
           <p className="text-xs uppercase tracking-wide text-zinc-500">
             Failures
           </p>
-          <p className="mt-2 text-2xl font-semibold text-zinc-100">
+          <p className="mt-2 text-2xl font-semibold text-zinc-900 dark:text-zinc-100">
             {summary.failed}
           </p>
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950">
-        <div className="border-b border-zinc-800 px-5 py-4">
-          <h2 className="text-lg font-semibold text-zinc-100">
+      <section className="overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950">
+        <div className="border-b border-zinc-200 dark:border-zinc-800 px-5 py-4">
+          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
             Activity Timeline
           </h2>
-          <p className="text-sm text-zinc-400">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
             {timelineEvents.length} event(s) found for this case.
           </p>
         </div>
 
         {timelineEvents.length === 0 ? (
-          <div className="p-6 text-sm text-zinc-400">
+          <div className="p-6 text-sm text-zinc-600 dark:text-zinc-400">
             No activity has been recorded for this case yet.
           </div>
         ) : (
-          <div className="divide-y divide-zinc-800">
+          <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
             {timelineEvents.map((event) => (
               <div key={event.id} className="p-5">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -753,11 +753,11 @@ export default async function VaultCaseActivityPage({ params }: PageContext) {
                       </span>
                     </div>
 
-                    <h3 className="text-base font-semibold text-zinc-100">
+                    <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
                       {event.title}
                     </h3>
 
-                    <p className="max-w-4xl text-sm text-zinc-400">
+                    <p className="max-w-4xl text-sm text-zinc-600 dark:text-zinc-400">
                       {event.description}
                     </p>
 
@@ -768,7 +768,7 @@ export default async function VaultCaseActivityPage({ params }: PageContext) {
                     </div>
                   </div>
 
-                  <div className="min-w-full rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 lg:min-w-[360px]">
+                  <div className="min-w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/50 dark:bg-zinc-900/50 p-4 lg:min-w-[360px]">
                     <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
                       Metadata
                     </p>
@@ -787,7 +787,7 @@ export default async function VaultCaseActivityPage({ params }: PageContext) {
                             <span className="text-zinc-500">
                               {item.label}
                             </span>
-                            <span className="break-all text-zinc-300">
+                            <span className="break-all text-zinc-700 dark:text-zinc-300">
                               {item.value}
                             </span>
                           </div>

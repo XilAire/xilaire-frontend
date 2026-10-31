@@ -1,7 +1,16 @@
-/** @type {import('postcss-load-config').Config} */
+
+/**
+ * ============================================================
+ * XILAIRE TECHNOLOGIES
+ * XILAIRE PLATFORM
+ *
+ * POSTCSS CONFIGURATION
+ * Tailwind CSS v4
+ * ============================================================
+ */
+
 module.exports = {
   plugins: {
-    tailwindcss: {},
-    autoprefixer: {},
+    "@tailwindcss/postcss": {},
   },
 };

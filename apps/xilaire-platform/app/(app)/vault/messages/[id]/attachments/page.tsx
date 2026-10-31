@@ -121,8 +121,8 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-800 bg-[#071224] shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
-      <div className="border-b border-slate-800 bg-slate-950/40 px-5 py-4">
+    <section className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-[#071224] shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
+      <div className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-950/40 px-5 py-4">
         <h2 className="text-base font-semibold text-white">{title}</h2>
       </div>
       <div className="p-5">{children}</div>
@@ -138,8 +138,8 @@ function StatCard({
   value: string | number;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-700 bg-slate-900/70 px-6 py-4 text-center shadow-sm">
-      <div className="text-xs uppercase tracking-[0.14em] text-slate-400">
+    <div className="rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-100/70 dark:bg-slate-900/70 px-6 py-4 text-center shadow-sm">
+      <div className="text-xs uppercase tracking-[0.14em] text-slate-600 dark:text-slate-400">
         {label}
       </div>
       <div className="mt-2 text-2xl font-semibold text-white">{value}</div>
@@ -219,7 +219,7 @@ export default async function VaultMessageAttachmentsPage({
   return (
     <div className="min-h-screen bg-transparent">
       <div className="mx-auto max-w-7xl px-6 py-8">
-        <div className="mb-6 rounded-3xl border border-slate-800 bg-[#071224] p-6 shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
+        <div className="mb-6 rounded-3xl border border-slate-200 dark:border-slate-800 bg-[#071224] p-6 shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-3">
               <div className="flex flex-wrap gap-3">
@@ -232,7 +232,7 @@ export default async function VaultMessageAttachmentsPage({
 
                 <Link
                   href="/vault/search"
-                  className="inline-flex text-sm text-slate-400 transition hover:text-slate-200"
+                  className="inline-flex text-sm text-slate-600 dark:text-slate-400 transition hover:text-slate-200"
                 >
                   Back to Search
                 </Link>
@@ -242,8 +242,8 @@ export default async function VaultMessageAttachmentsPage({
                 <h1 className="text-3xl font-semibold tracking-tight text-white">
                   Message Attachments
                 </h1>
-                <p className="mt-2 text-sm text-slate-300">{sender}</p>
-                <p className="mt-1 text-sm text-slate-400">
+                <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">{sender}</p>
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
                   {message.subject || "(No Subject)"}
                 </p>
                 <p className="mt-1 text-sm text-slate-500">
@@ -269,36 +269,36 @@ export default async function VaultMessageAttachmentsPage({
         <div className="grid gap-6">
           <SectionCard title="Message Summary">
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-                <div className="text-xs uppercase tracking-[0.12em] text-slate-400">
+              <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-900/60 p-4">
+                <div className="text-xs uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
                   Subject
                 </div>
-                <div className="mt-2 text-sm text-slate-100">
+                <div className="mt-2 text-sm text-slate-900 dark:text-slate-100">
                   {message.subject || "—"}
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-                <div className="text-xs uppercase tracking-[0.12em] text-slate-400">
+              <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-900/60 p-4">
+                <div className="text-xs uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
                   Sender
                 </div>
-                <div className="mt-2 text-sm text-slate-100">{sender}</div>
+                <div className="mt-2 text-sm text-slate-900 dark:text-slate-100">{sender}</div>
               </div>
 
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-                <div className="text-xs uppercase tracking-[0.12em] text-slate-400">
+              <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-900/60 p-4">
+                <div className="text-xs uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
                   Received
                 </div>
-                <div className="mt-2 text-sm text-slate-100">
+                <div className="mt-2 text-sm text-slate-900 dark:text-slate-100">
                   {formatDateTime(message.received_at)}
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-                <div className="text-xs uppercase tracking-[0.12em] text-slate-400">
+              <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-900/60 p-4">
+                <div className="text-xs uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
                   Sent
                 </div>
-                <div className="mt-2 text-sm text-slate-100">
+                <div className="mt-2 text-sm text-slate-900 dark:text-slate-100">
                   {formatDateTime(message.sent_at)}
                 </div>
               </div>
@@ -307,7 +307,7 @@ export default async function VaultMessageAttachmentsPage({
 
           <SectionCard title={`Attachments (${attachments.length})`}>
             {attachments.length === 0 ? (
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-8 text-center text-sm text-slate-400">
+              <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/50 dark:bg-slate-900/50 p-8 text-center text-sm text-slate-600 dark:text-slate-400">
                 No attachments were found for this message.
               </div>
             ) : (
@@ -315,7 +315,7 @@ export default async function VaultMessageAttachmentsPage({
                 {attachments.map((attachment, index) => (
                   <div
                     key={attachment.id}
-                    className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5"
+                    className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-900/60 p-5"
                   >
                     <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                       <div className="min-w-0 flex-1">
@@ -330,37 +330,37 @@ export default async function VaultMessageAttachmentsPage({
 
                         <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                           <div>
-                            <div className="text-xs uppercase tracking-[0.12em] text-slate-400">
+                            <div className="text-xs uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
                               Content Type
                             </div>
-                            <div className="mt-2 break-words text-sm text-slate-100">
+                            <div className="mt-2 break-words text-sm text-slate-900 dark:text-slate-100">
                               {attachment.content_type || "—"}
                             </div>
                           </div>
 
                           <div>
-                            <div className="text-xs uppercase tracking-[0.12em] text-slate-400">
+                            <div className="text-xs uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
                               Created
                             </div>
-                            <div className="mt-2 text-sm text-slate-100">
+                            <div className="mt-2 text-sm text-slate-900 dark:text-slate-100">
                               {formatDateTime(attachment.created_at)}
                             </div>
                           </div>
 
                           <div>
-                            <div className="text-xs uppercase tracking-[0.12em] text-slate-400">
+                            <div className="text-xs uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
                               Message ID
                             </div>
-                            <div className="mt-2 break-all text-sm text-slate-100">
+                            <div className="mt-2 break-all text-sm text-slate-900 dark:text-slate-100">
                               {attachment.message_id}
                             </div>
                           </div>
 
                           <div>
-                            <div className="text-xs uppercase tracking-[0.12em] text-slate-400">
+                            <div className="text-xs uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
                               Attachment ID
                             </div>
-                            <div className="mt-2 break-all text-sm text-slate-100">
+                            <div className="mt-2 break-all text-sm text-slate-900 dark:text-slate-100">
                               {attachment.id}
                             </div>
                           </div>
@@ -368,19 +368,19 @@ export default async function VaultMessageAttachmentsPage({
 
                         <div className="mt-4 grid gap-4 xl:grid-cols-2">
                           <div>
-                            <div className="text-xs uppercase tracking-[0.12em] text-slate-400">
+                            <div className="text-xs uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
                               Storage Path
                             </div>
-                            <div className="mt-2 break-all text-sm text-slate-100">
+                            <div className="mt-2 break-all text-sm text-slate-900 dark:text-slate-100">
                               {attachment.storage_path || "—"}
                             </div>
                           </div>
 
                           <div>
-                            <div className="text-xs uppercase tracking-[0.12em] text-slate-400">
+                            <div className="text-xs uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
                               SHA-256
                             </div>
-                            <div className="mt-2 break-all text-sm text-slate-100">
+                            <div className="mt-2 break-all text-sm text-slate-900 dark:text-slate-100">
                               {attachment.sha256 || "—"}
                             </div>
                           </div>
@@ -397,7 +397,7 @@ export default async function VaultMessageAttachmentsPage({
 
                         <Link
                           href={`/vault/messages/${message.id}`}
-                          className="inline-flex rounded-2xl border border-slate-700 bg-slate-950/70 px-4 py-2 text-sm font-medium text-slate-100 transition hover:bg-slate-800"
+                          className="inline-flex rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-950/70 px-4 py-2 text-sm font-medium text-slate-900 dark:text-slate-100 transition hover:bg-slate-100 dark:hover:bg-slate-800"
                         >
                           Back to Message
                         </Link>

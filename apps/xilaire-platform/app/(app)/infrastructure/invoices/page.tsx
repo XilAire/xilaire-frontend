@@ -136,7 +136,7 @@ function getStatusBadgeClass(status: InvoiceStatus) {
       return "border-rose-500/30 bg-rose-500/10 text-rose-300";
     case "draft":
     default:
-      return "border-slate-700 bg-slate-800 text-slate-300";
+      return "border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300";
   }
 }
 
@@ -404,10 +404,10 @@ export default function InfrastructureInvoicesPage() {
             <p className="text-xs uppercase tracking-[0.18em] text-sky-300">
               Infrastructure
             </p>
-            <h1 className="text-2xl font-semibold text-slate-100">
+            <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
               Infrastructure Invoices
             </h1>
-            <p className="text-slate-400">
+            <p className="text-slate-600 dark:text-slate-400">
               Review all project-linked invoices, track vendor billing status, and monitor invoice totals across infrastructure work.
             </p>
           </div>
@@ -417,14 +417,14 @@ export default function InfrastructureInvoicesPage() {
               type="button"
               onClick={() => loadAll()}
               disabled={loading}
-              className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-700 px-4 text-sm text-slate-300 transition hover:border-sky-600 hover:text-white disabled:opacity-50"
+              className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 dark:border-slate-700 px-4 text-sm text-slate-700 dark:text-slate-300 transition hover:border-sky-600 hover:text-white disabled:opacity-50"
             >
               {loading ? "Refreshing..." : "Refresh"}
             </button>
 
             <Link
               href="/infrastructure/projects"
-              className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-700 px-4 text-sm text-slate-300 transition hover:border-sky-600 hover:text-white"
+              className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 dark:border-slate-700 px-4 text-sm text-slate-700 dark:text-slate-300 transition hover:border-sky-600 hover:text-white"
             >
               Open Projects
             </Link>
@@ -432,20 +432,20 @@ export default function InfrastructureInvoicesPage() {
         </div>
 
         <div className="flex flex-wrap gap-2 pt-1 text-xs text-slate-500">
-          <span className="rounded-full border border-slate-800 bg-slate-900 px-3 py-1">
+          <span className="rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 py-1">
             Org-wide review
           </span>
-          <span className="rounded-full border border-slate-800 bg-slate-900 px-3 py-1">
+          <span className="rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 py-1">
             Active filter: {formatStatusLabel(statusFilter)}
           </span>
-          <span className="rounded-full border border-slate-800 bg-slate-900 px-3 py-1">
+          <span className="rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 py-1">
             Loaded invoices: {counts.all}
           </span>
-          <span className="rounded-full border border-slate-800 bg-slate-900 px-3 py-1">
+          <span className="rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 py-1">
             Showing: {filteredInvoices.length}
           </span>
           {lastRefreshedAt ? (
-            <span className="rounded-full border border-slate-800 bg-slate-900 px-3 py-1">
+            <span className="rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 py-1">
               Last refreshed: {formatDateTime(lastRefreshedAt)}
             </span>
           ) : null}
@@ -492,7 +492,7 @@ export default function InfrastructureInvoicesPage() {
       </div>
 
       {loading && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-slate-400">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6 text-slate-600 dark:text-slate-400">
           Loading infrastructure invoices...
         </div>
       )}
@@ -504,7 +504,7 @@ export default function InfrastructureInvoicesPage() {
       )}
 
       {!loading && !error && filteredInvoices.length === 0 && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-slate-400">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6 text-slate-600 dark:text-slate-400">
           No invoices found for the selected filter.
         </div>
       )}
@@ -514,7 +514,7 @@ export default function InfrastructureInvoicesPage() {
           {filteredInvoices.map((invoice) => (
             <div
               key={invoice.id}
-              className="rounded-2xl border border-slate-800 bg-slate-900 p-5"
+              className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5"
             >
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="space-y-3">
@@ -528,7 +528,7 @@ export default function InfrastructureInvoicesPage() {
                     </span>
 
                     {invoice.invoice_number ? (
-                      <span className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-300">
+                      <span className="rounded-full border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs text-slate-700 dark:text-slate-300">
                         Invoice #{invoice.invoice_number}
                       </span>
                     ) : null}
@@ -539,18 +539,18 @@ export default function InfrastructureInvoicesPage() {
                   </div>
 
                   <div>
-                    <h2 className="text-lg font-semibold text-slate-100">
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                       {invoice.project_name}
                     </h2>
-                    <p className="text-sm text-slate-400">
+                    <p className="text-sm text-slate-600 dark:text-slate-400">
                       Client: {invoice.client_name}
                     </p>
-                    <p className="mt-1 text-sm text-slate-400">
+                    <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
                       Vendor: {invoice.vendor_name}
                     </p>
                   </div>
 
-                  <div className="grid gap-2 text-sm text-slate-400 sm:grid-cols-2">
+                  <div className="grid gap-2 text-sm text-slate-600 dark:text-slate-400 sm:grid-cols-2">
                     <p>Created: {formatDateTime(invoice.created_at)}</p>
                     <p>Updated: {formatDateTime(invoice.updated_at)}</p>
                     <p>Issued: {formatDate(invoice.issued_at)}</p>
@@ -585,22 +585,22 @@ export default function InfrastructureInvoicesPage() {
               </div>
 
               <div className="mt-5 grid gap-4 lg:grid-cols-2">
-                <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4">
                   <p className="text-xs uppercase tracking-wide text-slate-500">
                     Notes
                   </p>
-                  <p className="mt-2 whitespace-pre-wrap text-sm text-slate-200">
+                  <p className="mt-2 whitespace-pre-wrap text-sm text-slate-800 dark:text-slate-200">
                     {invoice.notes || "No notes provided."}
                   </p>
                 </div>
 
-                <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4">
                   <p className="text-xs uppercase tracking-wide text-slate-500">
                     Invoice Items
                   </p>
 
                   {invoice.items.length === 0 ? (
-                    <p className="mt-2 text-sm text-slate-400">
+                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
                       No invoice items found.
                     </p>
                   ) : (
@@ -608,10 +608,10 @@ export default function InfrastructureInvoicesPage() {
                       {invoice.items.map((item) => (
                         <div
                           key={item.id}
-                          className="flex flex-col gap-2 border-b border-slate-800 pb-3 last:border-b-0 last:pb-0 md:flex-row md:items-center md:justify-between"
+                          className="flex flex-col gap-2 border-b border-slate-200 dark:border-slate-800 pb-3 last:border-b-0 last:pb-0 md:flex-row md:items-center md:justify-between"
                         >
                           <div>
-                            <p className="text-sm text-slate-200">
+                            <p className="text-sm text-slate-800 dark:text-slate-200">
                               {item.description || "Invoice item"}
                             </p>
                             <p className="text-xs text-slate-500">
@@ -620,7 +620,7 @@ export default function InfrastructureInvoicesPage() {
                             </p>
                           </div>
 
-                          <p className="text-sm font-medium text-slate-100">
+                          <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
                             {formatCurrency(getInvoiceItemTotal(item))}
                           </p>
                         </div>
@@ -640,7 +640,7 @@ export default function InfrastructureInvoicesPage() {
 
                 <Link
                   href={`/infrastructure/projects/${invoice.project_id}`}
-                  className="inline-flex rounded-xl border border-slate-700 bg-slate-950 px-4 py-2 text-sm text-slate-200 transition hover:bg-slate-800"
+                  className="inline-flex rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-2 text-sm text-slate-800 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-800"
                 >
                   Open Project
                 </Link>
@@ -648,7 +648,7 @@ export default function InfrastructureInvoicesPage() {
                 {invoice.estimate_id ? (
                   <Link
                     href="/infrastructure/estimates"
-                    className="inline-flex rounded-xl border border-slate-700 bg-slate-950 px-4 py-2 text-sm text-slate-200 transition hover:bg-slate-800"
+                    className="inline-flex rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-2 text-sm text-slate-800 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-800"
                   >
                     Open Estimates
                   </Link>
@@ -656,7 +656,7 @@ export default function InfrastructureInvoicesPage() {
 
                 <Link
                   href="/vendor/invoices"
-                  className="inline-flex rounded-xl border border-slate-700 bg-slate-950 px-4 py-2 text-sm text-slate-200 transition hover:bg-slate-800"
+                  className="inline-flex rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-2 text-sm text-slate-800 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-800"
                 >
                   Open Vendor Invoices
                 </Link>
@@ -667,7 +667,7 @@ export default function InfrastructureInvoicesPage() {
       )}
 
       {!loading && !error && counts.cancelled > 0 && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4 text-sm text-slate-400">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-4 text-sm text-slate-600 dark:text-slate-400">
           Cancelled invoices in org: {counts.cancelled}
         </div>
       )}
@@ -693,11 +693,11 @@ function SummaryCard({
       className={`rounded-2xl border p-5 text-left transition ${
         active
           ? "border-sky-700 bg-sky-950/30"
-          : "border-slate-800 bg-slate-900 hover:border-slate-700"
+          : "border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 hover:border-slate-700"
       }`}
     >
-      <p className="text-sm text-slate-400">{label}</p>
-      <p className="mt-3 text-3xl font-semibold text-slate-100">{value}</p>
+      <p className="text-sm text-slate-600 dark:text-slate-400">{label}</p>
+      <p className="mt-3 text-3xl font-semibold text-slate-900 dark:text-slate-100">{value}</p>
     </button>
   );
 }
@@ -710,11 +710,11 @@ function MetricCard({
   value: string;
 }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+    <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4">
       <p className="text-xs uppercase tracking-wide text-slate-500">
         {label}
       </p>
-      <p className="mt-2 text-base font-semibold text-slate-100">{value}</p>
+      <p className="mt-2 text-base font-semibold text-slate-900 dark:text-slate-100">{value}</p>
     </div>
   );
 }

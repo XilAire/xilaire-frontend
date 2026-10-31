@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
-import { getStoredExperience, clearStoredExperience } from "@/lib/experience";
+import ThemeLogo from "@/components/ui/ThemeLogo";
+import { getStoredExperience, clearStoredExperience, type XilAireExperience } from "@/lib/experience";
 
 export default function MarketingHeader() {
   const router = useRouter();
-  const [experience, setExperience] = useState<"individual" | "business" | null>(null);
+  const [experience, setExperience] = useState<XilAireExperience | null>(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -26,12 +27,7 @@ export default function MarketingHeader() {
 
         {/* LOGO */}
         <a href="/" className="flex items-center gap-2">
-          <img src="/icon.png" className="h-8 dark:hidden" alt="Logo" />
-          <img
-            src="/icon-light.png"
-            className="h-8 hidden dark:block"
-            alt="Logo Dark"
-          />
+          <ThemeLogo size={32} />
           <span className="font-semibold text-sky-600 dark:text-sky-400">
             XilAire Technologies
           </span>
@@ -48,7 +44,7 @@ export default function MarketingHeader() {
 
         {/* ACTIONS */}
         <div className="flex items-center gap-3">
-          <ThemeToggle storageKey="marketing-theme" />
+          <ThemeToggle />
 
           {/* SAFE: only render after mount */}
           {mounted && experience && (

@@ -473,6 +473,7 @@ function getAccessUserId(access: unknown): string | null {
   const record = access as Record<string, unknown> | null;
 
   return (
+    normalizeString(record?.actorUserId) ??
     normalizeString(record?.userId) ??
     normalizeString(record?.user_id) ??
     normalizeString(
@@ -1057,7 +1058,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const access = await requireVaultAccess(request, {
-      supportScope: "vault_read_only",
+      requiredVaultRoles: ["vault_admin", "vault_compliance_admin"],
     });
 
     const orgId = getAccessOrgId(access);
@@ -1354,7 +1355,7 @@ export async function PATCH(request: NextRequest) {
 
   try {
     const access = await requireVaultAccess(request, {
-      supportScope: "vault_read_only",
+      requiredVaultRoles: ["vault_admin", "vault_compliance_admin"],
     });
 
     const orgId = getAccessOrgId(access);
@@ -1587,7 +1588,7 @@ export async function PATCH(request: NextRequest) {
           continue;
         }
 
-        const caseId = payload.caseId ?? getCaseIdFromExportRecord(row);
+        const caseId = getCaseIdFromExportRecord(row);
         const caseLookup = await loadCaseOrError(supabase, orgId, caseId);
 
         if (!caseLookup.ok) {

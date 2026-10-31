@@ -193,9 +193,21 @@ export default function UserAdmin({
   );
 
   const onResetPassword = useCallback(
-    (userId: string) =>
-      adminAction(userId, "/api/admin/users/reset-password"),
-    [adminAction]
+    (userId: string) => {
+      const target = localUsers.find((user) => user.id === userId);
+
+      if (!target?.email) {
+        console.error("ADMIN_RESET_TARGET_EMAIL_MISSING");
+        return;
+      }
+
+      return adminAction(
+        userId,
+        "/api/admin/users/reset-password",
+        { email: target.email }
+      );
+    },
+    [adminAction, localUsers]
   );
 
   const onRoleChange = useCallback(
@@ -228,7 +240,7 @@ export default function UserAdmin({
         {viewerRole !== "user" && (
           <button
             onClick={() => setInviteOpen(true)}
-            className="rounded bg-slate-900 px-4 py-2 text-sm text-white"
+            className="rounded bg-slate-50 dark:bg-slate-900 px-4 py-2 text-sm text-slate-900 dark:text-white"
           >
             Invite User
           </button>

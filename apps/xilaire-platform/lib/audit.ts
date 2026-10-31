@@ -20,7 +20,7 @@ export async function logProfileAudit({
   oldValue,
   newValue,
 }: AuditParams) {
-  await supabaseAdmin.from("profile_audit_logs").insert({
+  const { error } = await supabaseAdmin.from("profile_audit_logs").insert({
     actor_id: actorId,
     target_id: targetId,
     org_id: orgId,
@@ -29,4 +29,9 @@ export async function logProfileAudit({
     old_value: oldValue ?? null,
     new_value: newValue ?? null,
   });
+  
+  if (error) {
+    console.error("PROFILE_AUDIT_INSERT_FAILED", error.code);
+    throw new Error("Profile audit logging failed");
+  }
 }

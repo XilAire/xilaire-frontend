@@ -155,7 +155,7 @@ function statusBadgeClasses(status: string | null | undefined) {
     return "border-rose-500/30 bg-rose-500/10 text-rose-300";
   }
 
-  return "border-slate-700 bg-slate-800 text-slate-300";
+  return "border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300";
 }
 
 function estimateStatusBadgeClasses(status: string | null | undefined) {
@@ -177,7 +177,7 @@ function estimateStatusBadgeClasses(status: string | null | undefined) {
     return "border-rose-500/30 bg-rose-500/10 text-rose-300";
   }
 
-  return "border-slate-700 bg-slate-800 text-slate-300";
+  return "border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300";
 }
 
 async function resolveVendorForUser(params: {
@@ -575,31 +575,31 @@ export default function VendorProjectDetailPage() {
             ← Back to Vendor Projects
           </Link>
 
-          <h1 className="text-2xl font-semibold text-slate-200">
+          <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-200">
             {project?.project_name || "Vendor Project"}
           </h1>
 
-          <p className="text-slate-400">{headerDescription}</p>
+          <p className="text-slate-600 dark:text-slate-400">{headerDescription}</p>
 
           {!loading && !error ? (
             <div className="flex flex-wrap gap-2 text-xs text-slate-500">
               {isVendorView && !isAdminView && viewerVendorId ? (
-                <span className="rounded-full border border-slate-800 bg-slate-900 px-3 py-1">
+                <span className="rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 py-1">
                   Vendor scope active
                 </span>
               ) : null}
 
               {isAdminView ? (
-                <span className="rounded-full border border-slate-800 bg-slate-900 px-3 py-1">
+                <span className="rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 py-1">
                   Admin org-wide view
                 </span>
               ) : null}
 
-              <span className="rounded-full border border-slate-800 bg-slate-900 px-3 py-1">
+              <span className="rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 py-1">
                 {assignmentCountLabel}
               </span>
 
-              <span className="rounded-full border border-slate-800 bg-slate-900 px-3 py-1">
+              <span className="rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 py-1">
                 {estimateCountLabel}
               </span>
             </div>
@@ -617,7 +617,7 @@ export default function VendorProjectDetailPage() {
 
             <Link
               href="/vendor/estimates"
-              className="inline-flex items-center justify-center rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-slate-100 transition hover:bg-slate-800"
+              className="inline-flex items-center justify-center rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2 text-sm text-slate-900 dark:text-slate-100 transition hover:bg-slate-100 dark:hover:bg-slate-800"
             >
               Open All Estimates
             </Link>
@@ -626,7 +626,7 @@ export default function VendorProjectDetailPage() {
       </div>
 
       {loading && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-slate-400">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6 text-slate-600 dark:text-slate-400">
           Loading project details...
         </div>
       )}
@@ -640,16 +640,16 @@ export default function VendorProjectDetailPage() {
       {!loading && !error && project && (
         <>
           <div className="grid gap-4 md:grid-cols-4">
-            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5">
               <p className="text-xs uppercase tracking-[0.16em] text-slate-500">
                 Client
               </p>
-              <p className="mt-2 text-base text-slate-100">
+              <p className="mt-2 text-base text-slate-900 dark:text-slate-100">
                 {project.client_name || "Unknown Client"}
               </p>
             </div>
 
-            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5">
               <p className="text-xs uppercase tracking-[0.16em] text-slate-500">
                 Status
               </p>
@@ -664,57 +664,57 @@ export default function VendorProjectDetailPage() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5">
               <p className="text-xs uppercase tracking-[0.16em] text-slate-500">
                 Created
               </p>
-              <p className="mt-2 text-base text-slate-100">
+              <p className="mt-2 text-base text-slate-900 dark:text-slate-100">
                 {formatDate(project.created_at)}
               </p>
             </div>
 
-            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5">
               <p className="text-xs uppercase tracking-[0.16em] text-slate-500">
                 Assignment Count
               </p>
-              <p className="mt-2 text-base text-slate-100">
+              <p className="mt-2 text-base text-slate-900 dark:text-slate-100">
                 {assignments.length}
               </p>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-900">
-            <div className="border-b border-slate-800 px-5 py-4">
-              <h2 className="text-lg font-semibold text-slate-100">
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
+            <div className="border-b border-slate-200 dark:border-slate-800 px-5 py-4">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 Assigned Vendors
               </h2>
-              <p className="mt-1 text-sm text-slate-400">
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
                 {isAdminView
                   ? "All vendor assignments for this project."
                   : "Your vendor assignment for this project."}
               </p>
             </div>
 
-            <div className="divide-y divide-slate-800">
+            <div className="divide-y divide-slate-200 dark:divide-slate-800">
               {assignments.map((assignment) => (
                 <div
                   key={assignment.assignment_id}
                   className="flex flex-col gap-4 px-5 py-4 md:flex-row md:items-center md:justify-between"
                 >
                   <div className="space-y-1">
-                    <p className="text-base text-slate-100">
+                    <p className="text-base text-slate-900 dark:text-slate-100">
                       {assignment.vendor_name}
                     </p>
 
                     <div className="flex flex-wrap gap-2">
                       {assignment.role ? (
-                        <span className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-300">
+                        <span className="rounded-full border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs text-slate-700 dark:text-slate-300">
                           Role: {formatStatus(assignment.role)}
                         </span>
                       ) : null}
 
                       {assignment.vendor_role ? (
-                        <span className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-300">
+                        <span className="rounded-full border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs text-slate-700 dark:text-slate-300">
                           Trade: {formatStatus(assignment.vendor_role)}
                         </span>
                       ) : null}
@@ -730,50 +730,50 @@ export default function VendorProjectDetailPage() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-4">
-            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5">
               <p className="text-xs uppercase tracking-[0.16em] text-slate-500">
                 Total Estimates
               </p>
-              <p className="mt-2 text-3xl font-semibold text-slate-100">
+              <p className="mt-2 text-3xl font-semibold text-slate-900 dark:text-slate-100">
                 {estimateSummary.total}
               </p>
             </div>
 
-            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5">
               <p className="text-xs uppercase tracking-[0.16em] text-slate-500">
                 Draft
               </p>
-              <p className="mt-2 text-3xl font-semibold text-slate-100">
+              <p className="mt-2 text-3xl font-semibold text-slate-900 dark:text-slate-100">
                 {estimateSummary.draft}
               </p>
             </div>
 
-            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5">
               <p className="text-xs uppercase tracking-[0.16em] text-slate-500">
                 Submitted
               </p>
-              <p className="mt-2 text-3xl font-semibold text-slate-100">
+              <p className="mt-2 text-3xl font-semibold text-slate-900 dark:text-slate-100">
                 {estimateSummary.submitted}
               </p>
             </div>
 
-            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5">
               <p className="text-xs uppercase tracking-[0.16em] text-slate-500">
                 Approved
               </p>
-              <p className="mt-2 text-3xl font-semibold text-slate-100">
+              <p className="mt-2 text-3xl font-semibold text-slate-900 dark:text-slate-100">
                 {estimateSummary.approved}
               </p>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-900">
-            <div className="flex flex-col gap-3 border-b border-slate-800 px-5 py-4 md:flex-row md:items-center md:justify-between">
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
+            <div className="flex flex-col gap-3 border-b border-slate-200 dark:border-slate-800 px-5 py-4 md:flex-row md:items-center md:justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-slate-100">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                   Estimates
                 </h2>
-                <p className="mt-1 text-sm text-slate-400">
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
                   Create, review, and open project-linked estimates from here.
                 </p>
               </div>
@@ -790,11 +790,11 @@ export default function VendorProjectDetailPage() {
 
             {estimates.length === 0 ? (
               <div className="px-5 py-8">
-                <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-950 p-6">
-                  <h3 className="text-base text-slate-100">
+                <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-6">
+                  <h3 className="text-base text-slate-900 dark:text-slate-100">
                     No estimates yet
                   </h3>
-                  <p className="mt-2 text-sm text-slate-400">
+                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
                     This project does not have any estimate records yet. Use the
                     create action to start a draft estimate for this assigned
                     project.
@@ -813,12 +813,12 @@ export default function VendorProjectDetailPage() {
                 </div>
               </div>
             ) : (
-              <div className="divide-y divide-slate-800">
+              <div className="divide-y divide-slate-200 dark:divide-slate-800">
                 {estimates.map((estimate) => (
                   <Link
                     key={estimate.id}
                     href={`/vendor/estimates/${estimate.id}`}
-                    className="block px-5 py-4 transition hover:bg-slate-950/60"
+                    className="block px-5 py-4 transition hover:bg-slate-50/60 dark:hover:bg-slate-950/60"
                   >
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                       <div className="space-y-2">
@@ -832,17 +832,17 @@ export default function VendorProjectDetailPage() {
                           </span>
 
                           {estimate.estimate_number ? (
-                            <span className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-300">
+                            <span className="rounded-full border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs text-slate-700 dark:text-slate-300">
                               Estimate #{estimate.estimate_number}
                             </span>
                           ) : null}
 
-                          <span className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-300">
+                          <span className="rounded-full border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs text-slate-700 dark:text-slate-300">
                             Vendor: {estimate.vendor_name}
                           </span>
                         </div>
 
-                        <div className="grid gap-1 text-sm text-slate-300">
+                        <div className="grid gap-1 text-sm text-slate-700 dark:text-slate-300">
                           <p>Total: {formatCurrency(estimate.total_cost)}</p>
                           <p>Labor: {formatCurrency(estimate.labor_cost)}</p>
                           <p>Material: {formatCurrency(estimate.material_cost)}</p>
@@ -850,7 +850,7 @@ export default function VendorProjectDetailPage() {
                         </div>
 
                         {estimate.notes ? (
-                          <p className="max-w-3xl text-sm text-slate-400 line-clamp-2">
+                          <p className="max-w-3xl text-sm text-slate-600 dark:text-slate-400 line-clamp-2">
                             {estimate.notes}
                           </p>
                         ) : null}
@@ -869,16 +869,16 @@ export default function VendorProjectDetailPage() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-900 p-5">
-              <h3 className="text-base text-slate-100">Site Visits</h3>
-              <p className="mt-2 text-sm text-slate-400">
+            <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5">
+              <h3 className="text-base text-slate-900 dark:text-slate-100">Site Visits</h3>
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
                 Site visit history, scheduling, and field coordination will appear here next.
               </p>
             </div>
 
-            <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-900 p-5">
-              <h3 className="text-base text-slate-100">Invoices</h3>
-              <p className="mt-2 text-sm text-slate-400">
+            <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5">
+              <h3 className="text-base text-slate-900 dark:text-slate-100">Invoices</h3>
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
                 Invoice workflow, approvals, and payment visibility will appear here next.
               </p>
             </div>

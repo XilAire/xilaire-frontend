@@ -71,9 +71,9 @@ export default function ServiceRequestsClient({
       {/* ===============================
          TABLE
       ================================ */}
-      <div className="rounded-xl border border-slate-800 overflow-hidden">
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
         {/* HEADER */}
-        <div className="grid grid-cols-12 px-6 py-3 text-xs text-slate-400 border-b border-slate-800">
+        <div className="grid grid-cols-12 px-6 py-3 text-xs text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
           <div className="col-span-1" />
           <div className="col-span-4">Request</div>
           <div className="col-span-2">Priority</div>
@@ -113,8 +113,8 @@ function SummaryCard({
   value: number;
 }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4">
-      <div className="text-sm text-slate-400">{label}</div>
+    <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100/40 dark:bg-slate-900/40 p-4">
+      <div className="text-sm text-slate-600 dark:text-slate-400">{label}</div>
       <div className="text-2xl font-semibold text-white">{value}</div>
     </div>
   );

@@ -100,7 +100,7 @@ export default function RefundPage() {
           efficiently.
         </p>
 
-        <p className="mt-6 text-[11px] text-slate-400">
+        <p className="mt-6 text-[11px] text-slate-600 dark:text-slate-400">
           This Refund page is a general summary and may be superseded by
           specific payment or refund terms in a signed agreement, SOW, or order
           form between you and XilAire Technologies.

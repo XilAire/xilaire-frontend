@@ -29,20 +29,20 @@ export default function ContactRequestDetailPage({ params }) {
         {req.full_name || "Contact Request"}
       </h1>
 
-      <div className="text-slate-400 mb-6">
+      <div className="text-slate-600 dark:text-slate-400 mb-6">
         {new Date(req.created_at).toLocaleString()}
       </div>
 
-      <div className="rounded-lg border border-slate-800 bg-slate-900 p-6">
-        <p className="text-slate-300 mb-4">
+      <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6">
+        <p className="text-slate-700 dark:text-slate-300 mb-4">
           <strong>Email:</strong> {req.email}
         </p>
 
-        <p className="text-slate-300 mb-4">
+        <p className="text-slate-700 dark:text-slate-300 mb-4">
           <strong>Topic:</strong> {req.topic}
         </p>
 
-        <p className="text-slate-200 whitespace-pre-wrap">
+        <p className="text-slate-800 dark:text-slate-200 whitespace-pre-wrap">
           {req.message}
         </p>
       </div>

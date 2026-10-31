@@ -96,15 +96,15 @@ export function NewTicketButton() {
       {/* Simple modal */}
       {open && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-950/95 p-5 shadow-xl">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/95 dark:bg-slate-950/95 p-5 shadow-xl">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-slate-50">
+              <h2 className="text-sm font-semibold text-slate-950 dark:text-slate-50">
                 Create new ticket
               </h2>
               <button
                 type="button"
                 onClick={handleClose}
-                className="text-xs text-slate-400 hover:text-slate-200"
+                className="text-xs text-slate-600 dark:text-slate-400 hover:text-slate-200"
               >
                 ✕
               </button>
@@ -112,12 +112,12 @@ export function NewTicketButton() {
 
             <form className="space-y-4" onSubmit={handleSubmit}>
               <div>
-                <label className="block text-xs font-medium text-slate-300">
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
                   Title
                 </label>
                 <input
                   type="text"
-                  className="mt-1 w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-50 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                  className="mt-1 w-full rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-xs text-slate-950 dark:text-slate-50 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                   placeholder="e.g. VPN outage for remote users"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
@@ -126,12 +126,12 @@ export function NewTicketButton() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300">
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
                   Requester email (optional)
                 </label>
                 <input
                   type="email"
-                  className="mt-1 w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-50 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                  className="mt-1 w-full rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-xs text-slate-950 dark:text-slate-50 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                   placeholder="user@example.com"
                   value={requesterEmail}
                   onChange={(e) => setRequesterEmail(e.target.value)}
@@ -139,11 +139,11 @@ export function NewTicketButton() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300">
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
                   Priority
                 </label>
                 <select
-                  className="mt-1 w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-50 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                  className="mt-1 w-full rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-xs text-slate-950 dark:text-slate-50 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                   value={priority}
                   onChange={(e) => setPriority(e.target.value as Priority)}
                 >
@@ -155,12 +155,12 @@ export function NewTicketButton() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300">
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
                   Description
                 </label>
                 <textarea
                   rows={4}
-                  className="mt-1 w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-50 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                  className="mt-1 w-full rounded-md border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-2 text-xs text-slate-950 dark:text-slate-50 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                   placeholder="Describe the issue, impact, and any relevant context."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
@@ -178,7 +178,7 @@ export function NewTicketButton() {
                   type="button"
                   onClick={handleClose}
                   disabled={submitting}
-                  className="rounded-md border border-slate-600 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-800 disabled:opacity-60"
+                  className="rounded-md border border-slate-400 dark:border-slate-600 px-3 py-1.5 text-xs font-medium text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-60"
                 >
                   Cancel
                 </button>

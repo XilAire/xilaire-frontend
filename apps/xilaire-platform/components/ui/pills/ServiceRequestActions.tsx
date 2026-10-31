@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import ActionPill from "@/components/ui/ActionPill";
+import ActionPill, { ActionItem } from "@/components/ui/ActionPill";
 import { useRouter } from "next/navigation";
 
 /* ------------------------------------------------------------------
@@ -21,7 +21,7 @@ function StatusModal({ open, onClose, onChangeStatus }) {
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
-      <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 w-80 shadow-xl">
+      <div className="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl p-6 w-80 shadow-xl">
         <h2 className="text-white font-semibold mb-4">Change Status</h2>
 
         <div className="space-y-2">
@@ -29,8 +29,8 @@ function StatusModal({ open, onClose, onChangeStatus }) {
             <button
               key={s.value}
               className="
-                w-full px-3 py-2 text-left text-slate-200 rounded-lg
-                hover:bg-slate-800 transition
+                w-full px-3 py-2 text-left text-slate-800 dark:text-slate-200 rounded-lg
+                hover:bg-slate-100 dark:hover:bg-slate-800 transition
               "
               onClick={() => {
                 onChangeStatus(s.value);
@@ -46,7 +46,7 @@ function StatusModal({ open, onClose, onChangeStatus }) {
           onClick={onClose}
           className="
             mt-4 w-full px-3 py-2 rounded-lg text-sm
-            bg-slate-700 hover:bg-slate-600 text-white
+            bg-slate-200 dark:bg-slate-700 hover:bg-slate-600 text-white
           "
         >
           Cancel
@@ -68,7 +68,7 @@ export default function ServiceRequestActions({
   const router = useRouter();
   const [showStatusModal, setShowStatusModal] = useState(false);
 
-  const options = [
+  const options: ActionItem[] = [
     {
       label: "Create New",
       onClick: () => router.push("/helpdesk/service-requests/new"),

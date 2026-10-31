@@ -45,8 +45,8 @@ export default function PriorityPillDropdown({
       >
         {/* LEFT SIDE: inline label + value */}
         <div className="flex items-center gap-2">
-          <span className="text-slate-400">Level</span>
-          <span className="capitalize text-slate-100">{value}</span>
+          <span className="text-slate-600 dark:text-slate-400">Level</span>
+          <span className="capitalize text-slate-900 dark:text-slate-100">{value}</span>
         </div>
 
         {/* Chevron */}
@@ -63,7 +63,7 @@ export default function PriorityPillDropdown({
         <div
           className="
             absolute left-0 right-0 mt-2 rounded-xl overflow-hidden z-[9999]
-            bg-slate-900 border border-slate-700 shadow-xl
+            bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 shadow-xl
           "
         >
           {["low", "medium", "high", "critical"].map((p) => (

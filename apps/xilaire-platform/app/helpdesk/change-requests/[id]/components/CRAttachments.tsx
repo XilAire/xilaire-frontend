@@ -103,13 +103,13 @@ export default function CRAttachments({ changeId }: CRAttachmentsProps) {
     <div className="space-y-6">
 
       {/* FILE UPLOADER */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 text-center shadow-sm">
+      <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 text-center shadow-sm">
         <div
-          className="cursor-pointer p-6 border border-dashed border-slate-700 rounded-xl hover:border-blue-500/50 transition"
+          className="cursor-pointer p-6 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl hover:border-blue-500/50 transition"
           onClick={() => fileRef.current?.click()}
         >
-          <Upload className="h-8 w-8 text-slate-400 mx-auto mb-3" />
-          <p className="text-slate-300">Click to upload files</p>
+          <Upload className="h-8 w-8 text-slate-600 dark:text-slate-400 mx-auto mb-3" />
+          <p className="text-slate-700 dark:text-slate-300">Click to upload files</p>
           <p className="text-slate-500 text-xs mt-1">PDF, Images, Documents</p>
         </div>
 
@@ -126,22 +126,22 @@ export default function CRAttachments({ changeId }: CRAttachmentsProps) {
       </div>
 
       {/* FILE LIST */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-sm">
+      <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
           <Paperclip className="h-4 w-4" /> Attachments
         </h2>
 
         {files.length === 0 ? (
-          <p className="text-slate-400 text-sm">No attachments uploaded.</p>
+          <p className="text-slate-600 dark:text-slate-400 text-sm">No attachments uploaded.</p>
         ) : (
           <div className="space-y-4">
             {files.map((file) => (
               <div
                 key={file.id}
-                className="flex items-center justify-between bg-slate-800/40 p-3 rounded-lg border border-slate-700"
+                className="flex items-center justify-between bg-slate-200/40 dark:bg-slate-800/40 p-3 rounded-lg border border-slate-300 dark:border-slate-700"
               >
                 <div>
-                  <p className="text-slate-200 text-sm">{file.file_name}</p>
+                  <p className="text-slate-800 dark:text-slate-200 text-sm">{file.file_name}</p>
                   <p className="text-slate-500 text-xs">
                     {(file.file_size / 1024).toFixed(1)} KB
                   </p>

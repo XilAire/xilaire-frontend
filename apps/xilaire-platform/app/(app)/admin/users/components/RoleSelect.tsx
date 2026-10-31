@@ -58,8 +58,8 @@ export default function RoleSelect({
       className={[
         "min-w-[140px]",
         "rounded px-2 py-1 text-sm",
-        "border border-slate-700",
-        "bg-slate-900 text-slate-200",
+        "border border-slate-300 dark:border-slate-700",
+        "bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200",
         "focus:outline-none focus:ring-1 focus:ring-sky-500",
         "disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed",
       ].join(" ")}
@@ -68,7 +68,7 @@ export default function RoleSelect({
         <option
           key={role}
           value={role}
-          className="bg-slate-900 text-slate-200"
+          className="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200"
         >
           {role.replace(/_/g, " ")}
         </option>

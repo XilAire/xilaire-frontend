@@ -1,88 +1,20 @@
-import { createClient } from "@supabase/supabase-js"
+// AUTH-04M: TEMPORARY SECURITY HOLD
+// Original implementation retained in the verified AUTH-04M backup.
+// Do not re-enable without authenticated caller validation,
+// tenant authorization, payment-state verification, and error handling.
 
-export const runtime = "nodejs"
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL_PLATFORM!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY_PLATFORM!
-)
-
-export async function POST(req: Request) {
-  const { org_id, reason, effective_at } = await req.json()
-
-  if (!org_id || !reason) {
-    return new Response("Missing parameters", { status: 400 })
-  }
-
-  const now = new Date().toISOString()
-
-  switch (reason) {
-    /* ---------------------------------------------
-       HARD REVOKE (SUBSCRIPTION DELETED)
-    --------------------------------------------- */
-    case "subscription_deleted": {
-      await supabase
-        .from("org_entitlements")
-        .update({
-          active: false,
-          revoked_at: effective_at ?? now,
-          suspended: false,
-        })
-        .eq("org_id", org_id)
-        .eq("active", true)
-
-      break
+export async function POST() {
+  return new Response(
+    "Billing entitlement operation temporarily unavailable.",
+    {
+      status: 503,
+      headers: {
+        "Cache-Control": "no-store",
+        "Content-Type": "text/plain; charset=utf-8",
+      },
     }
-
-    /* ---------------------------------------------
-       EXPIRE AT PERIOD END
-    --------------------------------------------- */
-    case "subscription_cancelled": {
-      await supabase
-        .from("org_entitlements")
-        .update({
-          expires_at: effective_at,
-        })
-        .eq("org_id", org_id)
-        .eq("active", true)
-
-      break
-    }
-
-    /* ---------------------------------------------
-       TEMPORARY SUSPENSION
-    --------------------------------------------- */
-    case "invoice_overdue": {
-      await supabase
-        .from("org_entitlements")
-        .update({
-          suspended: true,
-          updated_at: now,
-        })
-        .eq("org_id", org_id)
-        .eq("active", true)
-
-      break
-    }
-
-    /* ---------------------------------------------
-       UNSUSPEND (PAYMENT RECOVERED)
-    --------------------------------------------- */
-    case "invoice_paid": {
-      await supabase
-        .from("org_entitlements")
-        .update({
-          suspended: false,
-          updated_at: now,
-        })
-        .eq("org_id", org_id)
-
-      break
-    }
-
-    default:
-      return new Response("Invalid reason", { status: 400 })
-  }
-
-  return new Response("Entitlements updated", { status: 200 })
+  );
 }

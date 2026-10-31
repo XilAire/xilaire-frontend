@@ -13,8 +13,8 @@ export default function Input({ className, error, ...props }: InputProps) {
     <div className="flex flex-col gap-1">
       <input
         className={cn(
-          "w-full rounded-lg border bg-slate-950 px-3 py-2 text-sm text-slate-50",
-          "border-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500",
+          "w-full rounded-lg border bg-white dark:bg-slate-950 px-3 py-2 text-sm text-slate-950 dark:text-slate-50",
+          "border-slate-300 dark:border-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500",
           error && "border-red-500 focus:ring-red-500",
           className
         )}

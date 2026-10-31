@@ -2,24 +2,183 @@ import { NextResponse } from "next/server";
 import { createRouteSupabaseClient } from "@/lib/supabaseRoute";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-export async function POST(req: Request) {
-  const { email } = await req.json();
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-  if (!email) {
-    return NextResponse.json({ error: "Missing email" }, { status: 400 });
+const NO_STORE = {
+  "Cache-Control": "no-store",
+};
+
+const roleRanks: Record<string, number> = {
+  admin: 1,
+  super_admin: 2,
+  master_admin: 3,
+};
+
+function respond(body: Record<string, unknown>, status: number) {
+  return NextResponse.json(body, {
+    status,
+    headers: NO_STORE,
+  });
+}
+
+function configuredResetRedirect(): string | undefined {
+  const configured =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.NEXT_PUBLIC_SITE_URL;
+
+  if (!configured) {
+    return undefined;
   }
 
-  const { error } = await supabaseAdmin.auth.resetPasswordForEmail(
-    email,
-    {
-      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/reset-password`,
+  try {
+    const url = new URL(configured);
+
+    const localDevelopment =
+      url.protocol === "http:" &&
+      (url.hostname === "localhost" ||
+        url.hostname === "127.0.0.1");
+
+    if (url.protocol !== "https:" && !localDevelopment) {
+      return undefined;
     }
-  );
 
-  if (error) {
-    console.error("Reset password error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    if (url.username || url.password) {
+      return undefined;
+    }
+
+    return new URL("/auth/reset-password", url.origin).toString();
+  } catch {
+    return undefined;
   }
+}
 
-  return NextResponse.json({ success: true });
+export async function POST(req: Request) {
+  try {
+    const supabase = createRouteSupabaseClient();
+
+    const {
+      data: { user: actor },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !actor) {
+      return respond({ error: "Unauthorized" }, 401);
+    }
+
+    const { data: actorProfile, error: actorError } =
+      await supabaseAdmin
+        .from("profiles")
+        .select("id, org_id, role, status")
+        .eq("id", actor.id)
+        .maybeSingle();
+
+    if (actorError) {
+      console.error("ADMIN_RESET_ACTOR_LOOKUP_FAILED");
+      return respond({ error: "Unable to verify access" }, 500);
+    }
+
+    if (
+      !actorProfile ||
+      actorProfile.status !== "active" ||
+      !actorProfile.org_id
+    ) {
+      return respond({ error: "Forbidden" }, 403);
+    }
+
+    const actorRole =
+      String(actorProfile.role || "").trim().toLowerCase();
+
+    const actorRank = roleRanks[actorRole] ?? 0;
+
+    if (actorRank === 0) {
+      return respond({ error: "Forbidden" }, 403);
+    }
+
+    const body = await req.json().catch(() => null);
+
+    if (typeof body?.email !== "string") {
+      return respond({ error: "Valid email is required" }, 400);
+    }
+
+    const email = body.email.trim().toLowerCase();
+
+    if (
+      email.length > 254 ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+    ) {
+      return respond({ error: "Valid email is required" }, 400);
+    }
+
+    const { data: target, error: targetError } =
+      await supabaseAdmin
+        .from("profiles")
+        .select("id, org_id, role, status")
+        .eq("email", email)
+        .maybeSingle();
+
+    if (targetError) {
+      console.error("ADMIN_RESET_TARGET_LOOKUP_FAILED");
+      return respond({ error: "Unable to process request" }, 500);
+    }
+
+    // Do not disclose whether an email belongs to an
+    // unknown account, another organization, or a
+    // disallowed account type.
+    const accepted = {
+      success: true,
+      message: "If this account is eligible, a reset email will be requested.",
+    };
+
+    if (!target || target.org_id !== actorProfile.org_id) {
+      return respond(accepted, 200);
+    }
+
+    if (target.status !== "active") {
+      return respond(accepted, 200);
+    }
+
+    const targetRole =
+      String(target.role || "").trim().toLowerCase();
+
+    const targetRank = roleRanks[targetRole] ?? 0;
+
+    // Prevent resetting one's own administrator account
+    // through this privileged administrative endpoint.
+    // Self-service recovery remains a separate workflow.
+    if (target.id === actor.id) {
+      return respond({ error: "Use self-service recovery" }, 403);
+    }
+
+    if (targetRank >= actorRank) {
+      return respond({ error: "Forbidden" }, 403);
+    }
+
+    const redirectTo = configuredResetRedirect();
+
+    const options = redirectTo ? { redirectTo } : undefined;
+
+    const { error } = await supabaseAdmin.auth.resetPasswordForEmail(
+      email,
+      options
+    );
+
+    if (error) {
+      console.error(
+        "ADMIN_RESET_PROVIDER_ERROR:",
+        error.code || "provider_error"
+      );
+
+      // Do not expose provider or account details to the caller.
+      return respond(
+        { error: "Unable to request password reset" },
+        502
+      );
+    }
+
+    return respond(accepted, 200);
+  } catch {
+    console.error("ADMIN_RESET_UNEXPECTED_ERROR");
+    return respond({ error: "Unable to process request" }, 500);
+  }
 }

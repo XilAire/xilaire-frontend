@@ -4,6 +4,7 @@ import { getGraphClient } from "@/lib/msGraph";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 /* -------------------------------------------------
    CONFIG

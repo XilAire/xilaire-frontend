@@ -162,7 +162,7 @@ export default function TermsPage() {
           .
         </p>
 
-        <p className="mt-6 text-[11px] text-slate-400">
+        <p className="mt-6 text-[11px] text-slate-600 dark:text-slate-400">
           This summary of Terms is provided for convenience and does not replace
           any fully executed master service agreement or order form between you
           and XilAire Technologies.

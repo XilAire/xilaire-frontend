@@ -60,20 +60,20 @@ export default function EnrollmentTokenPanel() {
             </p>
           </div>
 
-          <code className="block break-all rounded bg-slate-900 px-3 py-2 text-sm text-slate-200">
+          <code className="block break-all rounded bg-slate-50 dark:bg-slate-900 px-3 py-2 text-sm text-slate-800 dark:text-slate-200">
             {token}
           </code>
 
-          <div className="text-xs text-slate-400 space-y-1">
+          <div className="text-xs text-slate-600 dark:text-slate-400 space-y-1">
             <p>
               Expires:{" "}
-              <span className="text-slate-300">
+              <span className="text-slate-700 dark:text-slate-300">
                 {new Date(expiresAt!).toLocaleString()}
               </span>
             </p>
             <p>
               Max uses:{" "}
-              <span className="text-slate-300">
+              <span className="text-slate-700 dark:text-slate-300">
                 {maxUses}
               </span>
             </p>

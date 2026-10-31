@@ -207,8 +207,8 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-8">
       <header>
-        <h1 className="text-2xl font-semibold text-slate-50">Dashboard</h1>
-        <p className="text-sm text-slate-400">
+        <h1 className="text-2xl font-semibold text-slate-950 dark:text-slate-50">Dashboard</h1>
+        <p className="text-sm text-slate-600 dark:text-slate-400">
           Overview of your bots, tickets, and automations.
         </p>
       </header>
@@ -255,8 +255,8 @@ function Card({
   color?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
-      <p className="text-xs uppercase tracking-wide text-slate-400">{label}</p>
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/60 p-4">
+      <p className="text-xs uppercase tracking-wide text-slate-600 dark:text-slate-400">{label}</p>
       <p className={`mt-2 text-3xl font-semibold ${color}`}>{value}</p>
     </div>
   );

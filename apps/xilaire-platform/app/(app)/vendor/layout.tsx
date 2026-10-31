@@ -157,8 +157,8 @@ export default function VendorLayout({
 
   if (!authChecked) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-4">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 px-6 py-5 text-sm text-slate-300">
+      <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex items-center justify-center px-4">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-6 py-5 text-sm text-slate-700 dark:text-slate-300">
           Loading vendor portal...
         </div>
       </div>
@@ -167,7 +167,7 @@ export default function VendorLayout({
 
   if (!allowed) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 px-4 py-10">
+      <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 px-4 py-10">
         <div className="mx-auto max-w-3xl space-y-6">
           <div className="rounded-2xl border border-rose-800 bg-rose-950/30 p-6">
             <h1 className="text-xl font-semibold text-rose-300">
@@ -178,12 +178,12 @@ export default function VendorLayout({
             </p>
           </div>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-            <h2 className="text-lg font-semibold text-slate-100">
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
               Debug context
             </h2>
 
-            <div className="mt-4 space-y-2 text-sm text-slate-300">
+            <div className="mt-4 space-y-2 text-sm text-slate-700 dark:text-slate-300">
               <p>User ID: {debugUserId || "unknown"}</p>
               <p>Path: {pathname || "unknown"}</p>
               <p>Profile Email: {debugProfile?.email || "null"}</p>
@@ -208,7 +208,7 @@ export default function VendorLayout({
             <button
               type="button"
               onClick={() => router.push("/dashboard")}
-              className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800"
+              className="rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2 text-sm text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
             >
               Go to Dashboard
             </button>
@@ -227,7 +227,7 @@ export default function VendorLayout({
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100">
       <main className="min-h-screen">{children}</main>
     </div>
   );

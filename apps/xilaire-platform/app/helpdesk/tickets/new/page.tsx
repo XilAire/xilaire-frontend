@@ -13,7 +13,7 @@ export default function NewTicketPage() {
 
   if (!ready) {
     return (
-      <div className="p-6 text-slate-400">
+      <div className="p-6 text-slate-600 dark:text-slate-400">
         Loading...
       </div>
     );

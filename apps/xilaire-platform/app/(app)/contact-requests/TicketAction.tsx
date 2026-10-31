@@ -50,7 +50,7 @@ export function TicketAction({ contactId, linkedTicketId }: TicketActionProps) {
         <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-300">
           Ticket created
         </span>
-        <div className="text-[11px] text-slate-400">
+        <div className="text-[11px] text-slate-600 dark:text-slate-400">
           #{shortId(ticketId)}
         </div>
       </div>

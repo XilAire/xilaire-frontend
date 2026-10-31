@@ -255,11 +255,11 @@ export default function VendorProfileDetailPage() {
           ← Back to Vendor Profiles
         </Link>
 
-        <h1 className="text-2xl font-semibold text-slate-200">
+        <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-200">
           Vendor Profile
         </h1>
 
-        <p className="text-slate-400">
+        <p className="text-slate-600 dark:text-slate-400">
           {isAdminView
             ? "Admin view of the selected vendor company profile."
             : "Vendor company profile details."}
@@ -267,7 +267,7 @@ export default function VendorProfileDetailPage() {
       </div>
 
       {loading && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-slate-400">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6 text-slate-600 dark:text-slate-400">
           Loading vendor profile...
         </div>
       )}
@@ -280,25 +280,25 @@ export default function VendorProfileDetailPage() {
 
       {!loading && !error && vendor && (
         <>
-          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
-                <h2 className="text-xl font-semibold text-slate-100">
+                <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
                   {vendor.company_name || "Unnamed Vendor"}
                 </h2>
-                <p className="mt-2 text-sm text-slate-400">
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
                   Category: {formatLabel(vendor.vendor_category)}
                 </p>
-                <p className="mt-2 text-sm text-slate-400">
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
                   Trade / Services: {formatValue(vendor.trade_services)}
                 </p>
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <span className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-300">
+                <span className="rounded-full border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs text-slate-700 dark:text-slate-300">
                   Active: {formatYesNo(vendor.active)}
                 </span>
-                <span className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-300">
+                <span className="rounded-full border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs text-slate-700 dark:text-slate-300">
                   Enabled: {formatYesNo(vendor.is_active)}
                 </span>
               </div>
@@ -323,13 +323,13 @@ export default function VendorProfileDetailPage() {
           </div>
 
           <div className="grid gap-4 xl:grid-cols-3">
-            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 xl:col-span-2">
-              <h3 className="text-lg font-semibold text-slate-100">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6 xl:col-span-2">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 Service Types
               </h3>
 
               {serviceTypes.length === 0 ? (
-                <p className="mt-3 text-sm text-slate-400">
+                <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">
                   No service types are listed for this vendor yet.
                 </p>
               ) : (
@@ -337,7 +337,7 @@ export default function VendorProfileDetailPage() {
                   {serviceTypes.map((service) => (
                     <span
                       key={`${vendor.id}-${service}`}
-                      className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-300"
+                      className="rounded-full border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs text-slate-700 dark:text-slate-300"
                     >
                       {formatLabel(service)}
                     </span>
@@ -346,12 +346,12 @@ export default function VendorProfileDetailPage() {
               )}
             </div>
 
-            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-              <h3 className="text-lg font-semibold text-slate-100">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 Profile Status
               </h3>
 
-              <div className="mt-4 space-y-3 text-sm text-slate-400">
+              <div className="mt-4 space-y-3 text-sm text-slate-600 dark:text-slate-400">
                 <p>Company: {formatValue(vendor.company_name)}</p>
                 <p>Category: {formatLabel(vendor.vendor_category)}</p>
                 <p>License On File: {formatYesNo(!!vendor.license_number)}</p>
@@ -362,9 +362,9 @@ export default function VendorProfileDetailPage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-            <h3 className="text-lg font-semibold text-slate-100">Notes</h3>
-            <p className="mt-3 text-sm text-slate-400">
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Notes</h3>
+            <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">
               {vendor.notes?.trim()
                 ? vendor.notes
                 : "No vendor notes have been added yet."}
@@ -384,11 +384,11 @@ function InfoCard({
   value: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5">
       <p className="text-xs uppercase tracking-wide text-slate-500">
         {label}
       </p>
-      <p className="mt-2 break-words text-sm text-slate-200">{value}</p>
+      <p className="mt-2 break-words text-sm text-slate-800 dark:text-slate-200">{value}</p>
     </div>
   );
 }

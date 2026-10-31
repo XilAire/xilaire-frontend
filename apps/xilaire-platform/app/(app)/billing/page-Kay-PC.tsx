@@ -173,6 +173,10 @@ export default function BillingPage() {
           <tbody>
             {groupedByContract.map((group) => {
               const contract = group[0].work_item.contract;
+              const contractSubtotal = group.reduce(
+                (total, row) => total + (row.calculated_cost ?? 0),
+                0
+              );
 
               return (
                 <>
@@ -194,6 +198,7 @@ export default function BillingPage() {
                         {idx === 0 && (
                           <CreateInvoiceButton
                             contractId={contract.id}
+                            amount={contractSubtotal}
                           />
                         )}
                       </td>

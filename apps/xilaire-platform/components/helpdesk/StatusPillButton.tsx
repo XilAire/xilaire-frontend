@@ -18,7 +18,7 @@ export default function StatusPillButton({
       ${
         active
           ? "bg-sky-600 text-white border-sky-500 shadow-md shadow-sky-900/40"
-          : "bg-slate-800/60 text-slate-300 border-slate-700 hover:bg-slate-700/70 hover:text-white"
+          : "bg-slate-200/60 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-300/70 dark:hover:bg-slate-700/70 hover:text-white"
       }`}
     >
       {label}

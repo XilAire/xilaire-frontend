@@ -20,7 +20,7 @@ export function EditableSelect({
     <select
       name={name}
       defaultValue={defaultValue}
-      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded text-white"
+      className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded text-slate-900 dark:text-white"
       onChange={(e) => {
         // Auto-submit parent form safely
         const form = e.currentTarget.form;
@@ -50,7 +50,7 @@ export function EditableInput({
     <input
       name={name}
       defaultValue={defaultValue}
-      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded text-white"
+      className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded text-slate-900 dark:text-white"
       onBlur={(e) => {
         // Auto-submit on blur
         const form = e.currentTarget.form;
@@ -75,7 +75,7 @@ export function EditableTextArea({
       name={name}
       defaultValue={defaultValue}
       rows={5}
-      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded text-white"
+      className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded text-slate-900 dark:text-white"
       onBlur={(e) => {
         // Auto-submit on blur
         const form = e.currentTarget.form;

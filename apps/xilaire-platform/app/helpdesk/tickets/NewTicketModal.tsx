@@ -91,12 +91,12 @@ export default function NewTicketModal({ onClose }) {
   };
 
   return (
-    <div className="max-w-xl mx-auto bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl">
+    <div className="max-w-xl mx-auto bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-xl">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold text-white">Create new ticket</h2>
         <button
           onClick={onClose}
-          className="text-slate-400 hover:text-white transition"
+          className="text-slate-600 dark:text-slate-400 hover:text-white transition"
         >
           <X size={20} />
         </button>
@@ -105,10 +105,10 @@ export default function NewTicketModal({ onClose }) {
       <form className="space-y-4" onSubmit={handleSubmit}>
         {/* Title */}
         <div>
-          <label className="text-sm text-slate-300">Title</label>
+          <label className="text-sm text-slate-700 dark:text-slate-300">Title</label>
           <input
             type="text"
-            className="w-full bg-slate-800 text-white rounded-lg p-2 mt-1"
+            className="w-full bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg p-2 mt-1"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             required
@@ -117,10 +117,10 @@ export default function NewTicketModal({ onClose }) {
 
         {/* Email */}
         <div>
-          <label className="text-sm text-slate-300">Requester Email</label>
+          <label className="text-sm text-slate-700 dark:text-slate-300">Requester Email</label>
           <input
             type="email"
-            className="w-full bg-slate-800 text-white rounded-lg p-2 mt-1"
+            className="w-full bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg p-2 mt-1"
             placeholder="user@example.com (optional)"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -129,9 +129,9 @@ export default function NewTicketModal({ onClose }) {
 
         {/* Priority */}
         <div>
-          <label className="text-sm text-slate-300">Priority</label>
+          <label className="text-sm text-slate-700 dark:text-slate-300">Priority</label>
           <select
-            className="w-full bg-slate-800 text-white rounded-lg p-2 mt-1"
+            className="w-full bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg p-2 mt-1"
             value={priority}
             onChange={(e) => setPriority(e.target.value)}
           >
@@ -144,9 +144,9 @@ export default function NewTicketModal({ onClose }) {
 
         {/* Description */}
         <div>
-          <label className="text-sm text-slate-300">Description</label>
+          <label className="text-sm text-slate-700 dark:text-slate-300">Description</label>
           <textarea
-            className="w-full bg-slate-800 text-white rounded-lg p-2 mt-1"
+            className="w-full bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg p-2 mt-1"
             rows={5}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -155,7 +155,7 @@ export default function NewTicketModal({ onClose }) {
 
         {/* Attachments */}
         <div>
-          <label className="text-sm text-slate-300 flex items-center gap-2">
+          <label className="text-sm text-slate-700 dark:text-slate-300 flex items-center gap-2">
             <Paperclip size={14} />
             Attachments
           </label>
@@ -163,7 +163,7 @@ export default function NewTicketModal({ onClose }) {
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="mt-2 flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-3 py-2 rounded-lg"
+            className="mt-2 flex items-center gap-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-700 text-slate-900 dark:text-white px-3 py-2 rounded-lg"
           >
             <Upload size={16} />
             Add Files
@@ -183,9 +183,9 @@ export default function NewTicketModal({ onClose }) {
               {files.map((file, index) => (
                 <div
                   key={index}
-                  className="flex justify-between items-center bg-slate-800/60 p-2 rounded-md"
+                  className="flex justify-between items-center bg-slate-200/60 dark:bg-slate-800/60 p-2 rounded-md"
                 >
-                  <span className="text-slate-300 text-sm">{file.name}</span>
+                  <span className="text-slate-700 dark:text-slate-300 text-sm">{file.name}</span>
                   <button
                     type="button"
                     onClick={() => removeFile(index)}
@@ -204,7 +204,7 @@ export default function NewTicketModal({ onClose }) {
           <button
             type="button"
             onClick={onClose}
-            className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg"
+            className="bg-slate-200 dark:bg-slate-700 hover:bg-slate-600 text-slate-900 dark:text-white px-4 py-2 rounded-lg"
           >
             Cancel
           </button>

@@ -29,7 +29,7 @@ const STATUS_ICON_MAP: Record<string, any> = {
 };
 
 const STATUS_COLOR_MAP: Record<string, string> = {
-  draft: "text-slate-300 border-slate-600 bg-slate-800/40",
+  draft: "text-slate-700 dark:text-slate-300 border-slate-400 dark:border-slate-600 bg-slate-200/40 dark:bg-slate-800/40",
   planned: "text-blue-300 border-blue-700 bg-blue-500/10",
   pending_approval: "text-yellow-300 border-yellow-700 bg-yellow-500/10",
   approved: "text-green-300 border-green-700 bg-green-500/10",
@@ -51,7 +51,7 @@ export default function StatusPill({ status }: StatusPillProps) {
 
   const colorClasses =
     STATUS_COLOR_MAP[status] ??
-    "text-slate-300 border-slate-600 bg-slate-800/40";
+    "text-slate-700 dark:text-slate-300 border-slate-400 dark:border-slate-600 bg-slate-200/40 dark:bg-slate-800/40";
 
   return (
     <div

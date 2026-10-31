@@ -184,7 +184,9 @@ export async function POST(request: NextRequest) {
   let auth: VaultAccessContextLike | null = null;
 
   try {
-    auth = (await requireVaultAccess(request, {})) as VaultAccessContextLike;
+    auth = (await requireVaultAccess(request, {
+      requiredVaultRoles: ["vault_admin", "vault_compliance_admin"],
+    })) as VaultAccessContextLike;
 
     const orgId = resolveAuthOrgId(auth);
 
@@ -347,7 +349,7 @@ export async function POST(request: NextRequest) {
           auth_method: authMethod,
           sync_mode: syncMode,
           health_status: "unknown",
-          created_by: auth.user.id,
+          created_by: auth.actorUserId,
           config: connectionConfig,
           connection_config: connectionConfig,
           scope_config: scopeConfig,
@@ -511,7 +513,22 @@ export async function POST(request: NextRequest) {
 
     return jsonOk({
       ok: true,
-      item: source,
+      item: {
+        id: source.id,
+        org_id: source.org_id,
+        source_key: source.source_key,
+        source_type: source.source_type,
+        provider: source.provider,
+        display_name: source.display_name,
+        name: source.name,
+        status: source.status,
+        auth_method: source.auth_method,
+        sync_mode: source.sync_mode,
+        scope_config: source.scope_config,
+        health_status: source.health_status,
+        created_at: source.created_at,
+        updated_at: source.updated_at,
+      },
       queuedJobs: (createdJobs ?? []) as QueuedJobRow[],
       selectedMailboxes: createdMailboxRows,
       skippedDuplicateInitialSyncMailboxes: skippedInitialSyncMailboxCount,

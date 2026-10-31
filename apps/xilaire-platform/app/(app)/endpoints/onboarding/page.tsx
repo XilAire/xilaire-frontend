@@ -15,10 +15,10 @@ export default function AgentOnboardingPage() {
       {/* Header */}
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-50">
+          <h1 className="text-2xl font-semibold text-slate-950 dark:text-slate-50">
             Agent onboarding
           </h1>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-600 dark:text-slate-400">
             Generate enrollment tokens and onboard new endpoints into your
             XilAire monitoring environment.
           </p>
@@ -26,19 +26,19 @@ export default function AgentOnboardingPage() {
 
         <Link
           href="/endpoints"
-          className="rounded-md border border-slate-700 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800"
+          className="rounded-md border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-medium text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
         >
           Back to endpoints
         </Link>
       </header>
 
       {/* Enrollment Tokens */}
-      <section className="rounded-2xl border border-slate-800 bg-slate-950/60 p-6 space-y-4">
+      <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/60 p-6 space-y-4">
         <div className="space-y-1">
-          <h2 className="text-sm font-semibold text-slate-200">
+          <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
             Enrollment tokens
           </h2>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-600 dark:text-slate-400">
             Use enrollment tokens to securely register new devices. Tokens are
             scoped to your organization, time-limited, and auditable.
           </p>

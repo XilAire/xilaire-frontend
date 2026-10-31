@@ -15,7 +15,7 @@ export default function SRTabs({ id, activeTab }: SRTabsProps) {
   ];
 
   return (
-    <div className="flex gap-6 border-b border-slate-800">
+    <div className="flex gap-6 border-b border-slate-200 dark:border-slate-800">
       {tabs.map((tab) => {
         const isActive = activeTab === tab.key;
 
@@ -26,7 +26,7 @@ export default function SRTabs({ id, activeTab }: SRTabsProps) {
             className={`pb-3 text-sm font-medium transition ${
               isActive
                 ? "text-white border-b-2 border-blue-500"
-                : "text-slate-400 hover:text-slate-200"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-200"
             }`}
           >
             {tab.label}

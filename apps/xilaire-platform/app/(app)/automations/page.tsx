@@ -102,8 +102,8 @@ export default async function AutomationsPage() {
       {/* Header */}
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-50">Automations</h1>
-          <p className="text-sm text-slate-400">
+          <h1 className="text-2xl font-semibold text-slate-950 dark:text-slate-50">Automations</h1>
+          <p className="text-sm text-slate-600 dark:text-slate-400">
             Overview of workflows, bots, and jobs running in your XilAire
             Platform.
           </p>
@@ -119,29 +119,29 @@ export default async function AutomationsPage() {
       </header>
 
       {/* Table */}
-      <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/40">
-        <table className="min-w-full divide-y divide-slate-800 text-sm">
-          <thead className="bg-slate-900/70">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-950/40">
+        <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800 text-sm">
+          <thead className="bg-slate-100/70 dark:bg-slate-900/70">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
                 Automation
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
                 Bot
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
                 Status
               </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
                 Description
               </th>
-              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
                 Created
               </th>
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-slate-900/60 bg-slate-950/40">
+          <tbody className="divide-y divide-slate-100/60 dark:divide-slate-900/60 bg-slate-50/40 dark:bg-slate-950/40">
             {automations.length === 0 && (
               <tr>
                 <td
@@ -155,10 +155,10 @@ export default async function AutomationsPage() {
             )}
 
             {automations.map((a) => (
-              <tr key={a.id} className="hover:bg-slate-900/60">
+              <tr key={a.id} className="hover:bg-slate-100/60 dark:hover:bg-slate-900/60">
                 <td className="px-4 py-3 align-top">
                   <div className="flex flex-col">
-                    <span className="text-sm font-medium text-slate-50">
+                    <span className="text-sm font-medium text-slate-950 dark:text-slate-50">
                       {a.name}
                     </span>
                     <span className="text-xs text-slate-500">
@@ -168,7 +168,7 @@ export default async function AutomationsPage() {
                 </td>
 
                 <td className="px-4 py-3 align-top">
-                  <span className="text-sm text-slate-200">
+                  <span className="text-sm text-slate-800 dark:text-slate-200">
                     {a.bots?.name ?? "—"}
                   </span>
                 </td>
@@ -177,11 +177,11 @@ export default async function AutomationsPage() {
                   <StatusBadge status={a.status} />
                 </td>
 
-                <td className="px-4 py-3 align-top text-xs text-slate-300">
+                <td className="px-4 py-3 align-top text-xs text-slate-700 dark:text-slate-300">
                   {a.description ?? "—"}
                 </td>
 
-                <td className="px-4 py-3 text-right align-top text-xs text-slate-400">
+                <td className="px-4 py-3 text-right align-top text-xs text-slate-600 dark:text-slate-400">
                   {new Date(a.created_at).toLocaleString()}
                 </td>
               </tr>

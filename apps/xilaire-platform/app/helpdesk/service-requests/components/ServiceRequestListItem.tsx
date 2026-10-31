@@ -67,8 +67,8 @@ export default function ServiceRequestListItem({
           type="checkbox"
           checked={selected}
           readOnly
-          className="h-4 w-4 rounded border-slate-600
-                     bg-slate-900 text-blue-500"
+          className="h-4 w-4 rounded border-slate-400 dark:border-slate-600
+                     bg-slate-50 dark:bg-slate-900 text-blue-500"
         />
       </div>
 
@@ -77,13 +77,13 @@ export default function ServiceRequestListItem({
         <p className="font-medium text-white">
           {request.title}
         </p>
-        <p className="text-xs text-slate-400 truncate">
+        <p className="text-xs text-slate-600 dark:text-slate-400 truncate">
           {request.description || "—"}
         </p>
       </div>
 
       {/* PRIORITY */}
-      <div className="col-span-2 capitalize text-slate-300">
+      <div className="col-span-2 capitalize text-slate-700 dark:text-slate-300">
         {request.priority ?? "—"}
       </div>
 
@@ -112,7 +112,7 @@ export default function ServiceRequestListItem({
             onClick={(e) => updateStatus(e, "closed")}
             className="inline-flex items-center gap-1
               rounded px-2 py-1 text-xs
-              bg-slate-600/20 text-slate-300
+              bg-slate-600/20 text-slate-700 dark:text-slate-300
               hover:bg-slate-600/30"
           >
             <XCircle size={14} />
@@ -122,7 +122,7 @@ export default function ServiceRequestListItem({
       </div>
 
       {/* CREATED */}
-      <div className="col-span-1 text-right text-xs text-slate-400">
+      <div className="col-span-1 text-right text-xs text-slate-600 dark:text-slate-400">
         {request.created_at
           ? new Date(request.created_at).toLocaleDateString()
           : "—"}

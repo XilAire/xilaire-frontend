@@ -424,7 +424,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const access = await requireVaultAccess(request, {
-      supportScope: "vault_read_only",
+      requiredVaultRoles: ["vault_admin", "vault_compliance_admin"],
     });
 
     const orgId = getAccessOrgId(access);

@@ -15,7 +15,7 @@ export default function ActivityLog({ ticketId }: { ticketId: string }) {
       case "priority_change":
         return <ArrowRight size={16} className="text-amber-300" />;
       default:
-        return <Wand2 size={16} className="text-slate-300" />;
+        return <Wand2 size={16} className="text-slate-700 dark:text-slate-300" />;
     }
   };
 
@@ -30,8 +30,8 @@ export default function ActivityLog({ ticketId }: { ticketId: string }) {
   }, [ticketId]);
 
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
-      <h3 className="text-sm font-semibold text-slate-50 mb-3">Activity</h3>
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/60 p-4">
+      <h3 className="text-sm font-semibold text-slate-950 dark:text-slate-50 mb-3">Activity</h3>
 
       <div className="space-y-3">
         {loading && (
@@ -47,12 +47,12 @@ export default function ActivityLog({ ticketId }: { ticketId: string }) {
         {logs.map((log) => (
           <div
             key={log.id}
-            className="flex items-start gap-3 rounded-lg bg-slate-900 p-3 border border-slate-800"
+            className="flex items-start gap-3 rounded-lg bg-slate-50 dark:bg-slate-900 p-3 border border-slate-200 dark:border-slate-800"
           >
             {iconForType(log.type)}
 
             <div className="flex-1">
-              <p className="text-slate-200 text-sm">
+              <p className="text-slate-800 dark:text-slate-200 text-sm">
                 {log.message}
               </p>
 

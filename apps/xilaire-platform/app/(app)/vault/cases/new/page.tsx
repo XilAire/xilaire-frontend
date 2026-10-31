@@ -127,9 +127,9 @@ export default async function NewVaultCasePage({
       : null;
 
   return (
-    <main className="min-h-screen bg-zinc-950 px-6 py-8 text-zinc-100">
+    <main className="min-h-screen bg-white dark:bg-zinc-950 px-6 py-8 text-zinc-900 dark:text-zinc-100">
       <div className="mx-auto flex max-w-4xl flex-col gap-6">
-        <section className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-6 shadow-xl">
+        <section className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 p-6 shadow-xl">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <p className="text-sm uppercase tracking-[0.3em] text-zinc-500">
@@ -138,7 +138,7 @@ export default async function NewVaultCasePage({
               <h1 className="mt-2 text-3xl font-semibold tracking-tight">
                 Create Case
               </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">
                 Create a new eDiscovery case. After the case is created, you can
                 add custodians, department mailboxes, and case admins.
               </p>
@@ -146,7 +146,7 @@ export default async function NewVaultCasePage({
 
             <Link
               href="/vault/cases"
-              className="inline-flex items-center justify-center rounded-xl border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-300 hover:bg-zinc-800"
+              className="inline-flex items-center justify-center rounded-xl border border-zinc-300 dark:border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
             >
               Back to cases
             </Link>
@@ -168,11 +168,11 @@ export default async function NewVaultCasePage({
 
         <form
           action={createVaultCase}
-          className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-6"
+          className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 p-6"
         >
           <div className="grid gap-6">
             <div>
-              <label className="text-sm text-zinc-400" htmlFor="name">
+              <label className="text-sm text-zinc-600 dark:text-zinc-400" htmlFor="name">
                 Case name
               </label>
               <input
@@ -180,12 +180,12 @@ export default async function NewVaultCasePage({
                 name="name"
                 required
                 placeholder="Example: HR Investigation - April 2026"
-                className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
               />
             </div>
 
             <div>
-              <label className="text-sm text-zinc-400" htmlFor="description">
+              <label className="text-sm text-zinc-600 dark:text-zinc-400" htmlFor="description">
                 Description
               </label>
               <textarea
@@ -193,20 +193,20 @@ export default async function NewVaultCasePage({
                 name="description"
                 rows={5}
                 placeholder="Describe the purpose of this case."
-                className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
               />
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">
               <div>
-                <label className="text-sm text-zinc-400" htmlFor="status">
+                <label className="text-sm text-zinc-600 dark:text-zinc-400" htmlFor="status">
                   Status
                 </label>
                 <select
                   id="status"
                   name="status"
                   defaultValue="open"
-                  className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-blue-500/60"
+                  className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-blue-500/60"
                 >
                   <option value="open">Open</option>
                   <option value="active">Active</option>
@@ -217,14 +217,14 @@ export default async function NewVaultCasePage({
               </div>
 
               <div>
-                <label className="text-sm text-zinc-400" htmlFor="priority">
+                <label className="text-sm text-zinc-600 dark:text-zinc-400" htmlFor="priority">
                   Priority
                 </label>
                 <select
                   id="priority"
                   name="priority"
                   defaultValue="normal"
-                  className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-blue-500/60"
+                  className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-blue-500/60"
                 >
                   <option value="low">Low</option>
                   <option value="normal">Normal</option>
@@ -238,7 +238,7 @@ export default async function NewVaultCasePage({
             <div className="grid gap-6 md:grid-cols-2">
               <div>
                 <label
-                  className="text-sm text-zinc-400"
+                  className="text-sm text-zinc-600 dark:text-zinc-400"
                   htmlFor="matterNumber"
                 >
                   Matter number
@@ -247,13 +247,13 @@ export default async function NewVaultCasePage({
                   id="matterNumber"
                   name="matterNumber"
                   placeholder="Optional"
-                  className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                  className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                 />
               </div>
 
               <div>
                 <label
-                  className="text-sm text-zinc-400"
+                  className="text-sm text-zinc-600 dark:text-zinc-400"
                   htmlFor="externalReference"
                 >
                   External reference
@@ -262,13 +262,13 @@ export default async function NewVaultCasePage({
                   id="externalReference"
                   name="externalReference"
                   placeholder="Optional"
-                  className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                  className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                 />
               </div>
             </div>
 
             <div>
-              <label className="text-sm text-zinc-400" htmlFor="notes">
+              <label className="text-sm text-zinc-600 dark:text-zinc-400" htmlFor="notes">
                 Internal notes
               </label>
               <textarea
@@ -276,14 +276,14 @@ export default async function NewVaultCasePage({
                 name="notes"
                 rows={4}
                 placeholder="Optional internal notes."
-                className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
               />
             </div>
 
-            <div className="flex flex-col-reverse gap-3 border-t border-zinc-800 pt-6 sm:flex-row sm:justify-end">
+            <div className="flex flex-col-reverse gap-3 border-t border-zinc-200 dark:border-zinc-800 pt-6 sm:flex-row sm:justify-end">
               <Link
                 href="/vault/cases"
-                className="inline-flex items-center justify-center rounded-xl border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-300 hover:bg-zinc-800"
+                className="inline-flex items-center justify-center rounded-xl border border-zinc-300 dark:border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
               >
                 Cancel
               </Link>

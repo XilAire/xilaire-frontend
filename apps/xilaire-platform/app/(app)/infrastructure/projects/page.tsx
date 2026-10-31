@@ -212,11 +212,11 @@ export default function InfrastructureProjectPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-200">
+          <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-200">
             Infrastructure Projects
           </h1>
 
-          <p className="text-slate-400 mt-1">
+          <p className="text-slate-600 dark:text-slate-400 mt-1">
             Active and pending infrastructure deployments.
           </p>
         </div>
@@ -239,9 +239,9 @@ export default function InfrastructureProjectPage() {
         </div>
       )}
 
-      <div className="rounded-xl border border-slate-800 bg-slate-900 overflow-hidden">
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center p-10 text-slate-400">
+          <div className="flex items-center justify-center p-10 text-slate-600 dark:text-slate-400">
             <Loader2 className="h-5 w-5 animate-spin mr-2" />
             Loading projects...
           </div>
@@ -251,7 +251,7 @@ export default function InfrastructureProjectPage() {
           </div>
         ) : (
           <table className="w-full text-sm">
-            <thead className="bg-slate-800 text-slate-400 uppercase text-xs">
+            <thead className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 uppercase text-xs">
               <tr>
                 <th className="text-left px-4 py-3">Project</th>
                 <th className="text-left px-4 py-3">Client</th>
@@ -267,13 +267,13 @@ export default function InfrastructureProjectPage() {
               {projects.map((project) => (
                 <tr
                   key={project.id}
-                  className="border-t border-slate-800 hover:bg-slate-800/50 transition"
+                  className="border-t border-slate-200 dark:border-slate-800 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition"
                 >
-                  <td className="px-4 py-3 font-medium text-slate-200">
+                  <td className="px-4 py-3 font-medium text-slate-800 dark:text-slate-200">
                     {project.project_name}
                   </td>
 
-                  <td className="px-4 py-3 text-slate-400">
+                  <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
                     {project.client_name}
                   </td>
 
@@ -285,7 +285,7 @@ export default function InfrastructureProjectPage() {
                     <BillingBadge status={project.billing_status} />
                   </td>
 
-                  <td className="px-4 py-3 text-right text-slate-300">
+                  <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300">
                     ${Number(project.project_value || 0).toLocaleString()}
                   </td>
 
@@ -312,18 +312,18 @@ export default function InfrastructureProjectPage() {
 
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-2xl rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 px-6 py-4">
+          <div className="w-full max-w-2xl rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 px-6 py-4">
               <div>
-                <h2 className="text-lg text-slate-100">Create New Project</h2>
-                <p className="text-sm text-slate-400 mt-1">
+                <h2 className="text-lg text-slate-900 dark:text-slate-100">Create New Project</h2>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
                   Add a new infrastructure project to the pipeline.
                 </p>
               </div>
 
               <button
                 onClick={closeCreateModal}
-                className="rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+                className="rounded-lg p-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-200"
                 aria-label="Close"
               >
                 <X size={18} />
@@ -339,7 +339,7 @@ export default function InfrastructureProjectPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs text-slate-400 mb-2">
+                  <label className="block text-xs text-slate-600 dark:text-slate-400 mb-2">
                     Client Name
                   </label>
                   <input
@@ -351,13 +351,13 @@ export default function InfrastructureProjectPage() {
                         client_name: e.target.value,
                       }))
                     }
-                    className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-500"
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 outline-none focus:border-sky-500"
                     placeholder="XilAire Technologies"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs text-slate-400 mb-2">
+                  <label className="block text-xs text-slate-600 dark:text-slate-400 mb-2">
                     Project Name
                   </label>
                   <input
@@ -369,14 +369,14 @@ export default function InfrastructureProjectPage() {
                         project_name: e.target.value,
                       }))
                     }
-                    className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-500"
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 outline-none focus:border-sky-500"
                     placeholder="Office Wiring"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs text-slate-400 mb-2">
+                <label className="block text-xs text-slate-600 dark:text-slate-400 mb-2">
                   Project Type
                 </label>
                 <select
@@ -387,7 +387,7 @@ export default function InfrastructureProjectPage() {
                       project_type: e.target.value,
                     }))
                   }
-                  className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-500"
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 outline-none focus:border-sky-500"
                 >
                   <option value="">Select project type</option>
                   <option value="Run Wires">Run Wires</option>
@@ -399,7 +399,7 @@ export default function InfrastructureProjectPage() {
               </div>
 
               <div>
-                <label className="block text-xs text-slate-400 mb-2">
+                <label className="block text-xs text-slate-600 dark:text-slate-400 mb-2">
                   Project Address
                 </label>
                 <textarea
@@ -411,12 +411,12 @@ export default function InfrastructureProjectPage() {
                     }))
                   }
                   rows={3}
-                  className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-500"
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 outline-none focus:border-sky-500"
                   placeholder="123 Main St, West Palm Beach, FL"
                 />
               </div>
 
-              <label className="flex items-center gap-3 text-sm text-slate-300">
+              <label className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-300">
                 <input
                   type="checkbox"
                   checked={form.permit_required}
@@ -426,17 +426,17 @@ export default function InfrastructureProjectPage() {
                       permit_required: e.target.checked,
                     }))
                   }
-                  className="h-4 w-4 rounded border-slate-600 bg-slate-800"
+                  className="h-4 w-4 rounded border-slate-400 dark:border-slate-600 bg-slate-100 dark:bg-slate-800"
                 />
                 Permit required
               </label>
             </div>
 
-            <div className="flex items-center justify-end gap-3 border-t border-slate-800 px-6 py-4">
+            <div className="flex items-center justify-end gap-3 border-t border-slate-200 dark:border-slate-800 px-6 py-4">
               <button
                 onClick={closeCreateModal}
                 disabled={creating}
-                className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800 disabled:opacity-50"
+                className="rounded-lg border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -465,11 +465,11 @@ function StatusBadge({ status }: { status: string }) {
     pending: "bg-amber-500/20 text-amber-400",
     cancelled: "bg-red-500/20 text-red-400",
     billing_hold: "bg-orange-500/20 text-orange-400",
-    pipeline: "bg-slate-700 text-slate-300",
+    pipeline: "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300",
   }
 
   return (
-    <span className={base + (map[status] ?? "bg-slate-700 text-slate-300")}>
+    <span className={base + (map[status] ?? "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300")}>
       {status}
     </span>
   )
@@ -481,12 +481,12 @@ function BillingBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
     paid: "bg-emerald-500/20 text-emerald-400",
     payment_failed: "bg-red-500/20 text-red-400",
-    cancelled: "bg-slate-700 text-slate-300",
-    inactive: "bg-slate-700 text-slate-300",
+    cancelled: "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300",
+    inactive: "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300",
   }
 
   return (
-    <span className={base + (map[status] ?? "bg-slate-700 text-slate-300")}>
+    <span className={base + (map[status] ?? "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300")}>
       {status}
     </span>
   )

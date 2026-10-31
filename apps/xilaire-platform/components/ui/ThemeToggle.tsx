@@ -4,31 +4,21 @@ import { useTheme } from "@/components/providers/ThemeProvider";
 import { Moon, Sun } from "lucide-react";
 
 interface ThemeToggleProps {
-  storageKey?: string; // 🔥 Allow per-layout theme keys
+  storageKey?: string;
 }
 
-export function ThemeToggle({ storageKey }: ThemeToggleProps) {
-  const { theme, setTheme, toggleTheme } = useTheme();
-
-  const handleClick = () => {
-    if (storageKey) {
-      // Override storage key for isolated theme contexts (marketing/app/helpdesk)
-      localStorage.setItem(storageKey, theme === "light" ? "dark" : "light");
-    }
-    toggleTheme();
-  };
-
+export function ThemeToggle({ storageKey: _storageKey }: ThemeToggleProps) {
+  // The enclosing ThemeProvider owns persistence and its storage key.
+  const { theme, toggleTheme } = useTheme();
   return (
     <button
-      onClick={handleClick}
-      className="rounded-md p-2 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
-      aria-label="Toggle theme"
+      type="button"
+      onClick={toggleTheme}
+      className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-700 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500 dark:text-slate-100 dark:hover:bg-slate-800"
+      aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
+      title={theme === "light" ? "Dark mode" : "Light mode"}
     >
-      {theme === "light" ? (
-        <Moon className="h-5 w-5 text-slate-700" />
-      ) : (
-        <Sun className="h-5 w-5 text-yellow-300" />
-      )}
+      {theme === "light" ? <Moon className="h-5 w-5" aria-hidden="true" /> : <Sun className="h-5 w-5" aria-hidden="true" />}
     </button>
   );
 }

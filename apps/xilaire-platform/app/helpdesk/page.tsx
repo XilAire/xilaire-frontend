@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import useSWR from "swr";
@@ -52,7 +52,7 @@ export default function HelpdeskDashboard() {
 
   return (
     <div>
-      <h1 className="mb-6 text-3xl font-bold text-white tracking-tight">
+      <h1 className="mb-6 text-3xl font-bold text-slate-950 dark:text-white tracking-tight">
         Help Desk Dashboard
       </h1>
 
@@ -61,7 +61,7 @@ export default function HelpdeskDashboard() {
           <Link
             key={i}
             href={card.href}
-            className="group relative rounded-xl bg-slate-900/80 border border-slate-800 
+            className="group relative rounded-xl bg-slate-100/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 
                        p-5 shadow-lg hover:shadow-sky-800/30 hover:border-sky-700/40 
                        transition-all cursor-pointer"
           >
@@ -71,12 +71,12 @@ export default function HelpdeskDashboard() {
             </div>
 
             {/* Label */}
-            <p className="text-slate-400 text-sm">{card.label}</p>
+            <p className="text-slate-600 dark:text-slate-400 text-sm">{card.label}</p>
 
             {/* Value */}
             <p
-              className="text-4xl font-bold text-white mt-2 tracking-tight 
-                         transition-all group-hover:text-sky-300"
+              className="text-4xl font-bold text-slate-950 dark:text-white mt-2 tracking-tight 
+                         transition-all group-hover:text-sky-700 dark:group-hover:text-sky-300"
             >
               {card.value}
             </p>
@@ -86,3 +86,4 @@ export default function HelpdeskDashboard() {
     </div>
   );
 }
+

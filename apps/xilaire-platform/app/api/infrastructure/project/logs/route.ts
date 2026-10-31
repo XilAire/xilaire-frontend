@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js"
 import { cookies } from "next/headers"
 
 export const runtime = "nodejs"
+export const dynamic = "force-dynamic";
 
 /* =================================================
    SUPABASE CLIENT

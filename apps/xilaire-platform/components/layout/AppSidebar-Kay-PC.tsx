@@ -238,7 +238,7 @@ export default function AppSidebar({
   }
 
   return (
-    <aside className="hidden w-64 flex-col border-r border-slate-800 bg-slate-950/90 px-3 py-4 md:flex">
+    <aside className="hidden w-64 flex-col border-r border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-950/90 px-3 py-4 md:flex">
       {/* -------------------------------------------------
          LOGO / HEADER
       ------------------------------------------------- */}
@@ -251,10 +251,10 @@ export default function AppSidebar({
           priority
         />
         <div>
-          <p className="text-sm font-semibold text-slate-200">
+          <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
             XilAire Platform
           </p>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-600 dark:text-slate-400">
             Operations & Automation
           </p>
         </div>
@@ -311,7 +311,7 @@ export default function AppSidebar({
                           "flex items-center justify-between rounded-lg px-2 py-2 transition " +
                           (active
                             ? "bg-sky-600/20 text-sky-300"
-                            : "text-slate-300 hover:bg-slate-900")
+                            : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900")
                         }
                       >
                         <span className="flex items-center gap-2">
@@ -320,7 +320,7 @@ export default function AppSidebar({
                         </span>
 
                         {typeof count === "number" && count > 0 && (
-                          <span className="rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-300">
+                          <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-xs text-slate-700 dark:text-slate-300">
                             {count}
                           </span>
                         )}
@@ -349,7 +349,7 @@ export default function AppSidebar({
                 "ml-5 mt-1 flex rounded-lg px-2 py-2 transition " +
                 (pathname.startsWith("/endpoints/onboarding")
                   ? "bg-sky-600/20 text-sky-300"
-                  : "text-slate-300 hover:bg-slate-900")
+                  : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900")
               }
             >
               Agent Onboarding
@@ -373,7 +373,7 @@ export default function AppSidebar({
                 "ml-5 mt-1 flex rounded-lg px-2 py-2 transition " +
                 (pathname.startsWith("/admin/settings")
                   ? "bg-sky-600/20 text-sky-300"
-                  : "text-slate-300 hover:bg-slate-900")
+                  : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900")
               }
             >
               Platform Settings
@@ -385,8 +385,8 @@ export default function AppSidebar({
       {/* -------------------------------------------------
          FOOTER
       ------------------------------------------------- */}
-      <div className="mt-auto border-t border-slate-800 pt-3 text-xs text-slate-500">
-        <p className="font-medium text-slate-300">
+      <div className="mt-auto border-t border-slate-200 dark:border-slate-800 pt-3 text-xs text-slate-500">
+        <p className="font-medium text-slate-700 dark:text-slate-300">
           {safeProfile.full_name}
         </p>
         <p className="mb-3 text-[11px]">{safeProfile.email}</p>
@@ -394,7 +394,7 @@ export default function AppSidebar({
         <button
           onClick={handleLogout}
           disabled={loading}
-          className="w-full rounded-lg bg-slate-800 px-3 py-2 text-left text-slate-300 hover:bg-slate-700 transition disabled:opacity-50"
+          className="w-full rounded-lg bg-slate-100 dark:bg-slate-800 px-3 py-2 text-left text-slate-700 dark:text-slate-300 hover:bg-slate-700 transition disabled:opacity-50"
         >
           {loading ? "Signing out…" : "Sign out"}
         </button>

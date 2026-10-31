@@ -283,7 +283,7 @@ function statusBadgeClasses(status: string | null | undefined) {
     return "border-rose-500/30 bg-rose-500/10 text-rose-300";
   }
 
-  return "border-slate-700 bg-slate-800 text-slate-300";
+  return "border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300";
 }
 
 function canVendorEdit(status: string | null | undefined) {
@@ -732,7 +732,7 @@ export default function VendorInvoiceDetailPage() {
   if (loading) {
     return (
       <div className="p-6">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-slate-400">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6 text-slate-600 dark:text-slate-400">
           Loading invoice details...
         </div>
       </div>
@@ -766,7 +766,7 @@ export default function VendorInvoiceDetailPage() {
           ← Back to Invoices
         </Link>
 
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-slate-300">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6 text-slate-700 dark:text-slate-300">
           Invoice not found.
         </div>
       </div>
@@ -784,23 +784,23 @@ export default function VendorInvoiceDetailPage() {
             ← Back to Invoices
           </Link>
 
-          <h1 className="text-2xl font-semibold text-slate-200">
+          <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-200">
             Invoice Details
           </h1>
 
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-600 dark:text-slate-400">
             Invoice ID: {invoice.id}
           </p>
 
           <div className="flex flex-wrap gap-2 text-xs text-slate-500">
             {isAdmin ? (
-              <span className="rounded-full border border-slate-800 bg-slate-900 px-3 py-1">
+              <span className="rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 py-1">
                 Admin org-wide view
               </span>
             ) : null}
 
             {!isAdmin && isVendor && viewerVendorName ? (
-              <span className="rounded-full border border-slate-800 bg-slate-900 px-3 py-1">
+              <span className="rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 py-1">
                 Vendor scope: {viewerVendorName}
               </span>
             ) : null}
@@ -814,7 +814,7 @@ export default function VendorInvoiceDetailPage() {
         <div className="flex flex-wrap gap-3">
           <Link
             href={`/vendor/projects/${invoice.project_id}`}
-            className="inline-flex items-center justify-center rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-slate-100 transition hover:bg-slate-800"
+            className="inline-flex items-center justify-center rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2 text-sm text-slate-900 dark:text-slate-100 transition hover:bg-slate-100 dark:hover:bg-slate-800"
           >
             Open Project
           </Link>
@@ -822,7 +822,7 @@ export default function VendorInvoiceDetailPage() {
           {invoice.estimate_id ? (
             <Link
               href={`/vendor/estimates/${invoice.estimate_id}`}
-              className="inline-flex items-center justify-center rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-slate-100 transition hover:bg-slate-800"
+              className="inline-flex items-center justify-center rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2 text-sm text-slate-900 dark:text-slate-100 transition hover:bg-slate-100 dark:hover:bg-slate-800"
             >
               Open Estimate
             </Link>
@@ -855,12 +855,12 @@ export default function VendorInvoiceDetailPage() {
         <MoneyCard label="Total Preview" value={effectiveTotalPreview} />
       </div>
 
-      <div className="rounded-2xl border border-slate-800 bg-slate-900">
-        <div className="border-b border-slate-800 px-6 py-5">
-          <h2 className="text-lg font-semibold text-slate-100">
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
+        <div className="border-b border-slate-200 dark:border-slate-800 px-6 py-5">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
             Invoice Details
           </h2>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
             Review and update invoice information below.
           </p>
         </div>
@@ -874,7 +874,7 @@ export default function VendorInvoiceDetailPage() {
                 value={form.invoice_number}
                 onChange={(e) => updateFormField("invoice_number", e.target.value)}
                 disabled={!canEditInvoice || isBusy}
-                className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 outline-none transition focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-11 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 text-sm text-slate-900 dark:text-slate-100 outline-none transition focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
               />
             </Field>
 
@@ -884,7 +884,7 @@ export default function VendorInvoiceDetailPage() {
                 value={form.status}
                 onChange={(e) => updateFormField("status", e.target.value)}
                 disabled={!canEditInvoice || isBusy}
-                className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 outline-none transition focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-11 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 text-sm text-slate-900 dark:text-slate-100 outline-none transition focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <option value="draft">Draft</option>
                 <option value="submitted">Submitted</option>
@@ -901,7 +901,7 @@ export default function VendorInvoiceDetailPage() {
                 value={form.issued_at}
                 onChange={(e) => updateFormField("issued_at", e.target.value)}
                 disabled={!canEditInvoice || isBusy}
-                className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 outline-none transition focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-11 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 text-sm text-slate-900 dark:text-slate-100 outline-none transition focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
               />
             </Field>
           </div>
@@ -914,7 +914,7 @@ export default function VendorInvoiceDetailPage() {
                 value={form.due_at}
                 onChange={(e) => updateFormField("due_at", e.target.value)}
                 disabled={!canEditInvoice || isBusy}
-                className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 outline-none transition focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-11 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 text-sm text-slate-900 dark:text-slate-100 outline-none transition focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
               />
             </Field>
 
@@ -925,13 +925,13 @@ export default function VendorInvoiceDetailPage() {
                 value={form.paid_at}
                 onChange={(e) => updateFormField("paid_at", e.target.value)}
                 disabled={!isAdmin || isBusy}
-                className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 outline-none transition focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-11 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 text-sm text-slate-900 dark:text-slate-100 outline-none transition focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
               />
             </Field>
 
             <Field>
               <Label>Estimate Status</Label>
-              <div className="flex h-11 items-center rounded-xl border border-slate-800 bg-slate-950 px-3 text-sm text-slate-300">
+              <div className="flex h-11 items-center rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 text-sm text-slate-700 dark:text-slate-300">
                 {formatStatus(invoice.estimate_status)}
               </div>
             </Field>
@@ -946,7 +946,7 @@ export default function VendorInvoiceDetailPage() {
                 value={form.subtotal}
                 onChange={(e) => updateFormField("subtotal", normalizeMoneyInput(e.target.value))}
                 disabled={!canEditInvoice || isBusy}
-                className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 outline-none transition focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-11 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 text-sm text-slate-900 dark:text-slate-100 outline-none transition focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
               />
             </Field>
 
@@ -958,7 +958,7 @@ export default function VendorInvoiceDetailPage() {
                 value={form.tax}
                 onChange={(e) => updateFormField("tax", normalizeMoneyInput(e.target.value))}
                 disabled={!canEditInvoice || isBusy}
-                className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 outline-none transition focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-11 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 text-sm text-slate-900 dark:text-slate-100 outline-none transition focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
               />
             </Field>
 
@@ -970,7 +970,7 @@ export default function VendorInvoiceDetailPage() {
                 value={form.total}
                 onChange={(e) => updateFormField("total", normalizeMoneyInput(e.target.value))}
                 disabled={!canEditInvoice || isBusy}
-                className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 outline-none transition focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-11 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 text-sm text-slate-900 dark:text-slate-100 outline-none transition focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
               />
             </Field>
           </div>
@@ -982,19 +982,19 @@ export default function VendorInvoiceDetailPage() {
               onChange={(e) => updateFormField("notes", e.target.value)}
               rows={5}
               disabled={!canEditInvoice || isBusy}
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-3 text-sm text-slate-100 outline-none transition focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-3 text-sm text-slate-900 dark:text-slate-100 outline-none transition focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
             />
           </Field>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-800 bg-slate-900">
-        <div className="flex items-center justify-between border-b border-slate-800 px-6 py-5">
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 px-6 py-5">
           <div>
-            <h2 className="text-lg font-semibold text-slate-100">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
               Invoice Items
             </h2>
-            <p className="mt-1 text-sm text-slate-400">
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
               Manage the invoice item breakdown and totals.
             </p>
           </div>
@@ -1015,7 +1015,7 @@ export default function VendorInvoiceDetailPage() {
           {form.items.map((item, index) => (
             <div
               key={item.id || `new-${index}`}
-              className="rounded-xl border border-slate-800 bg-slate-950 p-4"
+              className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4"
             >
               <div className="grid gap-4 md:grid-cols-12">
                 <div className="md:col-span-5">
@@ -1027,7 +1027,7 @@ export default function VendorInvoiceDetailPage() {
                     value={item.description}
                     onChange={(e) => updateItemField(index, "description", e.target.value)}
                     disabled={!canEditInvoice || isBusy}
-                    className="h-11 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100 outline-none transition focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="h-11 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 text-sm text-slate-900 dark:text-slate-100 outline-none transition focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
                   />
                 </div>
 
@@ -1041,7 +1041,7 @@ export default function VendorInvoiceDetailPage() {
                     value={item.quantity}
                     onChange={(e) => updateItemField(index, "quantity", e.target.value)}
                     disabled={!canEditInvoice || isBusy}
-                    className="h-11 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100 outline-none transition focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="h-11 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 text-sm text-slate-900 dark:text-slate-100 outline-none transition focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
                   />
                 </div>
 
@@ -1055,7 +1055,7 @@ export default function VendorInvoiceDetailPage() {
                     value={item.unit_price}
                     onChange={(e) => updateItemField(index, "unit_price", e.target.value)}
                     disabled={!canEditInvoice || isBusy}
-                    className="h-11 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100 outline-none transition focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="h-11 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 text-sm text-slate-900 dark:text-slate-100 outline-none transition focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
                   />
                 </div>
 
@@ -1069,7 +1069,7 @@ export default function VendorInvoiceDetailPage() {
                     value={item.total}
                     onChange={(e) => updateItemField(index, "total", e.target.value)}
                     disabled={!canEditInvoice || isBusy}
-                    className="h-11 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100 outline-none transition focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="h-11 w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 text-sm text-slate-900 dark:text-slate-100 outline-none transition focus:border-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
                   />
                 </div>
 
@@ -1171,7 +1171,7 @@ export default function VendorInvoiceDetailPage() {
               type="button"
               onClick={() => handleStatusAction("draft")}
               disabled={isBusy}
-              className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-700 bg-slate-950 px-5 text-sm font-medium text-slate-200 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-5 text-sm font-medium text-slate-800 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {statusLoading ? "Updating..." : "Return to Draft"}
             </button>
@@ -1202,11 +1202,11 @@ function MetricCard({
   value: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5">
       <p className="text-xs uppercase tracking-[0.16em] text-slate-500">
         {label}
       </p>
-      <p className="mt-2 text-sm text-slate-100">{value}</p>
+      <p className="mt-2 text-sm text-slate-900 dark:text-slate-100">{value}</p>
     </div>
   );
 }
@@ -1219,11 +1219,11 @@ function MoneyCard({
   value: number;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5">
       <p className="text-xs uppercase tracking-[0.16em] text-slate-500">
         {label}
       </p>
-      <p className="mt-2 text-xl font-semibold text-slate-100">
+      <p className="mt-2 text-xl font-semibold text-slate-900 dark:text-slate-100">
         {formatCurrency(value)}
       </p>
     </div>

@@ -151,9 +151,9 @@ export default async function VaultEmlImportPage({
       : null;
 
   return (
-    <main className="min-h-screen bg-zinc-950 px-6 py-8 text-zinc-100">
+    <main className="min-h-screen bg-white dark:bg-zinc-950 px-6 py-8 text-zinc-900 dark:text-zinc-100">
       <div className="mx-auto flex max-w-6xl flex-col gap-6">
-        <section className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-6 shadow-xl">
+        <section className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 p-6 shadow-xl">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <p className="text-sm uppercase tracking-[0.3em] text-zinc-500">
@@ -164,7 +164,7 @@ export default async function VaultEmlImportPage({
                 EML Import
               </h1>
 
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">
                 Register uploaded EML/RFC822 files for Vault ingestion. This
                 creates a manual upload source, links the EML file to a mailbox
                 target, and queues EML parse/import jobs for processing.
@@ -174,14 +174,14 @@ export default async function VaultEmlImportPage({
             <div className="flex flex-wrap gap-2">
               <Link
                 href="/vault"
-                className="inline-flex rounded-xl border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-300 hover:bg-zinc-800"
+                className="inline-flex rounded-xl border border-zinc-300 dark:border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
               >
                 Vault overview
               </Link>
 
               <Link
                 href="/vault/sources"
-                className="inline-flex rounded-xl border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-300 hover:bg-zinc-800"
+                className="inline-flex rounded-xl border border-zinc-300 dark:border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
               >
                 Sources
               </Link>
@@ -216,9 +216,9 @@ export default async function VaultEmlImportPage({
         )}
 
         <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70">
-            <div className="border-b border-zinc-800 px-5 py-4">
-              <h2 className="text-lg font-semibold text-zinc-100">
+          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70">
+            <div className="border-b border-zinc-200 dark:border-zinc-800 px-5 py-4">
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
                 Register EML Import
               </h2>
 
@@ -233,7 +233,7 @@ export default async function VaultEmlImportPage({
                 <div>
                   <label
                     htmlFor="name"
-                    className="text-sm font-medium text-zinc-300"
+                    className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                   >
                     Import display name
                   </label>
@@ -242,14 +242,14 @@ export default async function VaultEmlImportPage({
                     id="name"
                     name="name"
                     placeholder="EML Import - Evidence Message"
-                    className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                    className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                   />
                 </div>
 
                 <div>
                   <label
                     htmlFor="sourceKey"
-                    className="text-sm font-medium text-zinc-300"
+                    className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                   >
                     Source key
                   </label>
@@ -258,14 +258,14 @@ export default async function VaultEmlImportPage({
                     id="sourceKey"
                     name="sourceKey"
                     placeholder="eml-evidence-message"
-                    className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                    className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                   />
                 </div>
 
                 <div>
                   <label
                     htmlFor="mailboxAddress"
-                    className="text-sm font-medium text-zinc-300"
+                    className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                   >
                     Mailbox address
                   </label>
@@ -275,14 +275,14 @@ export default async function VaultEmlImportPage({
                     name="mailboxAddress"
                     placeholder="jsmith@company.com"
                     required
-                    className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                    className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                   />
                 </div>
 
                 <div>
                   <label
                     htmlFor="displayName"
-                    className="text-sm font-medium text-zinc-300"
+                    className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                   >
                     Mailbox display name
                   </label>
@@ -291,13 +291,13 @@ export default async function VaultEmlImportPage({
                     id="displayName"
                     name="displayName"
                     placeholder="John Smith"
-                    className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                    className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                   />
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4">
-                <p className="text-sm font-medium text-zinc-200">
+              <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-950/70 p-4">
+                <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
                   EML file location
                 </p>
 
@@ -305,7 +305,7 @@ export default async function VaultEmlImportPage({
                   <div>
                     <label
                       htmlFor="fileName"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       File name
                     </label>
@@ -315,14 +315,14 @@ export default async function VaultEmlImportPage({
                       name="fileName"
                       placeholder="evidence-message.eml"
                       required
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="fileSizeBytes"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       File size bytes
                     </label>
@@ -332,14 +332,14 @@ export default async function VaultEmlImportPage({
                       name="fileSizeBytes"
                       type="number"
                       placeholder="1048576"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="storageBucket"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Storage bucket
                     </label>
@@ -349,14 +349,14 @@ export default async function VaultEmlImportPage({
                       name="storageBucket"
                       defaultValue="vault-imports"
                       required
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="storagePath"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Storage path
                     </label>
@@ -366,14 +366,14 @@ export default async function VaultEmlImportPage({
                       name="storagePath"
                       placeholder="org-id/eml/evidence-message.eml"
                       required
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="contentType"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Content type
                     </label>
@@ -382,14 +382,14 @@ export default async function VaultEmlImportPage({
                       id="contentType"
                       name="contentType"
                       defaultValue="message/rfc822"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="sha256"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       SHA256 hash
                     </label>
@@ -398,14 +398,14 @@ export default async function VaultEmlImportPage({
                       id="sha256"
                       name="sha256"
                       placeholder="Optional chain-of-custody hash"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                   </div>
 
                   <div className="md:col-span-2">
                     <label
                       htmlFor="originalPath"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Original path
                     </label>
@@ -414,14 +414,14 @@ export default async function VaultEmlImportPage({
                       id="originalPath"
                       name="originalPath"
                       placeholder="Original workstation/share path, if known"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                   </div>
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4">
-                <p className="text-sm font-medium text-zinc-200">
+              <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-950/70 p-4">
+                <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
                   Import behavior
                 </p>
 
@@ -429,7 +429,7 @@ export default async function VaultEmlImportPage({
                   <div>
                     <label
                       htmlFor="importMode"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Import mode
                     </label>
@@ -438,7 +438,7 @@ export default async function VaultEmlImportPage({
                       id="importMode"
                       name="importMode"
                       defaultValue="full_import"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-blue-500/60"
                     >
                       <option value="full_import">Full import</option>
                       <option value="metadata_only">Metadata only</option>
@@ -449,7 +449,7 @@ export default async function VaultEmlImportPage({
                   <div>
                     <label
                       htmlFor="syncMode"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Sync mode
                     </label>
@@ -458,7 +458,7 @@ export default async function VaultEmlImportPage({
                       id="syncMode"
                       name="syncMode"
                       defaultValue="manual"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-blue-500/60"
                     >
                       <option value="manual">Manual</option>
                       <option value="scheduled">Scheduled</option>
@@ -467,13 +467,13 @@ export default async function VaultEmlImportPage({
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4">
-                <p className="text-sm font-medium text-zinc-200">
+              <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-950/70 p-4">
+                <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
                   Retention and hold defaults
                 </p>
 
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <label className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-300">
+                  <label className="flex items-center gap-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300">
                     <input
                       type="checkbox"
                       name="applyDefaultRetention"
@@ -482,7 +482,7 @@ export default async function VaultEmlImportPage({
                     Apply default retention
                   </label>
 
-                  <label className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-300">
+                  <label className="flex items-center gap-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300">
                     <input
                       type="checkbox"
                       name="legalHoldByDefault"
@@ -494,7 +494,7 @@ export default async function VaultEmlImportPage({
                   <div className="md:col-span-2">
                     <label
                       htmlFor="defaultRetentionDays"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Default retention days
                     </label>
@@ -504,7 +504,7 @@ export default async function VaultEmlImportPage({
                       name="defaultRetentionDays"
                       type="number"
                       placeholder="2555"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                   </div>
                 </div>
@@ -520,22 +520,22 @@ export default async function VaultEmlImportPage({
           </div>
 
           <aside className="flex flex-col gap-6">
-            <section className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
-              <h2 className="text-lg font-semibold text-zinc-100">
+            <section className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 p-5">
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
                 EML import workflow
               </h2>
 
-              <div className="mt-4 grid gap-3 text-sm text-zinc-400">
-                <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
-                  <p className="font-medium text-zinc-200">1. Upload EML</p>
+              <div className="mt-4 grid gap-3 text-sm text-zinc-600 dark:text-zinc-400">
+                <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-4">
+                  <p className="font-medium text-zinc-800 dark:text-zinc-200">1. Upload EML</p>
                   <p className="mt-1">
                     Upload the EML/RFC822 file into your Vault import storage
                     bucket.
                   </p>
                 </div>
 
-                <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
-                  <p className="font-medium text-zinc-200">
+                <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-4">
+                  <p className="font-medium text-zinc-800 dark:text-zinc-200">
                     2. Register import
                   </p>
                   <p className="mt-1">
@@ -543,15 +543,15 @@ export default async function VaultEmlImportPage({
                   </p>
                 </div>
 
-                <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
-                  <p className="font-medium text-zinc-200">3. Queue jobs</p>
+                <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-4">
+                  <p className="font-medium text-zinc-800 dark:text-zinc-200">3. Queue jobs</p>
                   <p className="mt-1">
                     Vault queues eml_parse and eml_import jobs.
                   </p>
                 </div>
 
-                <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
-                  <p className="font-medium text-zinc-200">
+                <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-4">
+                  <p className="font-medium text-zinc-800 dark:text-zinc-200">
                     4. Process evidence
                   </p>
                   <p className="mt-1">
@@ -562,12 +562,12 @@ export default async function VaultEmlImportPage({
               </div>
             </section>
 
-            <section className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
-              <h2 className="text-lg font-semibold text-zinc-100">
+            <section className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 p-5">
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
                 Required fields
               </h2>
 
-              <div className="mt-4 grid gap-2 text-sm text-zinc-400">
+              <div className="mt-4 grid gap-2 text-sm text-zinc-600 dark:text-zinc-400">
                 <p>Mailbox address</p>
                 <p>File name</p>
                 <p>Storage bucket</p>
@@ -575,15 +575,15 @@ export default async function VaultEmlImportPage({
               </div>
             </section>
 
-            <section className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
-              <h2 className="text-lg font-semibold text-zinc-100">
+            <section className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 p-5">
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
                 After creation
               </h2>
 
               <div className="mt-4 flex flex-wrap gap-2">
                 <Link
                   href="/vault/sources"
-                  className="inline-flex rounded-xl border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-300 hover:bg-zinc-800"
+                  className="inline-flex rounded-xl border border-zinc-300 dark:border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                 >
                   View sources
                 </Link>
@@ -597,7 +597,7 @@ export default async function VaultEmlImportPage({
 
                 <Link
                   href="/vault/imports/pst"
-                  className="inline-flex rounded-xl border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-300 hover:bg-zinc-800"
+                  className="inline-flex rounded-xl border border-zinc-300 dark:border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                 >
                   PST imports
                 </Link>

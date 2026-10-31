@@ -153,7 +153,7 @@ export default function SlaPage() {
           .
         </p>
 
-        <p className="mt-6 text-[11px] text-slate-400">
+        <p className="mt-6 text-[11px] text-slate-600 dark:text-slate-400">
           This SLA outlines general targets and does not override any specific
           commitments documented in a signed master agreement or statement of
           work.

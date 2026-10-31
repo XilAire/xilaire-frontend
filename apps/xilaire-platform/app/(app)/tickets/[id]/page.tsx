@@ -110,20 +110,20 @@ export default async function TicketPage({ params }: TicketPageProps) {
             Tickets
           </Link>{" "}
           <span className="text-slate-600">/</span>{" "}
-          <span className="font-mono text-slate-400 text-[11px]">
+          <span className="font-mono text-slate-600 dark:text-slate-400 text-[11px]">
             {ticket.id}
           </span>
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="space-y-1">
-            <h1 className="text-2xl font-semibold text-slate-50">
+            <h1 className="text-2xl font-semibold text-slate-950 dark:text-slate-50">
               {ticket.title || "Untitled ticket"}
             </h1>
             {ticket.requester_email && (
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-600 dark:text-slate-400">
                 Requester:{" "}
-                <span className="font-medium text-slate-100">
+                <span className="font-medium text-slate-900 dark:text-slate-100">
                   {ticket.requester_email}
                 </span>
               </p>
@@ -154,7 +154,7 @@ export default async function TicketPage({ params }: TicketPageProps) {
                     ? "bg-rose-500/15 text-rose-300"
                     : ticket.priority === "medium"
                     ? "bg-amber-500/15 text-amber-300"
-                    : "bg-slate-500/15 text-slate-300"
+                    : "bg-slate-500/15 text-slate-700 dark:text-slate-300"
                 }
               `}
             >
@@ -167,9 +167,9 @@ export default async function TicketPage({ params }: TicketPageProps) {
       {/* Main content card */}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr),minmax(0,1fr)]">
         {/* Description / body */}
-        <section className="rounded-2xl border border-slate-800 bg-slate-950/60 p-5">
-          <h2 className="text-sm font-semibold text-slate-50">Details</h2>
-          <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-slate-200">
+        <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/60 p-5">
+          <h2 className="text-sm font-semibold text-slate-950 dark:text-slate-50">Details</h2>
+          <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-slate-800 dark:text-slate-200">
             {ticket.description || "No description provided."}
           </p>
         </section>
@@ -184,28 +184,28 @@ export default async function TicketPage({ params }: TicketPageProps) {
           />
 
           {/* Metadata card */}
-          <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4 text-xs text-slate-300">
-            <h3 className="text-sm font-semibold text-slate-50">
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/60 p-4 text-xs text-slate-700 dark:text-slate-300">
+            <h3 className="text-sm font-semibold text-slate-950 dark:text-slate-50">
               Ticket metadata
             </h3>
             <dl className="mt-3 space-y-2">
               <div className="flex justify-between gap-4">
                 <dt className="text-slate-500">Created</dt>
-                <dd className="text-right text-slate-200">{created}</dd>
+                <dd className="text-right text-slate-800 dark:text-slate-200">{created}</dd>
               </div>
               <div className="flex justify-between gap-4">
                 <dt className="text-slate-500">Last updated</dt>
-                <dd className="text-right text-slate-200">{updated}</dd>
+                <dd className="text-right text-slate-800 dark:text-slate-200">{updated}</dd>
               </div>
               <div className="flex justify-between gap-4">
                 <dt className="text-slate-500">Bot</dt>
-                <dd className="text-right text-slate-200">
+                <dd className="text-right text-slate-800 dark:text-slate-200">
                   {ticket.bot_id || "Not assigned"}
                 </dd>
               </div>
               <div className="flex justify-between gap-4">
                 <dt className="text-slate-500">Ticket ID</dt>
-                <dd className="text-right font-mono text-[11px] text-slate-400">
+                <dd className="text-right font-mono text-[11px] text-slate-600 dark:text-slate-400">
                   {ticket.id}
                 </dd>
               </div>

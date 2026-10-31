@@ -108,52 +108,52 @@ export default async function AdminSettingsPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-10">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-100">
+        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
           Platform Settings
         </h1>
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-slate-600 dark:text-slate-400">
           Restricted to Master Administrators
         </p>
       </div>
 
-      <div className="rounded-lg border border-slate-800 bg-slate-900/60 px-4 py-3 text-sm text-slate-300">
+      <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-900/60 px-4 py-3 text-sm text-slate-700 dark:text-slate-300">
         <strong>Apply Window Status:</strong>{" "}
         {withinApplyWindow ? "Active" : "Inactive"}
       </div>
 
       {/* APPLY WINDOWS */}
-      <div className="rounded-xl border border-slate-800 bg-slate-900/60">
-        <div className="border-b border-slate-800 px-6 py-4">
-          <h2 className="text-sm font-semibold text-slate-200">
+      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-900/60">
+        <div className="border-b border-slate-200 dark:border-slate-800 px-6 py-4">
+          <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
             Apply Windows
           </h2>
         </div>
 
-        <div className="divide-y divide-slate-800">
+        <div className="divide-y divide-slate-200 dark:divide-slate-800">
           {applyWindows.map((w) => (
             <div
               key={w.id}
-              className="flex items-center justify-between px-6 py-4 text-sm text-slate-300"
+              className="flex items-center justify-between px-6 py-4 text-sm text-slate-700 dark:text-slate-300"
             >
               <p>
                 {new Date(w.starts_at).toLocaleString()} →{" "}
                 {new Date(w.ends_at).toLocaleString()}
               </p>
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-slate-600 dark:text-slate-400">
                 {w.active ? "Active" : "Closed"}
               </span>
             </div>
           ))}
         </div>
 
-        <div className="border-t border-slate-800 px-6 py-4">
+        <div className="border-t border-slate-200 dark:border-slate-800 px-6 py-4">
           {!activeApplyWindow ? (
             <form action={openApplyWindow} className="flex flex-wrap gap-3">
               <input
                 type="datetime-local"
                 name="starts_at"
                 required
-                className="h-10 rounded-md bg-slate-900 border border-slate-700 px-3 text-sm text-slate-100
+                className="h-10 rounded-md bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 px-3 text-sm text-slate-900 dark:text-slate-100
                            focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500"
               />
 
@@ -162,7 +162,7 @@ export default async function AdminSettingsPage() {
                 name="ends_at"
                 required
                 min={minEndTime}
-                className="h-10 rounded-md bg-slate-900 border border-slate-700 px-3 text-sm text-slate-100
+                className="h-10 rounded-md bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 px-3 text-sm text-slate-900 dark:text-slate-100
                            focus:outline-none focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500"
               />
 

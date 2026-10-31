@@ -26,10 +26,10 @@ export default function ServiceRequestBulkBar({
 
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2
-      bg-slate-900 border border-slate-700 rounded-xl
+      bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl
       shadow-xl px-4 py-3 flex items-center gap-3 z-50">
 
-      <span className="text-sm text-slate-300">
+      <span className="text-sm text-slate-700 dark:text-slate-300">
         {selectedCount} selected
       </span>
 
@@ -45,7 +45,7 @@ export default function ServiceRequestBulkBar({
       <button
         onClick={onClose}
         className="flex items-center gap-1 px-3 py-1.5
-          rounded bg-slate-600/20 text-slate-300 text-sm"
+          rounded bg-slate-600/20 text-slate-700 dark:text-slate-300 text-sm"
       >
         <XCircle size={14} />
         Close

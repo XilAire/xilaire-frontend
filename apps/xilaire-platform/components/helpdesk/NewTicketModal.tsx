@@ -44,12 +44,12 @@ export default function NewTicketModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-      <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 w-full max-w-lg shadow-2xl">
+      <div className="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl p-6 w-full max-w-lg shadow-2xl">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl text-white font-semibold">Create new ticket</h2>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-white text-xl"
+            className="text-slate-600 dark:text-slate-400 hover:text-white text-xl"
           >
             ×
           </button>
@@ -60,9 +60,9 @@ export default function NewTicketModal({ onClose }: { onClose: () => void }) {
         <form onSubmit={handleCreate} className="space-y-4">
           {/* Title */}
           <div>
-            <label className="text-slate-300 text-sm mb-1 block">Title</label>
+            <label className="text-slate-700 dark:text-slate-300 text-sm mb-1 block">Title</label>
             <input
-              className="w-full px-3 py-2 rounded bg-slate-800 border border-slate-700 text-white"
+              className="w-full px-3 py-2 rounded bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               required
@@ -71,11 +71,11 @@ export default function NewTicketModal({ onClose }: { onClose: () => void }) {
 
           {/* Requester Email */}
           <div>
-            <label className="text-slate-300 text-sm mb-1 block">
+            <label className="text-slate-700 dark:text-slate-300 text-sm mb-1 block">
               Requester Email
             </label>
             <input
-              className="w-full px-3 py-2 rounded bg-slate-800 border border-slate-700 text-white"
+              className="w-full px-3 py-2 rounded bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="user@example.com (optional)"
@@ -84,9 +84,9 @@ export default function NewTicketModal({ onClose }: { onClose: () => void }) {
 
           {/* Priority */}
           <div>
-            <label className="text-slate-300 text-sm mb-1 block">Priority</label>
+            <label className="text-slate-700 dark:text-slate-300 text-sm mb-1 block">Priority</label>
             <select
-              className="w-full px-3 py-2 rounded bg-slate-800 border border-slate-700 text-white"
+              className="w-full px-3 py-2 rounded bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
               value={priority}
               onChange={(e) => setPriority(e.target.value)}
             >
@@ -99,12 +99,12 @@ export default function NewTicketModal({ onClose }: { onClose: () => void }) {
 
           {/* Description */}
           <div>
-            <label className="text-slate-300 text-sm mb-1 block">
+            <label className="text-slate-700 dark:text-slate-300 text-sm mb-1 block">
               Description
             </label>
             <textarea
               rows={4}
-              className="w-full px-3 py-2 rounded bg-slate-800 border border-slate-700 text-white"
+              className="w-full px-3 py-2 rounded bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
@@ -115,7 +115,7 @@ export default function NewTicketModal({ onClose }: { onClose: () => void }) {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded text-white"
+              className="px-4 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-600 rounded text-slate-900 dark:text-white"
             >
               Cancel
             </button>

@@ -37,10 +37,10 @@ export default function EditChangeRequestModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-2xl shadow-xl p-6 relative">
+      <div className="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl w-full max-w-2xl shadow-xl p-6 relative">
         {/* Close button */}
         <button
-          className="absolute top-4 right-4 text-slate-400 hover:text-white"
+          className="absolute top-4 right-4 text-slate-600 dark:text-slate-400 hover:text-white"
           onClick={onClose}
         >
           <X size={20} />
@@ -51,37 +51,37 @@ export default function EditChangeRequestModal({
         {/* FORM */}
         <div className="space-y-4">
           <div>
-            <label className="text-sm text-slate-300">Title</label>
+            <label className="text-sm text-slate-700 dark:text-slate-300">Title</label>
             <input
               type="text"
-              className="w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white"
+              className="w-full mt-1 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
           </div>
 
           <div>
-            <label className="text-sm text-slate-300">Description</label>
+            <label className="text-sm text-slate-700 dark:text-slate-300">Description</label>
             <textarea
-              className="w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white h-24"
+              className="w-full mt-1 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white h-24"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
           </div>
 
           <div>
-            <label className="text-sm text-slate-300">Implementation Plan</label>
+            <label className="text-sm text-slate-700 dark:text-slate-300">Implementation Plan</label>
             <textarea
-              className="w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white h-24"
+              className="w-full mt-1 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white h-24"
               value={implementationPlan}
               onChange={(e) => setImplementationPlan(e.target.value)}
             />
           </div>
 
           <div>
-            <label className="text-sm text-slate-300">Rollback Plan</label>
+            <label className="text-sm text-slate-700 dark:text-slate-300">Rollback Plan</label>
             <textarea
-              className="w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white h-24"
+              className="w-full mt-1 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white h-24"
               value={rollbackPlan}
               onChange={(e) => setRollbackPlan(e.target.value)}
             />
@@ -91,7 +91,7 @@ export default function EditChangeRequestModal({
         {/* BUTTONS */}
         <div className="flex justify-end gap-3 mt-6">
           <button
-            className="px-4 py-2 bg-slate-700 text-slate-200 rounded-lg hover:bg-slate-600"
+            className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-lg hover:bg-slate-600"
             onClick={onClose}
           >
             Cancel

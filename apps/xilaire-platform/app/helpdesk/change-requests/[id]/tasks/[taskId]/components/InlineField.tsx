@@ -127,17 +127,17 @@ export default function InlineField({
   --------------------------------------------------------- */
   return (
     <div className="space-y-1">
-      <label className="text-xs text-slate-400">{label}</label>
+      <label className="text-xs text-slate-600 dark:text-slate-400">{label}</label>
 
       {!editing ? (
         <div
           onClick={() => setEditing(true)}
           className="flex items-center gap-2 cursor-pointer rounded
-            border border-slate-700 bg-slate-900/40 px-3 py-2
-            text-sm hover:bg-slate-800"
+            border border-slate-300 dark:border-slate-700 bg-slate-100/40 dark:bg-slate-900/40 px-3 py-2
+            text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
         >
           {(field === "startDate" || field === "endDate") && (
-            <Calendar size={14} className="text-slate-400" />
+            <Calendar size={14} className="text-slate-600 dark:text-slate-400" />
           )}
           {displayValue}
         </div>
@@ -145,8 +145,8 @@ export default function InlineField({
         <div className="flex gap-2 items-start">
           {field === "assignedTo" ? (
             <select
-              className="flex-1 rounded border border-slate-700
-                bg-slate-900 px-2 py-1 text-sm"
+              className="flex-1 rounded border border-slate-300 dark:border-slate-700
+                bg-slate-50 dark:bg-slate-900 px-2 py-1 text-sm"
               value={draft ?? ""}
               onChange={(e) => setDraft(e.target.value || null)}
             >
@@ -166,15 +166,15 @@ export default function InlineField({
               showTimeSelect
               timeIntervals={15}
               dateFormat="MMM d, yyyy h:mm aa"
-              className="w-full rounded border border-slate-700
-                bg-slate-900 px-2 py-1 text-sm text-white"
+              className="w-full rounded border border-slate-300 dark:border-slate-700
+                bg-slate-50 dark:bg-slate-900 px-2 py-1 text-sm text-slate-900 dark:text-white"
               calendarClassName="!bg-slate-900 !text-white"
               popperClassName="z-50"
             />
           ) : field === "outageExpected" ? (
             <select
-              className="flex-1 rounded border border-slate-700
-                bg-slate-900 px-2 py-1 text-sm"
+              className="flex-1 rounded border border-slate-300 dark:border-slate-700
+                bg-slate-50 dark:bg-slate-900 px-2 py-1 text-sm"
               value={draft ? "true" : "false"}
               onChange={(e) =>
                 setDraft(e.target.value === "true")
@@ -185,8 +185,8 @@ export default function InlineField({
             </select>
           ) : field.endsWith("Plan") || field === "description" ? (
             <textarea
-              className="flex-1 rounded border border-slate-700
-                bg-slate-900 px-2 py-1 text-sm"
+              className="flex-1 rounded border border-slate-300 dark:border-slate-700
+                bg-slate-50 dark:bg-slate-900 px-2 py-1 text-sm"
               rows={3}
               value={draft ?? ""}
               onChange={(e) => setDraft(e.target.value)}
@@ -194,8 +194,8 @@ export default function InlineField({
           ) : (
             <input
               type="text"
-              className="flex-1 rounded border border-slate-700
-                bg-slate-900 px-2 py-1 text-sm"
+              className="flex-1 rounded border border-slate-300 dark:border-slate-700
+                bg-slate-50 dark:bg-slate-900 px-2 py-1 text-sm"
               value={draft ?? ""}
               onChange={(e) => setDraft(e.target.value)}
             />

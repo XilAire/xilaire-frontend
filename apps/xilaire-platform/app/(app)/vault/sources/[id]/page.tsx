@@ -357,7 +357,7 @@ export default function VaultSourceDetailPage({ params }: PageProps) {
             type="button"
             onClick={() => runSourceAction("sync")}
             disabled={Boolean(actionLoading)}
-            className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-xl bg-slate-50 dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-900 dark:text-white shadow-sm hover:bg-slate-100 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {actionLoading === "sync"
               ? "Starting Sync..."

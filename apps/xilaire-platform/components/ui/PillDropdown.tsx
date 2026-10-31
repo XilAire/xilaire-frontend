@@ -43,7 +43,7 @@ export default function PillDropdown({
           ${
             value !== "Any"
               ? "bg-sky-600 text-white border-sky-500 shadow-md shadow-sky-900/40"
-              : "bg-slate-800/60 text-slate-300 border-slate-700 hover:bg-slate-700/70"
+              : "bg-slate-200/60 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-300/70 dark:hover:bg-slate-700/70"
           }
         `}
       >
@@ -56,7 +56,7 @@ export default function PillDropdown({
         <div
           className="
             absolute left-0 mt-2 w-40 
-            bg-[#0b1120] border border-slate-700 rounded-lg z-50 
+            bg-[#0b1120] border border-slate-300 dark:border-slate-700 rounded-lg z-50 
             shadow-xl shadow-black/40 py-1
           "
         >

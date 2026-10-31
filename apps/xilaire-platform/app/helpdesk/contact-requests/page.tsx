@@ -27,11 +27,11 @@ export default function ContactRequestsPage() {
       <h1 className="text-2xl font-bold text-white mb-2">
         Contact Requests
       </h1>
-      <p className="text-slate-400 mb-6">
+      <p className="text-slate-600 dark:text-slate-400 mb-6">
         View all inbound contact form submissions.
       </p>
 
-      <div className="rounded-lg border border-slate-800 bg-slate-900 p-6">
+      <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6">
 
         {loading && <p className="text-slate-500">Loading...</p>}
 
@@ -40,7 +40,7 @@ export default function ContactRequestsPage() {
         )}
 
         {!loading && requests.length > 0 && (
-          <div className="flex flex-col divide-y divide-slate-800">
+          <div className="flex flex-col divide-y divide-slate-200 dark:divide-slate-800">
             {requests.map((req) => (
               <ContactRequestTicketCell key={req.id} request={req} />
             ))}

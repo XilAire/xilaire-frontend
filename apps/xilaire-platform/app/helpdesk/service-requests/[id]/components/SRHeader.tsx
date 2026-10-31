@@ -11,7 +11,7 @@ export default function SRHeader({ request }: SRHeaderProps) {
         {request.title}
       </h1>
 
-      <p className="text-sm text-slate-400">
+      <p className="text-sm text-slate-600 dark:text-slate-400">
         Requested by {request.requesterName}
       </p>
     </div>

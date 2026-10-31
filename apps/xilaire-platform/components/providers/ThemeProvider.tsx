@@ -1,62 +1,62 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useLayoutEffect,
-  useState,
-} from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
-type Theme = "light" | "dark";
+export type Theme = "light" | "dark";
+type ThemeContextType = { theme: Theme; toggleTheme: () => void; setTheme: (theme: Theme) => void };
+const ThemeContext = createContext<ThemeContextType | null>(null);
+export const GLOBAL_THEME_KEY = "xilaire-theme";
 
-interface ThemeContextType {
-  theme: Theme;
-  toggleTheme: () => void;
-  setTheme: (theme: Theme) => void;
+function validTheme(value: unknown): value is Theme {
+  return value === "light" || value === "dark";
+}
+function applyTheme(theme: Theme) {
+  document.documentElement.classList.toggle("dark", theme === "dark");
+  document.documentElement.style.colorScheme = theme;
 }
 
-const ThemeContext = createContext<ThemeContextType>({
-  theme: "light",
-  toggleTheme: () => {},
-  setTheme: () => {},
-});
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const [theme, setThemeState] = useState<Theme>("light");
 
-interface ProviderProps {
-  children: React.ReactNode;
-  storageKey?: string;        // independent storage key
-  defaultTheme?: Theme;       // default for this layout
-}
+  useEffect(() => {
+    let selected: Theme = "light";
+    try {
+      const saved = localStorage.getItem(GLOBAL_THEME_KEY);
+      // Migrate an existing selection without maintaining separate preferences.
+      const previous = localStorage.getItem("marketing-theme") ?? localStorage.getItem("app-theme") ?? localStorage.getItem("theme");
+      if (validTheme(saved)) selected = saved;
+      else if (validTheme(previous)) selected = previous;
+      localStorage.setItem(GLOBAL_THEME_KEY, selected);
+    } catch { /* localStorage may be unavailable */ }
+    setThemeState(selected);
+    applyTheme(selected);
+  }, []);
 
-export function ThemeProvider({
-  children,
-  storageKey = "theme",
-  defaultTheme = "light",
-}: ProviderProps) {
-  const [theme, setThemeState] = useState<Theme>(defaultTheme);
+  useEffect(() => {
+    function onStorage(event: StorageEvent) {
+      if (event.key !== GLOBAL_THEME_KEY || !validTheme(event.newValue)) return;
+      setThemeState(event.newValue);
+      applyTheme(event.newValue);
+    }
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
 
-  // Load theme early — prevents flashes
-  useLayoutEffect(() => {
-    const saved = (localStorage.getItem(storageKey) as Theme) || defaultTheme;
-
-    setThemeState(saved);
-    document.documentElement.classList.toggle("dark", saved === "dark");
-  }, [storageKey, defaultTheme]);
-
-  const setTheme = (value: Theme) => {
-    setThemeState(value);
-    localStorage.setItem(storageKey, value);
-    document.documentElement.classList.toggle("dark", value === "dark");
-  };
-
-  const toggleTheme = () => {
+  const setTheme = useCallback((selected: Theme) => {
+    if (!validTheme(selected)) return;
+    setThemeState(selected);
+    applyTheme(selected);
+    try { localStorage.setItem(GLOBAL_THEME_KEY, selected); } catch { /* storage unavailable */ }
+  }, []);
+  const toggleTheme = useCallback(() => {
     setTheme(theme === "light" ? "dark" : "light");
-  };
-
-  return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
-      {children}
-    </ThemeContext.Provider>
-  );
+  }, [theme, setTheme]);
+  const value = useMemo(() => ({ theme, setTheme, toggleTheme }), [theme, setTheme, toggleTheme]);
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
-export const useTheme = () => useContext(ThemeContext);
+export function useTheme() {
+  const value = useContext(ThemeContext);
+  if (!value) throw new Error("useTheme must be used inside ThemeProvider");
+  return value;
+}

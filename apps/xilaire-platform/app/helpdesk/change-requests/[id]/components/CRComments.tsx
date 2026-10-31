@@ -59,13 +59,13 @@ export default function CRComments({ changeId }: CRCommentsProps) {
     <div className="space-y-6">
 
       {/* INPUT BOX */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
+      <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
         <h2 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
           <MessageCircle className="h-4 w-4" /> Add Comment
         </h2>
 
         <textarea
-          className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-sm text-slate-200 focus:outline-none focus:border-blue-500 resize-none"
+          className="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg p-3 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500 resize-none"
           rows={3}
           placeholder="Write a comment..."
           value={newComment}
@@ -84,20 +84,20 @@ export default function CRComments({ changeId }: CRCommentsProps) {
       </div>
 
       {/* COMMENT LIST */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
+      <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
         <h2 className="text-lg font-semibold text-white mb-4">Comment History</h2>
 
         {comments.length === 0 ? (
-          <p className="text-slate-400 text-sm">No comments yet.</p>
+          <p className="text-slate-600 dark:text-slate-400 text-sm">No comments yet.</p>
         ) : (
           <div className="space-y-5">
             {comments.map((cmt) => (
               <div
                 key={cmt.id}
-                className="bg-slate-800/40 border border-slate-700 p-3 rounded-lg"
+                className="bg-slate-200/40 dark:bg-slate-800/40 border border-slate-300 dark:border-slate-700 p-3 rounded-lg"
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium text-slate-200">
+                  <span className="font-medium text-slate-800 dark:text-slate-200">
                     {cmt.profiles?.full_name || "Unknown User"}
                   </span>
                   <span className="text-xs text-slate-500">
@@ -105,7 +105,7 @@ export default function CRComments({ changeId }: CRCommentsProps) {
                   </span>
                 </div>
 
-                <p className="text-slate-300 text-sm whitespace-pre-line">
+                <p className="text-slate-700 dark:text-slate-300 text-sm whitespace-pre-line">
                   {cmt.comment}
                 </p>
               </div>

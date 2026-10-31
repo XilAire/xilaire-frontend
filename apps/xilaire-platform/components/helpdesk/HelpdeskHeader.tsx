@@ -44,7 +44,7 @@ export default function HelpdeskHeader({
       {/* Title + subtitle */}
       <div>
         <h1 className="text-xl font-semibold text-white">{autoTitle}</h1>
-        <p className="text-xs text-slate-400">{autoSubtitle}</p>
+        <p className="text-xs text-slate-600 dark:text-slate-400">{autoSubtitle}</p>
       </div>
 
       {/* Right side actions */}
@@ -52,7 +52,7 @@ export default function HelpdeskHeader({
         {/* New Ticket */}
         <Link
           href="/helpdesk/tickets/new"
-          className="px-4 py-2 text-xs bg-slate-800 hover:bg-slate-700 text-white rounded-lg border border-slate-700"
+          className="px-4 py-2 text-xs bg-slate-100 dark:bg-slate-800 hover:bg-slate-700 text-slate-900 dark:text-white rounded-lg border border-slate-300 dark:border-slate-700"
         >
           New Ticket
         </Link>
@@ -68,13 +68,13 @@ export default function HelpdeskHeader({
         {/* Help icon */}
         <Link
           href="/helpdesk/help"
-          className="p-2 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-700"
+          className="p-2 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-700 border border-slate-300 dark:border-slate-700"
         >
-          <HelpCircle size={16} className="text-slate-300" />
+          <HelpCircle size={16} className="text-slate-700 dark:text-slate-300" />
         </Link>
 
         {/* User avatar */}
-        <div className="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-white">
+        <div className="w-9 h-9 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-900 dark:text-white">
           {user?.email?.[0]?.toUpperCase() || "?"}
         </div>
       </div>

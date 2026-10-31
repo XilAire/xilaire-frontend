@@ -1,96 +1,39 @@
 "use client";
-
+import AuthThemeSwitch from "@/components/ui/AuthThemeSwitch";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { supabasePlatform } from "@/lib/supabasePlatformClient";
-import Image from "next/image";
+import Link from "next/link";
+import ThemeLogo from "@/components/ui/ThemeLogo";
 
 export default function UpdatePasswordPage() {
-  const router = useRouter();
-  const supabase = supabasePlatform;
-
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setSuccess(null);
+  const [error, setError] = useState("");
+  const [done, setDone] = useState(false);
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault(); setError("");
+    if (password !== confirm) { setError("Passwords do not match."); return; }
+    if (password.length < 12) { setError("Use at least 12 characters."); return; }
     setLoading(true);
-
-    const { error } = await supabase.auth.updateUser({ password });
-
-    setLoading(false);
-
-    if (error) {
-      setError(error.message);
-      return;
-    }
-
-    setSuccess("✓ Password updated successfully!");
-
-    // Redirect after 1.5 seconds
-    setTimeout(() => {
-      router.push("/auth/signin");
-    }, 1500);
-  };
-
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-950 px-4">
-      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-xl">
-
-        {/* 🔥 XilAire Logo */}
-        <div className="flex justify-center mb-6">
-          <Image
-            src="/icon-light.png"
-            alt="XilAire Logo"
-            width={72}
-            height={72}
-            priority
-            className="opacity-95"
-          />
-        </div>
-
-        <h1 className="text-2xl font-semibold text-center text-white mb-2">
-          Update Password
-        </h1>
-
-        <p className="text-sm text-slate-400 mb-6 text-center">
-          Enter a new password to finish the reset process.
-        </p>
-
-        <form onSubmit={handleUpdate} className="space-y-4">
-          <div>
-            <label className="text-sm text-slate-300">New Password</label>
-            <input
-              type="password"
-              placeholder="Enter new password"
-              className="mt-1 w-full rounded-lg bg-slate-800 px-3 py-2 text-slate-100 outline-none focus:ring-2 focus:ring-sky-500"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
-
-          {error && (
-            <p className="text-red-400 text-sm text-center">{error}</p>
-          )}
-
-          {success && (
-            <p className="text-green-400 text-sm text-center">{success}</p>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-lg bg-sky-600 py-2 font-medium text-white transition hover:bg-sky-700 disabled:opacity-40"
-          >
-            {loading ? "Updating..." : "Update Password"}
-          </button>
-        </form>
-      </div>
-    </div>
-  );
+    try {
+      const res = await fetch("/api/auth/update-password", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) });
+      const json: { error?: string } = await res.json();
+      if (!res.ok) { setError(json.error ?? "Unable to update password."); return; }
+      setDone(true); setPassword(""); setConfirm("");
+    } catch { setError("Unable to reach the server."); }
+    finally { setLoading(false); }
+  }
+  return <main className="min-h-screen flex items-center justify-center bg-background text-foreground px-4"><AuthThemeSwitch /><div className="w-full max-w-md bg-surface border border-border rounded-2xl p-8 shadow-xl">
+    <div className="flex justify-center mb-6"><ThemeLogo size={72} priority /></div>
+    <h1 className="text-2xl font-semibold text-center text-foreground mb-2">Update Password</h1>
+    {done ? <p className="text-emerald-700 dark:text-emerald-400 text-center">Password updated. <Link href="/auth/signin" className="underline">Return to sign in</Link>.</p> : <>
+      <p className="text-muted-foreground text-sm mb-6 text-center">Open this page using the password-recovery link in your email.</p>
+      <form onSubmit={submit} className="space-y-4">
+        <input aria-label="New password" type="password" autoComplete="new-password" minLength={12} required placeholder="New password (12+ characters)" className="w-full auth-input" value={password} disabled={loading} onChange={e => setPassword(e.target.value)}/>
+        <input aria-label="Confirm password" type="password" autoComplete="new-password" minLength={12} required placeholder="Confirm new password" className="w-full auth-input" value={confirm} disabled={loading} onChange={e => setConfirm(e.target.value)}/>
+        {error && <p role="alert" className="text-red-600 dark:text-red-400 text-sm">{error}</p>}
+        <button type="submit" className="auth-btn w-full" disabled={loading}>{loading ? "Updating..." : "Update Password"}</button>
+      </form>
+    </>}
+  </div></main>;
 }

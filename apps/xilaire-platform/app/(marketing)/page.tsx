@@ -20,9 +20,9 @@ export default function MarketingHomePage() {
           {/* =====================================================
               HERO / VALUE PROPOSITION
           ===================================================== */}
-          <div className="grid gap-12 md:grid-cols-[2fr,1.6fr] md:items-start">
+          <div className="grid grid-cols-1 gap-12 lg:grid-cols-5 lg:items-start">
             {/* Left: Message */}
-            <div className="pt-2">
+            <div className="min-w-0 pt-2 lg:col-span-3">
               <span className="inline-block rounded-full border border-sky-500/40 bg-sky-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-sky-600">
                 Cloud • Managed IT • Security • Automation
               </span>
@@ -40,7 +40,7 @@ export default function MarketingHomePage() {
             </div>
 
             {/* Right: Platform Snapshot */}
-            <div className="md:pt-8">
+            <div className="min-w-0 lg:col-span-2 lg:pt-8">
               <Card className="bg-white border border-slate-200 shadow-sm px-8 py-7">
                 <h3 className="text-sm font-semibold text-slate-900">
                   Platform snapshot

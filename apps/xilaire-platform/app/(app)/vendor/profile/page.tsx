@@ -203,11 +203,11 @@ export default function VendorProfileListPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-slate-200">
+        <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-200">
           Vendor Profiles
         </h1>
 
-        <p className="text-slate-400">
+        <p className="text-slate-600 dark:text-slate-400">
           {isAdminView
             ? "Admin view of all vendor profiles for this organization."
             : "View your vendor company profile and current account details."}
@@ -217,7 +217,7 @@ export default function VendorProfileListPage() {
       </div>
 
       {loading && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-slate-400">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6 text-slate-600 dark:text-slate-400">
           Loading vendor profiles...
         </div>
       )}
@@ -229,7 +229,7 @@ export default function VendorProfileListPage() {
       )}
 
       {!loading && !error && vendors.length === 0 && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-slate-400">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6 text-slate-600 dark:text-slate-400">
           No vendor profiles found.
         </div>
       )}
@@ -240,26 +240,26 @@ export default function VendorProfileListPage() {
             <Link
               key={vendor.id}
               href={`/vendor/profile/${vendor.id}`}
-              className="block rounded-2xl border border-slate-800 bg-slate-900 p-5 transition hover:border-sky-600 hover:bg-slate-900/70"
+              className="block rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5 transition hover:border-sky-600 hover:bg-slate-100/70 dark:hover:bg-slate-900/70"
             >
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div className="space-y-2">
-                  <h2 className="text-lg font-semibold text-slate-100">
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                     {vendor.company_name || "Unnamed Vendor"}
                   </h2>
 
-                  <p className="text-sm text-slate-400">
+                  <p className="text-sm text-slate-600 dark:text-slate-400">
                     Category: {formatLabel(vendor.vendor_category)}
                   </p>
 
                   <div className="flex flex-wrap gap-2">
-                    <span className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-300">
+                    <span className="rounded-full border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs text-slate-700 dark:text-slate-300">
                       Contact: {formatValue(vendor.contact_name)}
                     </span>
-                    <span className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-300">
+                    <span className="rounded-full border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs text-slate-700 dark:text-slate-300">
                       Email: {formatValue(vendor.email)}
                     </span>
-                    <span className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-300">
+                    <span className="rounded-full border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs text-slate-700 dark:text-slate-300">
                       Phone: {formatValue(vendor.phone)}
                     </span>
                   </div>
@@ -267,10 +267,10 @@ export default function VendorProfileListPage() {
 
                 <div className="space-y-2 md:text-right">
                   <div className="flex flex-wrap gap-2 md:justify-end">
-                    <span className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-300">
+                    <span className="rounded-full border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs text-slate-700 dark:text-slate-300">
                       Active: {formatYesNo(vendor.active)}
                     </span>
-                    <span className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-300">
+                    <span className="rounded-full border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs text-slate-700 dark:text-slate-300">
                       Enabled: {formatYesNo(vendor.is_active)}
                     </span>
                   </div>

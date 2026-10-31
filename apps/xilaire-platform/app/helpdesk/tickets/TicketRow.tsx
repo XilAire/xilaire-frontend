@@ -13,13 +13,13 @@ export default function TicketRow({ ticket }) {
   return (
     <Link
       href={`/helpdesk/tickets/${ticket.id}`}
-      className="flex items-center justify-between py-4 px-2 hover:bg-slate-800 rounded transition"
+      className="flex items-center justify-between py-4 px-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded transition"
     >
       {/* Left Side */}
       <div className="min-w-0">
         <p className="text-white font-semibold truncate">{ticket.title}</p>
 
-        <p className="text-slate-400 text-sm truncate">
+        <p className="text-slate-600 dark:text-slate-400 text-sm truncate">
           {ticket.description || "No description provided"}
         </p>
       </div>

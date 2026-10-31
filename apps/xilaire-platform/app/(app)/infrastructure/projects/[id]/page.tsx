@@ -145,7 +145,7 @@ function getStatusPillClass(status: string) {
       return "bg-red-500/20 text-red-300 border-red-500/30"
     case "pipeline":
     default:
-      return "bg-zinc-800 text-zinc-200 border-zinc-700"
+      return "bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border-zinc-300 dark:border-zinc-700"
   }
 }
 
@@ -159,7 +159,7 @@ function getEstimateStatusPillClass(status: string) {
       return "bg-red-500/20 text-red-300 border-red-500/30"
     case "draft":
     default:
-      return "bg-zinc-800 text-zinc-200 border-zinc-700"
+      return "bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border-zinc-300 dark:border-zinc-700"
   }
 }
 
@@ -884,7 +884,7 @@ export default function ProjectPage() {
           ← Back to Projects
         </Link>
 
-        <div className="bg-zinc-900 p-6 rounded-xl text-zinc-300">
+        <div className="bg-zinc-50 dark:bg-zinc-900 p-6 rounded-xl text-zinc-700 dark:text-zinc-300">
           Project not found.
         </div>
       </div>
@@ -917,7 +917,7 @@ export default function ProjectPage() {
           <h1 className="text-2xl font-semibold">
             {project.project_name}
           </h1>
-          <p className="mt-1 text-sm text-zinc-400">
+          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
             Project ID: {project.id}
           </p>
         </div>
@@ -938,14 +938,14 @@ export default function ProjectPage() {
               loadEstimates()
             }}
             disabled={estimatesLoading}
-            className="inline-flex items-center rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2 text-sm text-zinc-100 hover:bg-zinc-800 disabled:opacity-50"
+            className="inline-flex items-center rounded-lg border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 px-4 py-2 text-sm text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50"
           >
             {estimatesLoading ? "Refreshing..." : "Refresh Vendors / Estimates"}
           </button>
         </div>
       </div>
 
-      <div className="bg-zinc-900 p-6 rounded-xl">
+      <div className="bg-zinc-50 dark:bg-zinc-900 p-6 rounded-xl">
         <h2 className="text-sm mb-4">Project Status</h2>
 
         <div className="flex items-center gap-3">
@@ -961,7 +961,7 @@ export default function ProjectPage() {
             </button>
 
             {statusMenuOpen && (
-              <div className="absolute left-0 top-full z-30 mt-2 min-w-[220px] overflow-hidden rounded-xl border border-zinc-700 bg-zinc-950 shadow-2xl">
+              <div className="absolute left-0 top-full z-30 mt-2 min-w-[220px] overflow-hidden rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 shadow-2xl">
                 {STATUS_STEPS.map((step) => {
                   const isActive = normalizeStatus(project.status) === step
 
@@ -973,7 +973,7 @@ export default function ProjectPage() {
                       className={`block w-full px-4 py-3 text-left text-sm capitalize transition ${
                         isActive
                           ? "bg-sky-600 text-white"
-                          : "bg-zinc-950 text-zinc-100 hover:bg-zinc-800"
+                          : "bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                       }`}
                     >
                       {step.replace(/_/g, " ")}
@@ -985,34 +985,34 @@ export default function ProjectPage() {
           </div>
 
           {statusUpdating && (
-            <span className="text-xs text-zinc-400">Saving...</span>
+            <span className="text-xs text-zinc-600 dark:text-zinc-400">Saving...</span>
           )}
         </div>
       </div>
 
-      <div className="bg-zinc-900 p-6 rounded-xl grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="bg-zinc-50 dark:bg-zinc-900 p-6 rounded-xl grid grid-cols-1 md:grid-cols-2 gap-6">
         <Info label="Client" value={project.client_name} />
         <Info label="Project Type" value={project.project_type} />
         <Info label="Address" value={project.project_address} />
       </div>
 
-      <div className="bg-zinc-900 p-6 rounded-xl grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+      <div className="bg-zinc-50 dark:bg-zinc-900 p-6 rounded-xl grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         <Kpi label="Project Value" value={project.project_value} />
         <Kpi label="Electrical Wholesale" value={project.electrical_wholesale} />
         <Kpi label="Tech Cost" value={project.tech_cost} />
         <Kpi label="Projected Margin" value={project.projected_margin} />
       </div>
 
-      <div className="bg-zinc-900 p-6 rounded-xl grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="bg-zinc-50 dark:bg-zinc-900 p-6 rounded-xl grid grid-cols-1 md:grid-cols-3 gap-6">
         <Kpi label="Total Cost" value={totalCost} />
         <Kpi label="Profit" value={profit} />
         <Percent label="Margin %" value={marginPercent} />
       </div>
 
-      <div className="bg-zinc-900 p-6 rounded-xl">
+      <div className="bg-zinc-50 dark:bg-zinc-900 p-6 rounded-xl">
         <div className="mb-4 flex items-center justify-between gap-4">
           <h2 className="text-sm">Project Vendors</h2>
-          <span className="text-xs text-zinc-400">
+          <span className="text-xs text-zinc-600 dark:text-zinc-400">
             {assignments.length} assigned
           </span>
         </div>
@@ -1023,7 +1023,7 @@ export default function ProjectPage() {
 
             return (
               <div key={task}>
-                <span className="text-zinc-400 capitalize">
+                <span className="text-zinc-600 dark:text-zinc-400 capitalize">
                   {prettifyTask(task)}
                 </span>
                 {" → "}
@@ -1036,23 +1036,23 @@ export default function ProjectPage() {
         </div>
       </div>
 
-      <div className="bg-zinc-900 p-6 rounded-xl space-y-4">
+      <div className="bg-zinc-50 dark:bg-zinc-900 p-6 rounded-xl space-y-4">
         <div className="flex items-center justify-between gap-4">
           <h2 className="text-sm">Assign / Change Vendor</h2>
-          <span className="text-xs text-zinc-400">
+          <span className="text-xs text-zinc-600 dark:text-zinc-400">
             {availableVendorCount} potential vendors loaded
           </span>
         </div>
 
         <div>
-          <label className="block text-xs text-zinc-400 mb-2">
+          <label className="block text-xs text-zinc-600 dark:text-zinc-400 mb-2">
             Project Task
           </label>
 
           <select
             value={selectedTask}
             onChange={(e) => setSelectedTask(e.target.value)}
-            className="bg-zinc-800 text-zinc-100 border border-zinc-700 rounded-lg px-3 py-2 text-sm min-w-[240px]"
+            className="bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm min-w-[240px]"
           >
             {projectTasks.map((task) => (
               <option key={task} value={task}>
@@ -1063,7 +1063,7 @@ export default function ProjectPage() {
         </div>
 
         <div>
-          <label className="block text-xs text-zinc-400 mb-2">
+          <label className="block text-xs text-zinc-600 dark:text-zinc-400 mb-2">
             All Potential Vendors
           </label>
 
@@ -1075,7 +1075,7 @@ export default function ProjectPage() {
                 [selectedTask]: e.target.value,
               }))
             }
-            className="bg-zinc-800 text-zinc-100 border border-zinc-700 rounded-lg px-3 py-2 text-sm min-w-[320px]"
+            className="bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm min-w-[320px]"
           >
             <option value="">Select a vendor</option>
             {vendors.map((vendor) => (
@@ -1091,14 +1091,14 @@ export default function ProjectPage() {
         </div>
 
         <div className="text-sm">
-          <span className="text-zinc-400">Current vendor for task:</span>{" "}
+          <span className="text-zinc-600 dark:text-zinc-400">Current vendor for task:</span>{" "}
           <span className="font-medium">
             {currentAssignedVendorForTask?.company_name || "None assigned"}
           </span>
         </div>
 
         <div className="text-sm">
-          <span className="text-zinc-400">Selected vendor to assign:</span>{" "}
+          <span className="text-zinc-600 dark:text-zinc-400">Selected vendor to assign:</span>{" "}
           <span className="font-medium">
             {selectedVendorForTask?.company_name || "None selected"}
           </span>
@@ -1115,16 +1115,16 @@ export default function ProjectPage() {
         </div>
       </div>
 
-      <div className="bg-zinc-900 p-6 rounded-xl space-y-6">
+      <div className="bg-zinc-50 dark:bg-zinc-900 p-6 rounded-xl space-y-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="text-sm">Project Estimates</h2>
-            <p className="mt-1 text-xs text-zinc-400">
+            <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
               Estimates tied directly to this project
             </p>
           </div>
 
-          <div className="text-xs text-zinc-400">
+          <div className="text-xs text-zinc-600 dark:text-zinc-400">
             {estimatesLoading ? "Refreshing..." : `${estimateSummary.count} total`}
           </div>
         </div>
@@ -1140,7 +1140,7 @@ export default function ProjectPage() {
         </div>
 
         {estimates.length === 0 ? (
-          <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-6 text-sm text-zinc-400">
+          <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-6 text-sm text-zinc-600 dark:text-zinc-400">
             No estimates found for this project yet.
           </div>
         ) : (
@@ -1164,7 +1164,7 @@ export default function ProjectPage() {
               return (
                 <div
                   key={estimate.id}
-                  className="rounded-xl border border-zinc-800 bg-zinc-950 p-5"
+                  className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-5"
                 >
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="space-y-2">
@@ -1175,24 +1175,24 @@ export default function ProjectPage() {
                           {estimate.status.replace(/_/g, " ")}
                         </span>
 
-                        <span className="text-xs text-zinc-400">
+                        <span className="text-xs text-zinc-600 dark:text-zinc-400">
                           Estimate ID: {estimate.id}
                         </span>
                       </div>
 
-                      <div className="text-sm text-zinc-300">
+                      <div className="text-sm text-zinc-700 dark:text-zinc-300">
                         Vendor: {estimate.vendor_name || "Not assigned"}
                       </div>
 
-                      <div className="text-sm text-zinc-400">
+                      <div className="text-sm text-zinc-600 dark:text-zinc-400">
                         Created: {formatDateTime(estimate.created_at)}
                       </div>
 
-                      <div className="text-sm text-zinc-400">
+                      <div className="text-sm text-zinc-600 dark:text-zinc-400">
                         Updated: {formatDateTime(estimate.updated_at)}
                       </div>
 
-                      <div className="text-sm text-zinc-400">
+                      <div className="text-sm text-zinc-600 dark:text-zinc-400">
                         Attachments: {estimate.attachment_count}
                       </div>
 
@@ -1209,7 +1209,7 @@ export default function ProjectPage() {
                       )}
 
                       {estimate.site_visit_id && (
-                        <div className="text-sm text-zinc-400 break-all">
+                        <div className="text-sm text-zinc-600 dark:text-zinc-400 break-all">
                           Site Visit ID: {estimate.site_visit_id}
                         </div>
                       )}
@@ -1222,16 +1222,16 @@ export default function ProjectPage() {
                     </div>
                   </div>
 
-                  <div className="mt-4 border-t border-zinc-800 pt-4">
-                    <p className="mb-2 text-xs text-zinc-400">Notes</p>
-                    <p className="text-sm text-zinc-200 whitespace-pre-wrap">
+                  <div className="mt-4 border-t border-zinc-200 dark:border-zinc-800 pt-4">
+                    <p className="mb-2 text-xs text-zinc-600 dark:text-zinc-400">Notes</p>
+                    <p className="text-sm text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap">
                       {estimate.notes || "No notes provided."}
                     </p>
                   </div>
 
                   {(isAdmin || estimate.review_notes) && (
-                    <div className="mt-4 border-t border-zinc-800 pt-4 space-y-3">
-                      <p className="text-xs text-zinc-400">Review Notes</p>
+                    <div className="mt-4 border-t border-zinc-200 dark:border-zinc-800 pt-4 space-y-3">
+                      <p className="text-xs text-zinc-600 dark:text-zinc-400">Review Notes</p>
 
                       {isAdmin ? (
                         <textarea
@@ -1244,18 +1244,18 @@ export default function ProjectPage() {
                           }
                           rows={3}
                           placeholder="Internal review notes, approval comments, rejection reason..."
-                          className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100"
+                          className="w-full rounded-lg border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100"
                         />
                       ) : (
-                        <p className="text-sm text-zinc-200 whitespace-pre-wrap">
+                        <p className="text-sm text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap">
                           {estimate.review_notes || "No review notes yet."}
                         </p>
                       )}
                     </div>
                   )}
 
-                  <div className="mt-4 border-t border-zinc-800 pt-4 space-y-3">
-                    <p className="text-xs text-zinc-400">Estimate Attachment</p>
+                  <div className="mt-4 border-t border-zinc-200 dark:border-zinc-800 pt-4 space-y-3">
+                    <p className="text-xs text-zinc-600 dark:text-zinc-400">Estimate Attachment</p>
 
                     <div className="flex flex-col gap-3 md:flex-row md:items-center">
                       <input
@@ -1267,7 +1267,7 @@ export default function ProjectPage() {
                             [estimate.id]: file,
                           }))
                         }}
-                        className="block w-full text-sm text-zinc-300 file:mr-4 file:rounded-lg file:border-0 file:bg-zinc-800 file:px-4 file:py-2 file:text-sm file:text-zinc-100 hover:file:bg-zinc-700"
+                        className="block w-full text-sm text-zinc-700 dark:text-zinc-300 file:mr-4 file:rounded-lg file:border-0 file:bg-zinc-800 file:px-4 file:py-2 file:text-sm file:text-zinc-100 hover:file:bg-zinc-700"
                       />
 
                       <button
@@ -1281,7 +1281,7 @@ export default function ProjectPage() {
                     </div>
 
                     {selectedFile && (
-                      <p className="text-xs text-zinc-400">
+                      <p className="text-xs text-zinc-600 dark:text-zinc-400">
                         Selected file: {selectedFile.name}
                       </p>
                     )}
@@ -1290,14 +1290,14 @@ export default function ProjectPage() {
                   <div className="mt-4 flex flex-wrap gap-3">
                     <Link
                       href={`/vendor/estimates/create?project_id=${project.id}`}
-                      className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 hover:bg-zinc-800"
+                      className="rounded-lg border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                     >
                       New Estimate
                     </Link>
 
                     <Link
                       href="/vendor/estimates"
-                      className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 hover:bg-zinc-800"
+                      className="rounded-lg border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                     >
                       Open Estimates
                     </Link>
@@ -1365,7 +1365,7 @@ function Info({
 }) {
   return (
     <div>
-      <p className="text-xs text-zinc-400">{label}</p>
+      <p className="text-xs text-zinc-600 dark:text-zinc-400">{label}</p>
       <p className="text-lg">{value ?? "-"}</p>
     </div>
   )
@@ -1382,7 +1382,7 @@ function Kpi({
 
   return (
     <div>
-      <p className="text-xs text-zinc-400">{label}</p>
+      <p className="text-xs text-zinc-600 dark:text-zinc-400">{label}</p>
       <p className="text-lg font-semibold">
         ${safe.toLocaleString()}
       </p>
@@ -1400,9 +1400,9 @@ function MiniKpi({
   const safe = Number(value || 0)
 
   return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
-      <p className="text-xs text-zinc-400">{label}</p>
-      <p className="text-base font-semibold text-zinc-100">
+    <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 p-3">
+      <p className="text-xs text-zinc-600 dark:text-zinc-400">{label}</p>
+      <p className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
         ${safe.toLocaleString()}
       </p>
     </div>
@@ -1420,7 +1420,7 @@ function CountKpi({
 
   return (
     <div>
-      <p className="text-xs text-zinc-400">{label}</p>
+      <p className="text-xs text-zinc-600 dark:text-zinc-400">{label}</p>
       <p className="text-lg font-semibold">
         {safe.toLocaleString()}
       </p>
@@ -1439,7 +1439,7 @@ function Percent({
 
   return (
     <div>
-      <p className="text-xs text-zinc-400">{label}</p>
+      <p className="text-xs text-zinc-600 dark:text-zinc-400">{label}</p>
       <p className="text-lg font-semibold">
         {safe.toFixed(1)}%
       </p>

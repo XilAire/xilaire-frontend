@@ -4,7 +4,18 @@ import { createServerClient } from "@supabase/ssr"
 import { createClient } from "@supabase/supabase-js"
 
 export async function middleware(req: NextRequest) {
-  const res = NextResponse.next()
+  let res = NextResponse.next()
+
+  // Preserve refreshed session cookies on authorization redirects.
+  const redirectWithCookies = (url: URL) => {
+    const redirected = NextResponse.redirect(url)
+
+    for (const cookie of res.cookies.getAll()) {
+      redirected.cookies.set(cookie)
+    }
+
+    return redirected
+  }
 
   const { pathname } = req.nextUrl
   const normalizedPath = pathname.endsWith("/")
@@ -37,10 +48,30 @@ export async function middleware(req: NextRequest) {
     {
       cookies: {
         getAll: () => req.cookies.getAll(),
-        setAll: (cookies) => {
-          cookies.forEach((c) =>
-            res.cookies.set(c.name, c.value, c.options)
-          )
+        setAll: (cookiesToSet) => {
+          // Update the incoming request so downstream server
+          // components see the refreshed Supabase session.
+          for (const cookie of cookiesToSet) {
+            req.cookies.set(cookie.name, cookie.value)
+          }
+
+          // Recreate the response with updated request headers.
+          const existingCookies = res.cookies.getAll()
+          res = NextResponse.next({
+            request: { headers: req.headers },
+          })
+
+          for (const cookie of existingCookies) {
+            res.cookies.set(cookie)
+          }
+
+          for (const cookie of cookiesToSet) {
+            res.cookies.set(
+              cookie.name,
+              cookie.value,
+              cookie.options
+            )
+          }
         },
       },
     }
@@ -53,37 +84,57 @@ export async function middleware(req: NextRequest) {
   if (!user) {
     const redirectUrl = new URL("/auth/signin", req.url)
     redirectUrl.searchParams.set("redirect", pathname)
-    return NextResponse.redirect(redirectUrl)
+    return redirectWithCookies(redirectUrl)
   }
 
   /* ---------------------------------------------------------
      3️⃣ ORG CONTEXT
   --------------------------------------------------------- */
-  const org_id =
-    (user.app_metadata as any)?.org_id ||
-    (user.user_metadata as any)?.org_id
+  // Authorization context must come from the current profile,
+  // not client-editable user_metadata or stale JWT org claims.
+  const supabaseAuthz = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL_PLATFORM!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY_PLATFORM!,
+    {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    }
+  )
 
-  if (!org_id) {
-    return NextResponse.redirect(
+  const { data: actor, error: actorError } = await supabaseAuthz
+    .from("profiles")
+    .select("id, status, org_id")
+    .eq("id", user.id)
+    .maybeSingle()
+
+  if (
+    actorError ||
+    !actor ||
+    actor.id !== user.id ||
+    actor.status !== "active" ||
+    !actor.org_id
+  ) {
+    return redirectWithCookies(
       new URL("/unauthorized", req.url)
     )
   }
 
-  /* ---------------------------------------------------------
-     3.25️⃣ ORG METADATA (PLATFORM BYPASS)
-  --------------------------------------------------------- */
-  const supabaseAuthz = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL_PLATFORM!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY_PLATFORM!
-  )
-
+  const org_id = actor.org_id
   const { data: org } = await supabaseAuthz
     .from("orgs")
     .select("is_platform_org")
     .eq("id", org_id)
     .single()
 
-  if (org?.is_platform_org === true) {
+  if (!org) {
+    return redirectWithCookies(
+      new URL("/unauthorized", req.url)
+    )
+  }
+
+  if (org.is_platform_org === true) {
     return res
   }
 
@@ -127,7 +178,7 @@ export async function middleware(req: NextRequest) {
     (contract.current_period_end &&
       new Date(contract.current_period_end) < new Date())
   ) {
-    return NextResponse.redirect(
+    return redirectWithCookies(
       new URL("/billing/upgrade", req.url)
     )
   }
@@ -143,7 +194,7 @@ export async function middleware(req: NextRequest) {
     .single()
 
   if (!entitlement) {
-    return NextResponse.redirect(
+    return redirectWithCookies(
       new URL("/billing/upgrade", req.url)
     )
   }

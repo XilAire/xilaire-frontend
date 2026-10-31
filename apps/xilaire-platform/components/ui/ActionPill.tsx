@@ -79,7 +79,7 @@ export default function ActionPill({
         }}
         className="
           px-4 py-2 text-xs rounded-full font-medium flex items-center gap-1
-          bg-slate-800 text-slate-100 border border-slate-700
+          bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-300 dark:border-slate-700
           hover:bg-slate-700 hover:border-slate-600 transition shadow-sm
         "
       >
@@ -91,7 +91,7 @@ export default function ActionPill({
         <div
           className="
             absolute right-0 mt-2 min-w-[170px] z-50
-            bg-slate-900 border border-slate-700 rounded-xl shadow-xl
+            bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl shadow-xl
             animate-in fade-in slide-in-from-top-2
           "
         >
@@ -101,7 +101,7 @@ export default function ActionPill({
               return (
                 <div
                   key={`divider-${index}`}
-                  className="my-1 border-t border-slate-700/60"
+                  className="my-1 border-t border-slate-300/60 dark:border-slate-700/60"
                 />
               );
             }
@@ -153,7 +153,7 @@ export default function ActionPill({
                         }}
                         className="
                           w-full px-4 py-2 text-xs text-left
-                          text-slate-200 hover:bg-slate-800 transition
+                          text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition
                         "
                       >
                         {sub.label}

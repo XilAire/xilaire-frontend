@@ -217,11 +217,11 @@ function getStatusClass(status: string | null | undefined) {
       return "border-yellow-500/30 bg-yellow-500/10 text-yellow-300";
     case "closed":
     case "released":
-      return "border-zinc-500/30 bg-zinc-500/10 text-zinc-300";
+      return "border-zinc-500/30 bg-zinc-500/10 text-zinc-700 dark:text-zinc-300";
     case "archived":
       return "border-purple-500/30 bg-purple-500/10 text-purple-300";
     default:
-      return "border-zinc-500/30 bg-zinc-500/10 text-zinc-300";
+      return "border-zinc-500/30 bg-zinc-500/10 text-zinc-700 dark:text-zinc-300";
   }
 }
 
@@ -236,9 +236,9 @@ function getPriorityClass(priority: string | null | undefined) {
     case "normal":
       return "border-blue-500/30 bg-blue-500/10 text-blue-300";
     case "low":
-      return "border-zinc-500/30 bg-zinc-500/10 text-zinc-300";
+      return "border-zinc-500/30 bg-zinc-500/10 text-zinc-700 dark:text-zinc-300";
     default:
-      return "border-zinc-500/30 bg-zinc-500/10 text-zinc-300";
+      return "border-zinc-500/30 bg-zinc-500/10 text-zinc-700 dark:text-zinc-300";
   }
 }
 
@@ -545,12 +545,12 @@ function MetricCard({
   subtext?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-5 shadow-sm">
-      <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
+    <div className="rounded-2xl border border-white/10 bg-slate-50/60 dark:bg-slate-950/60 p-5 shadow-sm">
+      <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-600 dark:text-slate-400">
         {label}
       </p>
       <p className="mt-3 text-3xl font-semibold text-white">{value}</p>
-      {subtext ? <p className="mt-2 text-xs text-slate-400">{subtext}</p> : null}
+      {subtext ? <p className="mt-2 text-xs text-slate-600 dark:text-slate-400">{subtext}</p> : null}
     </div>
   );
 }
@@ -567,10 +567,10 @@ function WorkspaceLink({
   return (
     <Link
       href={href}
-      className="block rounded-2xl border border-white/10 bg-slate-950/60 p-5 transition hover:border-sky-400/50 hover:bg-slate-900"
+      className="block rounded-2xl border border-white/10 bg-slate-50/60 dark:bg-slate-950/60 p-5 transition hover:border-sky-400/50 hover:bg-slate-100 dark:hover:bg-slate-900"
     >
       <p className="text-sm font-semibold text-white">{title}</p>
-      <p className="mt-2 text-sm text-slate-400">{description}</p>
+      <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{description}</p>
     </Link>
   );
 }
@@ -595,7 +595,7 @@ export default async function VaultCaseSummaryPage({ params }: PageContext) {
 
         <Link
           href="/vault/cases"
-          className="inline-flex rounded-lg border border-white/10 px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-white/5"
+          className="inline-flex rounded-lg border border-white/10 px-4 py-2 text-sm font-medium text-slate-800 dark:text-slate-200 transition hover:bg-white/5"
         >
           Back to Cases
         </Link>
@@ -605,7 +605,7 @@ export default async function VaultCaseSummaryPage({ params }: PageContext) {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-2xl border border-white/10 bg-slate-950/60 p-6 shadow-sm">
+      <section className="rounded-2xl border border-white/10 bg-slate-50/60 dark:bg-slate-950/60 p-6 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-5">
           <div className="space-y-3">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-300">
@@ -616,7 +616,7 @@ export default async function VaultCaseSummaryPage({ params }: PageContext) {
               <h1 className="text-3xl font-semibold text-white">
                 {caseRow.name ?? "Untitled Case"}
               </h1>
-              <p className="mt-2 text-sm text-slate-400">
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
                 Case summary dashboard for custodians, evidence, holds, exports, and workspace actions.
               </p>
             </div>
@@ -637,7 +637,7 @@ export default async function VaultCaseSummaryPage({ params }: PageContext) {
               ) : null}
             </div>
 
-            <div className="grid gap-2 text-xs text-slate-400 sm:grid-cols-2">
+            <div className="grid gap-2 text-xs text-slate-600 dark:text-slate-400 sm:grid-cols-2">
               <div>Case ID: {caseRow.id}</div>
               <div>Org ID: {caseRow.org_id}</div>
               <div>Created: {formatDate(caseRow.created_at)}</div>
@@ -648,7 +648,7 @@ export default async function VaultCaseSummaryPage({ params }: PageContext) {
           <div className="flex flex-wrap gap-2">
             <Link
               href={`/vault/cases/${caseId}`}
-              className="rounded-lg border border-white/10 px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-white/5"
+              className="rounded-lg border border-white/10 px-4 py-2 text-sm font-medium text-slate-800 dark:text-slate-200 transition hover:bg-white/5"
             >
               Case Detail
             </Link>
@@ -669,7 +669,7 @@ export default async function VaultCaseSummaryPage({ params }: PageContext) {
 
             <Link
               href={`/vault/cases/${caseId}/holds`}
-              className="rounded-lg border border-white/10 px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-white/5"
+              className="rounded-lg border border-white/10 px-4 py-2 text-sm font-medium text-slate-800 dark:text-slate-200 transition hover:bg-white/5"
             >
               Holds
             </Link>
@@ -723,89 +723,89 @@ export default async function VaultCaseSummaryPage({ params }: PageContext) {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-3">
-        <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-6">
+        <div className="rounded-2xl border border-white/10 bg-slate-50/60 dark:bg-slate-950/60 p-6">
           <h2 className="text-lg font-semibold text-white">Members</h2>
 
           <div className="mt-5 space-y-3 text-sm">
-            <div className="flex justify-between text-slate-300">
+            <div className="flex justify-between text-slate-700 dark:text-slate-300">
               <span>Total</span>
               <span>{summary.members.total}</span>
             </div>
-            <div className="flex justify-between text-slate-300">
+            <div className="flex justify-between text-slate-700 dark:text-slate-300">
               <span>Custodians</span>
               <span>{summary.members.custodians}</span>
             </div>
-            <div className="flex justify-between text-slate-300">
+            <div className="flex justify-between text-slate-700 dark:text-slate-300">
               <span>Admins</span>
               <span>{summary.members.admins}</span>
             </div>
-            <div className="flex justify-between text-slate-300">
+            <div className="flex justify-between text-slate-700 dark:text-slate-300">
               <span>Owners</span>
               <span>{summary.members.owners}</span>
             </div>
-            <div className="flex justify-between text-slate-300">
+            <div className="flex justify-between text-slate-700 dark:text-slate-300">
               <span>Reviewers</span>
               <span>{summary.members.reviewers}</span>
             </div>
-            <div className="flex justify-between text-slate-300">
+            <div className="flex justify-between text-slate-700 dark:text-slate-300">
               <span>Viewers</span>
               <span>{summary.members.viewers}</span>
             </div>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-6">
+        <div className="rounded-2xl border border-white/10 bg-slate-50/60 dark:bg-slate-950/60 p-6">
           <h2 className="text-lg font-semibold text-white">Evidence</h2>
 
           <div className="mt-5 space-y-3 text-sm">
-            <div className="flex justify-between text-slate-300">
+            <div className="flex justify-between text-slate-700 dark:text-slate-300">
               <span>Messages</span>
               <span>{summary.evidence.messages}</span>
             </div>
-            <div className="flex justify-between text-slate-300">
+            <div className="flex justify-between text-slate-700 dark:text-slate-300">
               <span>Occurrences</span>
               <span>{summary.evidence.occurrences}</span>
             </div>
-            <div className="flex justify-between text-slate-300">
+            <div className="flex justify-between text-slate-700 dark:text-slate-300">
               <span>Unique Sources</span>
               <span>{summary.evidence.uniqueSources}</span>
             </div>
-            <div className="flex justify-between text-slate-300">
+            <div className="flex justify-between text-slate-700 dark:text-slate-300">
               <span>Unique Mailboxes</span>
               <span>{summary.evidence.uniqueMailboxes}</span>
             </div>
-            <div className="flex justify-between text-slate-300">
+            <div className="flex justify-between text-slate-700 dark:text-slate-300">
               <span>Unique Folders</span>
               <span>{summary.evidence.uniqueFolders}</span>
             </div>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-6">
+        <div className="rounded-2xl border border-white/10 bg-slate-50/60 dark:bg-slate-950/60 p-6">
           <h2 className="text-lg font-semibold text-white">Exports</h2>
 
           <div className="mt-5 space-y-3 text-sm">
-            <div className="flex justify-between text-slate-300">
+            <div className="flex justify-between text-slate-700 dark:text-slate-300">
               <span>Total</span>
               <span>{summary.exports.total}</span>
             </div>
-            <div className="flex justify-between text-slate-300">
+            <div className="flex justify-between text-slate-700 dark:text-slate-300">
               <span>Completed</span>
               <span>{summary.exports.completed}</span>
             </div>
-            <div className="flex justify-between text-slate-300">
+            <div className="flex justify-between text-slate-700 dark:text-slate-300">
               <span>Queued</span>
               <span>{summary.exports.queued}</span>
             </div>
-            <div className="flex justify-between text-slate-300">
+            <div className="flex justify-between text-slate-700 dark:text-slate-300">
               <span>Failed</span>
               <span>{summary.exports.failed}</span>
             </div>
-            <div className="flex justify-between text-slate-300">
+            <div className="flex justify-between text-slate-700 dark:text-slate-300">
               <span>Exported Messages</span>
               <span>{summary.exports.exportedMessageCount}</span>
             </div>
-            <div className="flex justify-between text-slate-300">
+            <div className="flex justify-between text-slate-700 dark:text-slate-300">
               <span>Total Size</span>
               <span>{formatBytes(summary.exports.totalSizeBytes)}</span>
             </div>
@@ -813,9 +813,9 @@ export default async function VaultCaseSummaryPage({ params }: PageContext) {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-white/10 bg-slate-950/60 p-6">
+      <section className="rounded-2xl border border-white/10 bg-slate-50/60 dark:bg-slate-950/60 p-6">
         <h2 className="text-lg font-semibold text-white">Workspace Actions</h2>
-        <p className="mt-2 text-sm text-slate-400">
+        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
           Continue case work from the dedicated case-scoped pages.
         </p>
 

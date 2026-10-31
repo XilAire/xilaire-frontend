@@ -1,0 +1,222 @@
+/* =========================================================
+   XILAIRE TECHNOLOGIES
+   XILAIRE PLATFORM - SEMANTIC DESIGN TOKENS
+
+   BRAND:
+   Navy Blue / Sky Blue / White
+
+   Separate from XilAire Security branding.
+
+   This stylesheet is additive and is not imported yet.
+   ========================================================= */
+
+:root {
+  /* BRAND */
+  --brand-navy: #002c4c;
+  --brand-navy-hover: #003a63;
+  --brand-navy-active: #001e35;
+
+  --brand-sky: #0ea5e9;
+  --brand-sky-hover: #0284c7;
+  --brand-sky-active: #0369a1;
+  --brand-sky-light: #38bdf8;
+
+  --brand-white: #ffffff;
+
+  /* DOCUMENT */
+  --background: #f5f7f9;
+  --foreground: #102536;
+
+  /* PRIMARY ACTIONS */
+  --primary: var(--brand-navy);
+  --primary-hover: var(--brand-navy-hover);
+  --primary-active: var(--brand-navy-active);
+  --primary-foreground: #ffffff;
+
+  --primary-soft: #eef3f6;
+  --primary-soft-strong: #dbe6ec;
+  --primary-border: #b8cbd6;
+
+  /* ACCENT - SKY BLUE */
+  --accent: var(--brand-sky);
+  --accent-hover: var(--brand-sky-hover);
+  --accent-active: var(--brand-sky-active);
+  --accent-foreground: #ffffff;
+
+  --accent-soft: #f0f9ff;
+  --accent-soft-strong: #e0f2fe;
+  --accent-border: #bae6fd;
+
+  /* SURFACES */
+  --surface-default: #ffffff;
+  --surface-elevated: #ffffff;
+  --surface-muted: #f0f4f6;
+  --surface-subtle: #f8fafb;
+  --surface-hover: #eaf0f3;
+  --surface-active: #e1e9ed;
+
+  /* TEXT */
+  --text-primary: #102536;
+  --text-secondary: #405766;
+  --text-muted: #718391;
+  --text-subtle: #93a1ac;
+  --text-disabled: #aab5bd;
+
+  /* BORDERS */
+  --border-subtle: #e2e8ec;
+  --border-default: #d2dde3;
+  --border-strong: #b7c7d0;
+
+  /* SIDEBAR */
+  --sidebar-background: #ffffff;
+  --sidebar-surface: #f8fafb;
+
+  --sidebar-foreground: #102536;
+  --sidebar-muted-foreground: #718391;
+  --sidebar-section-foreground: #607887;
+  --sidebar-icon-foreground: #718391;
+
+  --sidebar-border: #e2e8ec;
+  --sidebar-border-strong: #ccd8de;
+
+  --sidebar-hover-background: #eef3f6;
+  --sidebar-hover-foreground: #102536;
+
+  --sidebar-active-background: #e0f2fe;
+  --sidebar-active-foreground: #0369a1;
+
+  /* STATUS */
+  --success: #147a56;
+  --success-foreground: #ffffff;
+  --success-soft: #eaf7f1;
+  --success-border: #b7dfcf;
+
+  --warning: #a87818;
+  --warning-foreground: #ffffff;
+  --warning-soft: #fff8e8;
+  --warning-border: #ead39a;
+
+  --danger: #c93f4d;
+  --danger-foreground: #ffffff;
+  --danger-soft: #fff0f2;
+  --danger-border: #f0c2c8;
+
+  --info: #0369a1;
+  --info-foreground: #ffffff;
+  --info-soft: #f0f9ff;
+  --info-border: #bae6fd;
+
+  /* ACCESSIBILITY */
+  --focus-ring: #0284c7;
+
+  /* SHADOWS */
+  --shadow-xs: 0 1px 2px rgb(0 44 76 / 0.04);
+  --shadow-sm: 0 1px 3px rgb(0 44 76 / 0.07);
+  --shadow-md: 0 8px 24px rgb(0 44 76 / 0.09);
+  --shadow-lg: 0 16px 40px rgb(0 44 76 / 0.12);
+
+  /* RADII */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+}
+
+/* =========================================================
+   DARK THEME
+   ========================================================= */
+
+html.dark {
+  /* DOCUMENT */
+  --background: #071224;
+  --foreground: #f8fafc;
+
+  /* PRIMARY */
+  --primary: #38bdf8;
+  --primary-hover: #7dd3fc;
+  --primary-active: #0ea5e9;
+  --primary-foreground: #071224;
+
+  --primary-soft: #102a40;
+  --primary-soft-strong: #143a57;
+  --primary-border: #285675;
+
+  /* ACCENT */
+  --accent: #38bdf8;
+  --accent-hover: #7dd3fc;
+  --accent-active: #0ea5e9;
+  --accent-foreground: #071224;
+
+  --accent-soft: #102a40;
+  --accent-soft-strong: #143a57;
+  --accent-border: #285675;
+
+  /* SURFACES */
+  --surface-default: #0b1120;
+  --surface-elevated: #0f172a;
+  --surface-muted: #1e293b;
+  --surface-subtle: #0b1628;
+  --surface-hover: #172b40;
+  --surface-active: #1d3954;
+
+  /* TEXT */
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --text-subtle: #718096;
+  --text-disabled: #64748b;
+
+  /* BORDERS */
+  --border-subtle: #1e293b;
+  --border-default: #334155;
+  --border-strong: #475569;
+
+  /* SIDEBAR */
+  --sidebar-background: #0b1120;
+  --sidebar-surface: #0f172a;
+
+  --sidebar-foreground: #f8fafc;
+  --sidebar-muted-foreground: #94a3b8;
+  --sidebar-section-foreground: #cbd5e1;
+  --sidebar-icon-foreground: #94a3b8;
+
+  --sidebar-border: #1e293b;
+  --sidebar-border-strong: #334155;
+
+  --sidebar-hover-background: #172b40;
+  --sidebar-hover-foreground: #ffffff;
+
+  --sidebar-active-background: #102a40;
+  --sidebar-active-foreground: #38bdf8;
+
+  /* STATUS */
+  --success: #4fd09a;
+  --success-foreground: #071224;
+  --success-soft: #123328;
+  --success-border: #255b47;
+
+  --warning: #e1b552;
+  --warning-foreground: #071224;
+  --warning-soft: #302a1b;
+  --warning-border: #69582c;
+
+  --danger: #ff8490;
+  --danger-foreground: #071224;
+  --danger-soft: #3c1f25;
+  --danger-border: #70404a;
+
+  --info: #38bdf8;
+  --info-foreground: #071224;
+  --info-soft: #102a40;
+  --info-border: #285675;
+
+  /* ACCESSIBILITY */
+  --focus-ring: #38bdf8;
+
+  /* SHADOWS */
+  --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.20);
+  --shadow-sm: 0 2px 6px rgb(0 0 0 / 0.22);
+  --shadow-md: 0 10px 30px rgb(0 0 0 / 0.26);
+  --shadow-lg: 0 18px 48px rgb(0 0 0 / 0.32);
+}

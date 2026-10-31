@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server"
 import { sendInvoiceNotification } from "@/lib/billing/sendInvoiceNotification"
-import { getProfile } from "@/lib/getProfile"
+import { requirePlatformBillingActor } from "@/lib/auth/requirePlatformBillingActor"
 
 export const runtime = "nodejs"
 
 export async function POST(req: Request) {
-  const profile = await getProfile()
+  const profile = await requirePlatformBillingActor([
+    "master_admin",
+    "finance",
+  ]);
 
-  if (!profile || !["master_admin", "finance"].includes(profile.role)) {
+  if (!profile) {
     return NextResponse.json(
       { error: "FORBIDDEN" },
       { status: 403 }

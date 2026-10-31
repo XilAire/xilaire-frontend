@@ -1,14 +1,9 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
 import { checkOfflineEndpoints } from "@/lib/heartbeat/checkOfflineEndpoints"
 
 export const dynamic = "force-dynamic"
 
-// 🔐 SERVICE ROLE CLIENT — REQUIRED FOR CRON
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL_PLATFORM!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY_PLATFORM!
-)
+
 
 /**
  * 🔁 INTERNAL HEARTBEAT EXECUTION
@@ -17,7 +12,7 @@ const supabase = createClient(
  * - Manual / internal trigger (POST)
  */
 async function runHeartbeat() {
-  const result = await checkOfflineEndpoints(supabase)
+  const result = await checkOfflineEndpoints()
 
   return NextResponse.json({
     status: "ok",

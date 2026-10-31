@@ -682,7 +682,7 @@ export async function POST(request: NextRequest) {
 
     return jsonOk({
       ok: true,
-      item: source,
+      item: { ...source, config: undefined, connection_config: undefined },
       queuedJobs: (createdJobs ?? []) as unknown as QueuedJobRow[],
       selectedMailboxes: createdMailboxRows,
       skippedDuplicateInitialSyncMailboxes: skippedInitialSyncMailboxCount,

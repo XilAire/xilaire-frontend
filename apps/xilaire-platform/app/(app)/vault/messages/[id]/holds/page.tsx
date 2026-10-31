@@ -170,8 +170,8 @@ function SectionCard({
   action?: React.ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-800 bg-[#071224] shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
-      <div className="flex items-center justify-between gap-4 border-b border-slate-800 bg-slate-950/40 px-5 py-4">
+    <section className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-[#071224] shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
+      <div className="flex items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-950/40 px-5 py-4">
         <h2 className="text-base font-semibold text-white">{title}</h2>
         {action ?? null}
       </div>
@@ -188,8 +188,8 @@ function StatCard({
   value: string | number;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-700 bg-slate-900/70 px-6 py-4 text-center shadow-sm">
-      <div className="text-xs uppercase tracking-[0.14em] text-slate-400">
+    <div className="rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-100/70 dark:bg-slate-900/70 px-6 py-4 text-center shadow-sm">
+      <div className="text-xs uppercase tracking-[0.14em] text-slate-600 dark:text-slate-400">
         {label}
       </div>
       <div className="mt-2 text-2xl font-semibold text-white">{value}</div>
@@ -205,11 +205,11 @@ function InfoCard({
   value: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-[#071224] p-3">
-      <div className="text-[11px] uppercase tracking-[0.12em] text-slate-400">
+    <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-[#071224] p-3">
+      <div className="text-[11px] uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
         {label}
       </div>
-      <div className="mt-2 break-words text-sm text-slate-100">{value}</div>
+      <div className="mt-2 break-words text-sm text-slate-900 dark:text-slate-100">{value}</div>
     </div>
   );
 }
@@ -228,7 +228,7 @@ function StatusPill({
         ? "border-amber-500/30 bg-amber-500/10 text-amber-200"
         : tone === "green"
           ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
-          : "border-slate-700 bg-slate-900/70 text-slate-200";
+          : "border-slate-300 dark:border-slate-700 bg-slate-100/70 dark:bg-slate-900/70 text-slate-800 dark:text-slate-200";
 
   return (
     <span
@@ -274,7 +274,7 @@ export default async function VaultMessageHoldsPage({ params }: PageProps) {
   return (
     <div className="min-h-screen bg-transparent">
       <div className="mx-auto max-w-7xl px-6 py-8">
-        <div className="mb-6 rounded-3xl border border-slate-800 bg-[#071224] p-6 shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
+        <div className="mb-6 rounded-3xl border border-slate-200 dark:border-slate-800 bg-[#071224] p-6 shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-3">
               <div className="flex flex-wrap gap-3">
@@ -287,7 +287,7 @@ export default async function VaultMessageHoldsPage({ params }: PageProps) {
 
                 <Link
                   href="/vault/search"
-                  className="inline-flex text-sm text-slate-400 transition hover:text-slate-200"
+                  className="inline-flex text-sm text-slate-600 dark:text-slate-400 transition hover:text-slate-200"
                 >
                   Back to Search
                 </Link>
@@ -297,8 +297,8 @@ export default async function VaultMessageHoldsPage({ params }: PageProps) {
                 <h1 className="text-3xl font-semibold tracking-tight text-white">
                   Message Holds
                 </h1>
-                <p className="mt-2 text-sm text-slate-300">{sender}</p>
-                <p className="mt-1 text-sm text-slate-400">
+                <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">{sender}</p>
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
                   {message.subject || "(No Subject)"}
                 </p>
                 <p className="mt-1 text-sm text-slate-500">
@@ -362,7 +362,7 @@ export default async function VaultMessageHoldsPage({ params }: PageProps) {
             {(summary.byStatus && Object.keys(summary.byStatus).length > 0) ||
             (summary.byType && Object.keys(summary.byType).length > 0) ? (
               <div className="mt-5 grid gap-4 xl:grid-cols-2">
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+                <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/50 dark:bg-slate-900/50 p-4">
                   <div className="mb-3 text-sm font-semibold text-white">
                     By Status
                   </div>
@@ -375,7 +375,7 @@ export default async function VaultMessageHoldsPage({ params }: PageProps) {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+                <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/50 dark:bg-slate-900/50 p-4">
                   <div className="mb-3 text-sm font-semibold text-white">
                     By Type
                   </div>
@@ -396,14 +396,14 @@ export default async function VaultMessageHoldsPage({ params }: PageProps) {
             action={
               <Link
                 href={`/vault/messages/${message.id}`}
-                className="inline-flex rounded-2xl border border-slate-700 bg-slate-950/70 px-4 py-2 text-sm font-medium text-slate-100 transition hover:bg-slate-800"
+                className="inline-flex rounded-2xl border border-slate-300 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-950/70 px-4 py-2 text-sm font-medium text-slate-900 dark:text-slate-100 transition hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 Back to Overview
               </Link>
             }
           >
             {holds.length === 0 ? (
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-8 text-center text-sm text-slate-400">
+              <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/50 dark:bg-slate-900/50 p-8 text-center text-sm text-slate-600 dark:text-slate-400">
                 No holds are linked to this message.
               </div>
             ) : (
@@ -423,7 +423,7 @@ export default async function VaultMessageHoldsPage({ params }: PageProps) {
                   return (
                     <div
                       key={hold.id}
-                      className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 transition hover:border-cyan-500/30 hover:bg-slate-900"
+                      className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-900/60 p-5 transition hover:border-cyan-500/30 hover:bg-slate-100 dark:hover:bg-slate-900"
                     >
                       <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                         <div className="min-w-0 flex-1">
@@ -468,10 +468,10 @@ export default async function VaultMessageHoldsPage({ params }: PageProps) {
                           </div>
 
                           <div className="mt-4">
-                            <div className="mb-2 text-[11px] uppercase tracking-[0.12em] text-slate-400">
+                            <div className="mb-2 text-[11px] uppercase tracking-[0.12em] text-slate-600 dark:text-slate-400">
                               Description
                             </div>
-                            <div className="rounded-xl border border-slate-800 bg-[#071224] p-3 text-sm text-slate-100">
+                            <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-[#071224] p-3 text-sm text-slate-900 dark:text-slate-100">
                               {hold.description || "—"}
                             </div>
                           </div>

@@ -173,7 +173,7 @@ function invoiceStatusBadgeClasses(status: string | null | undefined) {
     return "border-rose-500/30 bg-rose-500/10 text-rose-300";
   }
 
-  return "border-slate-700 bg-slate-800 text-slate-300";
+  return "border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300";
 }
 
 async function authFetch(url: string, options: RequestInit = {}) {
@@ -375,11 +375,11 @@ export default function VendorInvoicesPage() {
       <div className="space-y-2">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-slate-200">
+            <h1 className="text-2xl font-semibold text-slate-800 dark:text-slate-200">
               Vendor Invoices
             </h1>
 
-            <p className="text-slate-400">
+            <p className="text-slate-600 dark:text-slate-400">
               {isAdminView
                 ? "Admin view of all vendor invoices in your organization."
                 : `Invoices assigned to ${vendorName || "your company"}.`}
@@ -391,7 +391,7 @@ export default function VendorInvoicesPage() {
               type="button"
               onClick={loadInvoices}
               disabled={loading}
-              className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-700 px-4 text-sm text-slate-300 transition hover:border-sky-600 hover:text-white disabled:opacity-50"
+              className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 dark:border-slate-700 px-4 text-sm text-slate-700 dark:text-slate-300 transition hover:border-sky-600 hover:text-white disabled:opacity-50"
             >
               {loading ? "Refreshing..." : "Refresh"}
             </button>
@@ -405,7 +405,7 @@ export default function VendorInvoicesPage() {
 
             <Link
               href="/vendor"
-              className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-700 px-4 text-sm text-slate-300 transition hover:border-sky-600 hover:text-white"
+              className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 dark:border-slate-700 px-4 text-sm text-slate-700 dark:text-slate-300 transition hover:border-sky-600 hover:text-white"
             >
               Back to Vendor Portal
             </Link>
@@ -415,18 +415,18 @@ export default function VendorInvoicesPage() {
         {(isVendorView || isAdminView) && (
           <div className="flex flex-wrap gap-2 text-xs text-slate-500">
             {isVendorView && !isAdminView && resolvedVendorId ? (
-              <span className="rounded-full border border-slate-800 bg-slate-900 px-3 py-1">
+              <span className="rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 py-1">
                 Vendor scope active
               </span>
             ) : null}
 
             {isAdminView ? (
-              <span className="rounded-full border border-slate-800 bg-slate-900 px-3 py-1">
+              <span className="rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 py-1">
                 Admin org-wide view
               </span>
             ) : null}
 
-            <span className="rounded-full border border-slate-800 bg-slate-900 px-3 py-1">
+            <span className="rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-3 py-1">
               Total loaded: {invoices.length}
             </span>
           </div>
@@ -442,13 +442,13 @@ export default function VendorInvoicesPage() {
       </div>
 
       {loading && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-slate-400">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6 text-slate-600 dark:text-slate-400">
           Loading invoices...
         </div>
       )}
 
       {!loading && !error && invoices.length === 0 && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-slate-400">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-6 text-slate-600 dark:text-slate-400">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <p>
@@ -482,15 +482,15 @@ export default function VendorInvoicesPage() {
           {invoices.map((invoice) => (
             <div
               key={invoice.id}
-              className="rounded-2xl border border-slate-800 bg-slate-900 p-5"
+              className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5"
             >
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div className="space-y-2">
                   <div>
-                    <h2 className="text-lg font-semibold text-slate-100">
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                       {invoice.project_name}
                     </h2>
-                    <p className="text-sm text-slate-400">
+                    <p className="text-sm text-slate-600 dark:text-slate-400">
                       Client: {invoice.client_name}
                     </p>
                     <p className="mt-1 text-xs text-slate-500">
@@ -508,13 +508,13 @@ export default function VendorInvoicesPage() {
                     </span>
 
                     {invoice.invoice_number ? (
-                      <span className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-300">
+                      <span className="rounded-full border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs text-slate-700 dark:text-slate-300">
                         Invoice #{invoice.invoice_number}
                       </span>
                     ) : null}
 
                     {invoice.estimate_id ? (
-                      <span className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-300">
+                      <span className="rounded-full border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs text-slate-700 dark:text-slate-300">
                         Estimate #{invoice.estimate_number || "Linked"}
                       </span>
                     ) : null}
@@ -523,7 +523,7 @@ export default function VendorInvoicesPage() {
 
                 <div className="text-sm md:text-right">
                   <p className="text-slate-500">Invoice Total</p>
-                  <p className="text-lg font-semibold text-slate-100">
+                  <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                     {formatCurrency(invoice.total)}
                   </p>
                   <p className="mt-1 text-xs text-slate-500">
@@ -552,7 +552,7 @@ export default function VendorInvoicesPage() {
               </div>
 
               {invoice.items.length > 0 ? (
-                <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950 p-4">
+                <div className="mt-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4">
                   <p className="text-xs uppercase tracking-wide text-slate-500">
                     Invoice Items
                   </p>
@@ -561,10 +561,10 @@ export default function VendorInvoicesPage() {
                     {invoice.items.map((item) => (
                       <div
                         key={item.id}
-                        className="flex flex-col gap-2 border-b border-slate-800 pb-3 last:border-b-0 last:pb-0 md:flex-row md:items-center md:justify-between"
+                        className="flex flex-col gap-2 border-b border-slate-200 dark:border-slate-800 pb-3 last:border-b-0 last:pb-0 md:flex-row md:items-center md:justify-between"
                       >
                         <div>
-                          <p className="text-sm text-slate-200">
+                          <p className="text-sm text-slate-800 dark:text-slate-200">
                             {item.description || "Invoice item"}
                           </p>
                           <p className="text-xs text-slate-500">
@@ -573,7 +573,7 @@ export default function VendorInvoicesPage() {
                           </p>
                         </div>
 
-                        <p className="text-sm font-medium text-slate-100">
+                        <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
                           {formatCurrency(item.total)}
                         </p>
                       </div>
@@ -587,20 +587,20 @@ export default function VendorInvoicesPage() {
                 invoice.paid_at ||
                 invoice.estimate_status) ? (
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4">
                     <p className="text-xs uppercase tracking-wide text-slate-500">
                       Notes
                     </p>
-                    <p className="mt-2 text-sm text-slate-300">
+                    <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">
                       {invoice.notes || "No notes provided."}
                     </p>
                   </div>
 
-                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4">
                     <p className="text-xs uppercase tracking-wide text-slate-500">
                       Timeline
                     </p>
-                    <div className="mt-2 space-y-1 text-sm text-slate-300">
+                    <div className="mt-2 space-y-1 text-sm text-slate-700 dark:text-slate-300">
                       <p>Created: {formatDate(invoice.created_at)}</p>
                       <p>Paid: {formatDate(invoice.paid_at)}</p>
                       <p>
@@ -621,7 +621,7 @@ export default function VendorInvoicesPage() {
 
                 <Link
                   href={`/vendor/projects/${invoice.project_id}`}
-                  className="inline-flex rounded-xl border border-slate-700 bg-slate-950 px-4 py-2 text-sm text-slate-200 transition hover:bg-slate-800"
+                  className="inline-flex rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-2 text-sm text-slate-800 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-800"
                 >
                   Open Project
                 </Link>
@@ -629,7 +629,7 @@ export default function VendorInvoicesPage() {
                 {invoice.estimate_id ? (
                   <Link
                     href={`/vendor/estimates/${invoice.estimate_id}`}
-                    className="inline-flex rounded-xl border border-slate-700 bg-slate-950 px-4 py-2 text-sm text-slate-200 transition hover:bg-slate-800"
+                    className="inline-flex rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-2 text-sm text-slate-800 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-800"
                   >
                     Open Estimate
                   </Link>
@@ -651,9 +651,9 @@ function SummaryCard({
   value: number;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-      <p className="text-sm text-slate-400">{label}</p>
-      <p className="mt-3 text-3xl font-semibold text-slate-100">{value}</p>
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-5">
+      <p className="text-sm text-slate-600 dark:text-slate-400">{label}</p>
+      <p className="mt-3 text-3xl font-semibold text-slate-900 dark:text-slate-100">{value}</p>
     </div>
   );
 }
@@ -666,11 +666,11 @@ function MetricCard({
   value: string;
 }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+    <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4">
       <p className="text-xs uppercase tracking-wide text-slate-500">
         {label}
       </p>
-      <p className="mt-2 text-sm text-slate-200">{value}</p>
+      <p className="mt-2 text-sm text-slate-800 dark:text-slate-200">{value}</p>
     </div>
   );
 }

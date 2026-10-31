@@ -40,7 +40,7 @@ export default function LegalIndexPage() {
         </li>
       </ul>
 
-      <p className="mt-6 text-[11px] text-slate-400">
+      <p className="mt-6 text-[11px] text-slate-600 dark:text-slate-400">
         These documents are provided for informational purposes only and do not
         constitute legal advice. For specific questions, please consult your
         legal counsel.

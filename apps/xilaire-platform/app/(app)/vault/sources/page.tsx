@@ -104,7 +104,7 @@ function getStatusClass(status: string | null | undefined) {
     case "disabled":
       return "border-red-500/30 bg-red-500/10 text-red-300";
     default:
-      return "border-zinc-500/30 bg-zinc-500/10 text-zinc-300";
+      return "border-zinc-500/30 bg-zinc-500/10 text-zinc-700 dark:text-zinc-300";
   }
 }
 
@@ -945,11 +945,11 @@ function SourceCard({ source }: { source: SourceWithCounts }) {
     "Unnamed source";
 
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
+    <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 p-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-lg font-semibold text-zinc-100">
+            <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
               {displayName}
             </h3>
 
@@ -992,7 +992,7 @@ function SourceCard({ source }: { source: SourceWithCounts }) {
         <div className="flex flex-wrap gap-2">
           <Link
             href={`/vault/sources/${source.id}`}
-            className="inline-flex rounded-xl border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-300 hover:bg-zinc-800"
+            className="inline-flex rounded-xl border border-zinc-300 dark:border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
           >
             View source
           </Link>
@@ -1064,9 +1064,9 @@ export default async function VaultSourcesPage({
   );
 
   return (
-    <main className="min-h-screen bg-zinc-950 px-6 py-8 text-zinc-100">
+    <main className="min-h-screen bg-white dark:bg-zinc-950 px-6 py-8 text-zinc-900 dark:text-zinc-100">
       <div className="mx-auto flex max-w-7xl flex-col gap-6">
-        <section className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-6 shadow-xl">
+        <section className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 p-6 shadow-xl">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <p className="text-sm uppercase tracking-[0.3em] text-zinc-500">
@@ -1075,7 +1075,7 @@ export default async function VaultSourcesPage({
               <h1 className="mt-2 text-3xl font-semibold tracking-tight">
                 Source Connections
               </h1>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">
                 Connect and manage Microsoft Exchange Online, Microsoft Graph
                 API, Exchange On-Prem EWS, SMTP journaling, Gmail, Google
                 Workspace, IMAP, Yahoo, AOL, hosted mail, and other mailbox
@@ -1086,7 +1086,7 @@ export default async function VaultSourcesPage({
             <div className="flex flex-wrap gap-2">
               <Link
                 href="/vault"
-                className="inline-flex rounded-xl border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-300 hover:bg-zinc-800"
+                className="inline-flex rounded-xl border border-zinc-300 dark:border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800"
               >
                 Vault overview
               </Link>
@@ -1141,50 +1141,50 @@ export default async function VaultSourcesPage({
         )}
 
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-8">
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
+          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 p-5">
             <p className="text-sm text-zinc-500">Total Sources</p>
             <p className="mt-2 text-2xl font-semibold">{items.length}</p>
           </div>
 
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
+          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 p-5">
             <p className="text-sm text-zinc-500">EXO Sources</p>
             <p className="mt-2 text-2xl font-semibold">{exoSources.length}</p>
           </div>
 
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
+          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 p-5">
             <p className="text-sm text-zinc-500">Graph Sources</p>
             <p className="mt-2 text-2xl font-semibold">
               {graphSources.length}
             </p>
           </div>
 
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
+          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 p-5">
             <p className="text-sm text-zinc-500">EWS Sources</p>
             <p className="mt-2 text-2xl font-semibold">{ewsSources.length}</p>
           </div>
 
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
+          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 p-5">
             <p className="text-sm text-zinc-500">Journal Sources</p>
             <p className="mt-2 text-2xl font-semibold">
               {journalSources.length}
             </p>
           </div>
 
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
+          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 p-5">
             <p className="text-sm text-zinc-500">Gmail Sources</p>
             <p className="mt-2 text-2xl font-semibold">
               {gmailSources.length}
             </p>
           </div>
 
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
+          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 p-5">
             <p className="text-sm text-zinc-500">IMAP Sources</p>
             <p className="mt-2 text-2xl font-semibold">
               {imapSources.length}
             </p>
           </div>
 
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
+          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70 p-5">
             <p className="text-sm text-zinc-500">Mailboxes</p>
             <p className="mt-2 text-2xl font-semibold">
               {items.reduce((total, item) => total + item.mailbox_count, 0)}
@@ -1194,9 +1194,9 @@ export default async function VaultSourcesPage({
 
         <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
           <div className="grid gap-6">
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70">
-              <div className="border-b border-zinc-800 px-5 py-4">
-                <h2 className="text-lg font-semibold text-zinc-100">
+            <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70">
+              <div className="border-b border-zinc-200 dark:border-zinc-800 px-5 py-4">
+                <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
                   Add Exchange On-Prem EWS Source
                 </h2>
                 <p className="mt-1 text-sm text-zinc-500">
@@ -1211,7 +1211,7 @@ export default async function VaultSourcesPage({
                   <div>
                     <label
                       htmlFor="ewsName"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Display name
                     </label>
@@ -1219,14 +1219,14 @@ export default async function VaultSourcesPage({
                       id="ewsName"
                       name="ewsName"
                       placeholder="Exchange On-Prem - Client"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="ewsSourceKey"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Source key
                     </label>
@@ -1234,14 +1234,14 @@ export default async function VaultSourcesPage({
                       id="ewsSourceKey"
                       name="ewsSourceKey"
                       placeholder="ews-client-domain"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="exchangeVersion"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Exchange version
                     </label>
@@ -1249,7 +1249,7 @@ export default async function VaultSourcesPage({
                       id="exchangeVersion"
                       name="exchangeVersion"
                       defaultValue="Exchange2016"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-blue-500/60"
                     >
                       <option value="Exchange2010">Exchange 2010</option>
                       <option value="Exchange2010_SP1">Exchange 2010 SP1</option>
@@ -1264,7 +1264,7 @@ export default async function VaultSourcesPage({
                   <div>
                     <label
                       htmlFor="ewsAuthMethod"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Auth method
                     </label>
@@ -1272,7 +1272,7 @@ export default async function VaultSourcesPage({
                       id="ewsAuthMethod"
                       name="ewsAuthMethod"
                       defaultValue="basic"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-blue-500/60"
                     >
                       <option value="basic">Basic</option>
                       <option value="ntlm">NTLM</option>
@@ -1286,7 +1286,7 @@ export default async function VaultSourcesPage({
                   <div>
                     <label
                       htmlFor="ewsUrl"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       EWS URL
                     </label>
@@ -1294,14 +1294,14 @@ export default async function VaultSourcesPage({
                       id="ewsUrl"
                       name="ewsUrl"
                       placeholder="https://mail.company.com/EWS/Exchange.asmx"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="autodiscoverUrl"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Autodiscover URL
                     </label>
@@ -1309,14 +1309,14 @@ export default async function VaultSourcesPage({
                       id="autodiscoverUrl"
                       name="autodiscoverUrl"
                       placeholder="https://autodiscover.company.com/autodiscover/autodiscover.xml"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="ewsDomain"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Domain
                     </label>
@@ -1324,14 +1324,14 @@ export default async function VaultSourcesPage({
                       id="ewsDomain"
                       name="ewsDomain"
                       placeholder="COMPANY"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="ewsUsername"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Username
                     </label>
@@ -1339,14 +1339,14 @@ export default async function VaultSourcesPage({
                       id="ewsUsername"
                       name="ewsUsername"
                       placeholder="svc_vault_ingest@company.com"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="ewsPassword"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Password
                     </label>
@@ -1355,14 +1355,14 @@ export default async function VaultSourcesPage({
                       name="ewsPassword"
                       type="password"
                       placeholder="Password or use env var"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="ewsPasswordEnvVar"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Password env var
                     </label>
@@ -1370,13 +1370,13 @@ export default async function VaultSourcesPage({
                       id="ewsPasswordEnvVar"
                       name="ewsPasswordEnvVar"
                       placeholder="EXCHANGE_EWS_PASSWORD"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4">
-                  <p className="text-sm font-medium text-zinc-200">
+                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-950/70 p-4">
+                  <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
                     OAuth / impersonation
                   </p>
 
@@ -1384,7 +1384,7 @@ export default async function VaultSourcesPage({
                     <div>
                       <label
                         htmlFor="ewsTenantId"
-                        className="text-sm font-medium text-zinc-300"
+                        className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                       >
                         Tenant ID
                       </label>
@@ -1392,14 +1392,14 @@ export default async function VaultSourcesPage({
                         id="ewsTenantId"
                         name="ewsTenantId"
                         placeholder="Optional for OAuth EWS"
-                        className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                        className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                       />
                     </div>
 
                     <div>
                       <label
                         htmlFor="ewsClientId"
-                        className="text-sm font-medium text-zinc-300"
+                        className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                       >
                         Client ID
                       </label>
@@ -1407,14 +1407,14 @@ export default async function VaultSourcesPage({
                         id="ewsClientId"
                         name="ewsClientId"
                         placeholder="Optional for OAuth EWS"
-                        className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                        className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                       />
                     </div>
 
                     <div>
                       <label
                         htmlFor="ewsClientSecret"
-                        className="text-sm font-medium text-zinc-300"
+                        className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                       >
                         Client secret
                       </label>
@@ -1423,14 +1423,14 @@ export default async function VaultSourcesPage({
                         name="ewsClientSecret"
                         type="password"
                         placeholder="Optional for OAuth EWS"
-                        className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                        className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                       />
                     </div>
 
                     <div>
                       <label
                         htmlFor="ewsClientSecretEnvVar"
-                        className="text-sm font-medium text-zinc-300"
+                        className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                       >
                         Client secret env var
                       </label>
@@ -1438,14 +1438,14 @@ export default async function VaultSourcesPage({
                         id="ewsClientSecretEnvVar"
                         name="ewsClientSecretEnvVar"
                         placeholder="EXCHANGE_EWS_CLIENT_SECRET"
-                        className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                        className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                       />
                     </div>
 
                     <div className="md:col-span-2">
                       <label
                         htmlFor="ewsImpersonationUser"
-                        className="text-sm font-medium text-zinc-300"
+                        className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                       >
                         Impersonation user
                       </label>
@@ -1453,14 +1453,14 @@ export default async function VaultSourcesPage({
                         id="ewsImpersonationUser"
                         name="ewsImpersonationUser"
                         placeholder="svc_vault_ingest@company.com"
-                        className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                        className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                       />
                     </div>
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4">
-                  <p className="text-sm font-medium text-zinc-200">
+                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-950/70 p-4">
+                  <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
                     Discovery and folder scope
                   </p>
 
@@ -1468,7 +1468,7 @@ export default async function VaultSourcesPage({
                     <div>
                       <label
                         htmlFor="ewsDiscoveryMode"
-                        className="text-sm font-medium text-zinc-300"
+                        className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                       >
                         Discovery mode
                       </label>
@@ -1476,7 +1476,7 @@ export default async function VaultSourcesPage({
                         id="ewsDiscoveryMode"
                         name="ewsDiscoveryMode"
                         defaultValue="selected_mailboxes"
-                        className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-blue-500/60"
+                        className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-blue-500/60"
                       >
                         <option value="selected_mailboxes">
                           Selected mailboxes
@@ -1489,7 +1489,7 @@ export default async function VaultSourcesPage({
                     <div>
                       <label
                         htmlFor="ewsSyncMode"
-                        className="text-sm font-medium text-zinc-300"
+                        className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                       >
                         Sync mode
                       </label>
@@ -1497,7 +1497,7 @@ export default async function VaultSourcesPage({
                         id="ewsSyncMode"
                         name="ewsSyncMode"
                         defaultValue="scheduled"
-                        className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-blue-500/60"
+                        className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-blue-500/60"
                       >
                         <option value="scheduled">Scheduled</option>
                         <option value="continuous">Continuous</option>
@@ -1508,7 +1508,7 @@ export default async function VaultSourcesPage({
                   <div className="mt-4">
                     <label
                       htmlFor="ewsMailboxAddresses"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Selected Exchange mailboxes
                     </label>
@@ -1517,7 +1517,7 @@ export default async function VaultSourcesPage({
                       name="ewsMailboxAddresses"
                       rows={5}
                       placeholder={"user1@company.com\nuser2@company.com"}
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                     <p className="mt-2 text-xs text-zinc-600">
                       Enter one mailbox per line, or separate addresses with
@@ -1529,7 +1529,7 @@ export default async function VaultSourcesPage({
                     <div>
                       <label
                         htmlFor="ewsIncludeFolders"
-                        className="text-sm font-medium text-zinc-300"
+                        className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                       >
                         Include folders
                       </label>
@@ -1537,14 +1537,14 @@ export default async function VaultSourcesPage({
                         id="ewsIncludeFolders"
                         name="ewsIncludeFolders"
                         placeholder="Inbox, Sent Items, Archive"
-                        className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                        className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                       />
                     </div>
 
                     <div>
                       <label
                         htmlFor="ewsExcludeFolders"
-                        className="text-sm font-medium text-zinc-300"
+                        className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                       >
                         Exclude folders
                       </label>
@@ -1552,13 +1552,13 @@ export default async function VaultSourcesPage({
                         id="ewsExcludeFolders"
                         name="ewsExcludeFolders"
                         placeholder="Junk Email, Deleted Items"
-                        className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                        className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                       />
                     </div>
                   </div>
 
                   <div className="mt-4 grid gap-3 md:grid-cols-2">
-                    <label className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-300">
+                    <label className="flex items-center gap-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300">
                       <input
                         type="checkbox"
                         name="ewsIncludeArchive"
@@ -1567,7 +1567,7 @@ export default async function VaultSourcesPage({
                       Include archive mailbox
                     </label>
 
-                    <label className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-300">
+                    <label className="flex items-center gap-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300">
                       <input
                         type="checkbox"
                         name="ewsIncludeRecoverableItems"
@@ -1587,9 +1587,9 @@ export default async function VaultSourcesPage({
               </form>
             </div>
 
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70">
-              <div className="border-b border-zinc-800 px-5 py-4">
-                <h2 className="text-lg font-semibold text-zinc-100">
+            <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70">
+              <div className="border-b border-zinc-200 dark:border-zinc-800 px-5 py-4">
+                <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
                   Add Microsoft Graph API Source
                 </h2>
                 <p className="mt-1 text-sm text-zinc-500">
@@ -1604,7 +1604,7 @@ export default async function VaultSourcesPage({
                   <div>
                     <label
                       htmlFor="graphName"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Display name
                     </label>
@@ -1612,14 +1612,14 @@ export default async function VaultSourcesPage({
                       id="graphName"
                       name="graphName"
                       placeholder="Microsoft Graph - XilAire"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="graphSourceKey"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Source key
                     </label>
@@ -1627,14 +1627,14 @@ export default async function VaultSourcesPage({
                       id="graphSourceKey"
                       name="graphSourceKey"
                       placeholder="graph-xilaire"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="graphTenantId"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Tenant ID
                     </label>
@@ -1643,14 +1643,14 @@ export default async function VaultSourcesPage({
                       name="graphTenantId"
                       placeholder="00000000-0000-0000-0000-000000000000"
                       required
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="graphClientId"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Client ID
                     </label>
@@ -1659,14 +1659,14 @@ export default async function VaultSourcesPage({
                       name="graphClientId"
                       placeholder="App registration client ID"
                       required
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="graphClientSecret"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Client secret
                     </label>
@@ -1675,14 +1675,14 @@ export default async function VaultSourcesPage({
                       name="graphClientSecret"
                       type="password"
                       placeholder="Paste secret or use env var"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="graphClientSecretEnvVar"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Client secret env var
                     </label>
@@ -1690,14 +1690,14 @@ export default async function VaultSourcesPage({
                       id="graphClientSecretEnvVar"
                       name="graphClientSecretEnvVar"
                       placeholder="MICROSOFT_GRAPH_CLIENT_SECRET"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="graphDiscoveryMode"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Discovery mode
                     </label>
@@ -1705,7 +1705,7 @@ export default async function VaultSourcesPage({
                       id="graphDiscoveryMode"
                       name="graphDiscoveryMode"
                       defaultValue="selected_mailboxes"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-blue-500/60"
                     >
                       <option value="selected_mailboxes">
                         Selected mailboxes
@@ -1720,7 +1720,7 @@ export default async function VaultSourcesPage({
                   <div>
                     <label
                       htmlFor="graphSyncMode"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Sync mode
                     </label>
@@ -1728,7 +1728,7 @@ export default async function VaultSourcesPage({
                       id="graphSyncMode"
                       name="graphSyncMode"
                       defaultValue="scheduled"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-blue-500/60"
                     >
                       <option value="scheduled">Scheduled</option>
                       <option value="continuous">Continuous</option>
@@ -1739,7 +1739,7 @@ export default async function VaultSourcesPage({
                 <div>
                   <label
                     htmlFor="graphMailboxAddresses"
-                    className="text-sm font-medium text-zinc-300"
+                    className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                   >
                     Selected Exchange Online mailboxes
                   </label>
@@ -1748,7 +1748,7 @@ export default async function VaultSourcesPage({
                     name="graphMailboxAddresses"
                     rows={5}
                     placeholder={"user1@company.com\nuser2@company.com"}
-                    className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                    className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                   />
                   <p className="mt-2 text-xs text-zinc-600">
                     Enter one mailbox per line, or separate addresses with
@@ -1759,7 +1759,7 @@ export default async function VaultSourcesPage({
                 <div>
                   <label
                     htmlFor="graphWorkloads"
-                    className="text-sm font-medium text-zinc-300"
+                    className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                   >
                     Workloads
                   </label>
@@ -1767,12 +1767,12 @@ export default async function VaultSourcesPage({
                     id="graphWorkloads"
                     name="graphWorkloads"
                     placeholder="exchange, teams, sharepoint, onedrive, users_groups, audit_logs"
-                    className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                    className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                   />
                 </div>
 
                 <div className="grid gap-3 md:grid-cols-2">
-                  <label className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-300">
+                  <label className="flex items-center gap-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300">
                     <input
                       type="checkbox"
                       name="graphIncludeTeams"
@@ -1781,7 +1781,7 @@ export default async function VaultSourcesPage({
                     Include Teams
                   </label>
 
-                  <label className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-300">
+                  <label className="flex items-center gap-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300">
                     <input
                       type="checkbox"
                       name="graphIncludeSharePoint"
@@ -1790,7 +1790,7 @@ export default async function VaultSourcesPage({
                     Include SharePoint
                   </label>
 
-                  <label className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-300">
+                  <label className="flex items-center gap-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300">
                     <input
                       type="checkbox"
                       name="graphIncludeOneDrive"
@@ -1799,7 +1799,7 @@ export default async function VaultSourcesPage({
                     Include OneDrive
                   </label>
 
-                  <label className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-300">
+                  <label className="flex items-center gap-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300">
                     <input
                       type="checkbox"
                       name="graphIncludeUsersGroups"
@@ -1808,7 +1808,7 @@ export default async function VaultSourcesPage({
                     Include Users / Groups
                   </label>
 
-                  <label className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-300 md:col-span-2">
+                  <label className="flex items-center gap-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 md:col-span-2">
                     <input
                       type="checkbox"
                       name="graphIncludeAuditLogs"
@@ -1827,9 +1827,9 @@ export default async function VaultSourcesPage({
               </form>
             </div>
 
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70">
-              <div className="border-b border-zinc-800 px-5 py-4">
-                <h2 className="text-lg font-semibold text-zinc-100">
+            <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70">
+              <div className="border-b border-zinc-200 dark:border-zinc-800 px-5 py-4">
+                <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
                   Add Gmail / Google Workspace Source
                 </h2>
                 <p className="mt-1 text-sm text-zinc-500">
@@ -1843,7 +1843,7 @@ export default async function VaultSourcesPage({
                   <div>
                     <label
                       htmlFor="name"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Display name
                     </label>
@@ -1851,14 +1851,14 @@ export default async function VaultSourcesPage({
                       id="name"
                       name="name"
                       placeholder="Google Workspace - XilAire"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="sourceKey"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Source key
                     </label>
@@ -1866,14 +1866,14 @@ export default async function VaultSourcesPage({
                       id="sourceKey"
                       name="sourceKey"
                       placeholder="gmail-xilaire"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="workspaceDomain"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Workspace domain
                     </label>
@@ -1881,14 +1881,14 @@ export default async function VaultSourcesPage({
                       id="workspaceDomain"
                       name="workspaceDomain"
                       placeholder="xilairetechnologies.com"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="customerId"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Google customer ID
                     </label>
@@ -1896,13 +1896,13 @@ export default async function VaultSourcesPage({
                       id="customerId"
                       name="customerId"
                       placeholder="Optional"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4">
-                  <p className="text-sm font-medium text-zinc-200">
+                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-950/70 p-4">
+                  <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
                     Authentication
                   </p>
 
@@ -1910,7 +1910,7 @@ export default async function VaultSourcesPage({
                     <div>
                       <label
                         htmlFor="authMethod"
-                        className="text-sm font-medium text-zinc-300"
+                        className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                       >
                         Auth method
                       </label>
@@ -1918,7 +1918,7 @@ export default async function VaultSourcesPage({
                         id="authMethod"
                         name="authMethod"
                         defaultValue="service_account_domain_wide_delegation"
-                        className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-blue-500/60"
+                        className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-blue-500/60"
                       >
                         <option value="service_account_domain_wide_delegation">
                           Service account domain-wide delegation
@@ -1932,7 +1932,7 @@ export default async function VaultSourcesPage({
                     <div>
                       <label
                         htmlFor="delegatedAdminEmail"
-                        className="text-sm font-medium text-zinc-300"
+                        className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                       >
                         Delegated admin email
                       </label>
@@ -1940,14 +1940,14 @@ export default async function VaultSourcesPage({
                         id="delegatedAdminEmail"
                         name="delegatedAdminEmail"
                         placeholder="admin@xilairetechnologies.com"
-                        className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                        className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                       />
                     </div>
 
                     <div>
                       <label
                         htmlFor="clientEmail"
-                        className="text-sm font-medium text-zinc-300"
+                        className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                       >
                         Service account client email
                       </label>
@@ -1955,14 +1955,14 @@ export default async function VaultSourcesPage({
                         id="clientEmail"
                         name="clientEmail"
                         placeholder="vault-ingest@project.iam.gserviceaccount.com"
-                        className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                        className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                       />
                     </div>
 
                     <div>
                       <label
                         htmlFor="privateKeyEnvVar"
-                        className="text-sm font-medium text-zinc-300"
+                        className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                       >
                         Private key env var
                       </label>
@@ -1970,14 +1970,14 @@ export default async function VaultSourcesPage({
                         id="privateKeyEnvVar"
                         name="privateKeyEnvVar"
                         placeholder="GOOGLE_VAULT_PRIVATE_KEY"
-                        className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                        className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                       />
                     </div>
 
                     <div>
                       <label
                         htmlFor="clientId"
-                        className="text-sm font-medium text-zinc-300"
+                        className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                       >
                         OAuth client ID
                       </label>
@@ -1985,14 +1985,14 @@ export default async function VaultSourcesPage({
                         id="clientId"
                         name="clientId"
                         placeholder="Only needed for OAuth refresh token mode"
-                        className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                        className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                       />
                     </div>
 
                     <div>
                       <label
                         htmlFor="clientSecret"
-                        className="text-sm font-medium text-zinc-300"
+                        className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                       >
                         OAuth client secret
                       </label>
@@ -2001,14 +2001,14 @@ export default async function VaultSourcesPage({
                         name="clientSecret"
                         type="password"
                         placeholder="Only needed for OAuth refresh token mode"
-                        className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                        className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                       />
                     </div>
 
                     <div>
                       <label
                         htmlFor="refreshTokenEnvVar"
-                        className="text-sm font-medium text-zinc-300"
+                        className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                       >
                         Refresh token env var
                       </label>
@@ -2016,14 +2016,14 @@ export default async function VaultSourcesPage({
                         id="refreshTokenEnvVar"
                         name="refreshTokenEnvVar"
                         placeholder="GOOGLE_VAULT_REFRESH_TOKEN"
-                        className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                        className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                       />
                     </div>
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-4">
-                  <p className="text-sm font-medium text-zinc-200">
+                <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-950/70 p-4">
+                  <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
                     Discovery and mailbox scope
                   </p>
 
@@ -2031,7 +2031,7 @@ export default async function VaultSourcesPage({
                     <div>
                       <label
                         htmlFor="discoveryMode"
-                        className="text-sm font-medium text-zinc-300"
+                        className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                       >
                         Discovery mode
                       </label>
@@ -2039,7 +2039,7 @@ export default async function VaultSourcesPage({
                         id="discoveryMode"
                         name="discoveryMode"
                         defaultValue="selected_mailboxes"
-                        className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-blue-500/60"
+                        className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-blue-500/60"
                       >
                         <option value="selected_mailboxes">
                           Selected mailboxes
@@ -2051,7 +2051,7 @@ export default async function VaultSourcesPage({
                     <div>
                       <label
                         htmlFor="syncMode"
-                        className="text-sm font-medium text-zinc-300"
+                        className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                       >
                         Sync mode
                       </label>
@@ -2059,7 +2059,7 @@ export default async function VaultSourcesPage({
                         id="syncMode"
                         name="syncMode"
                         defaultValue="scheduled"
-                        className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-blue-500/60"
+                        className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-blue-500/60"
                       >
                         <option value="scheduled">Scheduled</option>
                         <option value="continuous">Continuous</option>
@@ -2070,7 +2070,7 @@ export default async function VaultSourcesPage({
                   <div className="mt-4">
                     <label
                       htmlFor="mailboxAddresses"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Selected Gmail mailboxes
                     </label>
@@ -2079,7 +2079,7 @@ export default async function VaultSourcesPage({
                       name="mailboxAddresses"
                       rows={5}
                       placeholder={"user1@gmail.com\nuser2@company.com"}
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                     <p className="mt-2 text-xs text-zinc-600">
                       Enter one mailbox per line, or separate addresses with
@@ -2091,7 +2091,7 @@ export default async function VaultSourcesPage({
                     <div>
                       <label
                         htmlFor="includeLabels"
-                        className="text-sm font-medium text-zinc-300"
+                        className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                       >
                         Include labels
                       </label>
@@ -2099,14 +2099,14 @@ export default async function VaultSourcesPage({
                         id="includeLabels"
                         name="includeLabels"
                         placeholder="INBOX, SENT"
-                        className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                        className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                       />
                     </div>
 
                     <div>
                       <label
                         htmlFor="excludeLabels"
-                        className="text-sm font-medium text-zinc-300"
+                        className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                       >
                         Exclude labels
                       </label>
@@ -2114,12 +2114,12 @@ export default async function VaultSourcesPage({
                         id="excludeLabels"
                         name="excludeLabels"
                         placeholder="SPAM, TRASH"
-                        className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                        className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                       />
                     </div>
                   </div>
 
-                  <label className="mt-4 flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-300">
+                  <label className="mt-4 flex items-center gap-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300">
                     <input
                       type="checkbox"
                       name="includeSpamTrash"
@@ -2138,9 +2138,9 @@ export default async function VaultSourcesPage({
               </form>
             </div>
 
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70">
-              <div className="border-b border-zinc-800 px-5 py-4">
-                <h2 className="text-lg font-semibold text-zinc-100">
+            <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70">
+              <div className="border-b border-zinc-200 dark:border-zinc-800 px-5 py-4">
+                <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
                   Add IMAP Source
                 </h2>
                 <p className="mt-1 text-sm text-zinc-500">
@@ -2154,7 +2154,7 @@ export default async function VaultSourcesPage({
                   <div>
                     <label
                       htmlFor="imapName"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Display name
                     </label>
@@ -2162,14 +2162,14 @@ export default async function VaultSourcesPage({
                       id="imapName"
                       name="imapName"
                       placeholder="Yahoo Executive Mail"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="imapSourceKey"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Source key
                     </label>
@@ -2177,14 +2177,14 @@ export default async function VaultSourcesPage({
                       id="imapSourceKey"
                       name="imapSourceKey"
                       placeholder="imap-yahoo-executive"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="providerLabel"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Provider label
                     </label>
@@ -2192,14 +2192,14 @@ export default async function VaultSourcesPage({
                       id="providerLabel"
                       name="providerLabel"
                       placeholder="Yahoo / AOL / Rackspace"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="host"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       IMAP host
                     </label>
@@ -2208,14 +2208,14 @@ export default async function VaultSourcesPage({
                       name="host"
                       placeholder="imap.mail.yahoo.com"
                       required
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="port"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Port
                     </label>
@@ -2224,14 +2224,14 @@ export default async function VaultSourcesPage({
                       name="port"
                       type="number"
                       defaultValue={993}
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="secure"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       SSL/TLS
                     </label>
@@ -2239,7 +2239,7 @@ export default async function VaultSourcesPage({
                       id="secure"
                       name="secure"
                       defaultValue="true"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-blue-500/60"
                     >
                       <option value="true">Secure IMAP / SSL / TLS</option>
                       <option value="false">Plain IMAP</option>
@@ -2249,7 +2249,7 @@ export default async function VaultSourcesPage({
                   <div>
                     <label
                       htmlFor="username"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Username
                     </label>
@@ -2258,14 +2258,14 @@ export default async function VaultSourcesPage({
                       name="username"
                       placeholder="executive@yahoo.com"
                       required
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="password"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Password / app password
                     </label>
@@ -2274,14 +2274,14 @@ export default async function VaultSourcesPage({
                       name="password"
                       type="password"
                       placeholder="IMAP password or app password"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="passwordEnvVar"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Password env var
                     </label>
@@ -2289,14 +2289,14 @@ export default async function VaultSourcesPage({
                       id="passwordEnvVar"
                       name="passwordEnvVar"
                       placeholder="IMAP_YAHOO_APP_PASSWORD"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="imapDiscoveryMode"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Discovery mode
                     </label>
@@ -2304,7 +2304,7 @@ export default async function VaultSourcesPage({
                       id="imapDiscoveryMode"
                       name="imapDiscoveryMode"
                       defaultValue="selected_mailboxes"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-blue-500/60"
                     >
                       <option value="selected_mailboxes">
                         Selected mailboxes
@@ -2318,7 +2318,7 @@ export default async function VaultSourcesPage({
                   <div>
                     <label
                       htmlFor="imapSyncMode"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Sync mode
                     </label>
@@ -2326,7 +2326,7 @@ export default async function VaultSourcesPage({
                       id="imapSyncMode"
                       name="imapSyncMode"
                       defaultValue="scheduled"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-blue-500/60"
                     >
                       <option value="scheduled">Scheduled</option>
                       <option value="continuous">Continuous</option>
@@ -2337,7 +2337,7 @@ export default async function VaultSourcesPage({
                 <div>
                   <label
                     htmlFor="imapMailboxAddresses"
-                    className="text-sm font-medium text-zinc-300"
+                    className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                   >
                     Selected IMAP mailboxes
                   </label>
@@ -2346,7 +2346,7 @@ export default async function VaultSourcesPage({
                     name="imapMailboxAddresses"
                     rows={5}
                     placeholder={"executive@yahoo.com\nlegal@yahoo.com\narchive@aol.com"}
-                    className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                    className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                   />
                   <p className="mt-2 text-xs text-zinc-600">
                     Enter one mailbox per line, or separate addresses with
@@ -2358,7 +2358,7 @@ export default async function VaultSourcesPage({
                   <div>
                     <label
                       htmlFor="includeFolders"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Include folders
                     </label>
@@ -2366,14 +2366,14 @@ export default async function VaultSourcesPage({
                       id="includeFolders"
                       name="includeFolders"
                       placeholder="INBOX, Sent, Archive"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="excludeFolders"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Exclude folders
                     </label>
@@ -2381,12 +2381,12 @@ export default async function VaultSourcesPage({
                       id="excludeFolders"
                       name="excludeFolders"
                       placeholder="Spam, Trash, Junk"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-blue-500/60"
                     />
                   </div>
                 </div>
 
-                <label className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-300">
+                <label className="flex items-center gap-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300">
                   <input
                     type="checkbox"
                     name="imapIncludeSpamTrash"
@@ -2404,9 +2404,9 @@ export default async function VaultSourcesPage({
               </form>
             </div>
 
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70">
-              <div className="border-b border-zinc-800 px-5 py-4">
-                <h2 className="text-lg font-semibold text-zinc-100">
+            <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70">
+              <div className="border-b border-zinc-200 dark:border-zinc-800 px-5 py-4">
+                <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
                   Add SMTP Journal Source
                 </h2>
                 <p className="mt-1 text-sm text-zinc-500">
@@ -2421,7 +2421,7 @@ export default async function VaultSourcesPage({
                   <div>
                     <label
                       htmlFor="journalName"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Display name
                     </label>
@@ -2429,14 +2429,14 @@ export default async function VaultSourcesPage({
                       id="journalName"
                       name="journalName"
                       placeholder="Enterprise Journal Feed"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-orange-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-orange-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="journalSourceKey"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Source key
                     </label>
@@ -2444,14 +2444,14 @@ export default async function VaultSourcesPage({
                       id="journalSourceKey"
                       name="journalSourceKey"
                       placeholder="smtp-journal-primary"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-orange-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-orange-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="journalAddress"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Journal mailbox address
                     </label>
@@ -2459,14 +2459,14 @@ export default async function VaultSourcesPage({
                       id="journalAddress"
                       name="journalAddress"
                       placeholder="journal@company.com"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-orange-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-orange-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="journalDomain"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Journal domain
                     </label>
@@ -2474,14 +2474,14 @@ export default async function VaultSourcesPage({
                       id="journalDomain"
                       name="journalDomain"
                       placeholder="company.com"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-orange-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-orange-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="inboundHost"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       SMTP inbound host
                     </label>
@@ -2489,14 +2489,14 @@ export default async function VaultSourcesPage({
                       id="inboundHost"
                       name="inboundHost"
                       placeholder="mail.company.com"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-orange-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-orange-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="inboundPort"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       SMTP port
                     </label>
@@ -2505,14 +2505,14 @@ export default async function VaultSourcesPage({
                       name="inboundPort"
                       type="number"
                       defaultValue={25}
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-orange-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="journalAuthMethod"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       SMTP auth method
                     </label>
@@ -2520,7 +2520,7 @@ export default async function VaultSourcesPage({
                       id="journalAuthMethod"
                       name="journalAuthMethod"
                       defaultValue="none"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none focus:border-orange-500/60"
                     >
                       <option value="none">None</option>
                       <option value="smtp_basic">SMTP basic</option>
@@ -2531,7 +2531,7 @@ export default async function VaultSourcesPage({
                   <div>
                     <label
                       htmlFor="journalUsername"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       SMTP username
                     </label>
@@ -2539,14 +2539,14 @@ export default async function VaultSourcesPage({
                       id="journalUsername"
                       name="journalUsername"
                       placeholder="smtp-user"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-orange-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-orange-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="journalPassword"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       SMTP password
                     </label>
@@ -2555,14 +2555,14 @@ export default async function VaultSourcesPage({
                       name="journalPassword"
                       type="password"
                       placeholder="SMTP password"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-orange-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-orange-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="journalPasswordEnvVar"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Password env var
                     </label>
@@ -2570,7 +2570,7 @@ export default async function VaultSourcesPage({
                       id="journalPasswordEnvVar"
                       name="journalPasswordEnvVar"
                       placeholder="SMTP_JOURNAL_PASSWORD"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-orange-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-orange-500/60"
                     />
                   </div>
                 </div>
@@ -2579,7 +2579,7 @@ export default async function VaultSourcesPage({
                   <div>
                     <label
                       htmlFor="acceptedSenderDomains"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Accepted sender domains
                     </label>
@@ -2588,14 +2588,14 @@ export default async function VaultSourcesPage({
                       name="acceptedSenderDomains"
                       rows={4}
                       placeholder={"company.com\nsubsidiary.com"}
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-orange-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-orange-500/60"
                     />
                   </div>
 
                   <div>
                     <label
                       htmlFor="allowedRelayIps"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Allowed relay IPs
                     </label>
@@ -2604,13 +2604,13 @@ export default async function VaultSourcesPage({
                       name="allowedRelayIps"
                       rows={4}
                       placeholder={"10.0.0.5\n10.0.0.6"}
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-orange-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-orange-500/60"
                     />
                   </div>
                 </div>
 
                 <div className="grid gap-3 md:grid-cols-2">
-                  <label className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-300">
+                  <label className="flex items-center gap-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300">
                     <input
                       type="checkbox"
                       name="captureInbound"
@@ -2620,7 +2620,7 @@ export default async function VaultSourcesPage({
                     Capture inbound
                   </label>
 
-                  <label className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-300">
+                  <label className="flex items-center gap-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300">
                     <input
                       type="checkbox"
                       name="captureOutbound"
@@ -2630,7 +2630,7 @@ export default async function VaultSourcesPage({
                     Capture outbound
                   </label>
 
-                  <label className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-300">
+                  <label className="flex items-center gap-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300">
                     <input
                       type="checkbox"
                       name="captureInternal"
@@ -2640,7 +2640,7 @@ export default async function VaultSourcesPage({
                     Capture internal
                   </label>
 
-                  <label className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-300">
+                  <label className="flex items-center gap-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300">
                     <input
                       type="checkbox"
                       name="captureBccEnvelope"
@@ -2649,7 +2649,7 @@ export default async function VaultSourcesPage({
                     Capture BCC envelope
                   </label>
 
-                  <label className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-300 md:col-span-2">
+                  <label className="flex items-center gap-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 md:col-span-2">
                     <input
                       type="checkbox"
                       name="preserveJournalEnvelope"
@@ -2661,7 +2661,7 @@ export default async function VaultSourcesPage({
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
-                  <label className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-300">
+                  <label className="flex items-center gap-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300">
                     <input
                       type="checkbox"
                       name="requireTls"
@@ -2671,7 +2671,7 @@ export default async function VaultSourcesPage({
                     Require SMTP TLS
                   </label>
 
-                  <label className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-300">
+                  <label className="flex items-center gap-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300">
                     <input
                       type="checkbox"
                       name="applyDefaultRetention"
@@ -2683,7 +2683,7 @@ export default async function VaultSourcesPage({
                   <div>
                     <label
                       htmlFor="defaultRetentionDays"
-                      className="text-sm font-medium text-zinc-300"
+                      className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
                     >
                       Default retention days
                     </label>
@@ -2692,11 +2692,11 @@ export default async function VaultSourcesPage({
                       name="defaultRetentionDays"
                       type="number"
                       placeholder="2555"
-                      className="mt-2 w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-orange-500/60"
+                      className="mt-2 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-orange-500/60"
                     />
                   </div>
 
-                  <label className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-300">
+                  <label className="flex items-center gap-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300">
                     <input
                       type="checkbox"
                       name="legalHoldByDefault"
@@ -2716,9 +2716,9 @@ export default async function VaultSourcesPage({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70">
-            <div className="border-b border-zinc-800 px-5 py-4">
-              <h2 className="text-lg font-semibold text-zinc-100">
+          <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/70">
+            <div className="border-b border-zinc-200 dark:border-zinc-800 px-5 py-4">
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
                 Existing Sources
               </h2>
               <p className="mt-1 text-sm text-zinc-500">

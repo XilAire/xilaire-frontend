@@ -60,7 +60,7 @@ export default function AttachmentItem({
   }
 
   return (
-    <div className="flex items-center justify-between bg-slate-800 p-3 rounded-lg border border-slate-700">
+    <div className="flex items-center justify-between bg-slate-100 dark:bg-slate-800 p-3 rounded-lg border border-slate-300 dark:border-slate-700">
       <div>
         <p className="text-white font-medium">{attachment.file_name}</p>
         <p className="text-slate-500 text-xs">

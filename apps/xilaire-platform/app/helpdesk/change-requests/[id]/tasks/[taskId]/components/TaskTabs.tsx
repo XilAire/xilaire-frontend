@@ -19,7 +19,7 @@ export default function TaskTabs({
   ];
 
   return (
-    <div className="border-b border-slate-700 flex gap-6">
+    <div className="border-b border-slate-300 dark:border-slate-700 flex gap-6">
       {tabs.map((tab) => (
         <Link
           key={tab.key}
@@ -27,7 +27,7 @@ export default function TaskTabs({
           className={`pb-3 text-sm ${
             activeTab === tab.key
               ? "text-white border-b-2 border-blue-500"
-              : "text-slate-400 hover:text-slate-200"
+              : "text-slate-600 dark:text-slate-400 hover:text-slate-200"
           }`}
         >
           {tab.label}

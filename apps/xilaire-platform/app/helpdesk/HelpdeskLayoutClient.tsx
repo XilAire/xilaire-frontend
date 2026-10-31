@@ -164,8 +164,8 @@ export default function HelpdeskLayoutClient({
 
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 rounded-lg bg-slate-800 
-              text-slate-100 py-2 text-xs hover:bg-slate-700 transition border border-slate-700"
+            className="w-full flex items-center justify-center gap-2 rounded-lg bg-slate-100 dark:bg-slate-800 
+              text-slate-900 dark:text-slate-100 py-2 text-xs hover:bg-slate-700 transition border border-slate-300 dark:border-slate-700"
           >
             <LogOut size={14} />
             Sign Out
@@ -184,7 +184,7 @@ export default function HelpdeskLayoutClient({
 
           {/* SEARCH */}
           <div className="relative w-80 hidden md:block">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-600 dark:text-slate-400" />
             <input
               type="text"
               placeholder="Search tickets, incidents, requests..."

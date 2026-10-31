@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server"
 import { finalizeOverageInvoice } from "@/lib/billing/finalizeOverageInvoice"
-import { getProfile } from "@/lib/getProfile"
+import { requirePlatformBillingActor } from "@/lib/auth/requirePlatformBillingActor"
 
 export const runtime = "nodejs"
 
 export async function POST(req: Request) {
-  const profile = await getProfile()
+  const profile = await requirePlatformBillingActor(["master_admin"]);
 
-  if (!profile || profile.role !== "master_admin") {
+  if (!profile) {
     return NextResponse.json(
       { error: "FORBIDDEN" },
       { status: 403 }

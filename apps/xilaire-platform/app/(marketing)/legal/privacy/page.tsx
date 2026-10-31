@@ -158,7 +158,7 @@ export default function PrivacyPage() {
           .
         </p>
 
-        <p className="mt-6 text-[11px] text-slate-400">
+        <p className="mt-6 text-[11px] text-slate-600 dark:text-slate-400">
           This document is provided for general informational purposes only and
           does not constitute legal advice.
         </p>

@@ -12,3 +12,5 @@ export const supabase = createClient(URL, ANON, {
     autoRefreshToken: true,
   },
 });
+
+export const supabasePlatform = supabase;

@@ -503,16 +503,16 @@ export default function VendorInvoiceCreatePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100">
+      <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100">
         <div className="mx-auto max-w-6xl px-6 py-10">
-          <div className="animate-pulse rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
-            <div className="h-8 w-56 rounded bg-slate-800" />
-            <div className="mt-3 h-4 w-96 rounded bg-slate-800" />
+          <div className="animate-pulse rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-900/70 p-6">
+            <div className="h-8 w-56 rounded bg-slate-100 dark:bg-slate-800" />
+            <div className="mt-3 h-4 w-96 rounded bg-slate-100 dark:bg-slate-800" />
             <div className="mt-8 grid gap-4 md:grid-cols-2">
-              <div className="h-24 rounded-xl bg-slate-800" />
-              <div className="h-24 rounded-xl bg-slate-800" />
+              <div className="h-24 rounded-xl bg-slate-100 dark:bg-slate-800" />
+              <div className="h-24 rounded-xl bg-slate-100 dark:bg-slate-800" />
             </div>
-            <div className="mt-6 h-64 rounded-xl bg-slate-800" />
+            <div className="mt-6 h-64 rounded-xl bg-slate-100 dark:bg-slate-800" />
           </div>
         </div>
       </div>
@@ -521,7 +521,7 @@ export default function VendorInvoiceCreatePage() {
 
   if (pageError) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100">
+      <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100">
         <div className="mx-auto max-w-4xl px-6 py-10">
           <div className="rounded-2xl border border-rose-800 bg-rose-950/30 p-6">
             <h1 className="text-2xl font-semibold text-white">
@@ -532,14 +532,14 @@ export default function VendorInvoiceCreatePage() {
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
                 href="/vendor/invoices"
-                className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-slate-100 hover:bg-slate-800"
+                className="rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2 text-sm text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 Back to invoices
               </Link>
 
               <Link
                 href="/vendor/projects"
-                className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-slate-100 hover:bg-slate-800"
+                className="rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2 text-sm text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 Back to projects
               </Link>
@@ -559,7 +559,7 @@ export default function VendorInvoiceCreatePage() {
     );
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100">
       <div className="mx-auto max-w-7xl px-6 py-10">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
@@ -569,7 +569,7 @@ export default function VendorInvoiceCreatePage() {
             <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">
               Create Invoice
             </h1>
-            <p className="mt-3 max-w-3xl text-sm text-slate-300">
+            <p className="mt-3 max-w-3xl text-sm text-slate-700 dark:text-slate-300">
               Create an invoice from an approved estimate.
             </p>
           </div>
@@ -577,7 +577,7 @@ export default function VendorInvoiceCreatePage() {
           <div className="flex flex-wrap gap-3">
             <Link
               href="/vendor/invoices"
-              className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-slate-100 hover:bg-slate-800"
+              className="rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2 text-sm text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800"
             >
               Back to invoices
             </Link>
@@ -585,7 +585,7 @@ export default function VendorInvoiceCreatePage() {
             {selectedProjectId ? (
               <Link
                 href={`/vendor/projects/${selectedProjectId}`}
-                className="rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-slate-100 hover:bg-slate-800"
+                className="rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-4 py-2 text-sm text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 Back to project
               </Link>
@@ -595,11 +595,11 @@ export default function VendorInvoiceCreatePage() {
 
         <div className="mt-8 grid gap-6 xl:grid-cols-[1.5fr_0.8fr]">
           <form onSubmit={handleSubmit} className="space-y-6">
-            <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-2xl shadow-black/20">
+            <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-900/70 p-6 shadow-2xl shadow-black/20">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <h2 className="text-lg font-semibold text-white">Invoice context</h2>
-                  <p className="mt-1 text-sm text-slate-400">
+                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
                     Select the assigned project and approved estimate you want to bill against.
                   </p>
                 </div>
@@ -613,13 +613,13 @@ export default function VendorInvoiceCreatePage() {
 
               <div className="mt-6 grid gap-5 md:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-200">
+                  <label className="mb-2 block text-sm font-medium text-slate-800 dark:text-slate-200">
                     Project
                   </label>
                   <select
                     value={selectedProjectId}
                     onChange={(e) => setSelectedProjectId(e.target.value)}
-                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-500"
+                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 text-sm text-slate-900 dark:text-white outline-none transition focus:border-cyan-500"
                   >
                     <option value="">Select a project</option>
                     {projects.map((project) => (
@@ -632,7 +632,7 @@ export default function VendorInvoiceCreatePage() {
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-200">
+                  <label className="mb-2 block text-sm font-medium text-slate-800 dark:text-slate-200">
                     Approved estimate
                   </label>
                   <select
@@ -640,10 +640,10 @@ export default function VendorInvoiceCreatePage() {
                     onChange={(e) => setSelectedEstimateId(e.target.value)}
                     disabled={!selectedProjectId}
                     className={cx(
-                      "w-full rounded-xl border bg-slate-950 px-4 py-3 text-sm text-white outline-none transition",
+                      "w-full rounded-xl border bg-white dark:bg-slate-950 px-4 py-3 text-sm text-slate-900 dark:text-white outline-none transition",
                       selectedProjectId
-                        ? "border-slate-700 focus:border-cyan-500"
-                        : "cursor-not-allowed border-slate-800 text-slate-500"
+                        ? "border-slate-300 dark:border-slate-700 focus:border-cyan-500"
+                        : "cursor-not-allowed border-slate-200 dark:border-slate-800 text-slate-500"
                     )}
                   >
                     <option value="">
@@ -661,29 +661,29 @@ export default function VendorInvoiceCreatePage() {
               </div>
             </section>
 
-            <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-2xl shadow-black/20">
+            <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-900/70 p-6 shadow-2xl shadow-black/20">
               <div>
                 <h2 className="text-lg font-semibold text-white">Invoice details</h2>
-                <p className="mt-1 text-sm text-slate-400">
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
                   Add invoice items. The server will recalculate totals and validate them.
                 </p>
               </div>
 
               <div className="mt-6 grid gap-5 md:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-200">
+                  <label className="mb-2 block text-sm font-medium text-slate-800 dark:text-slate-200">
                     Invoice number
                   </label>
                   <input
                     value={invoiceNumber}
                     onChange={(e) => setInvoiceNumber(e.target.value)}
                     placeholder="Optional"
-                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-500"
+                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 text-sm text-slate-900 dark:text-white outline-none transition focus:border-cyan-500"
                   />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-200">
+                  <label className="mb-2 block text-sm font-medium text-slate-800 dark:text-slate-200">
                     Vendor
                   </label>
                   <input
@@ -691,7 +691,7 @@ export default function VendorInvoiceCreatePage() {
                       vendor?.company_name || vendor?.contact_name || vendor?.email || "Vendor"
                     }
                     readOnly
-                    className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-400 outline-none"
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 py-3 text-sm text-slate-600 dark:text-slate-400 outline-none"
                   />
                 </div>
               </div>
@@ -705,11 +705,11 @@ export default function VendorInvoiceCreatePage() {
                   return (
                     <div
                       key={index}
-                      className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4"
+                      className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/70 p-4"
                     >
                       <div className="grid gap-4 lg:grid-cols-[1.6fr_0.5fr_0.7fr_auto]">
                         <div>
-                          <label className="mb-2 block text-sm font-medium text-slate-200">
+                          <label className="mb-2 block text-sm font-medium text-slate-800 dark:text-slate-200">
                             Description
                           </label>
                           <input
@@ -718,12 +718,12 @@ export default function VendorInvoiceCreatePage() {
                               updateItem(index, "description", e.target.value)
                             }
                             placeholder="Invoice item description"
-                            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-500"
+                            className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 text-sm text-slate-900 dark:text-white outline-none transition focus:border-cyan-500"
                           />
                         </div>
 
                         <div>
-                          <label className="mb-2 block text-sm font-medium text-slate-200">
+                          <label className="mb-2 block text-sm font-medium text-slate-800 dark:text-slate-200">
                             Qty
                           </label>
                           <input
@@ -732,12 +732,12 @@ export default function VendorInvoiceCreatePage() {
                             step="1"
                             value={item.quantity}
                             onChange={(e) => updateItem(index, "quantity", e.target.value)}
-                            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-500"
+                            className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 text-sm text-slate-900 dark:text-white outline-none transition focus:border-cyan-500"
                           />
                         </div>
 
                         <div>
-                          <label className="mb-2 block text-sm font-medium text-slate-200">
+                          <label className="mb-2 block text-sm font-medium text-slate-800 dark:text-slate-200">
                             Unit Price
                           </label>
                           <input
@@ -747,7 +747,7 @@ export default function VendorInvoiceCreatePage() {
                             value={item.unit_price}
                             onChange={(e) => updateItem(index, "unit_price", e.target.value)}
                             placeholder="0.00"
-                            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-500"
+                            className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 text-sm text-slate-900 dark:text-white outline-none transition focus:border-cyan-500"
                           />
                         </div>
 
@@ -759,7 +759,7 @@ export default function VendorInvoiceCreatePage() {
                             className={cx(
                               "rounded-xl border px-4 py-3 text-sm transition",
                               items.length <= 1
-                                ? "cursor-not-allowed border-slate-800 bg-slate-900 text-slate-600"
+                                ? "cursor-not-allowed border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-600"
                                 : "border-rose-800 bg-rose-950/40 text-rose-200 hover:bg-rose-950/70"
                             )}
                           >
@@ -768,8 +768,8 @@ export default function VendorInvoiceCreatePage() {
                         </div>
                       </div>
 
-                      <div className="mt-3 text-right text-sm text-slate-400">
-                        Line Total: <span className="text-slate-200">{money(previewTotal || 0)}</span>
+                      <div className="mt-3 text-right text-sm text-slate-600 dark:text-slate-400">
+                        Line Total: <span className="text-slate-800 dark:text-slate-200">{money(previewTotal || 0)}</span>
                       </div>
                     </div>
                   );
@@ -778,14 +778,14 @@ export default function VendorInvoiceCreatePage() {
                 <button
                   type="button"
                   onClick={addItem}
-                  className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-200 transition hover:bg-slate-800"
+                  className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 text-sm text-slate-800 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-800"
                 >
                   Add Invoice Item
                 </button>
               </div>
 
               <div className="mt-6">
-                <label className="mb-2 block text-sm font-medium text-slate-200">
+                <label className="mb-2 block text-sm font-medium text-slate-800 dark:text-slate-200">
                   Notes
                 </label>
                 <textarea
@@ -793,7 +793,7 @@ export default function VendorInvoiceCreatePage() {
                   onChange={(e) => setNotes(e.target.value)}
                   rows={5}
                   placeholder="Optional invoice notes"
-                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-500"
+                  className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 text-sm text-slate-900 dark:text-white outline-none transition focus:border-cyan-500"
                 />
               </div>
 
@@ -811,7 +811,7 @@ export default function VendorInvoiceCreatePage() {
                     "rounded-xl px-5 py-3 text-sm font-medium transition",
                     canSubmit
                       ? "bg-cyan-600 text-white hover:bg-cyan-500"
-                      : "cursor-not-allowed bg-slate-800 text-slate-500"
+                      : "cursor-not-allowed bg-slate-100 dark:bg-slate-800 text-slate-500"
                   )}
                 >
                   {submitting ? "Creating Invoice..." : "Create Invoice"}
@@ -819,7 +819,7 @@ export default function VendorInvoiceCreatePage() {
 
                 <Link
                   href="/vendor/invoices"
-                  className="rounded-xl border border-slate-700 bg-slate-950 px-5 py-3 text-sm text-slate-200 transition hover:bg-slate-800"
+                  className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-5 py-3 text-sm text-slate-800 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-800"
                 >
                   Cancel
                 </Link>
@@ -828,13 +828,13 @@ export default function VendorInvoiceCreatePage() {
           </form>
 
           <aside className="space-y-6">
-            <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
+            <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-900/70 p-6">
               <h2 className="text-lg font-semibold text-white">Summary</h2>
 
               <div className="mt-5 space-y-4 text-sm">
-                <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4">
                   <p className="text-slate-500">Project</p>
-                  <p className="mt-1 text-slate-200">
+                  <p className="mt-1 text-slate-800 dark:text-slate-200">
                     {selectedProject?.project_name || "Not selected"}
                   </p>
                   <p className="mt-1 text-xs text-slate-500">
@@ -842,9 +842,9 @@ export default function VendorInvoiceCreatePage() {
                   </p>
                 </div>
 
-                <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4">
                   <p className="text-slate-500">Estimate</p>
-                  <p className="mt-1 text-slate-200">
+                  <p className="mt-1 text-slate-800 dark:text-slate-200">
                     {selectedEstimate?.estimate_number || "Not selected"}
                   </p>
                   <p className="mt-1 text-xs text-slate-500">
@@ -852,7 +852,7 @@ export default function VendorInvoiceCreatePage() {
                   </p>
                 </div>
 
-                <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 p-4">
                   <p className="text-slate-500">Invoice Subtotal</p>
                   <p className="mt-1 text-xl font-semibold text-white">{money(subtotal)}</p>
                   <p className="mt-1 text-xs text-slate-500">
@@ -862,9 +862,9 @@ export default function VendorInvoiceCreatePage() {
               </div>
             </section>
 
-            <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
+            <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-900/70 p-6">
               <h2 className="text-lg font-semibold text-white">Requirements</h2>
-              <ul className="mt-4 space-y-2 text-sm text-slate-300">
+              <ul className="mt-4 space-y-2 text-sm text-slate-700 dark:text-slate-300">
                 <li>Project must be assigned to this vendor.</li>
                 <li>Estimate must be approved.</li>
                 <li>Each populated item needs description, quantity, and unit price.</li>

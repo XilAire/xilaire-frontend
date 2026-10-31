@@ -16,8 +16,6 @@ type RouteContext = {
   }>;
 };
 
-type AssignableType = "custodian" | "admin";
-
 type VaultCaseRow = {
   id: string;
   org_id: string;
@@ -30,7 +28,7 @@ type VaultCaseMemberRow = {
   id: string;
   org_id: string;
   case_id: string;
-  assignable_type: AssignableType;
+  assignable_type: "custodian" | "admin";
   assignable_id: string;
   role: string | null;
   created_at: string | null;
@@ -73,12 +71,6 @@ type ProfileRow = {
   account_type: string | null;
 };
 
-type NormalizedMemberInput = {
-  assignable_type: AssignableType;
-  assignable_id: string;
-  role: string;
-};
-
 type AddCaseMembersRequest = {
   members?: Array<{
     assignableType?: string;
@@ -94,36 +86,13 @@ type AddCaseMembersRequest = {
   role?: string | null;
 };
 
-type UpdateCaseMemberRequest = {
-  memberId?: string;
-  member_id?: string;
-  assignableType?: string;
-  assignable_type?: string;
-  assignableId?: string;
-  assignable_id?: string;
-  role?: string | null;
-};
-
-type DeleteCaseMembersRequest = {
-  memberIds?: string[];
-  member_ids?: string[];
-  members?: Array<{
-    memberId?: string;
-    member_id?: string;
-    assignableType?: string;
-    assignable_type?: string;
-    assignableId?: string;
-    assignable_id?: string;
-  }>;
-};
-
 function normalizeString(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed.length ? trimmed : null;
 }
 
-function normalizeAssignableType(value: unknown): AssignableType | null {
+function normalizeAssignableType(value: unknown): "custodian" | "admin" | null {
   const normalized = normalizeString(value)?.toLowerCase();
 
   if (normalized === "custodian") return "custodian";
@@ -133,15 +102,7 @@ function normalizeAssignableType(value: unknown): AssignableType | null {
 }
 
 function normalizeRole(value: unknown): string {
-  const normalized = normalizeString(value)?.toLowerCase();
-
-  if (normalized === "owner") return "owner";
-  if (normalized === "admin") return "admin";
-  if (normalized === "reviewer") return "reviewer";
-  if (normalized === "viewer") return "viewer";
-  if (normalized === "member") return "member";
-
-  return "member";
+  return normalizeString(value)?.toLowerCase() ?? "member";
 }
 
 function toRows<T>(value: unknown): T[] {
@@ -194,6 +155,41 @@ function isAdminVaultRole(role: string | null | undefined): boolean {
   const normalized = normalizeString(role)?.toLowerCase();
 
   return normalized === "vault_admin" || normalized === "vault_compliance_admin";
+}
+
+/** Mutations require a current Vault administrator identity in this organization.
+ * This is independent of the read-only support scope used by GET.
+ */
+async function requireCaseMemberWriteAccess(
+  supabase: Awaited<ReturnType<typeof getVaultAdminClient>>,
+  access: unknown,
+  orgId: string
+) {
+  const actorId = getAccessUserId(access);
+  if (!actorId) return { ok: false as const, actorId: null };
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("id, org_id, status")
+    .eq("id", actorId)
+    .eq("org_id", orgId)
+    .maybeSingle();
+  if (profileError) throw new Error("Unable to verify acting user profile.");
+  if (!profile || (profile.status && profile.status !== "active")) {
+    return { ok: false as const, actorId };
+  }
+
+  const { data: roles, error: roleError } = await supabase
+    .from("vault_user_roles")
+    .select("user_id, role")
+    .eq("org_id", orgId)
+    .eq("user_id", actorId);
+  if (roleError) throw new Error("Unable to verify acting user Vault roles.");
+
+  return {
+    ok: toRows<VaultUserRoleRow>(roles).some((row) => isAdminVaultRole(row.role)),
+    actorId,
+  };
 }
 
 function getCustodianDisplayName(row: VaultCustodianRow | null) {
@@ -274,24 +270,6 @@ function buildMemberPayload(
       mailbox_type: mailbox.mailbox_type,
       ingestion_status: mailbox.ingestion_status,
     })),
-  };
-}
-
-function buildSummary(items: Array<ReturnType<typeof buildMemberPayload>>) {
-  return {
-    totalCount: items.length,
-    custodianCount: items.filter((item) => item.assignable_type === "custodian")
-      .length,
-    adminCount: items.filter((item) => item.assignable_type === "admin").length,
-    mailboxCount: items.reduce(
-      (total, item) => total + (item.mailbox_count ?? 0),
-      0
-    ),
-    ownerCount: items.filter((item) => item.role === "owner").length,
-    adminRoleCount: items.filter((item) => item.role === "admin").length,
-    reviewerCount: items.filter((item) => item.role === "reviewer").length,
-    viewerCount: items.filter((item) => item.role === "viewer").length,
-    memberCount: items.filter((item) => item.role === "member").length,
   };
 }
 
@@ -432,48 +410,10 @@ async function loadMemberDetails(
   };
 }
 
-async function enrichMemberRows(
-  supabase: Awaited<ReturnType<typeof getVaultAdminClient>>,
-  rows: VaultCaseMemberRow[],
-  orgId: string
-) {
-  const details = await loadMemberDetails(supabase, rows, orgId);
-
-  return rows.map((row) =>
-    buildMemberPayload(
-      row,
-      details.custodiansById,
-      details.profilesById,
-      details.vaultRolesByUserId,
-      details.mailboxesByCustodianId
-    )
-  );
-}
-
-async function loadExistingMembers(
-  supabase: Awaited<ReturnType<typeof getVaultAdminClient>>,
-  caseId: string,
-  orgId: string
-) {
-  const { data, error } = await supabase
-    .from("vault_case_members")
-    .select(
-      "id, org_id, case_id, assignable_type, assignable_id, role, created_at, created_by"
-    )
-    .eq("org_id", orgId)
-    .eq("case_id", caseId);
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return toRows<VaultCaseMemberRow>(data);
-}
-
 async function validateMemberTarget(
   supabase: Awaited<ReturnType<typeof getVaultAdminClient>>,
   orgId: string,
-  assignableType: AssignableType,
+  assignableType: "custodian" | "admin",
   assignableId: string
 ) {
   if (assignableType === "custodian") {
@@ -501,7 +441,7 @@ async function validateMemberTarget(
 
     const custodian = data as VaultCustodianRow;
 
-    if (custodian.status && custodian.status !== "active") {
+    if (custodian.status !== "active") {
       return {
         ok: false as const,
         reason: "Custodian is not active.",
@@ -613,163 +553,31 @@ function normalizeMembersRequest(body: AddCaseMembersRequest | null) {
             role: normalizeRole(member.role),
           };
         })
-        .filter((member): member is NormalizedMemberInput => Boolean(member))
+        .filter(
+          (
+            member
+          ): member is {
+            assignable_type: "custodian" | "admin";
+            assignable_id: string;
+            role: string;
+          } => Boolean(member)
+        )
     : [];
 
-  const deduped = new Map<string, NormalizedMemberInput>();
+  const deduped = new Map<
+    string,
+    {
+      assignable_type: "custodian" | "admin";
+      assignable_id: string;
+      role: string;
+    }
+  >();
 
   for (const member of [...directMember, ...arrayMembers]) {
     deduped.set(`${member.assignable_type}:${member.assignable_id}`, member);
   }
 
   return Array.from(deduped.values());
-}
-
-function normalizeUpdateMemberRequest(body: UpdateCaseMemberRequest | null) {
-  const memberId =
-    normalizeString(body?.memberId) ?? normalizeString(body?.member_id);
-
-  const assignableType =
-    normalizeAssignableType(body?.assignableType) ??
-    normalizeAssignableType(body?.assignable_type);
-
-  const assignableId =
-    normalizeString(body?.assignableId) ?? normalizeString(body?.assignable_id);
-
-  const role = normalizeString(body?.role) ? normalizeRole(body?.role) : null;
-
-  return {
-    memberId,
-    assignableType,
-    assignableId,
-    role,
-  };
-}
-
-function normalizeDeleteRequestFromUrl(request: NextRequest) {
-  const url = new URL(request.url);
-
-  const memberId = normalizeString(url.searchParams.get("memberId"));
-  const assignableType = normalizeAssignableType(
-    url.searchParams.get("assignableType") ??
-      url.searchParams.get("assignable_type")
-  );
-  const assignableId =
-    normalizeString(url.searchParams.get("assignableId")) ??
-    normalizeString(url.searchParams.get("assignable_id"));
-
-  return {
-    memberIds: memberId ? [memberId] : [],
-    targets:
-      assignableType && assignableId
-        ? [
-            {
-              assignable_type: assignableType,
-              assignable_id: assignableId,
-            },
-          ]
-        : [],
-  };
-}
-
-function normalizeDeleteRequestFromBody(body: DeleteCaseMembersRequest | null) {
-  const directMemberIds = [
-    ...toRows<string>(body?.memberIds),
-    ...toRows<string>(body?.member_ids),
-  ]
-    .map((value) => normalizeString(value))
-    .filter((value): value is string => Boolean(value));
-
-  const memberIdsFromMembers = Array.isArray(body?.members)
-    ? body.members
-        .map((member) => {
-          return (
-            normalizeString(member.memberId) ?? normalizeString(member.member_id)
-          );
-        })
-        .filter((value): value is string => Boolean(value))
-    : [];
-
-  const targets = Array.isArray(body?.members)
-    ? body.members
-        .map((member) => {
-          const assignableType =
-            normalizeAssignableType(member.assignableType) ??
-            normalizeAssignableType(member.assignable_type);
-
-          const assignableId =
-            normalizeString(member.assignableId) ??
-            normalizeString(member.assignable_id);
-
-          if (!assignableType || !assignableId) return null;
-
-          return {
-            assignable_type: assignableType,
-            assignable_id: assignableId,
-          };
-        })
-        .filter(
-          (
-            target
-          ): target is {
-            assignable_type: AssignableType;
-            assignable_id: string;
-          } => Boolean(target)
-        )
-    : [];
-
-  return {
-    memberIds: Array.from(new Set([...directMemberIds, ...memberIdsFromMembers])),
-    targets: Array.from(
-      new Map(
-        targets.map((target) => [
-          `${target.assignable_type}:${target.assignable_id}`,
-          target,
-        ])
-      ).values()
-    ),
-  };
-}
-
-function filterItemsFromRequest(
-  request: NextRequest,
-  items: Array<ReturnType<typeof buildMemberPayload>>
-) {
-  const url = new URL(request.url);
-
-  const assignableType = normalizeAssignableType(
-    url.searchParams.get("assignableType") ??
-      url.searchParams.get("assignable_type")
-  );
-
-  const role = normalizeString(url.searchParams.get("role"))?.toLowerCase();
-  const query = normalizeString(url.searchParams.get("q"))?.toLowerCase();
-
-  return items.filter((item) => {
-    if (assignableType && item.assignable_type !== assignableType) return false;
-    if (role && item.role?.toLowerCase() !== role) return false;
-
-    if (query) {
-      const searchable = [
-        item.display_name,
-        item.email,
-        item.department,
-        item.title,
-        item.profile_role,
-        item.vault_role,
-        item.account_type,
-        ...item.mailboxes.map((mailbox) => mailbox.mailbox_address),
-        ...item.mailboxes.map((mailbox) => mailbox.display_name),
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-
-      if (!searchable.includes(query)) return false;
-    }
-
-    return true;
-  });
 }
 
 export async function GET(request: NextRequest, context: RouteContext) {
@@ -820,9 +628,17 @@ export async function GET(request: NextRequest, context: RouteContext) {
     }
 
     const rows = toRows<VaultCaseMemberRow>(data);
-    const allItems = await enrichMemberRows(supabase, rows, orgId);
-    const items = filterItemsFromRequest(request, allItems);
-    const summary = buildSummary(items);
+    const details = await loadMemberDetails(supabase, rows, orgId);
+
+    const items = rows.map((row) =>
+      buildMemberPayload(
+        row,
+        details.custodiansById,
+        details.profilesById,
+        details.vaultRolesByUserId,
+        details.mailboxesByCustodianId
+      )
+    );
 
     await writeUnifiedVaultAccessAuditLog({
       access,
@@ -832,16 +648,16 @@ export async function GET(request: NextRequest, context: RouteContext) {
       status: "success",
       request,
       details: {
-        returned_count: summary.totalCount,
-        total_before_filter_count: allItems.length,
-        custodian_count: summary.custodianCount,
-        admin_count: summary.adminCount,
-        mailbox_count: summary.mailboxCount,
-        owner_count: summary.ownerCount,
-        admin_role_count: summary.adminRoleCount,
-        reviewer_count: summary.reviewerCount,
-        viewer_count: summary.viewerCount,
-        member_count: summary.memberCount,
+        returned_count: items.length,
+        custodian_count: items.filter(
+          (item) => item.assignable_type === "custodian"
+        ).length,
+        admin_count: items.filter((item) => item.assignable_type === "admin")
+          .length,
+        mailbox_count: items.reduce(
+          (total, item) => total + (item.mailbox_count ?? 0),
+          0
+        ),
         duration_ms: Date.now() - startedAt,
       },
     });
@@ -851,8 +667,16 @@ export async function GET(request: NextRequest, context: RouteContext) {
       case: caseLookup.caseRow,
       items,
       summary: {
-        ...summary,
-        totalBeforeFilterCount: allItems.length,
+        totalCount: items.length,
+        custodianCount: items.filter(
+          (item) => item.assignable_type === "custodian"
+        ).length,
+        adminCount: items.filter((item) => item.assignable_type === "admin")
+          .length,
+        mailboxCount: items.reduce(
+          (total, item) => total + (item.mailbox_count ?? 0),
+          0
+        ),
       },
     });
   } catch (error) {
@@ -879,6 +703,16 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const actorUserId = getAccessUserId(access);
     const supabase = await getVaultAdminClient();
 
+    const authorization = await requireCaseMemberWriteAccess(supabase, access, orgId);
+    if (!authorization.ok) {
+      await writeUnifiedVaultAccessAuditLog({
+        access, action: "vault.case.members.add.denied", entityType: "vault_case",
+        entityId: caseId, status: "failure", request,
+        details: { reason: "insufficient_write_permissions", duration_ms: Date.now() - startedAt },
+      });
+      return jsonError("Insufficient permissions to modify case members.", 403);
+    }
+
     const caseLookup = await loadCaseOrError(supabase, caseId, orgId);
 
     if (!caseLookup.ok) {
@@ -888,6 +722,22 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const body =
       (await request.json().catch(() => null)) as AddCaseMembersRequest | null;
 
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return jsonError("A JSON object is required.", 400);
+    }
+    if (body.members !== undefined && !Array.isArray(body.members)) {
+      return jsonError("members must be an array.", 400);
+    }
+    if (Array.isArray(body.members) && body.members.length > 100) {
+      return jsonError("No more than 100 members may be submitted at once.", 400);
+    }
+    if (Array.isArray(body.members) && body.members.some((item) =>
+      !item || typeof item !== "object" ||
+      !normalizeAssignableType(item.assignableType ?? item.assignable_type) ||
+      !normalizeString(item.assignableId ?? item.assignable_id)
+    )) {
+      return jsonError("Every member must include a valid assignable type and ID.", 400);
+    }
     const members = normalizeMembersRequest(body);
 
     if (!members.length) {
@@ -939,27 +789,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
       });
     }
 
-    const existingRows = await loadExistingMembers(supabase, caseId, orgId);
-
-    const existingByTarget = new Map(
-      existingRows.map((row) => [
-        `${row.assignable_type}:${row.assignable_id}`,
-        row,
-      ])
-    );
-
-    const duplicateTargets = members
-      .filter((member) =>
-        existingByTarget.has(`${member.assignable_type}:${member.assignable_id}`)
-      )
-      .map((member) => ({
-        assignable_type: member.assignable_type,
-        assignable_id: member.assignable_id,
-        existing_member_id: existingByTarget.get(
-          `${member.assignable_type}:${member.assignable_id}`
-        )?.id,
-      }));
-
     const insertPayload = members.map((member) => ({
       org_id: orgId,
       case_id: caseId,
@@ -973,7 +802,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       .from("vault_case_members")
       .upsert(insertPayload, {
         onConflict: "case_id,assignable_type,assignable_id",
-        ignoreDuplicates: false,
+        ignoreDuplicates: true,
       })
       .select(
         "id, org_id, case_id, assignable_type, assignable_id, role, created_at, created_by"
@@ -990,8 +819,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
         details: {
           error: error.message,
           requested_count: members.length,
-          duplicate_count: duplicateTargets.length,
-          duplicate_targets: duplicateTargets,
           duration_ms: Date.now() - startedAt,
         },
       });
@@ -1002,8 +829,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     const rows = toRows<VaultCaseMemberRow>(data);
-    const items = await enrichMemberRows(supabase, rows, orgId);
-    const summary = buildSummary(items);
+    const details = await loadMemberDetails(supabase, rows, orgId);
+
+    const items = rows.map((row) =>
+      buildMemberPayload(
+        row,
+        details.custodiansById,
+        details.profilesById,
+        details.vaultRolesByUserId,
+        details.mailboxesByCustodianId
+      )
+    );
 
     await writeUnifiedVaultAccessAuditLog({
       access,
@@ -1013,18 +849,18 @@ export async function POST(request: NextRequest, context: RouteContext) {
       status: "success",
       request,
       details: {
+        added_count: items.length,
         requested_count: members.length,
-        added_or_updated_count: items.length,
-        duplicate_count: duplicateTargets.length,
-        duplicate_targets: duplicateTargets,
-        custodian_count: summary.custodianCount,
-        admin_count: summary.adminCount,
-        mailbox_count: summary.mailboxCount,
-        owner_count: summary.ownerCount,
-        admin_role_count: summary.adminRoleCount,
-        reviewer_count: summary.reviewerCount,
-        viewer_count: summary.viewerCount,
-        member_count: summary.memberCount,
+        ignored_existing_count: members.length - items.length,
+        custodian_count: items.filter(
+          (item) => item.assignable_type === "custodian"
+        ).length,
+        admin_count: items.filter((item) => item.assignable_type === "admin")
+          .length,
+        mailbox_count: items.reduce(
+          (total, item) => total + (item.mailbox_count ?? 0),
+          0
+        ),
         duration_ms: Date.now() - startedAt,
       },
     });
@@ -1035,161 +871,27 @@ export async function POST(request: NextRequest, context: RouteContext) {
         case: caseLookup.caseRow,
         items,
         summary: {
-          ...summary,
-          addedOrUpdatedCount: items.length,
-          duplicateCount: duplicateTargets.length,
-          duplicateTargets,
+          addedCount: items.length,
+          requestedCount: members.length,
+          ignoredExistingCount: members.length - items.length,
+          custodianCount: items.filter(
+            (item) => item.assignable_type === "custodian"
+          ).length,
+          adminCount: items.filter((item) => item.assignable_type === "admin")
+            .length,
+          mailboxCount: items.reduce(
+            (total, item) => total + (item.mailbox_count ?? 0),
+            0
+          ),
         },
       },
-      201
+      items.length ? 201 : 200
     );
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Unknown error adding case members.";
 
     return jsonError("Failed to add case members.", 500, {
-      details: message,
-    });
-  }
-}
-
-export async function PATCH(request: NextRequest, context: RouteContext) {
-  const startedAt = Date.now();
-
-  try {
-    const { id: caseId } = await context.params;
-
-    const access = await requireVaultAccess(request, {
-      supportScope: "vault_read_only",
-    });
-
-    const orgId = getAccessOrgId(access);
-    const supabase = await getVaultAdminClient();
-
-    const caseLookup = await loadCaseOrError(supabase, caseId, orgId);
-
-    if (!caseLookup.ok) {
-      return caseLookup.response;
-    }
-
-    const body =
-      (await request.json().catch(() => null)) as UpdateCaseMemberRequest | null;
-
-    const updateInput = normalizeUpdateMemberRequest(body);
-
-    if (
-      !updateInput.memberId &&
-      (!updateInput.assignableType || !updateInput.assignableId)
-    ) {
-      return jsonError(
-        "Provide memberId or assignableType plus assignableId to update a case member.",
-        400
-      );
-    }
-
-    if (!updateInput.role) {
-      return jsonError("A valid role is required to update a case member.", 400);
-    }
-
-    let updateQuery = supabase
-      .from("vault_case_members")
-      .update({
-        role: updateInput.role,
-      })
-      .eq("org_id", orgId)
-      .eq("case_id", caseId);
-
-    if (updateInput.memberId) {
-      updateQuery = updateQuery.eq("id", updateInput.memberId);
-    } else if (updateInput.assignableType && updateInput.assignableId) {
-      updateQuery = updateQuery
-        .eq("assignable_type", updateInput.assignableType)
-        .eq("assignable_id", updateInput.assignableId);
-    }
-
-    const { data, error } = await updateQuery.select(
-      "id, org_id, case_id, assignable_type, assignable_id, role, created_at, created_by"
-    );
-
-    if (error) {
-      await writeUnifiedVaultAccessAuditLog({
-        access,
-        action: "vault.case.members.update.failed",
-        entityType: "vault_case",
-        entityId: caseId,
-        status: "failure",
-        request,
-        details: {
-          member_id: updateInput.memberId,
-          assignable_type: updateInput.assignableType,
-          assignable_id: updateInput.assignableId,
-          role: updateInput.role,
-          error: error.message,
-          duration_ms: Date.now() - startedAt,
-        },
-      });
-
-      return jsonError("Failed to update case member.", 500, {
-        details: error.message,
-      });
-    }
-
-    const rows = toRows<VaultCaseMemberRow>(data);
-
-    if (!rows.length) {
-      await writeUnifiedVaultAccessAuditLog({
-        access,
-        action: "vault.case.members.update.not_found",
-        entityType: "vault_case",
-        entityId: caseId,
-        status: "warning",
-        request,
-        details: {
-          member_id: updateInput.memberId,
-          assignable_type: updateInput.assignableType,
-          assignable_id: updateInput.assignableId,
-          role: updateInput.role,
-          duration_ms: Date.now() - startedAt,
-        },
-      });
-
-      return jsonError("Case member was not found.", 404);
-    }
-
-    const items = await enrichMemberRows(supabase, rows, orgId);
-    const summary = buildSummary(items);
-
-    await writeUnifiedVaultAccessAuditLog({
-      access,
-      action: "vault.case.members.update",
-      entityType: "vault_case",
-      entityId: caseId,
-      status: "success",
-      request,
-      details: {
-        updated_count: items.length,
-        member_id: updateInput.memberId,
-        assignable_type: updateInput.assignableType,
-        assignable_id: updateInput.assignableId,
-        role: updateInput.role,
-        duration_ms: Date.now() - startedAt,
-      },
-    });
-
-    return jsonOk({
-      ok: true,
-      case: caseLookup.caseRow,
-      items,
-      summary: {
-        ...summary,
-        updatedCount: items.length,
-      },
-    });
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown error updating case member.";
-
-    return jsonError("Failed to update case member.", 500, {
       details: message,
     });
   }
@@ -1208,31 +910,30 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     const orgId = getAccessOrgId(access);
     const supabase = await getVaultAdminClient();
 
-    const urlDeleteInput = normalizeDeleteRequestFromUrl(request);
+    const authorization = await requireCaseMemberWriteAccess(supabase, access, orgId);
+    if (!authorization.ok) {
+      await writeUnifiedVaultAccessAuditLog({
+        access, action: "vault.case.members.remove.denied", entityType: "vault_case",
+        entityId: caseId, status: "failure", request,
+        details: { reason: "insufficient_write_permissions", duration_ms: Date.now() - startedAt },
+      });
+      return jsonError("Insufficient permissions to modify case members.", 403);
+    }
 
-    const body =
-      request.headers.get("content-type")?.includes("application/json")
-        ? ((await request.json().catch(() => null)) as DeleteCaseMembersRequest | null)
-        : null;
+    const url = new URL(request.url);
 
-    const bodyDeleteInput = normalizeDeleteRequestFromBody(body);
-
-    const memberIds = Array.from(
-      new Set([...urlDeleteInput.memberIds, ...bodyDeleteInput.memberIds])
+    const memberId = normalizeString(url.searchParams.get("memberId"));
+    const assignableType = normalizeAssignableType(
+      url.searchParams.get("assignableType") ??
+        url.searchParams.get("assignable_type")
     );
+    const assignableId =
+      normalizeString(url.searchParams.get("assignableId")) ??
+      normalizeString(url.searchParams.get("assignable_id"));
 
-    const targets = Array.from(
-      new Map(
-        [...urlDeleteInput.targets, ...bodyDeleteInput.targets].map((target) => [
-          `${target.assignable_type}:${target.assignable_id}`,
-          target,
-        ])
-      ).values()
-    );
-
-    if (!memberIds.length && !targets.length) {
+    if (!memberId && (!assignableType || !assignableId)) {
       return jsonError(
-        "Provide memberId, memberIds, or assignableType plus assignableId to remove case members.",
+        "Provide memberId or assignableType plus assignableId to remove a case member.",
         400
       );
     }
@@ -1243,54 +944,23 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       return caseLookup.response;
     }
 
-    let removedCount = 0;
-    const removalFailures: Array<{
-      member_id?: string;
-      assignable_type?: string;
-      assignable_id?: string;
-      error: string;
-    }> = [];
+    let deleteQuery = supabase
+      .from("vault_case_members")
+      .delete()
+      .eq("org_id", orgId)
+      .eq("case_id", caseId);
 
-    if (memberIds.length) {
-      const { data, error } = await supabase
-        .from("vault_case_members")
-        .delete()
-        .eq("org_id", orgId)
-        .eq("case_id", caseId)
-        .in("id", memberIds)
-        .select("id");
-
-      if (error) {
-        removalFailures.push({
-          error: error.message,
-        });
-      } else {
-        removedCount += toRows<{ id: string }>(data).length;
-      }
+    if (memberId) {
+      deleteQuery = deleteQuery.eq("id", memberId);
+    } else {
+      deleteQuery = deleteQuery
+        .eq("assignable_type", assignableType)
+        .eq("assignable_id", assignableId);
     }
 
-    for (const target of targets) {
-      const { data, error } = await supabase
-        .from("vault_case_members")
-        .delete()
-        .eq("org_id", orgId)
-        .eq("case_id", caseId)
-        .eq("assignable_type", target.assignable_type)
-        .eq("assignable_id", target.assignable_id)
-        .select("id");
+    const { data: deletedRows, error } = await deleteQuery.select("id");
 
-      if (error) {
-        removalFailures.push({
-          assignable_type: target.assignable_type,
-          assignable_id: target.assignable_id,
-          error: error.message,
-        });
-      } else {
-        removedCount += toRows<{ id: string }>(data).length;
-      }
-    }
-
-    if (removalFailures.length) {
+    if (error) {
       await writeUnifiedVaultAccessAuditLog({
         access,
         action: "vault.case.members.remove.failed",
@@ -1299,19 +969,20 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
         status: "failure",
         request,
         details: {
-          member_ids: memberIds,
-          targets,
-          failures: removalFailures,
-          removed_count: removedCount,
+          member_id: memberId,
+          assignable_type: assignableType,
+          assignable_id: assignableId,
+          error: error.message,
           duration_ms: Date.now() - startedAt,
         },
       });
 
-      return jsonError("One or more case members could not be removed.", 500, {
-        failures: removalFailures,
-        removedCount,
+      return jsonError("Failed to remove case member.", 500, {
+        details: error.message,
       });
     }
+
+    const removedCount = toRows<{ id: string }>(deletedRows).length;
 
     await writeUnifiedVaultAccessAuditLog({
       access,
@@ -1321,8 +992,9 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       status: "success",
       request,
       details: {
-        member_ids: memberIds,
-        targets,
+        member_id: memberId,
+        assignable_type: assignableType,
+        assignable_id: assignableId,
         removed_count: removedCount,
         duration_ms: Date.now() - startedAt,
       },
@@ -1330,7 +1002,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
     return jsonOk({
       ok: true,
-      removed: true,
+      removed: removedCount > 0,
       removedCount,
       case: caseLookup.caseRow,
     });

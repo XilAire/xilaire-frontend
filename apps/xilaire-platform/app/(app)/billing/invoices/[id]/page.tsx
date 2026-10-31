@@ -224,7 +224,7 @@ export default function InvoiceDetailPage() {
           </div>
 
           {isLocked && (
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
               This invoice is locked and cannot be modified.
             </p>
           )}
