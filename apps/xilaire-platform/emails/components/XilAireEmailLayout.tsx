@@ -29,7 +29,7 @@ export function XilAireEmailLayout({ eyebrow, title, preview, children }: Props)
                   <table role="presentation" cellPadding={0} cellSpacing={0}>
                     <tbody><tr>
                       <td style={{ verticalAlign: "middle", paddingRight: 14 }}>
-                        <img src="https://xilairetechnologies.com/icon-light.png" alt="XilAire" width="48" height="48" style={{ display: "block", border: 0 }} />
+                        <img src="https://assets.xilairetechnologies.com/icon-light.png" alt="XilAire" width="48" height="48" style={{ display: "block", border: 0 }} />
                       </td>
                       <td style={{ verticalAlign: "middle" }}>
                         <div style={{ color: "#93c5fd", fontSize: 12, fontWeight: 700, letterSpacing: 1.4 }}>XILAIRE TECHNOLOGIES</div>
