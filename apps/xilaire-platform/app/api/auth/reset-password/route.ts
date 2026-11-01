@@ -1,9 +1,10 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { requestPasswordReset } from "@/lib/auth/password-recovery";
 
 export const runtime = "nodejs";
 
 const PRODUCTION_ORIGIN = "https://xilairetechnologies.com";
+const VERCEL_PRODUCTION_ORIGIN = "https://xilaire-platform.vercel.app";
 const DEVELOPMENT_ORIGIN = "http://localhost:3002";
 
 function isAllowedOrigin(originHeader: string | null): boolean {
@@ -16,7 +17,10 @@ function isAllowedOrigin(originHeader: string | null): boolean {
       return false;
     }
 
-    if (parsed.origin === PRODUCTION_ORIGIN) {
+    if (
+      parsed.origin === PRODUCTION_ORIGIN ||
+      parsed.origin === VERCEL_PRODUCTION_ORIGIN
+    ) {
       return true;
     }
 

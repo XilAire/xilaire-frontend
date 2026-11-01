@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createRouteSupabaseClient } from "@/lib/supabaseRoute";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { requestPasswordReset } from "@/lib/auth/password-recovery";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,37 +21,6 @@ function respond(body: Record<string, unknown>, status: number) {
     status,
     headers: NO_STORE,
   });
-}
-
-function configuredResetRedirect(): string | undefined {
-  const configured =
-    process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.NEXT_PUBLIC_SITE_URL;
-
-  if (!configured) {
-    return undefined;
-  }
-
-  try {
-    const url = new URL(configured);
-
-    const localDevelopment =
-      url.protocol === "http:" &&
-      (url.hostname === "localhost" ||
-        url.hostname === "127.0.0.1");
-
-    if (url.protocol !== "https:" && !localDevelopment) {
-      return undefined;
-    }
-
-    if (url.username || url.password) {
-      return undefined;
-    }
-
-    return new URL("/auth/reset-password", url.origin).toString();
-  } catch {
-    return undefined;
-  }
 }
 
 export async function POST(req: Request) {
@@ -154,27 +124,9 @@ export async function POST(req: Request) {
       return respond({ error: "Forbidden" }, 403);
     }
 
-    const redirectTo = configuredResetRedirect();
-
-    const options = redirectTo ? { redirectTo } : undefined;
-
-    const { error } = await supabaseAdmin.auth.resetPasswordForEmail(
-      email,
-      options
-    );
-
-    if (error) {
-      console.error(
-        "ADMIN_RESET_PROVIDER_ERROR:",
-        error.code || "provider_error"
-      );
-
-      // Do not expose provider or account details to the caller.
-      return respond(
-        { error: "Unable to request password reset" },
-        502
-      );
-    }
+    // All reset emails use the production XilAire recovery flow.
+    // Existing administrator authorization checks remain above.
+    await requestPasswordReset(email);
 
     return respond(accepted, 200);
   } catch {
